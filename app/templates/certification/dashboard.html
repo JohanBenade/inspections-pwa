@@ -1,0 +1,213 @@
+{% extends "base.html" %}
+
+{% block title %}Certification Dashboard{% endblock %}
+
+{% block content %}
+<div class="max-w-4xl mx-auto">
+    <!-- Header -->
+    <div class="bg-white rounded-lg shadow p-4 mb-4">
+        <div>
+            <h1 class="text-xl font-bold text-gray-800">Certification Dashboard</h1>
+            <p class="text-sm text-gray-600">Unit status overview and sign-off</p>
+        </div>
+        
+        <!-- Summary Stats -->
+        <div class="grid grid-cols-5 gap-2 mt-4">
+            <div class="text-center p-2 bg-green-50 rounded">
+                <div class="text-2xl font-bold text-green-600">{{ summary.certified }}</div>
+                <div class="text-xs text-green-700">Certified</div>
+            </div>
+            <div class="text-center p-2 bg-blue-50 rounded">
+                <div class="text-2xl font-bold text-blue-600">{{ summary.ready }}</div>
+                <div class="text-xs text-blue-700">Ready to Certify</div>
+            </div>
+            <div class="text-center p-2 bg-red-50 rounded">
+                <div class="text-2xl font-bold text-red-600">{{ summary.defects }}</div>
+                <div class="text-xs text-red-700">With Defects</div>
+            </div>
+            <div class="text-center p-2 bg-yellow-50 rounded">
+                <div class="text-2xl font-bold text-yellow-600">{{ summary.in_progress }}</div>
+                <div class="text-xs text-yellow-700">In Progress</div>
+            </div>
+            <div class="text-center p-2 bg-gray-50 rounded">
+                <div class="text-2xl font-bold text-gray-600">{{ summary.not_started }}</div>
+                <div class="text-xs text-gray-700">Not Started</div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Cycle Filter -->
+    {% if active_cycles %}
+    <div class="bg-white rounded-lg shadow p-3 mb-4">
+        <form method="GET" class="flex items-center gap-3">
+            <label class="text-sm font-medium text-gray-700">Filter by Cycle:</label>
+            <select name="cycle" onchange="this.form.submit()" 
+                    class="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500">
+                <option value="">All Cycles</option>
+                {% for cycle in active_cycles %}
+                <option value="{{ cycle.id }}" {% if cycle_filter == cycle.id %}selected{% endif %}>
+                    Cycle {{ cycle.cycle_number }}
+                    {% if cycle.unit_start and cycle.unit_end %}
+                    ({{ cycle.unit_start }} - {{ cycle.unit_end }})
+                    {% endif %}
+                </option>
+                {% endfor %}
+            </select>
+        </form>
+    </div>
+    {% endif %}
+    
+    <!-- Certified Section -->
+    {% if grouped.certified %}
+    <div class="bg-white rounded-lg shadow mb-4">
+        <div class="bg-green-500 text-white px-4 py-3 rounded-t-lg flex items-center justify-between">
+            <div>
+                <span class="text-lg font-semibold">{{ status_info.certified.icon }} {{ status_info.certified.title }}</span>
+                <span class="text-sm opacity-80 ml-2">({{ grouped.certified|length }} unit{% if grouped.certified|length != 1 %}s{% endif %})</span>
+            </div>
+            <span class="text-sm opacity-80">{{ status_info.certified.description }}</span>
+        </div>
+        <div class="divide-y">
+            {% for unit in grouped.certified %}
+            <a href="{{ url_for('certification.view_unit', unit_id=unit.id) }}" 
+               class="p-4 flex items-center justify-between hover:bg-green-50 transition-colors block">
+                <div>
+                    <span class="font-semibold text-gray-800">{{ unit.unit_code }}</span>
+                    {% if unit.current_cycle %}
+                    <span class="text-xs bg-gray-100 text-gray-600 px-2 py-1 rounded ml-2">Cycle {{ unit.current_cycle }}</span>
+                    {% endif %}
+                    {% if unit.cleared_defects > 0 %}
+                    <span class="text-xs text-green-600 ml-2">{{ unit.cleared_defects }} defects cleared</span>
+                    {% endif %}
+                </div>
+                <div class="flex items-center gap-3">
+                    <span class="text-green-600 text-sm font-medium">Certified</span>
+                    <span class="px-3 py-1 bg-green-100 text-green-700 text-sm rounded">View &rarr;</span>
+                </div>
+            </a>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+    
+    <!-- Ready to Certify Section -->
+    {% if grouped.cleared %}
+    <div class="bg-white rounded-lg shadow mb-4">
+        <div class="bg-blue-500 text-white px-4 py-3 rounded-t-lg flex items-center justify-between">
+            <div>
+                <span class="text-lg font-semibold">{{ status_info.cleared.icon }} {{ status_info.cleared.title }}</span>
+                <span class="text-sm opacity-80 ml-2">({{ grouped.cleared|length }} unit{% if grouped.cleared|length != 1 %}s{% endif %})</span>
+            </div>
+            <span class="text-sm opacity-80">{{ status_info.cleared.description }}</span>
+        </div>
+        <div class="divide-y">
+            {% for unit in grouped.cleared %}
+            <a href="{{ url_for('certification.view_unit', unit_id=unit.id) }}" 
+               class="p-4 flex items-center justify-between hover:bg-blue-50 transition-colors block">
+                <div>
+                    <span class="font-semibold text-gray-800">{{ unit.unit_code }}</span>
+                    {% if unit.current_cycle %}
+                    <span class="text-xs bg-gray-100 text-gray-600 px-2 py-1 rounded ml-2">Cycle {{ unit.current_cycle }}</span>
+                    {% endif %}
+                </div>
+                <div class="flex items-center gap-3">
+                    <span class="text-xs text-gray-500">{{ unit.last_inspector }} - {{ unit.last_inspection_date }}</span>
+                    <span class="px-3 py-1 bg-blue-100 text-blue-700 text-sm rounded">Review &rarr;</span>
+                </div>
+            </a>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+    
+    <!-- Defects Open Section -->
+    {% if grouped.defects_open %}
+    <div class="bg-white rounded-lg shadow mb-4">
+        <div class="bg-red-500 text-white px-4 py-3 rounded-t-lg flex items-center justify-between">
+            <div>
+                <span class="text-lg font-semibold">{{ status_info.defects_open.icon }} {{ status_info.defects_open.title }}</span>
+                <span class="text-sm opacity-80 ml-2">({{ grouped.defects_open|length }} unit{% if grouped.defects_open|length != 1 %}s{% endif %})</span>
+            </div>
+            <span class="text-sm opacity-80">{{ status_info.defects_open.description }}</span>
+        </div>
+        <div class="divide-y">
+            {% for unit in grouped.defects_open %}
+            <a href="{{ url_for('certification.view_unit', unit_id=unit.id) }}" 
+               class="p-4 flex items-center justify-between hover:bg-red-50 transition-colors block">
+                <div>
+                    <span class="font-semibold text-gray-800">{{ unit.unit_code }}</span>
+                    {% if unit.current_cycle %}
+                    <span class="text-xs bg-gray-100 text-gray-600 px-2 py-1 rounded ml-2">Cycle {{ unit.current_cycle }}</span>
+                    {% endif %}
+                </div>
+                <div class="flex items-center gap-3">
+                    <span class="text-red-600 text-sm font-medium">{{ unit.open_defects }} open</span>
+                    {% if unit.cleared_defects > 0 %}
+                    <span class="text-green-600 text-xs">{{ unit.cleared_defects }} cleared</span>
+                    {% endif %}
+                    <span class="px-3 py-1 bg-red-100 text-red-700 text-sm rounded">View &rarr;</span>
+                </div>
+            </a>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+    
+    <!-- In Progress Section -->
+    {% if grouped.in_progress %}
+    <div class="bg-white rounded-lg shadow mb-4">
+        <div class="bg-yellow-500 text-white px-4 py-3 rounded-t-lg flex items-center justify-between">
+            <div>
+                <span class="text-lg font-semibold">{{ status_info.in_progress.icon }} {{ status_info.in_progress.title }}</span>
+                <span class="text-sm opacity-80 ml-2">({{ grouped.in_progress|length }} unit{% if grouped.in_progress|length != 1 %}s{% endif %})</span>
+            </div>
+            <span class="text-sm opacity-80">{{ status_info.in_progress.description }}</span>
+        </div>
+        <div class="divide-y">
+            {% for unit in grouped.in_progress %}
+            <a href="{{ url_for('certification.view_unit', unit_id=unit.id) }}" 
+               class="p-4 flex items-center justify-between hover:bg-yellow-50 transition-colors block">
+                <div>
+                    <span class="font-semibold text-gray-800">{{ unit.unit_code }}</span>
+                    {% if unit.current_cycle %}
+                    <span class="text-xs bg-yellow-100 text-yellow-700 px-2 py-1 rounded ml-2">Cycle {{ unit.current_cycle }}</span>
+                    {% endif %}
+                </div>
+                <div class="flex items-center gap-3">
+                    <span class="text-yellow-600 text-sm">{{ unit.last_inspector }}</span>
+                    <span class="px-3 py-1 bg-yellow-100 text-yellow-700 text-sm rounded">View &rarr;</span>
+                </div>
+            </a>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+    
+    <!-- Not Started Section -->
+    {% if grouped.not_started %}
+    <div class="bg-white rounded-lg shadow mb-4">
+        <div class="bg-gray-400 text-white px-4 py-3 rounded-t-lg flex items-center justify-between">
+            <div>
+                <span class="text-lg font-semibold">{{ status_info.not_started.icon }} {{ status_info.not_started.title }}</span>
+                <span class="text-sm opacity-80 ml-2">({{ grouped.not_started|length }} unit{% if grouped.not_started|length != 1 %}s{% endif %})</span>
+            </div>
+            <span class="text-sm opacity-80">{{ status_info.not_started.description }}</span>
+        </div>
+        <div class="divide-y">
+            {% for unit in grouped.not_started %}
+            <a href="{{ url_for('certification.view_unit', unit_id=unit.id) }}" 
+               class="p-4 flex items-center justify-between hover:bg-gray-50 transition-colors block opacity-60">
+                <div>
+                    <span class="font-semibold text-gray-800">{{ unit.unit_code }}</span>
+                    {% if unit.assigned_cycle %}
+                    <span class="text-xs bg-blue-100 text-blue-600 px-2 py-1 rounded ml-2">Cycle {{ unit.assigned_cycle }}</span>
+                    {% endif %}
+                </div>
+                <span class="text-gray-500 text-sm">Awaiting inspection &rarr;</span>
+            </a>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

@@ -1,0 +1,213 @@
+{% extends "base.html" %}
+
+{% block title %}{{ unit.unit_code }} - Review{% endblock %}
+
+{% block breadcrumb %}
+<div class="bg-white border-b sticky top-0 z-10 shadow-sm">
+    <div class="max-w-4xl mx-auto px-4 py-3 flex items-center justify-between">
+        <a href="{{ url_for('certification.dashboard') }}" 
+           class="text-blue-600 hover:underline flex items-center gap-1">
+            <span>&larr;</span> Dashboard
+        </a>
+        <span class="font-semibold text-gray-800">Unit {{ unit.unit_code }}</span>
+        <a href="{{ url_for('certification.dashboard') }}" 
+           class="px-4 py-2 bg-green-500 text-white text-sm font-semibold rounded-lg hover:bg-green-600">
+            Done
+        </a>
+    </div>
+</div>
+{% endblock %}
+
+{% block content %}
+<div class="max-w-4xl mx-auto">
+    
+    <!-- Compact Header with Stats -->
+    <div class="bg-white rounded-lg shadow p-4 mb-4">
+        <div class="flex items-center justify-between">
+            <div>
+                <h1 class="text-lg font-bold text-gray-800">{{ unit.project_name }} / {{ unit.phase_name }}</h1>
+                <p class="text-sm text-gray-500">{{ unit.unit_type }} | Round {{ current_cycle or 0 }}</p>
+            </div>
+            
+            <!-- Status + Action -->
+            <div class="flex items-center gap-3">
+                {% if unit.status == 'certified' %}
+                <span class="px-3 py-1 bg-green-100 text-green-800 rounded-full text-sm font-medium">Certified</span>
+                <form action="{{ url_for('certification.reopen_unit', unit_id=unit.id) }}" method="POST">
+                    <button type="submit" class="text-sm text-red-600 hover:underline"
+                            onclick="return confirm('Reopen this unit?')">Reopen</button>
+                </form>
+                {% elif unit.status == 'cleared' %}
+                <span class="px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm font-medium">Ready</span>
+                <form action="{{ url_for('certification.certify_unit', unit_id=unit.id) }}" method="POST">
+                    <button type="submit" class="px-4 py-2 bg-green-500 text-white text-sm font-semibold rounded-lg hover:bg-green-600">
+                        Certify
+                    </button>
+                </form>
+                {% elif unit.status == 'defects_open' %}
+                <span class="px-3 py-1 bg-red-100 text-red-800 rounded-full text-sm font-medium">
+                    {{ open_defects|length }} Open
+                </span>
+                {% else %}
+                <span class="px-3 py-1 bg-gray-100 text-gray-600 rounded-full text-sm font-medium">
+                    {{ unit.status|default('Not Started') }}
+                </span>
+                {% endif %}
+            </div>
+        </div>
+        
+        <!-- Mini Stats Row -->
+        <div class="flex gap-6 mt-3 pt-3 border-t text-sm">
+            <div><span class="font-semibold text-red-600">{{ open_defects|length }}</span> <span class="text-gray-500">open</span></div>
+            <div><span class="font-semibold text-green-600">{{ cleared_defects|length }}</span> <span class="text-gray-500">cleared</span></div>
+            <div><span class="font-semibold text-gray-600">{{ current_cycle or 0 }}</span> <span class="text-gray-500">rounds</span></div>
+        </div>
+    </div>
+    
+    <!-- MAIN WORKSPACE: Open Defects -->
+    {% if open_defects %}
+    <div class="bg-white rounded-lg shadow mb-4">
+        <div class="bg-red-500 text-white px-4 py-3 rounded-t-lg">
+            <span class="font-semibold">Open Defects</span>
+            <span class="text-sm opacity-80 ml-2">({{ open_defects|length }})</span>
+        </div>
+        
+        {% for area_name, categories in open_defects_grouped.items() %}
+        <!-- Area Header -->
+        <div class="bg-gray-800 text-white px-4 py-2 font-medium">
+            {{ area_name }}
+        </div>
+        
+        {% for category_name, defects_in_cat in categories.items() %}
+        <!-- Category Header -->
+        <div class="bg-gray-100 px-4 py-2 text-sm font-medium text-gray-700 border-b">
+            {{ category_name }}
+        </div>
+        
+        {% for defect in defects_in_cat %}
+        <div class="p-4 border-b last:border-b-0">
+            <div class="flex items-start justify-between mb-2">
+                <div class="font-medium text-gray-800">{{ defect.item_description }}</div>
+                <div class="flex items-center gap-2">
+                    <span class="text-xs px-2 py-1 rounded {% if defect.defect_type == 'not_to_standard' %}bg-red-100 text-red-700{% else %}bg-yellow-100 text-yellow-700{% endif %}">
+                        {% if defect.defect_type == 'not_to_standard' %}NTS{% else %}N/I{% endif %}
+                    </span>
+                    <span class="text-xs text-gray-400">R{{ defect.raised_round }}</span>
+                </div>
+            </div>
+            
+            <!-- Inline Edit -->
+            <form action="{{ url_for('certification.update_defect', unit_id=unit.id, defect_id=defect.id) }}" 
+                  method="POST" class="flex gap-2">
+                <input type="text" name="comment" 
+                       value="{{ defect.original_comment or '' }}"
+                       placeholder="Defect note..."
+                       class="flex-1 px-3 py-2 border rounded text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                <button type="submit" name="status" value="open"
+                        class="px-4 py-2 text-sm bg-blue-500 text-white rounded hover:bg-blue-600">
+                    Save
+                </button>
+                <button type="submit" name="status" value="cleared"
+                        class="px-4 py-2 text-sm bg-green-500 text-white rounded hover:bg-green-600">
+                    Clear
+                </button>
+            </form>
+        </div>
+        {% endfor %}
+        {% endfor %}
+        {% endfor %}
+    </div>
+    {% else %}
+    <!-- No Open Defects -->
+    <div class="bg-white rounded-lg shadow p-6 mb-4 text-center">
+        <div class="text-green-500 text-3xl mb-2">&#10003;</div>
+        <div class="font-medium text-gray-800">No Open Defects</div>
+        <p class="text-sm text-gray-500 mt-1">All items cleared or no defects recorded</p>
+    </div>
+    {% endif %}
+    
+    <!-- Category Notes (Collapsed) -->
+    {% if defect_categories %}
+    <details class="bg-white rounded-lg shadow mb-4">
+        <summary class="bg-amber-500 text-white px-4 py-3 rounded-t-lg cursor-pointer">
+            <span class="font-semibold">Category Notes</span>
+            <span class="text-sm opacity-80 ml-2">for PDF export</span>
+        </summary>
+        <div class="divide-y">
+            {% for cat in defect_categories %}
+            <form action="{{ url_for('certification.update_category_note', unit_id=unit.id) }}" 
+                  method="POST" class="p-3 flex items-center gap-3">
+                <input type="hidden" name="category_id" value="{{ cat.category_id }}">
+                <span class="text-sm text-gray-600 w-44 flex-shrink-0">
+                    {{ cat.area_name }} / {{ cat.category_name }}
+                </span>
+                <input type="text" name="note" 
+                       value="{{ cat.note or '' }}"
+                       placeholder="Add note..."
+                       class="flex-1 px-3 py-2 border rounded text-sm">
+                <button type="submit" class="px-3 py-2 text-sm bg-amber-100 text-amber-700 rounded hover:bg-amber-200">
+                    Save
+                </button>
+            </form>
+            {% endfor %}
+        </div>
+    </details>
+    {% endif %}
+    
+    <!-- Cleared Defects (Collapsed) -->
+    {% if cleared_defects %}
+    <details class="bg-white rounded-lg shadow mb-4">
+        <summary class="bg-green-500 text-white px-4 py-3 rounded-t-lg cursor-pointer">
+            <span class="font-semibold">Cleared Defects</span>
+            <span class="text-sm opacity-80 ml-2">({{ cleared_defects|length }})</span>
+        </summary>
+        <div class="divide-y">
+            {% for defect in cleared_defects %}
+            <div class="p-3 text-sm">
+                <div class="flex justify-between">
+                    <div>
+                        <span class="text-gray-500">{{ defect.area_name }} / {{ defect.category_name }}</span>
+                        <div class="font-medium text-gray-700">{{ defect.item_description }}</div>
+                        {% if defect.original_comment %}
+                        <div class="text-gray-500 mt-1">{{ defect.original_comment }}</div>
+                        {% endif %}
+                        {% if defect.clearance_note %}
+                        <div class="text-green-600 mt-1">Cleared: {{ defect.clearance_note }}</div>
+                        {% endif %}
+                    </div>
+                    <span class="text-xs text-gray-400">R{{ defect.raised_round }} &rarr; R{{ defect.cleared_round or '?' }}</span>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </details>
+    {% endif %}
+    
+    <!-- Inspection History (Collapsed) -->
+    {% if inspections %}
+    <details class="bg-white rounded-lg shadow mb-4">
+        <summary class="bg-gray-200 px-4 py-3 rounded-t-lg cursor-pointer">
+            <span class="font-semibold text-gray-700">Inspection History</span>
+            <span class="text-sm text-gray-500 ml-2">({{ inspections|length }})</span>
+        </summary>
+        <div class="divide-y text-sm">
+            {% for insp in inspections %}
+            <div class="p-3 flex justify-between items-center">
+                <div>
+                    <span class="font-medium">Round {{ insp.cycle_number }}</span>
+                    <span class="text-gray-500 ml-2">{{ insp.inspector_name }}</span>
+                </div>
+                <div class="flex items-center gap-2">
+                    <span class="text-gray-400">{{ insp.inspection_date }}</span>
+                    <span class="text-xs px-2 py-1 rounded {% if insp.status == 'submitted' %}bg-blue-100 text-blue-700{% else %}bg-yellow-100 text-yellow-700{% endif %}">
+                        {{ insp.status }}
+                    </span>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </details>
+    {% endif %}
+    
+</div>
+{% endblock %}

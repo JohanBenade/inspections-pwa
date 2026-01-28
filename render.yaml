@@ -1,0 +1,26 @@
+# Render.com deployment configuration
+# Inspections PWA - Monograph Architects
+
+services:
+  - type: web
+    name: inspections-pwa
+    runtime: python
+    buildCommand: |
+      apt-get update && apt-get install -y \
+        libpango-1.0-0 \
+        libpangocairo-1.0-0 \
+        libpangoft2-1.0-0 \
+        libgdk-pixbuf2.0-0 \
+        libffi-dev \
+        libcairo2 \
+        && pip install -r requirements.txt
+    startCommand: gunicorn 'app:create_app()' --bind 0.0.0.0:$PORT
+    envVars:
+      - key: SECRET_KEY
+        generateValue: true
+      - key: DATABASE_PATH
+        value: /opt/render/project/src/data/inspections.db
+    disk:
+      name: inspections-data
+      mountPath: /opt/render/project/src/data
+      sizeGB: 1

@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+{% block title %}Projects{% endblock %}
+
+{% block content %}
+<h1 class="text-xl font-bold text-gray-800 mb-4">Projects</h1>
+
+{% if projects %}
+<div class="space-y-3">
+    {% for project in projects %}
+    <a href="{{ url_for('projects.view_project', project_id=project.id) }}" 
+       class="block bg-white rounded-lg shadow p-4 hover:shadow-md transition-shadow">
+        <div class="flex justify-between items-start">
+            <div>
+                <h2 class="font-semibold text-gray-800">{{ project.project_name }}</h2>
+                {% if project.phase_names %}
+                <p class="text-sm text-blue-600">{{ project.phase_names }}</p>
+                {% endif %}
+                <p class="text-sm text-gray-500">{{ project.client_name }}</p>
+            </div>
+            <span class="text-sm text-gray-400">{{ project.phase_count }} phase{{ 's' if project.phase_count != 1 else '' }}</span>
+        </div>
+    </a>
+    {% endfor %}
+</div>
+{% else %}
+<div class="bg-white rounded-lg shadow p-8 text-center">
+    <p class="text-gray-500">No projects assigned.</p>
+</div>
+{% endif %}
+{% endblock %}

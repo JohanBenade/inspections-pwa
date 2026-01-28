@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+{% block title %}{{ project.project_name }}{% endblock %}
+
+{% block breadcrumb %}
+<!-- Sticky header with back link -->
+<div class="bg-white border-b sticky top-0 z-10 shadow-sm">
+    <div class="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between">
+        <a href="{{ url_for('projects.list_projects') }}" 
+           class="text-blue-600 hover:underline flex items-center gap-1">
+            <span>←</span> Projects
+        </a>
+        <span class="text-gray-600 font-medium">{{ project.project_name }}</span>
+    </div>
+</div>
+{% endblock %}
+
+{% block content %}
+<div class="mb-4">
+    <h1 class="text-xl font-bold text-gray-800">{{ project.project_name }}</h1>
+    <p class="text-sm text-gray-500">{{ project.client_name }}</p>
+</div>
+
+{% if phases %}
+<div class="space-y-3">
+    {% for phase in phases %}
+    <a href="{{ url_for('projects.view_phase', phase_id=phase.id) }}" 
+       class="block bg-white rounded-lg shadow p-4 hover:shadow-md transition-shadow">
+        <div class="flex justify-between items-center">
+            <div>
+                <h2 class="font-semibold text-gray-800">{{ phase.phase_name }}</h2>
+                <p class="text-sm text-gray-500">{{ phase.unit_count }} units</p>
+            </div>
+            <div class="text-right">
+                {% if phase.open_defects > 0 %}
+                <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-red-100 text-red-800">
+                    {{ phase.open_defects }} defects
+                </span>
+                {% endif %}
+                <div class="text-xs text-gray-400 mt-1">
+                    {{ phase.cleared_count }}/{{ phase.unit_count }} cleared
+                </div>
+            </div>
+        </div>
+    </a>
+    {% endfor %}
+</div>
+{% else %}
+<div class="bg-white rounded-lg shadow p-8 text-center">
+    <p class="text-gray-500">No phases in this project.</p>
+</div>
+{% endif %}
+{% endblock %}

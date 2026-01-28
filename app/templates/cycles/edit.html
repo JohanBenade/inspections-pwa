@@ -1,0 +1,108 @@
+{% extends "base.html" %}
+
+{% block title %}Edit Cycle {{ cycle.cycle_number }} - {{ cycle.project_name }}{% endblock %}
+
+{% block content %}
+<div class="max-w-4xl mx-auto">
+    <!-- Header -->
+    <div class="mb-6">
+        <a href="{{ url_for('cycles.view_cycle', cycle_id=cycle.id) }}" class="text-blue-600 hover:underline text-sm">
+            &larr; Back to Cycle {{ cycle.cycle_number }}
+        </a>
+        <h1 class="text-2xl font-bold text-gray-900 mt-2">Edit Inspection Cycle {{ cycle.cycle_number }}</h1>
+        <p class="text-gray-600">{{ cycle.project_name }} - {{ cycle.phase_name }}</p>
+    </div>
+
+    <form method="POST">
+        <!-- Unit Range -->
+        <div class="bg-white rounded-lg shadow p-6 mb-6">
+            <h2 class="font-semibold text-gray-900 mb-4">Unit Range</h2>
+            <div class="flex items-center gap-3">
+                <select name="unit_start" 
+                        class="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                    <option value="">All units</option>
+                    {% for unit in units %}
+                    <option value="{{ unit.unit_number }}" {% if cycle.unit_start == unit.unit_number %}selected{% endif %}>{{ unit.unit_number }}</option>
+                    {% endfor %}
+                </select>
+                <span class="text-gray-500">to</span>
+                <select name="unit_end" 
+                        class="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                    <option value="">All units</option>
+                    {% for unit in units %}
+                    <option value="{{ unit.unit_number }}" {% if cycle.unit_end == unit.unit_number %}selected{% endif %}>{{ unit.unit_number }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <p class="text-xs text-gray-500 mt-2">Only these units will be available for inspection in this cycle</p>
+        </div>
+
+        <!-- Area Notes -->
+        <div class="bg-white rounded-lg shadow p-6 mb-6">
+            <h2 class="font-semibold text-gray-900 mb-4">Area Notes</h2>
+            <p class="text-sm text-gray-500 mb-4">Add notes per area that will be shown to inspectors</p>
+            
+            <div class="space-y-4">
+                {% for area in template_tree %}
+                <div>
+                    <label for="area_note_{{ area.id }}" class="block text-sm font-medium text-gray-700 mb-1">
+                        {{ area.name }}
+                    </label>
+                    <input type="text" 
+                           id="area_note_{{ area.id }}" 
+                           name="area_note_{{ area.id }}"
+                           value="{{ area.note or '' }}"
+                           class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                           placeholder="e.g., Electrical not installed yet...">
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+
+        <!-- General Notes (hidden but preserved for backward compat) -->
+        <input type="hidden" name="general_notes" value="{{ cycle.general_notes or '' }}">
+        
+        <button type="submit" class="w-full bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 mb-6">
+            Save Notes
+        </button>
+    </form>
+
+    <!-- Excluded Items -->
+    <div class="bg-white rounded-lg shadow">
+        <div class="p-4 border-b">
+            <h2 class="font-semibold">Items to Exclude</h2>
+            <p class="text-sm text-gray-500">Click items that will NOT be inspected this cycle</p>
+        </div>
+        
+        <div class="p-4">
+            {% for area in template_tree %}
+            <details class="mb-4" open>
+                <summary class="font-medium text-gray-900 cursor-pointer hover:text-blue-600 py-2">
+                    {{ area.name }}
+                    {% if area.note %}
+                    <span class="text-sm text-orange-600 font-normal ml-2">- {{ area.note }}</span>
+                    {% endif %}
+                </summary>
+                <div class="ml-4 mt-2">
+                    {% for category in area.categories %}
+                    <details class="mb-2">
+                        <summary class="text-sm font-medium text-gray-700 cursor-pointer hover:text-blue-600 py-1">
+                            {{ category.name }}
+                        </summary>
+                        <div class="ml-4 mt-1 space-y-1">
+                            {% for item in category.checklist %}
+                            <div id="exclusion-{{ item.id }}"
+                                 class="{% if item.depth > 0 %}ml-4{% endif %}">
+                                {% include 'cycles/_exclusion_row.html' with context %}
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </details>
+                    {% endfor %}
+                </div>
+            </details>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+{% endblock %}

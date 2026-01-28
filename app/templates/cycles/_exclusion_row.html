@@ -1,0 +1,22 @@
+{# Exclusion row - toggleable via HTMX #}
+{% set item_id = item.id if item is defined else item_id %}
+{% set is_excluded = item.is_excluded if item is defined else is_excluded %}
+{% set item_description = item.item_description if item is defined else item_description %}
+{% set reason = item.exclude_reason if item is defined else reason %}
+{% set cycle_id = cycle.id if cycle is defined else cycle_id %}
+
+<label class="flex items-center gap-2 py-1 cursor-pointer hover:bg-gray-50 rounded px-2 -mx-2">
+    <input type="checkbox" 
+           {% if is_excluded %}checked{% endif %}
+           class="rounded border-gray-300 text-orange-600 focus:ring-orange-500"
+           hx-post="{{ url_for('cycles.toggle_exclusion', cycle_id=cycle_id) }}"
+           hx-vals='{"item_id": "{{ item_id }}"}'
+           hx-target="#exclusion-{{ item_id }}"
+           hx-swap="innerHTML">
+    <span class="text-sm {% if is_excluded %}text-orange-600 line-through{% else %}text-gray-700{% endif %}">
+        {{ item_description }}
+    </span>
+    {% if is_excluded and reason %}
+    <span class="text-xs text-orange-500">({{ reason }})</span>
+    {% endif %}
+</label>

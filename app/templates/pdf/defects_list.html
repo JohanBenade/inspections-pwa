@@ -1,0 +1,381 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Defective Works List - Unit {{ unit.unit_number }}</title>
+    <style>
+        @page {
+            size: A4;
+            margin: 1.5cm 2cm 3.5cm 2cm;
+            
+            @bottom-center {
+                content: "Kevin Coetzee | Managing Director | PrArch | SACAP 24750975 , Ruan Marsh | Managing Director | PrArch | SACAP 26658940";
+                font-family: Helvetica, Arial, sans-serif;
+                font-size: 7pt;
+                color: #000;
+            }
+            
+            @bottom-left {
+                content: "Louis Barnard | Shareholder | Director";
+                font-family: Helvetica, Arial, sans-serif;
+                font-size: 7pt;
+                color: #000;
+            }
+            
+            @bottom-right {
+                content: counter(page);
+                font-family: Helvetica, Arial, sans-serif;
+                font-size: 9pt;
+                color: #000;
+            }
+        }
+        
+        body {
+            font-family: Helvetica, Arial, sans-serif;
+            font-size: 9pt;
+            line-height: 1.3;
+            color: #000;
+            font-weight: 300;
+        }
+        
+        .letterhead {
+            width: 100%;
+            margin-bottom: 12px;
+        }
+        
+        .letterhead-table {
+            width: 100%;
+            border: none;
+            border-collapse: collapse;
+        }
+        
+        .letterhead-table td {
+            vertical-align: top;
+            border: none;
+            padding: 0;
+        }
+        
+        .logo-cell {
+            width: 50%;
+        }
+        
+        .logo-cell img {
+            width: 260px;
+            height: auto;
+        }
+        
+        .tagline {
+            font-size: 7pt;
+            margin-top: 8px;
+            color: #000;
+            font-weight: bold;
+            width: 260px;
+            letter-spacing: 1px;
+        }
+        
+        .company-cell {
+            width: 50%;
+            text-align: right;
+            font-size: 8pt;
+            line-height: 1.5;
+            font-weight: 300;
+            padding-top: 15px;
+        }
+        
+        .metadata-table {
+            width: 100%;
+            margin: 0 0 18px 0;
+            border: none;
+            border-collapse: collapse;
+        }
+        
+        .metadata-table td {
+            padding: 6px 0 1px 0;
+            vertical-align: middle;
+            border: none;
+            border-bottom: 1px solid #000;
+        }
+        
+        .metadata-label {
+            width: 45%;
+            font-weight: 400;
+            font-size: 9pt;
+        }
+        
+        .metadata-value {
+            text-align: right;
+            font-weight: bold;
+            font-size: 9pt;
+        }
+        
+        .red-text {
+            color: #cc0000;
+        }
+        
+        .standards {
+            margin: 12px 0;
+            font-size: 9pt;
+        }
+        
+        .standards-title {
+            text-decoration: underline;
+            font-weight: bold;
+            font-size: 9pt;
+            margin-bottom: 6px;
+        }
+        
+        .standards p {
+            margin: 0 0 2px 0;
+            font-weight: 300;
+        }
+        
+        .area-section {
+            margin: 15px 0;
+        }
+        
+        .area-title {
+            font-size: 9pt;
+            font-weight: bold;
+            text-decoration: underline;
+            margin-bottom: 8px;
+        }
+        
+        .area-note {
+            font-style: italic;
+            color: #666;
+            margin-bottom: 6px;
+            font-size: 8pt;
+            margin-left: 10px;
+        }
+        
+        .category-row {
+            margin-left: 12px;
+            margin-bottom: 3px;
+            font-weight: 400;
+            font-size: 9pt;
+        }
+        
+        .category-note {
+            margin-left: 28px;
+            margin-bottom: 3px;
+            font-style: italic;
+            color: #666;
+            font-size: 8pt;
+        }
+        
+        .defect-item {
+            margin-left: 28px;
+            margin-bottom: 3px;
+            padding-left: 12px;
+            text-indent: -12px;
+            font-weight: 300;
+            font-size: 9pt;
+        }
+        
+        .notes-section {
+            margin: 15px 0;
+        }
+        
+        .notes-title {
+            text-decoration: underline;
+            font-weight: bold;
+            font-size: 9pt;
+            margin-bottom: 8px;
+        }
+        
+        .notes-item {
+            margin-left: 12px;
+            margin-bottom: 3px;
+            font-weight: 300;
+            font-size: 9pt;
+        }
+        
+        .inspection-details {
+            margin: 20px 0;
+        }
+        
+        .inspection-details p {
+            margin: 0 0 4px 0;
+            font-weight: 300;
+            font-size: 9pt;
+        }
+        
+        .detail-label {
+            font-weight: bold;
+        }
+        
+        .closing-section {
+            margin-top: 25px;
+            page-break-inside: avoid;
+        }
+        
+        .closing-text {
+            margin-bottom: 20px;
+            line-height: 1.5;
+            font-weight: 300;
+            font-size: 9pt;
+        }
+        
+        .closing-text p {
+            margin: 0 0 4px 0;
+        }
+        
+        .signature-block {
+            margin-top: 12px;
+        }
+        
+        .regards {
+            margin: 0 0 8px 0;
+            font-weight: 300;
+            font-size: 9pt;
+        }
+        
+        .signature-img {
+            width: 140px;
+            height: auto;
+            display: block;
+        }
+        
+        .signatory-name {
+            font-weight: 400;
+            margin: 0;
+            font-size: 9pt;
+        }
+        
+        .signatory-title {
+            font-size: 8pt;
+            font-weight: 300;
+            margin: 0;
+        }
+
+        .no-break {
+            page-break-inside: avoid;
+        }
+    </style>
+</head>
+<body>
+    <div class="letterhead">
+        <table class="letterhead-table">
+            <tr>
+                <td class="logo-cell">
+                    {% if logo_path %}
+                    <img src="{{ logo_path }}" alt="Monograph Architects">
+                    {% endif %}
+                    <div class="tagline">Professional &nbsp; Architects &nbsp; | &nbsp; PrArch</div>
+                </td>
+                <td class="company-cell">
+                    Physical Address | 8 Ridge Road<br/>
+                    Mountain View Johannesburg<br/>
+                    2192<br/>
+                    <br/>
+                    Postal Address | Po Box 411916,<br/>
+                    Craighall, 2024<br/>
+                    Tel | +27 72 597 7113<br/>
+                    Email | info@monograph-architects.com<br/>
+                    Website | www.monograph-architects.com<br/>
+                    CIPRO | 2016/465468/07<br/>
+                    VAT | 4240275745
+                </td>
+            </tr>
+        </table>
+    </div>
+    
+    <table class="metadata-table">
+        <tr>
+            <td class="metadata-label">ATTENTION</td>
+            <td class="metadata-value">MAIN CONTRACTOR | RAUBEX</td>
+        </tr>
+        <tr>
+            <td class="metadata-label">RE:</td>
+            <td class="metadata-value">DEFECTIVE WORKS LIST</td>
+        </tr>
+        <tr>
+            <td class="metadata-label">PROJECT</td>
+            <td class="metadata-value">{{ project.project_name | upper }} | <span class="red-text">{{ phase.phase_name | upper }}</span></td>
+        </tr>
+        <tr>
+            <td class="metadata-label">DATE</td>
+            <td class="metadata-value red-text">{{ inspection_date }}</td>
+        </tr>
+        <tr>
+            <td class="metadata-label">UNIT NO / AREA OF INSPECTION</td>
+            <td class="metadata-value red-text">{{ unit.unit_number }}</td>
+        </tr>
+    </table>
+    
+    <div class="standards">
+        <div class="standards-title">Standard of measurement for items on defective works list:</div>
+        <p>Visual defects on all items shall be inspected from 1m distance and deemed defective if prominent.</p>
+        <p>All items not operating as intended shall be deemed defective</p>
+        <p>All items not installed or missing shall be deemed incomplete.</p>
+        <p>Any critical damage to items that can affect the longevity of the item or void its warranty shall be deemed defective.</p>
+        <p>Any item that does not comply to the South African National Standards and accompanying codes shall be deemed defective.</p>
+    </div>
+    
+    {% for area in defects_by_area %}
+    <div class="area-section">
+        <div class="area-title">{{ area.name }}</div>
+        
+        {% if area.note %}
+        <div class="area-note">Note: {{ area.note }}</div>
+        {% endif %}
+        
+        {% for category in area.categories %}
+        {% if category.defects %}
+        <div class="no-break">
+            <div class="category-row">- {{ category.name }}</div>
+            {% if category.note %}
+            <div class="category-note">{{ category.note }}</div>
+            {% endif %}
+            {% for defect in category.defects %}
+            <div class="defect-item">
+                &#8226; {% if defect.description %}{{ defect.description }}{% endif %}{% if defect.comment %} - {{ defect.comment }}{% endif %}
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
+        {% endfor %}
+    </div>
+    {% endfor %}
+    
+    {% if general_notes %}
+    <div class="notes-section">
+        <div class="notes-title">General Notes</div>
+        {% for note in general_notes %}
+        <div class="notes-item">- {{ note }}</div>
+        {% endfor %}
+    </div>
+    {% endif %}
+    
+    {% if excluded_items %}
+    <div class="notes-section">
+        <div class="notes-title">Items that will not be tested on first inspection.</div>
+        {% for item in excluded_items %}
+        <div class="notes-item">- {{ item.description }}{% if item.reason %} ({{ item.reason }}){% endif %}</div>
+        {% endfor %}
+    </div>
+    {% endif %}
+    
+    <div class="inspection-details">
+        <p><span class="detail-label">Inspection Date:</span> {{ inspection_date }}</p>
+        <p><span class="detail-label">Inspected By:</span> {{ inspector_name }}</p>
+        <p><span class="detail-label">Certification date:</span> {% if certification_date %}{{ certification_date }}{% else %}Not Certified{% endif %}</p>
+    </div>
+    
+    <div class="closing-section">
+        <div class="closing-text">
+            <p>We trust you find the above in order and will rectify any defect within the afforded contract period.</p>
+            <p>We await an invitation for a follow up inspection if required.</p>
+        </div>
+        
+        <div class="signature-block">
+            <p class="regards">Kind regards,</p>
+            {% if signature_path %}
+            <img class="signature-img" src="{{ signature_path }}" alt="Signature">
+            {% endif %}
+            <p class="signatory-name">Kevin Coetzee</p>
+            <p class="signatory-title">PrArch; MD</p>
+        </div>
+    </div>
+</body>
+</html>

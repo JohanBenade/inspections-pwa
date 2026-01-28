@@ -1,0 +1,14 @@
+{# Partial: Defect still open during follow-up inspection #}
+<div id="defect-{{ defect.id }}" class="bg-red-50 border border-red-200 rounded-lg p-4">
+    <div class="flex items-center gap-3">
+        <span class="text-red-500 text-2xl">✗</span>
+        <div>
+            <div class="text-xs text-gray-500">{{ defect.area_name }} / {{ defect.category_name }}</div>
+            <div class="font-medium text-gray-600">{{ defect.item_description }}</div>
+            <div class="text-sm text-red-600 font-medium">Not Fixed - Remains Open</div>
+            {% if followup_note %}
+            <div class="text-xs text-red-500 mt-1">Note: {{ followup_note }}</div>
+            {% endif %}
+        </div>
+    </div>
+</div>

@@ -1,0 +1,33 @@
+{
+    "tenant": {
+        "id": "MONOGRAPH",
+        "name": "Monograph Architects"
+    },
+    "project": {
+        "id": "proj-001",
+        "name": "Soshanguve Student Housing",
+        "code": "SSH",
+        "client": "Raubex"
+    },
+    "phase": {
+        "id": "phase-001",
+        "name": "Phase 1",
+        "code": "PH1"
+    },
+    "units": [
+        {"block": "A", "floor": 0, "number": "001", "type": "4-Bed"},
+        {"block": "A", "floor": 0, "number": "002", "type": "4-Bed"},
+        {"block": "A", "floor": 0, "number": "003", "type": "4-Bed"},
+        {"block": "A", "floor": 0, "number": "004", "type": "4-Bed"},
+        {"block": "A", "floor": 0, "number": "005", "type": "4-Bed"},
+        {"block": "A", "floor": 1, "number": "101", "type": "4-Bed"},
+        {"block": "A", "floor": 1, "number": "102", "type": "4-Bed"},
+        {"block": "A", "floor": 1, "number": "103", "type": "4-Bed"},
+        {"block": "A", "floor": 1, "number": "104", "type": "4-Bed"},
+        {"block": "A", "floor": 1, "number": "105", "type": "4-Bed"}
+    ],
+    "inspectors": [
+        {"id": "insp-001", "name": "Student One", "email": "student1@test.com", "role": "student"},
+        {"id": "insp-002", "name": "Kevin Coetzee", "email": "kevin@monograph-architects.com", "role": "architect"}
+    ]
+}

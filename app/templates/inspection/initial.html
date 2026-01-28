@@ -1,0 +1,90 @@
+{% extends "base.html" %}
+{% block title %}Inspection - {{ inspection.unit_code }}{% endblock %}
+
+{% block breadcrumb %}
+<!-- Sticky header with back link and submit button -->
+<div class="bg-white border-b sticky top-0 z-10 shadow-sm">
+    <div class="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between">
+        {% if current_user.role == 'architect' %}
+        <a href="{{ url_for('certification.view_unit', unit_id=inspection.unit_id) }}" 
+           class="text-blue-600 hover:underline flex items-center gap-1">
+            <span>←</span> Back to Unit {{ inspection.unit_code }}
+        </a>
+        {% else %}
+        <a href="{{ url_for('projects.view_unit', unit_id=inspection.unit_id) }}" 
+           class="text-blue-600 hover:underline flex items-center gap-1">
+            <span>←</span> Back to Unit {{ inspection.unit_code }}
+        </a>
+        {% endif %}
+        
+        <div class="flex items-center gap-3">
+            <span class="text-sm text-gray-500">Inspection {{ inspection.cycle_number }}</span>
+            <button type="submit" 
+                    form="submit-form"
+                    class="px-4 py-2 bg-green-500 text-white text-sm font-semibold rounded-lg hover:bg-green-600 transition-colors hidden md:block">
+                Submit ✓
+            </button>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block content %}
+<!-- Progress Bar - commented out for now
+<div id="progress-bar" 
+     hx-get="{{ url_for('inspection.get_progress', inspection_id=inspection.id) }}"
+     hx-trigger="itemUpdated from:body"
+     hx-swap="innerHTML">
+    {% include 'inspection/_progress.html' %}
+</div>
+-->
+
+<!-- Area Tabs -->
+<div class="bg-white rounded-lg shadow mb-4 overflow-x-auto">
+    <div class="flex whitespace-nowrap p-2 space-x-2">
+        {% for area in template %}
+        <button 
+            hx-get="{{ url_for('inspection.inspect_area', inspection_id=inspection.id, area_id=area.id) }}"
+            hx-target="#area-content"
+            hx-swap="innerHTML"
+            class="px-4 py-2 rounded-lg text-sm font-medium transition-colors
+                   {% if loop.first %}bg-primary text-white{% else %}bg-gray-100 text-gray-700 hover:bg-gray-200{% endif %}"
+            onclick="document.querySelectorAll('[hx-get^=\'{{ url_for('inspection.inspect_area', inspection_id=inspection.id, area_id='') }}\']').forEach(b => b.classList.remove('bg-primary', 'text-white')); this.classList.add('bg-primary', 'text-white'); this.classList.remove('bg-gray-100', 'text-gray-700');">
+            {{ area.name|replace(' AREA', '') }}
+        </button>
+        {% endfor %}
+    </div>
+</div>
+
+<!-- Area Content -->
+<div id="area-content"
+     hx-get="{{ url_for('inspection.inspect_area', inspection_id=inspection.id, area_id=template[0].id) }}"
+     hx-trigger="load"
+     hx-swap="innerHTML">
+    <div class="flex justify-center py-8">
+        <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+    </div>
+</div>
+
+<!-- Validation errors container -->
+<div id="validation-errors" class="max-w-4xl mx-auto mb-2"></div>
+
+<!-- Submit Form (single form, referenced by header button) -->
+<form id="submit-form"
+      action="{{ url_for('inspection.submit_inspection', inspection_id=inspection.id) }}"
+      method="POST"
+      class="hidden">
+</form>
+
+<!-- Submit Button (mobile only - header has it for desktop) -->
+<div class="fixed bottom-16 left-0 right-0 bg-white border-t p-4 md:hidden">
+    <button type="submit" 
+            form="submit-form"
+            class="w-full bg-green-500 text-white py-4 rounded-lg font-semibold hover:bg-green-600 tap-target">
+        Submit Inspection ✓
+    </button>
+</div>
+
+<!-- Spacer for fixed submit button on mobile -->
+<div class="h-24 md:hidden"></div>
+{% endblock %}

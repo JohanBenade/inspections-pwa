@@ -1,0 +1,174 @@
+{% extends "base.html" %}
+
+{% block title %}Unit {{ inspection.unit_number }} - Cycle {{ inspection.cycle_number }}{% endblock %}
+
+{% block content %}
+<div class="max-w-4xl mx-auto">
+    <!-- Header -->
+    <div class="bg-white rounded-lg shadow p-4 mb-4 sticky top-0 z-10">
+        <div class="flex justify-between items-start">
+            <div>
+                <div class="text-sm text-gray-500">
+                    {{ inspection.project_name }} / {{ inspection.phase_name }}
+                </div>
+                <h1 class="text-xl font-bold text-gray-900">
+                    Unit {{ inspection.unit_number }}
+                </h1>
+                <div class="text-sm text-gray-600">
+                    Cycle {{ inspection.cycle_number }} - {{ inspection.inspection_date }}
+                </div>
+            </div>
+            <div class="text-right">
+                <div class="text-sm text-gray-500">Inspector</div>
+                <div class="font-medium">{{ inspection.inspector_name }}</div>
+                {% if pdf_available and current_user and current_user.role == 'architect' and inspection.status == 'submitted' %}
+                <a href="{{ url_for('pdf.download_defects_pdf', unit_id=inspection.unit_id) }}" 
+                   class="inline-block mt-2 px-3 py-1 bg-red-600 text-white text-xs rounded hover:bg-red-700">
+                    Download PDF
+                </a>
+                {% endif %}
+            </div>
+        </div>
+        
+        <!-- Progress -->
+        <div id="progress-bar" class="mt-4"
+             hx-get="{{ url_for('inspection.get_progress', inspection_id=inspection.id) }}"
+             hx-trigger="areaUpdated from:body">
+            {% include 'inspection/_progress.html' %}
+        </div>
+    </div>
+
+    <!-- Open Defects from Previous Cycles -->
+    {% if not is_initial and open_defects %}
+    <div class="bg-red-50 border border-red-200 rounded-lg p-4 mb-4">
+        <h3 class="font-medium text-red-800 mb-2">Open Defects ({{ open_defects|length }})</h3>
+        <div class="space-y-2">
+            {% for defect in open_defects %}
+            <div class="text-sm">
+                <span class="text-red-700 font-medium">{{ defect.area_name }} / {{ defect.category_name }}</span>
+                <span class="text-red-600">- {{ defect.item_description }}</span>
+                <span class="text-red-500 text-xs">(Cycle {{ defect.raised_cycle }})</span>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Area Tabs -->
+    <div class="bg-white rounded-lg shadow mb-4">
+        <div class="border-b overflow-x-auto">
+            <div class="flex">
+                {% for area in template %}
+                <button class="area-tab px-4 py-3 text-sm font-medium whitespace-nowrap border-b-2 flex items-center gap-2
+                       {% if loop.first %}border-blue-500 text-blue-600{% else %}border-transparent text-gray-500 hover:text-gray-700{% endif %}"
+                        hx-get="{{ url_for('inspection.inspect_area', inspection_id=inspection.id, area_id=area.id) }}"
+                        hx-target="#area-content"
+                        hx-swap="innerHTML"
+                        onclick="document.querySelectorAll('.area-tab').forEach(t => {t.classList.remove('border-blue-500', 'text-blue-600'); t.classList.add('border-transparent', 'text-gray-500')}); this.classList.add('border-blue-500', 'text-blue-600'); this.classList.remove('border-transparent', 'text-gray-500')">
+                    {{ area.name }}
+                    {% if area_defect_map.get(area.id) %}
+                    <span class="bg-red-500 text-white text-xs px-1.5 py-0.5 rounded-full">{{ area_defect_map[area.id] }}</span>
+                    {% endif %}
+                    {% if area_notes_map.get(area.id) %}
+                    <span class="text-orange-500 text-xs">*</span>
+                    {% endif %}
+                </button>
+                {% endfor %}
+            </div>
+        </div>
+        
+        <div id="area-content" class="p-4"
+             hx-get="{{ url_for('inspection.inspect_area', inspection_id=inspection.id, area_id=template[0].id) }}"
+             hx-trigger="load">
+            <div class="text-center py-8 text-gray-500">Loading...</div>
+        </div>
+    </div>
+
+    <!-- Submit / Save Button -->
+    {% if inspection.status == 'in_progress' %}
+    <div class="bg-white rounded-lg shadow p-4">
+        <form id="submit-form" method="POST" action="{{ url_for('inspection.submit_inspection', inspection_id=inspection.id) }}">
+            <button type="button" 
+                    onclick="document.getElementById('submit-modal').classList.remove('hidden')"
+                    class="w-full bg-green-600 text-white py-3 rounded-lg font-medium hover:bg-green-700">
+                Submit Inspection
+            </button>
+        </form>
+    </div>
+    
+    <!-- Submit Confirmation Modal -->
+    <div id="submit-modal" class="hidden fixed inset-0 z-50 overflow-y-auto">
+        <!-- Backdrop -->
+        <div class="fixed inset-0 bg-black bg-opacity-50 transition-opacity" 
+             onclick="document.getElementById('submit-modal').classList.add('hidden')"></div>
+        
+        <!-- Modal -->
+        <div class="flex min-h-full items-center justify-center p-4">
+            <div class="relative bg-white rounded-xl shadow-xl max-w-sm w-full p-6 transform transition-all">
+                <!-- Icon -->
+                <div class="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-green-100 mb-4">
+                    <svg class="h-6 w-6 text-green-600" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                </div>
+                
+                <!-- Content -->
+                <h3 class="text-lg font-semibold text-gray-900 text-center mb-2">Submit Inspection?</h3>
+                <p class="text-sm text-gray-500 text-center mb-6">
+                    Please confirm all items have been checked before submitting.
+                    {% if progress.defects > 0 %}
+                    <br><span class="text-red-600 font-medium">{{ progress.defects }} defect{{ 's' if progress.defects != 1 else '' }} will be raised.</span>
+                    {% endif %}
+                </p>
+                
+                <!-- Buttons -->
+                <div class="flex gap-3">
+                    <button type="button" 
+                            onclick="document.getElementById('submit-modal').classList.add('hidden')"
+                            class="flex-1 px-4 py-2.5 bg-gray-100 text-gray-700 rounded-lg font-medium hover:bg-gray-200 transition-colors">
+                        Cancel
+                    </button>
+                    <button type="button"
+                            onclick="document.getElementById('submit-form').submit()"
+                            class="flex-1 px-4 py-2.5 bg-green-600 text-white rounded-lg font-medium hover:bg-green-700 transition-colors">
+                        Submit
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% else %}
+    <!-- Already submitted - show status and allow architect to save changes -->
+    <div class="bg-green-50 border border-green-200 rounded-lg p-4 mb-4 text-center">
+        <span class="text-green-700 font-medium">Inspection Submitted</span>
+        <span class="text-green-600 text-sm ml-2">{{ inspection.submitted_at }}</span>
+    </div>
+    
+    {% if current_user and current_user.role == 'architect' %}
+    <div class="bg-white rounded-lg shadow p-4">
+        <form method="POST" action="{{ url_for('inspection.submit_inspection', inspection_id=inspection.id) }}">
+            <button type="submit" id="save-changes-btn" disabled
+                    class="w-full py-3 rounded-lg font-medium bg-gray-300 text-gray-500 cursor-not-allowed">
+                Save Changes
+            </button>
+        </form>
+        <p class="text-xs text-gray-500 text-center mt-2">Make changes above to enable</p>
+    </div>
+    
+    <script>
+        // Enable Save Changes button only when POST request completes (actual item change)
+        document.body.addEventListener('htmx:afterRequest', function(evt) {
+            if (evt.detail.requestConfig.verb === 'post') {
+                var btn = document.getElementById('save-changes-btn');
+                if (btn) {
+                    btn.disabled = false;
+                    btn.className = 'w-full py-3 rounded-lg font-medium bg-blue-600 text-white hover:bg-blue-700';
+                    btn.nextElementSibling.textContent = 'Updates defects based on current item statuses';
+                }
+            }
+        });
+    </script>
+    {% endif %}
+    {% endif %}
+</div>
+{% endblock %}

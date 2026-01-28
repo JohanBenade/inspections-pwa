@@ -1,0 +1,124 @@
+{% extends "base.html" %}
+{% block title %}Unit {{ unit.unit_code }}{% endblock %}
+
+{% block breadcrumb %}
+<!-- Sticky header with back link -->
+<div class="bg-white border-b sticky top-0 z-10 shadow-sm">
+    <div class="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between">
+        <a href="{{ url_for('projects.view_phase', phase_id=unit.phase_id) }}" 
+           class="text-blue-600 hover:underline flex items-center gap-1">
+            <span>&larr;</span> Back to {{ unit.phase_name }}
+        </a>
+        <span class="text-gray-600 font-medium">{{ unit.unit_code }}</span>
+    </div>
+</div>
+{% endblock %}
+
+{% block content %}
+<div class="mb-4">
+    <div class="flex justify-between items-start">
+        <div>
+            <h1 class="text-xl font-bold text-gray-800">Unit {{ unit.unit_code }}</h1>
+            <p class="text-sm text-gray-500">{{ unit.unit_type }} | {{ unit.project_name }}</p>
+        </div>
+        
+        <!-- Status badge -->
+        {% if unit.status == 'cleared' %}
+        <span class="px-3 py-1 rounded-full text-sm font-medium bg-green-100 text-green-800">Cleared</span>
+        {% elif unit.status == 'defects_open' %}
+        <span class="px-3 py-1 rounded-full text-sm font-medium bg-red-100 text-red-800">Defects Open</span>
+        {% elif unit.status == 'in_progress' %}
+        <span class="px-3 py-1 rounded-full text-sm font-medium bg-yellow-100 text-yellow-800">In Progress</span>
+        {% else %}
+        <span class="px-3 py-1 rounded-full text-sm font-medium bg-gray-100 text-gray-800">Not Started</span>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Active Cycles -->
+{% if active_cycles %}
+<div class="mb-6">
+    <h2 class="text-lg font-semibold text-gray-800 mb-3">Active Inspection Cycles</h2>
+    <div class="space-y-2">
+        {% for cycle in active_cycles %}
+        <div class="bg-white rounded-lg shadow p-4">
+            <div class="flex justify-between items-center">
+                <div>
+                    <span class="font-semibold text-gray-800">Cycle {{ cycle.cycle_number }}</span>
+                    {% if cycle.excluded_count > 0 %}
+                    <span class="text-xs text-orange-600 ml-2">({{ cycle.excluded_count }} items excluded)</span>
+                    {% endif %}
+                </div>
+                <a href="{{ url_for('inspection.start_inspection', unit_id=unit.id, cycle_id=cycle.id) }}" 
+                   class="bg-primary text-white px-4 py-2 rounded-lg font-medium hover:bg-primary/90">
+                    {% if cycle.has_inspection %}Continue{% else %}Start{% endif %}
+                </a>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% else %}
+<div class="mb-6 bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+    <p class="text-yellow-800">No active inspection cycles. Contact the architect to create one.</p>
+</div>
+{% endif %}
+
+<!-- Open Defects -->
+{% if open_defects %}
+<div class="mb-6">
+    <h2 class="text-lg font-semibold text-gray-800 mb-3">Open Defects ({{ open_defects|length }})</h2>
+    <div class="bg-white rounded-lg shadow divide-y">
+        {% for defect in open_defects %}
+        <div class="p-3">
+            <div class="text-sm font-medium text-gray-800">{{ defect.item_description }}</div>
+            <div class="text-xs text-gray-500">{{ defect.area_name }} / {{ defect.category_name }}</div>
+            {% if defect.original_comment %}
+            <div class="mt-1 text-sm text-red-600">{{ defect.original_comment }}</div>
+            {% endif %}
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endif %}
+
+<!-- Inspection History -->
+{% if inspections %}
+<div>
+    <h2 class="text-lg font-semibold text-gray-800 mb-3">Inspection History</h2>
+    <div class="bg-white rounded-lg shadow divide-y">
+        {% for insp in inspections %}
+        <div class="p-3">
+            <div class="flex justify-between items-start">
+                <div>
+                    <div class="font-medium text-gray-800">
+                        Cycle {{ insp.cycle_number }}
+                    </div>
+                    <div class="text-sm text-gray-500">
+                        {{ insp.inspection_date }} | {{ insp.inspector_name }}
+                    </div>
+                </div>
+                <div class="text-right">
+                    {% if insp.status == 'signed_off' %}
+                    <span class="text-xs px-2 py-1 rounded bg-green-100 text-green-800">Signed Off</span>
+                    {% elif insp.status == 'reviewed' %}
+                    <span class="text-xs px-2 py-1 rounded bg-blue-100 text-blue-800">Reviewed</span>
+                    {% elif insp.status == 'submitted' %}
+                    <span class="text-xs px-2 py-1 rounded bg-yellow-100 text-yellow-800">Submitted</span>
+                    {% else %}
+                    <span class="text-xs px-2 py-1 rounded bg-gray-100 text-gray-800">In Progress</span>
+                    {% endif %}
+                </div>
+            </div>
+            {% if insp.defects_raised > 0 %}
+            <div class="mt-2 text-xs text-gray-500">
+                {{ insp.defects_raised }} defects raised
+                {% if insp.defects_cleared > 0 %} | {{ insp.defects_cleared }} cleared{% endif %}
+            </div>
+            {% endif %}
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endif %}
+{% endblock %}

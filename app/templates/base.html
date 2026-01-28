@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="theme-color" content="#1e3a5f">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    
+    <title>{% block title %}Inspections{% endblock %} | ArchOps</title>
+    
+    <link rel="manifest" href="{{ url_for('static', filename='manifest.json') }}">
+    <link rel="icon" type="image/png" href="{{ url_for('static', filename='icon-192.png') }}">
+    <link rel="apple-touch-icon" href="{{ url_for('static', filename='icon-192.png') }}">
+    
+    <!-- Tailwind CSS via CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#1e3a5f',
+                        accent: '#f59e0b',
+                        success: '#10b981',
+                        danger: '#ef4444',
+                        warning: '#f59e0b'
+                    }
+                }
+            }
+        }
+    </script>
+    
+    <!-- HTMX -->
+    <script src="https://unpkg.com/htmx.org@1.9.10"></script>
+    
+    <style>
+        /* Touch-friendly tap targets */
+        .tap-target {
+            min-height: 44px;
+            min-width: 44px;
+        }
+        
+        /* Status colors */
+        .status-ok { background-color: #d1fae5; color: #065f46; }
+        .status-nts { background-color: #fee2e2; color: #991b1b; }
+        .status-ni { background-color: #fef3c7; color: #92400e; }
+        .status-pending { background-color: #f3f4f6; color: #6b7280; }
+        .status-na { background-color: #e5e7eb; color: #9ca3af; }
+        
+        /* Loading indicator */
+        .htmx-request .htmx-indicator {
+            display: inline-block;
+        }
+        .htmx-indicator {
+            display: none;
+        }
+        
+        /* Smooth transitions */
+        .htmx-swapping {
+            opacity: 0.5;
+            transition: opacity 0.2s ease-out;
+        }
+    </style>
+    
+    {% block extra_head %}{% endblock %}
+</head>
+<body class="bg-gray-100 min-h-screen">
+    <!-- Navigation -->
+    <nav class="bg-primary text-white sticky top-0 z-50 shadow-lg">
+        <div class="max-w-7xl mx-auto px-4">
+            <div class="flex justify-between items-center h-14">
+                <div class="flex items-center space-x-6">
+                    <a href="{{ url_for('home') }}" class="font-bold text-lg">ArchOps</a>
+                    
+                    {% if current_user %}
+                    <!-- Desktop nav links -->
+                    <div class="hidden md:flex items-center space-x-4">
+                        {% if current_user.role == 'architect' %}
+                        <a href="{{ url_for('cycles.list_cycles') }}" class="text-sm text-gray-300 hover:text-white">Cycles</a>
+                        <a href="{{ url_for('certification.dashboard') }}" class="text-sm text-gray-300 hover:text-white">Certify</a>
+                        <a href="{{ url_for('defects.register') }}" class="text-sm text-gray-300 hover:text-white">Defects</a>
+                        {% else %}
+                        <a href="{{ url_for('projects.list_projects') }}" class="text-sm text-gray-300 hover:text-white">Projects</a>
+                        <a href="{{ url_for('defects.register') }}" class="text-sm text-gray-300 hover:text-white">Defects</a>
+                        {% endif %}
+                    </div>
+                    {% endif %}
+                </div>
+                
+                {% if current_user %}
+                <div class="flex items-center space-x-4">
+                    <span class="text-sm text-gray-300 hidden sm:inline">{{ current_user.name }}</span>
+                    <span class="text-xs px-2 py-1 rounded bg-white/20">{{ current_user.role }}</span>
+                    <a href="{{ url_for('logout') }}" class="hidden md:inline text-sm text-gray-300 hover:text-white">Logout</a>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </nav>
+    
+    <!-- Breadcrumb -->
+    {% block breadcrumb %}{% endblock %}
+    
+    <!-- Flash Messages -->
+    {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+    <div class="max-w-7xl mx-auto px-4 pt-4">
+        {% for category, message in messages %}
+        <div class="p-4 mb-2 rounded-lg {% if category == 'error' %}bg-red-100 text-red-700{% else %}bg-blue-100 text-blue-700{% endif %}">
+            {{ message }}
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+    {% endwith %}
+    
+    <!-- Main Content -->
+    <main class="max-w-7xl mx-auto px-4 py-4">
+        {% block content %}{% endblock %}
+    </main>
+    
+    <!-- Bottom Navigation (mobile) -->
+    {% if current_user %}
+    <nav class="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 md:hidden">
+        <div class="flex justify-around items-center h-16">
+            {% if current_user.role == 'architect' %}
+            <a href="{{ url_for('cycles.list_cycles') }}" 
+               class="flex flex-col items-center text-gray-600 hover:text-primary tap-target">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
+                          d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+                </svg>
+                <span class="text-xs mt-1">Cycles</span>
+            </a>
+            <a href="{{ url_for('certification.dashboard') }}" 
+               class="flex flex-col items-center text-gray-600 hover:text-primary tap-target">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
+                          d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"/>
+                </svg>
+                <span class="text-xs mt-1">Certify</span>
+            </a>
+            {% else %}
+            <a href="{{ url_for('projects.list_projects') }}" 
+               class="flex flex-col items-center text-gray-600 hover:text-primary tap-target">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
+                          d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/>
+                </svg>
+                <span class="text-xs mt-1">Projects</span>
+            </a>
+            {% endif %}
+            
+            <a href="{{ url_for('defects.register') }}" 
+               class="flex flex-col items-center text-gray-600 hover:text-primary tap-target">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
+                          d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
+                </svg>
+                <span class="text-xs mt-1">Register</span>
+            </a>
+            
+            <a href="{{ url_for('logout') }}" 
+               class="flex flex-col items-center text-gray-600 hover:text-primary tap-target">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
+                          d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/>
+                </svg>
+                <span class="text-xs mt-1">Logout</span>
+            </a>
+        </div>
+    </nav>
+    {% endif %}
+    
+    <!-- Spacer for bottom nav on mobile -->
+    <div class="h-16 md:hidden"></div>
+    
+    {% block extra_scripts %}{% endblock %}
+</body>
+</html>

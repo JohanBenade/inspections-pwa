@@ -1,0 +1,11 @@
+{# Partial: Defect marked as fixed during follow-up inspection #}
+<div id="defect-{{ defect.id }}" class="bg-green-50 border border-green-200 rounded-lg p-4">
+    <div class="flex items-center gap-3">
+        <span class="text-green-600 text-2xl">✓</span>
+        <div>
+            <div class="text-xs text-gray-500">{{ defect.area_name }} / {{ defect.category_name }}</div>
+            <div class="font-medium text-gray-600">{{ defect.item_description }}</div>
+            <div class="text-sm text-green-600 font-medium">Fixed</div>
+        </div>
+    </div>
+</div>

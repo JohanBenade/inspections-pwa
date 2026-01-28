@@ -1,0 +1,97 @@
+{% extends "base.html" %}
+{% block title %}Follow-up - {{ inspection.unit_code }}{% endblock %}
+
+{% block breadcrumb %}
+<div class="bg-white border-b">
+    <div class="max-w-7xl mx-auto px-4 py-2">
+        <nav class="text-sm text-gray-500">
+            <span>{{ inspection.project_name }}</span>
+            <span class="mx-2">/</span>
+            <span>{{ inspection.phase_name }}</span>
+            <span class="mx-2">/</span>
+            <span class="text-gray-800">{{ inspection.unit_code }}</span>
+            <span class="mx-2">/</span>
+            <span class="text-primary font-medium">Inspection {{ inspection.cycle_number }} (Follow-up)</span>
+        </nav>
+    </div>
+</div>
+{% endblock %}
+
+{% block content %}
+<div class="mb-4">
+    <h1 class="text-xl font-bold text-gray-800">Follow-up Inspection</h1>
+    <p class="text-sm text-gray-500">{{ defects|length }} open defects to verify</p>
+</div>
+
+{% if defects %}
+<div class="space-y-4">
+    {% for defect in defects %}
+    <div id="defect-{{ defect.id }}" class="bg-white rounded-lg shadow p-4">
+        <div class="mb-3">
+            <div class="text-xs text-gray-500 mb-1">
+                {{ defect.area_name }} / {{ defect.category_name }}
+            </div>
+            <div class="font-medium text-gray-800">{{ defect.item_description }}</div>
+            <div class="mt-1 text-sm text-red-600">{{ defect.original_comment }}</div>
+            <div class="mt-1 text-xs text-gray-400">
+                Raised: Inspection {{ defect.raised_round }}
+            </div>
+        </div>
+        
+        <div class="flex gap-2">
+            <button 
+                hx-post="{{ url_for('inspection.clear_defect', inspection_id=inspection.id, defect_id=defect.id) }}"
+                hx-target="#defect-{{ defect.id }}"
+                hx-swap="outerHTML"
+                class="flex-1 px-4 py-3 border-2 border-green-500 text-green-700 bg-white rounded-lg font-medium hover:bg-green-500 hover:text-white tap-target transition-colors">
+                ✓ Fixed
+            </button>
+            
+            <button 
+                onclick="document.getElementById('notfixed-{{ defect.id }}').classList.remove('hidden'); this.parentElement.classList.add('hidden');"
+                class="flex-1 px-4 py-3 border-2 border-red-400 text-red-600 bg-white rounded-lg font-medium hover:bg-red-500 hover:text-white tap-target transition-colors">
+                ✗ Not Fixed
+            </button>
+        </div>
+        
+        <!-- Not Fixed form (hidden until clicked) -->
+        <div id="notfixed-{{ defect.id }}" class="hidden mt-3 p-3 bg-red-50 rounded-lg border border-red-200">
+            <p class="text-sm text-red-700 mb-2">Still defective - add note (optional):</p>
+            <input type="text" 
+                   id="note-{{ defect.id }}"
+                   name="followup_note"
+                   placeholder="e.g. Partially fixed, still visible damage..."
+                   class="w-full px-3 py-2 border border-red-300 rounded text-sm mb-2">
+            <button 
+                hx-post="{{ url_for('inspection.mark_still_defective', inspection_id=inspection.id, defect_id=defect.id) }}"
+                hx-target="#defect-{{ defect.id }}"
+                hx-swap="outerHTML"
+                hx-include="#note-{{ defect.id }}"
+                class="w-full px-4 py-2 bg-red-500 text-white rounded-lg font-medium hover:bg-red-600">
+                Confirm Not Fixed
+            </button>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+
+<!-- Submit Button -->
+<div class="mt-6">
+    <form action="{{ url_for('inspection.submit_inspection', inspection_id=inspection.id) }}" method="post">
+        <button type="submit" 
+                class="w-full bg-primary text-white py-4 rounded-lg font-semibold hover:bg-primary/90 tap-target">
+            Submit Follow-up
+        </button>
+    </form>
+</div>
+{% else %}
+<div class="bg-green-50 border border-green-200 rounded-lg p-6 text-center">
+    <svg class="w-12 h-12 text-green-600 mx-auto mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
+              d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+    </svg>
+    <h2 class="text-lg font-semibold text-green-800">All Defects Cleared!</h2>
+    <p class="text-sm text-green-600 mt-1">This unit is ready for final sign-off.</p>
+</div>
+{% endif %}
+{% endblock %}

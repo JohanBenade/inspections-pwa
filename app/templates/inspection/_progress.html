@@ -1,0 +1,23 @@
+<div class="flex justify-between text-sm mb-2">
+    <span class="font-medium text-gray-700">Progress</span>
+    <span class="text-gray-500">
+        {{ progress.completed }}/{{ progress.active }} items
+        {% if progress.skipped %}
+        <span class="text-orange-500">({{ progress.skipped }} excluded)</span>
+        {% endif %}
+    </span>
+</div>
+{% set pct = ((progress.completed / progress.active) * 100)|round|int if progress.active > 0 else 0 %}
+<div class="w-full bg-gray-200 rounded-full h-2.5">
+    <div class="bg-blue-600 rounded-full h-2.5 transition-all" style="width: {{ pct }}%"></div>
+</div>
+<div class="flex justify-between text-xs mt-1">
+    {% if progress.defects > 0 %}
+    <span class="text-red-600">{{ progress.defects }} defect{% if progress.defects != 1 %}s{% endif %}</span>
+    {% else %}
+    <span></span>
+    {% endif %}
+    {% if pct >= 100 %}
+    <span class="text-green-600 font-medium">Ready to submit</span>
+    {% endif %}
+</div>

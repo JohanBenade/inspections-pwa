@@ -1,0 +1,71 @@
+<!-- Single item row - returned after HTMX update -->
+<div id="item-{{ item.item_template_id }}" class="p-3 {% if item.depth > 0 %}pl-8 bg-gray-50{% endif %}">
+    <div class="flex justify-between items-start mb-2">
+        <div class="flex-1">
+            {% if item.depth > 0 %}
+            <span class="text-gray-400 mr-1">└</span>
+            {% endif %}
+            <span class="text-sm {% if item.depth == 0 %}font-medium{% endif %} text-gray-800">
+                {{ item.item_description }}
+            </span>
+        </div>
+    </div>
+    
+    <!-- Status buttons -->
+    <div class="flex flex-wrap gap-2">
+        <button 
+            hx-post="{{ url_for('inspection.update_item', inspection_id=inspection_id, item_id=item.item_template_id) }}"
+            hx-vals='{"status": "ok"}'
+            hx-target="#item-{{ item.item_template_id }}"
+            hx-swap="outerHTML"
+            class="px-3 py-2 rounded text-xs font-medium tap-target transition-colors
+                   {% if item.status == 'ok' %}status-ok ring-2 ring-green-500{% else %}bg-gray-100 text-gray-600 hover:bg-green-50{% endif %}">
+            ✓ OK
+        </button>
+        
+        <button 
+            hx-post="{{ url_for('inspection.update_item', inspection_id=inspection_id, item_id=item.item_template_id) }}"
+            hx-vals='{"status": "not_to_standard"}'
+            hx-target="#item-{{ item.item_template_id }}"
+            hx-swap="outerHTML"
+            class="px-3 py-2 rounded text-xs font-medium tap-target transition-colors
+                   {% if item.status == 'not_to_standard' %}status-nts ring-2 ring-red-500{% else %}bg-gray-100 text-gray-600 hover:bg-red-50{% endif %}">
+            ⚠️ NTS
+        </button>
+        
+        <button 
+            hx-post="{{ url_for('inspection.update_item', inspection_id=inspection_id, item_id=item.item_template_id) }}"
+            hx-vals='{"status": "not_installed"}'
+            hx-target="#item-{{ item.item_template_id }}"
+            hx-swap="outerHTML"
+            class="px-3 py-2 rounded text-xs font-medium tap-target transition-colors
+                   {% if item.status == 'not_installed' %}status-ni ring-2 ring-yellow-500{% else %}bg-gray-100 text-gray-600 hover:bg-yellow-50{% endif %}">
+            ✗ N/I
+        </button>
+        
+        <button 
+            hx-post="{{ url_for('inspection.update_item', inspection_id=inspection_id, item_id=item.item_template_id) }}"
+            hx-vals='{"status": "not_applicable"}'
+            hx-target="#item-{{ item.item_template_id }}"
+            hx-swap="outerHTML"
+            class="px-3 py-2 rounded text-xs font-medium tap-target transition-colors
+                   {% if item.status == 'not_applicable' %}status-na ring-2 ring-gray-400{% else %}bg-gray-100 text-gray-600 hover:bg-gray-200{% endif %}">
+            N/A
+        </button>
+    </div>
+    
+    <!-- Comment field (shown for defects) -->
+    {% if item.status in ['not_to_standard', 'not_installed'] %}
+    <div class="mt-2">
+        <input type="text" 
+               value="{{ item.comment or '' }}"
+               placeholder="Describe the defect..."
+               class="w-full px-3 py-2 border rounded text-sm focus:ring-2 focus:ring-primary focus:border-primary"
+               hx-post="{{ url_for('inspection.update_item', inspection_id=inspection_id, item_id=item.item_template_id) }}"
+               hx-trigger="blur, keyup[key=='Enter']"
+               hx-vals='{"status": "{{ item.status }}"}'
+               hx-include="this"
+               name="comment">
+    </div>
+    {% endif %}
+</div>
