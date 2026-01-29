@@ -6,10 +6,10 @@
     <style>
         @page {
             size: A4;
-            margin: 1.5cm 2cm 2.5cm 2cm;
+            margin: 1.5cm 2cm 3cm 2cm;
             
             @bottom-center {
-                content: "Kevin Coetzee | Managing Director | PrArch | SACAP 24750975 , Ruan Marsh | Managing Director | PrArch | SACAP 26658940,\A Louis Barnard | Shareholder | Director\A " counter(page);
+                content: "Kevin Coetzee | Managing Director | PrArch | SACAP 24750975 , Ruan Marsh | Managing Director | PrArch | SACAP 26658940,\A Louis Barnard | Shareholder | Director\A\A " counter(page);
                 font-family: Helvetica, Arial, sans-serif;
                 font-size: 7pt;
                 color: #000;
@@ -78,7 +78,7 @@
         }
         
         .metadata-table td {
-            padding: 6px 0 1px 0;
+            padding: 6px 0 6px 0;
             vertical-align: middle;
             border: none;
             border-bottom: 1px solid #000;
@@ -222,6 +222,7 @@
             width: 140px;
             height: auto;
             display: block;
+            margin-left: -5px;
         }
         
         .signatory-name {
