@@ -3,7 +3,6 @@ PDF Generator Service - Generates defects list PDFs.
 Uses WeasyPrint for HTML to PDF conversion.
 """
 import os
-import io
 from datetime import datetime
 from flask import render_template, current_app
 from app.services.db import query_db
@@ -40,9 +39,7 @@ def get_defects_data(tenant_id, unit_id, cycle_id=None):
     cycle = None
     cycle_number = 1
     if cycle_id:
-        cycle = query_db("""
-            SELECT * FROM inspection_cycle WHERE id = ?
-        """, [cycle_id], one=True)
+        cycle = query_db("SELECT * FROM inspection_cycle WHERE id = ?", [cycle_id], one=True)
         if cycle:
             cycle_number = cycle['cycle_number']
     
@@ -57,7 +54,7 @@ def get_defects_data(tenant_id, unit_id, cycle_id=None):
             ORDER BY ic.cycle_number ASC
         """, [unit_id, tenant_id, cycle_number])
     
-    # Get latest inspection for this unit and cycle
+    # Get inspection for this unit and cycle
     inspection_query = """
         SELECT i.*, ic.cycle_number
         FROM inspection i
@@ -73,8 +70,8 @@ def get_defects_data(tenant_id, unit_id, cycle_id=None):
     inspection_query += " ORDER BY ic.cycle_number DESC LIMIT 1"
     inspection = query_db(inspection_query, params, one=True)
     
-    # Get ALL defects for this unit - both open and cleared
-    # Include cleared_cycle_id for tracking when defects were rectified
+    # Get defects raised up to this cycle
+    # Get comment from defect_history at or before this cycle (not latest!)
     defect_query = """
         SELECT d.*, 
                it.item_description,
@@ -92,15 +89,21 @@ def get_defects_data(tenant_id, unit_id, cycle_id=None):
         LEFT JOIN inspection_cycle ic_cleared ON d.cleared_cycle_id = ic_cleared.id
         LEFT JOIN item_template parent ON it.parent_item_id = parent.id
         LEFT JOIN (
-            SELECT defect_id, comment FROM defect_history 
-            WHERE id IN (SELECT MAX(id) FROM defect_history GROUP BY defect_id)
+            SELECT dh1.defect_id, dh1.comment 
+            FROM defect_history dh1
+            JOIN inspection_cycle ic ON dh1.cycle_id = ic.id
+            WHERE ic.cycle_number <= ?
+            AND dh1.id = (
+                SELECT dh2.id FROM defect_history dh2
+                JOIN inspection_cycle ic2 ON dh2.cycle_id = ic2.id
+                WHERE dh2.defect_id = dh1.defect_id AND ic2.cycle_number <= ?
+                ORDER BY ic2.cycle_number DESC LIMIT 1
+            )
         ) dh ON dh.defect_id = d.id
         WHERE d.unit_id = ? AND ic_raised.cycle_number <= ?
         ORDER BY at.area_order, ct.category_order, it.item_order
     """
-    defect_params = [unit_id, cycle_number]
-    
-    defects = query_db(defect_query, defect_params)
+    defects = query_db(defect_query, [cycle_number, cycle_number, unit_id, cycle_number])
     
     # Get area notes for this cycle
     area_notes = {}
@@ -113,24 +116,30 @@ def get_defects_data(tenant_id, unit_id, cycle_id=None):
         """, [cycle_id])
         area_notes = {n['area_name']: n['note'] for n in notes}
     
-    # Get category comments for this unit
+    # Get category comments for this unit AT OR BEFORE this cycle
     category_comments = {}
     cat_notes = query_db("""
         SELECT cc.category_template_id, cch.comment as latest_comment,
                ct.category_name, at.area_name
         FROM category_comment cc
-        LEFT JOIN category_comment_history cch ON cch.category_comment_id = cc.id
+        JOIN category_comment_history cch ON cch.category_comment_id = cc.id
+        JOIN inspection_cycle ic ON cch.cycle_id = ic.id
         JOIN category_template ct ON cc.category_template_id = ct.id
         JOIN area_template at ON ct.area_id = at.id
-        WHERE cc.unit_id = ?
-        ORDER BY cch.created_at DESC
-    """, [unit_id])
+        WHERE cc.unit_id = ? AND ic.cycle_number <= ?
+        AND cch.id = (
+            SELECT cch2.id FROM category_comment_history cch2
+            JOIN inspection_cycle ic2 ON cch2.cycle_id = ic2.id
+            WHERE cch2.category_comment_id = cc.id AND ic2.cycle_number <= ?
+            ORDER BY ic2.cycle_number DESC LIMIT 1
+        )
+    """, [unit_id, cycle_number, cycle_number])
     for c in cat_notes:
         key = (c['area_name'], c['category_name'])
         if key not in category_comments:
             category_comments[key] = c['latest_comment']
     
-    # Get excluded items for this cycle - grouped by area
+    # Get excluded items for this cycle
     excluded_by_area = {}
     if cycle_id:
         excluded = query_db("""
@@ -198,29 +207,32 @@ def get_defects_data(tenant_id, unit_id, cycle_id=None):
             cycle_stats[raised_cycle] = {'raised': 0, 'rectified': 0}
         cycle_stats[raised_cycle]['raised'] += 1
         
-        if cleared_cycle and cleared_cycle not in cycle_stats:
-            cycle_stats[cleared_cycle] = {'raised': 0, 'rectified': 0}
-        if cleared_cycle:
+        if cleared_cycle and cleared_cycle <= cycle_number:
+            if cleared_cycle not in cycle_stats:
+                cycle_stats[cleared_cycle] = {'raised': 0, 'rectified': 0}
             cycle_stats[cleared_cycle]['rectified'] += 1
         
-        # Determine display status
-        if status == 'cleared' and cleared_cycle == cycle_number:
+        # Determine display status based on state AT this cycle
+        # Check if cleared_cycle is set AND cleared_cycle <= current cycle
+        was_cleared = cleared_cycle and cleared_cycle <= cycle_number
+        
+        if was_cleared and cleared_cycle == cycle_number:
             # Rectified THIS cycle - show with strikethrough
             display_status = 'rectified'
             total_rectified += 1
-        elif status == 'cleared' and cleared_cycle and cleared_cycle < cycle_number:
+        elif was_cleared and cleared_cycle < cycle_number:
             # Rectified in a PREVIOUS cycle - don't show at all
             continue
-        elif status == 'open' and raised_cycle < cycle_number:
+        elif raised_cycle < cycle_number:
             # Open from previous cycle - not rectified
             display_status = 'not_rectified'
             total_not_rectified += 1
-        elif status == 'open' and raised_cycle == cycle_number:
+        elif raised_cycle == cycle_number:
             # New defect this cycle
             display_status = 'new'
             total_new += 1
         else:
-            # Fallback for cycle 1 or other cases
+            # Fallback for cycle 1
             display_status = 'open'
             if cycle_number == 1:
                 total_new += 1
@@ -240,14 +252,12 @@ def get_defects_data(tenant_id, unit_id, cycle_id=None):
     for area_name, area_data in sorted(defects_by_area.items(), key=lambda x: x[1]['order']):
         categories_list = []
         for cat_name, cat_data in sorted(area_data['categories'].items(), key=lambda x: x[1]['order']):
-            # Only include categories that have defects
             if cat_data['defects']:
                 categories_list.append({
                     'name': cat_name,
                     'note': cat_data.get('note'),
                     'defects': cat_data['defects']
                 })
-        # Only include areas that have categories with defects
         if categories_list or area_data.get('excluded_items') or area_data.get('note'):
             areas_list.append({
                 'name': area_name,
@@ -256,7 +266,7 @@ def get_defects_data(tenant_id, unit_id, cycle_id=None):
                 'categories': categories_list
             })
     
-    # Build inspection timeline with defect counts
+    # Build inspection timeline
     inspection_timeline = []
     for insp in inspections:
         insp_date = None
@@ -271,8 +281,6 @@ def get_defects_data(tenant_id, unit_id, cycle_id=None):
         insp_cycle_num = insp['cycle_number']
         stats = cycle_stats.get(insp_cycle_num, {'raised': 0, 'rectified': 0})
         
-        # Calculate outstanding at time of this cycle
-        # For cycle N: outstanding = all raised up to N - all rectified up to N
         total_raised_to_cycle = sum(
             cycle_stats.get(c, {'raised': 0})['raised'] 
             for c in range(1, insp_cycle_num + 1)
@@ -330,29 +338,22 @@ def get_defects_data(tenant_id, unit_id, cycle_id=None):
 
 
 def generate_defects_pdf(tenant_id, unit_id, cycle_id=None):
-    """
-    Generate a defects list PDF for a unit.
-    Returns PDF bytes or None if WeasyPrint unavailable.
-    """
+    """Generate a defects list PDF for a unit."""
     HTML = _get_weasyprint()
     if HTML is None:
         return None
     
-    # Get data
     data = get_defects_data(tenant_id, unit_id, cycle_id)
     if not data:
         return None
     
-    # Get paths to static files
     static_folder = current_app.static_folder
     logo_path = os.path.join(static_folder, 'monograph_logo.jpg')
     signature_path = os.path.join(static_folder, 'kevin_signature.png')
     
-    # Convert to file:// URLs for WeasyPrint
     logo_url = f"file://{logo_path}" if os.path.exists(logo_path) else ''
     signature_url = f"file://{signature_path}" if os.path.exists(signature_path) else ''
     
-    # Render HTML template
     html_content = render_template(
         'pdf/defects_list.html',
         **data,
@@ -360,7 +361,6 @@ def generate_defects_pdf(tenant_id, unit_id, cycle_id=None):
         signature_path=signature_url
     )
     
-    # Generate PDF using WeasyPrint
     html_doc = HTML(string=html_content, base_url=static_folder)
     pdf_bytes = html_doc.write_pdf()
     
