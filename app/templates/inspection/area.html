@@ -50,8 +50,10 @@
             {% set parent_not_installed = item.parent_status == 'not_installed' %}
             {% set is_skipped = item.status == 'skipped' %}
             {% set has_defect = item.has_open_defect %}
+            {% set is_defective = item.status in ['not_to_standard', 'not_installed'] %}
+            {% set show_as_defect = is_followup and (has_defect or is_defective) %}
             
-            <div class="p-3 {% if is_child %}pl-8 bg-gray-50{% endif %} {% if parent_not_installed or is_skipped %}opacity-40{% endif %} {% if has_defect %}bg-red-50 border-l-4 border-red-400{% endif %}">
+            <div class="p-3 {% if is_child %}pl-8 bg-gray-50{% endif %} {% if parent_not_installed or is_skipped %}opacity-40{% endif %} {% if show_as_defect %}bg-red-50 border-l-4 border-red-400{% endif %}">
                 <!-- Item Description -->
                 <div class="flex justify-between items-start mb-2">
                     <div class="flex-1">
@@ -67,14 +69,22 @@
                     </div>
                 </div>
                 
-                {% if has_defect and is_followup %}
+                {% if show_as_defect %}
                 <!-- Previous defect info -->
                 <div class="mb-3 p-2 bg-red-100 rounded border border-red-200">
                     <div class="text-xs font-medium text-red-800 mb-1">
+                        {% if has_defect %}
                         Previous defect (Cycle {{ item.defect_cycle }}):
+                        {% else %}
+                        Marked defective in previous cycle:
+                        {% endif %}
                     </div>
                     <div class="text-sm text-red-700">
+                        {% if has_defect %}
                         {{ item.defect_comment or 'No comment' }}
+                        {% else %}
+                        {{ item.comment or 'No comment' }}
+                        {% endif %}
                     </div>
                 </div>
                 {% endif %}
@@ -91,7 +101,7 @@
                         hx-target="#area-content"
                         class="px-3 py-2 rounded text-xs font-medium transition-colors
                                {% if item.status == 'ok' %}bg-green-500 text-white{% else %}bg-gray-100 text-gray-600 hover:bg-green-100{% endif %}">
-                        {% if has_defect and is_followup %}Fixed{% else %}Installed{% endif %}
+                        {% if show_as_defect %}Fixed{% else %}Installed{% endif %}
                     </button>
                     
                     <button type="button"
@@ -100,7 +110,7 @@
                         hx-target="#area-content"
                         class="px-3 py-2 rounded text-xs font-medium transition-colors
                                {% if item.status == 'not_installed' %}bg-red-500 text-white{% else %}bg-gray-100 text-gray-600 hover:bg-red-100{% endif %}">
-                        {% if has_defect and is_followup %}Still Missing{% else %}Not Installed{% endif %}
+                        {% if show_as_defect %}Still Missing{% else %}Not Installed{% endif %}
                     </button>
                 </div>
                 
@@ -132,7 +142,7 @@
                         hx-target="#area-content"
                         class="px-3 py-2 rounded text-xs font-medium transition-colors
                                {% if item.status == 'ok' %}bg-green-500 text-white{% else %}bg-gray-100 text-gray-600 hover:bg-green-100{% endif %}">
-                        {% if has_defect and is_followup %}Fixed{% else %}OK{% endif %}
+                        {% if show_as_defect %}Fixed{% else %}OK{% endif %}
                     </button>
                     
                     <button type="button"
@@ -141,10 +151,10 @@
                         hx-target="#area-content"
                         class="px-3 py-2 rounded text-xs font-medium transition-colors
                                {% if item.status == 'not_to_standard' %}bg-red-500 text-white{% else %}bg-gray-100 text-gray-600 hover:bg-red-100{% endif %}">
-                        {% if has_defect and is_followup %}Not Fixed{% else %}N.T.S.{% endif %}
+                        {% if show_as_defect %}Not Fixed{% else %}N.T.S.{% endif %}
                     </button>
                     
-                    {% if not has_defect or not is_followup %}
+                    {% if not show_as_defect %}
                     <button type="button"
                         hx-post="{{ url_for('inspection.update_item', inspection_id=inspection.id, item_id=item.id) }}"
                         hx-vals='{"status": "not_installed", "area_id": "{{ area.id }}"}'
@@ -161,20 +171,13 @@
                 <div class="mt-2">
                     <input type="text" 
                            value="{{ item.comment or '' }}"
-                           placeholder="{% if has_defect and is_followup %}Update comment or leave blank...{% else %}Describe the defect... (Enter to save){% endif %}"
+                           placeholder="{% if show_as_defect %}Update comment or leave blank...{% else %}Describe the defect... (Enter to save){% endif %}"
                            class="w-full px-3 py-2 border-2 border-red-300 rounded text-sm focus:ring-2 focus:ring-red-500"
                            hx-post="{{ url_for('inspection.update_item', inspection_id=inspection.id, item_id=item.id) }}"
                            hx-vals='{"status": "{{ item.status }}", "area_id": "{{ area.id }}"}'
                            hx-trigger="blur changed, keydown[key=='Enter']"
                            hx-target="#area-content"
                            name="comment">
-                    {% if not has_defect %}
-                        {% if item.comment %}
-                        <span class="text-xs text-green-600">Saved</span>
-                        {% else %}
-                        <span class="text-xs text-red-500">Required</span>
-                        {% endif %}
-                    {% endif %}
                 </div>
                 {% endif %}
                 {% endif %}
