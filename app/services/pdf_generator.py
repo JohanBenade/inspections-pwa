@@ -73,9 +73,8 @@ def get_defects_data(tenant_id, unit_id, cycle_id=None):
     inspection_query += " ORDER BY ic.cycle_number DESC LIMIT 1"
     inspection = query_db(inspection_query, params, one=True)
     
-    # Get defects - ALL relevant to this cycle:
-    # 1. Open defects raised in any cycle up to this one
-    # 2. Defects closed IN this cycle (for strikethrough)
+    # Get ALL defects for this unit - both open and closed
+    # We'll determine display status based on status and raised_cycle
     defect_query = """
         SELECT d.*, 
                it.item_description,
@@ -83,36 +82,21 @@ def get_defects_data(tenant_id, unit_id, cycle_id=None):
                ct.category_name, ct.category_order,
                at.area_name, at.area_order,
                ic_raised.cycle_number as raised_cycle,
-               ic_closed.cycle_number as closed_cycle,
                dh.comment as defect_comment
         FROM defect d
         JOIN item_template it ON d.item_template_id = it.id
         JOIN category_template ct ON it.category_id = ct.id
         JOIN area_template at ON ct.area_id = at.id
         JOIN inspection_cycle ic_raised ON d.raised_cycle_id = ic_raised.id
-        LEFT JOIN inspection_cycle ic_closed ON d.closed_cycle_id = ic_closed.id
         LEFT JOIN item_template parent ON it.parent_item_id = parent.id
         LEFT JOIN (
             SELECT defect_id, comment FROM defect_history 
             WHERE id IN (SELECT MIN(id) FROM defect_history GROUP BY defect_id)
         ) dh ON dh.defect_id = d.id
-        WHERE d.unit_id = ?
+        WHERE d.unit_id = ? AND ic_raised.cycle_number <= ?
+        ORDER BY at.area_order, ct.category_order, it.item_order
     """
-    defect_params = [unit_id]
-    
-    if cycle_id and cycle_number:
-        # Get defects that are either:
-        # - Still open AND raised before or in this cycle
-        # - Closed IN this specific cycle (to show as rectified)
-        defect_query += """ AND (
-            (d.status = 'open' AND ic_raised.cycle_number <= ?)
-            OR (d.status = 'closed' AND ic_closed.cycle_number = ?)
-        )"""
-        defect_params.extend([cycle_number, cycle_number])
-    else:
-        defect_query += " AND d.status = 'open'"
-    
-    defect_query += " ORDER BY at.area_order, ct.category_order, it.item_order"
+    defect_params = [unit_id, cycle_number]
     
     defects = query_db(defect_query, defect_params)
     
@@ -168,7 +152,6 @@ def get_defects_data(tenant_id, unit_id, cycle_id=None):
     defect_counter = 1
     
     # Summary counters
-    total_open_previous = 0
     total_rectified = 0
     total_not_rectified = 0
     total_new = 0
@@ -202,18 +185,16 @@ def get_defects_data(tenant_id, unit_id, cycle_id=None):
         
         # Determine defect status for display
         raised_cycle = d['raised_cycle']
-        closed_cycle = d['closed_cycle']
         status = d['status']
         
-        if status == 'closed' and closed_cycle == cycle_number:
-            # Rectified in this cycle
+        if status == 'closed':
+            # Rectified (at some point)
             display_status = 'rectified'
             total_rectified += 1
         elif status == 'open' and raised_cycle < cycle_number:
             # Open from previous cycle - not rectified
             display_status = 'not_rectified'
             total_not_rectified += 1
-            total_open_previous += 1
         elif status == 'open' and raised_cycle == cycle_number:
             # New defect this cycle
             display_status = 'new'
