@@ -100,8 +100,12 @@
             font-weight: bold;
             font-size: 9pt;
             margin-bottom: 6px;
-            text-decoration: underline;
-            text-underline-offset: 3px;
+        }
+        
+        .standards-title span {
+            display: inline-block;
+            padding-bottom: 3px;
+            border-bottom: 1px solid #000;
         }
         
         .standards p {
@@ -117,8 +121,12 @@
             font-size: 9pt;
             font-weight: bold;
             margin-bottom: 8px;
-            text-decoration: underline;
-            text-underline-offset: 3px;
+        }
+        
+        .area-title span {
+            display: inline-block;
+            padding-bottom: 3px;
+            border-bottom: 1px solid #000;
         }
         
         .area-note {
@@ -161,8 +169,12 @@
             font-weight: bold;
             font-size: 9pt;
             margin-bottom: 8px;
-            text-decoration: underline;
-            text-underline-offset: 3px;
+        }
+        
+        .notes-title span {
+            display: inline-block;
+            padding-bottom: 3px;
+            border-bottom: 1px solid #000;
         }
         
         .notes-item {
@@ -285,7 +297,7 @@
     </div>
     
     <div class="standards">
-        <div class="standards-title">Standard of measurement for items on defective works list:</div>
+        <div class="standards-title"><span>Standard of measurement for items on defective works list:</span></div>
         <p>Visual defects on all items shall be inspected from 1m distance and deemed defective if prominent.</p>
         <p>All items not operating as intended shall be deemed defective</p>
         <p>All items not installed or missing shall be deemed incomplete.</p>
@@ -295,7 +307,7 @@
     
     {% for area in defects_by_area %}
     <div class="area-section">
-        <div class="area-title">{{ area.name }}</div>
+        <div class="area-title"><span>{{ area.name }}</span></div>
         
         {% if area.note %}
         <div class="area-note">Note: {{ area.note }}</div>
@@ -321,7 +333,7 @@
     
     {% if general_notes %}
     <div class="notes-section">
-        <div class="notes-title">General Notes</div>
+        <div class="notes-title"><span>General Notes</span></div>
         {% for note in general_notes %}
         <div class="notes-item">- {{ note }}</div>
         {% endfor %}
@@ -330,7 +342,7 @@
     
     {% if excluded_items %}
     <div class="notes-section">
-        <div class="notes-title">Items that will not be tested on first inspection.</div>
+        <div class="notes-title"><span>Items that will not be tested on first inspection.</span></div>
         {% for item in excluded_items %}
         <div class="notes-item">- {{ item.description }}{% if item.reason %} ({{ item.reason }}){% endif %}</div>
         {% endfor %}
