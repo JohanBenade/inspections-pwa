@@ -51,7 +51,7 @@
             {% set is_skipped = item.status == 'skipped' %}
             {% set has_defect = item.has_open_defect %}
             {% set is_defective = item.status in ['not_to_standard', 'not_installed'] %}
-            {% set show_as_defect = is_followup and (has_defect or is_defective) %}
+            {% set show_as_defect = is_followup and has_defect %}
             
             <div class="p-3 {% if is_child %}pl-8 bg-gray-50{% endif %} {% if parent_not_installed or is_skipped %}opacity-40{% endif %} {% if show_as_defect %}bg-red-50 border-l-4 border-red-400{% endif %}">
                 <!-- Item Description -->
@@ -73,18 +73,10 @@
                 <!-- Previous defect info -->
                 <div class="mb-3 p-2 bg-red-100 rounded border border-red-200">
                     <div class="text-xs font-medium text-red-800 mb-1">
-                        {% if has_defect %}
                         Previous defect (Cycle {{ item.defect_cycle }}):
-                        {% else %}
-                        Marked defective in previous cycle:
-                        {% endif %}
                     </div>
                     <div class="text-sm text-red-700">
-                        {% if has_defect %}
                         {{ item.defect_comment or 'No comment' }}
-                        {% else %}
-                        {{ item.comment or 'No comment' }}
-                        {% endif %}
                     </div>
                 </div>
                 {% endif %}
