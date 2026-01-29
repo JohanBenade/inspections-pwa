@@ -15,13 +15,11 @@ inspection_bp = Blueprint('inspection', __name__, url_prefix='/inspection')
 @inspection_bp.route('/start/<unit_id>')
 @require_auth
 def start_inspection(unit_id):
-    """Start an inspection for a unit within a cycle."""
     tenant_id = session['tenant_id']
     db = get_db()
     cycle_id = request.args.get('cycle_id')
     
     if not cycle_id:
-        # Find active cycle
         cycle = query_db("""
             SELECT ic.* FROM inspection_cycle ic
             JOIN unit u ON ic.phase_id = u.phase_id
@@ -32,7 +30,6 @@ def start_inspection(unit_id):
             abort(400, "No active inspection cycle")
         cycle_id = cycle['id']
     
-    # Validate cycle exists and is active
     cycle = query_db(
         "SELECT * FROM inspection_cycle WHERE id = ? AND tenant_id = ? AND status = 'active'",
         [cycle_id, tenant_id], one=True
@@ -40,7 +37,6 @@ def start_inspection(unit_id):
     if not cycle:
         abort(400, "Cycle not active or not found")
     
-    # Get unit details
     unit = query_db("""
         SELECT u.*, ph.phase_name, p.project_name
         FROM unit u
@@ -52,7 +48,6 @@ def start_inspection(unit_id):
     if not unit:
         abort(404)
     
-    # Check for existing inspection in this cycle
     existing = query_db(
         "SELECT * FROM inspection WHERE unit_id = ? AND cycle_id = ?",
         [unit_id, cycle_id], one=True
@@ -61,7 +56,6 @@ def start_inspection(unit_id):
     if existing:
         return redirect(url_for('inspection.inspect', inspection_id=existing['id']))
     
-    # Create new inspection
     inspection_id = generate_id()
     db.execute("""
         INSERT INTO inspection (id, tenant_id, unit_id, cycle_id,
@@ -70,17 +64,14 @@ def start_inspection(unit_id):
     """, [inspection_id, tenant_id, unit_id, cycle_id,
           date.today().isoformat(), session['user_id'], session['user_name']])
     
-    # Get excluded items for this cycle
     excluded_items = query_db(
         "SELECT item_template_id FROM cycle_excluded_item WHERE cycle_id = ?",
         [cycle_id]
     )
     excluded_ids = set(e['item_template_id'] for e in excluded_items)
     
-    # For follow-up cycles, get previous inspection statuses
     previous_statuses = {}
     if cycle['cycle_number'] > 1:
-        # Find previous cycle's inspection for this unit
         prev_inspection = query_db("""
             SELECT ii.item_template_id, ii.status, ii.comment
             FROM inspection_item ii
@@ -90,7 +81,6 @@ def start_inspection(unit_id):
         """, [unit_id, cycle['cycle_number'] - 1])
         previous_statuses = {p['item_template_id']: {'status': p['status'], 'comment': p['comment']} for p in prev_inspection}
     
-    # Create inspection_item records for all items
     items = query_db("""
         SELECT it.id
         FROM item_template it
@@ -103,16 +93,13 @@ def start_inspection(unit_id):
         item_id = generate_id()
         
         if item['id'] in excluded_ids:
-            # Excluded this cycle
             status = 'skipped'
             comment = None
         elif item['id'] in previous_statuses:
-            # Copy from previous cycle
             prev = previous_statuses[item['id']]
             status = prev['status']
             comment = prev['comment']
         else:
-            # New item or first cycle
             status = 'pending'
             comment = None
         
@@ -121,9 +108,7 @@ def start_inspection(unit_id):
             VALUES (?, ?, ?, ?, ?, ?)
         """, [item_id, tenant_id, inspection_id, item['id'], status, comment])
     
-    # Update unit status
     db.execute("UPDATE unit SET status = 'in_progress' WHERE id = ?", [unit_id])
-    
     db.commit()
     
     return redirect(url_for('inspection.inspect', inspection_id=inspection_id))
@@ -132,7 +117,6 @@ def start_inspection(unit_id):
 @inspection_bp.route('/<inspection_id>')
 @require_auth
 def inspect(inspection_id):
-    """Main inspection page."""
     tenant_id = session['tenant_id']
     
     inspection = query_db("""
@@ -150,13 +134,9 @@ def inspect(inspection_id):
     if not inspection:
         abort(404)
     
-    # Determine inspection type based on cycle number
     is_initial = inspection['cycle_number'] == 1
-    
-    # Get template for areas
     template = get_inspection_template(tenant_id, inspection['unit_type'])
     
-    # Progress stats - count only PARENT items (children follow parent status)
     progress_raw = query_db("""
         SELECT 
             COUNT(*) as total,
@@ -168,7 +148,6 @@ def inspect(inspection_id):
         AND it.parent_item_id IS NULL
     """, [inspection_id], one=True)
     
-    # Defect count - ALL items (parent + sub-items)
     defect_count = query_db("""
         SELECT COUNT(*) as defects
         FROM inspection_item ii
@@ -176,7 +155,6 @@ def inspect(inspection_id):
         AND ii.status IN ('not_to_standard', 'not_installed')
     """, [inspection_id], one=True)
     
-    # Calculate derived values in Python (Jinja2 math can be unreliable)
     progress = {
         'total': progress_raw['total'] or 0,
         'completed': progress_raw['completed'] or 0,
@@ -185,27 +163,20 @@ def inspect(inspection_id):
     }
     progress['active'] = progress['total'] - progress['skipped']
     
-    # Get open defects from previous cycles (for follow-up display)
     open_defects = []
     if not is_initial:
         open_defects = query_db("""
             SELECT d.*, it.item_description, ct.category_name, at.area_name,
-                   ic.cycle_number as raised_cycle,
-                   dh.comment as latest_comment
+                   ic.cycle_number as raised_cycle
             FROM defect d
             JOIN item_template it ON d.item_template_id = it.id
             JOIN category_template ct ON it.category_id = ct.id
             JOIN area_template at ON ct.area_id = at.id
             JOIN inspection_cycle ic ON d.raised_cycle_id = ic.id
-            LEFT JOIN (
-                SELECT defect_id, comment FROM defect_history 
-                WHERE id IN (SELECT MAX(id) FROM defect_history GROUP BY defect_id)
-            ) dh ON dh.defect_id = d.id
             WHERE d.unit_id = ? AND d.status = 'open'
             ORDER BY at.area_order, ct.category_order, it.item_order
         """, [inspection['unit_id']])
     
-    # Get category comments for this unit (existing)
     category_comments = query_db("""
         SELECT cc.*, ct.category_name, at.area_name
         FROM category_comment cc
@@ -214,7 +185,6 @@ def inspect(inspection_id):
         WHERE cc.unit_id = ? AND cc.status = 'open'
     """, [inspection['unit_id']])
     
-    # Area defect counts for tab badges
     area_defects = query_db("""
         SELECT at.id as area_id, COUNT(*) as defect_count
         FROM inspection_item ii
@@ -227,14 +197,12 @@ def inspect(inspection_id):
     """, [inspection_id])
     area_defect_map = {d['area_id']: d['defect_count'] for d in area_defects}
     
-    # Area notes for this cycle
     area_notes = query_db("""
         SELECT area_template_id, note FROM cycle_area_note
         WHERE cycle_id = ?
     """, [inspection['cycle_id']])
     area_notes_map = {n['area_template_id']: n['note'] for n in area_notes}
     
-    # Check if PDF generation is available
     try:
         from flask import current_app
         pdf_available = 'pdf' in [bp.name for bp in current_app.blueprints.values()]
@@ -256,7 +224,6 @@ def inspect(inspection_id):
 @inspection_bp.route('/<inspection_id>/area/<area_id>')
 @require_auth
 def inspect_area(inspection_id, area_id):
-    """Load area checklist (HTMX partial)."""
     tenant_id = session['tenant_id']
     
     inspection = query_db("""
@@ -274,10 +241,9 @@ def inspect_area(inspection_id, area_id):
     
     is_followup = inspection['cycle_number'] > 1
     
-    # Get open defects for this unit, keyed by item_template_id
-    open_defects_map = {}
+    defects_map = {}
     if is_followup:
-        open_defects = query_db("""
+        defects = query_db("""
             SELECT d.*, it.item_description, ic.cycle_number as raised_cycle,
                    dh.comment as latest_comment
             FROM defect d
@@ -287,17 +253,18 @@ def inspect_area(inspection_id, area_id):
                 SELECT defect_id, comment FROM defect_history 
                 WHERE id IN (SELECT MAX(id) FROM defect_history GROUP BY defect_id)
             ) dh ON dh.defect_id = d.id
-            WHERE d.unit_id = ? AND d.status = 'open'
+            WHERE d.unit_id = ?
         """, [inspection['unit_id']])
-        open_defects_map = {d['item_template_id']: d for d in open_defects}
+        for d in defects:
+            item_id = d['item_template_id']
+            if item_id not in defects_map or d['status'] == 'open':
+                defects_map[item_id] = d
     
-    # Get area-specific note for this cycle
     area_note = query_db("""
         SELECT note FROM cycle_area_note
         WHERE cycle_id = ? AND area_template_id = ?
     """, [inspection['cycle_id'], area_id], one=True)
     
-    # Get categories with items and statuses
     categories = query_db("""
         SELECT * FROM category_template
         WHERE area_id = ?
@@ -306,7 +273,6 @@ def inspect_area(inspection_id, area_id):
     
     categories_data = []
     for cat in categories:
-        # Get existing category comment for this unit
         cat_comment = query_db("""
             SELECT cc.*, cch.comment as latest_comment
             FROM category_comment cc
@@ -329,12 +295,11 @@ def inspect_area(inspection_id, area_id):
             ORDER BY it.item_order
         """, [inspection_id, inspection_id, cat['id']])
         
-        # Enrich items with defect info
         items_with_defects = []
         for item in items:
             item_dict = dict(item)
-            defect = open_defects_map.get(item['id'])
-            if defect:
+            defect = defects_map.get(item['id'])
+            if defect and defect['status'] == 'open':
                 item_dict['has_open_defect'] = True
                 item_dict['defect_comment'] = defect['latest_comment'] or defect['original_comment']
                 item_dict['defect_cycle'] = defect['raised_cycle']
@@ -343,7 +308,6 @@ def inspect_area(inspection_id, area_id):
                 item_dict['has_open_defect'] = False
             items_with_defects.append(item_dict)
         
-        # Check if all items in this category are skipped
         all_skipped = all(item['status'] == 'skipped' for item in items) if items else False
         
         categories_data.append({
@@ -365,7 +329,6 @@ def inspect_area(inspection_id, area_id):
 @inspection_bp.route('/<inspection_id>/item/<item_id>', methods=['POST'])
 @require_auth
 def update_item(inspection_id, item_id):
-    """Update item status (HTMX)."""
     tenant_id = session['tenant_id']
     db = get_db()
     
@@ -380,7 +343,6 @@ def update_item(inspection_id, item_id):
     """, [status, comment if comment else None, inspection_id, item_id, tenant_id])
     db.commit()
     
-    # Return updated area
     if area_id:
         return redirect(url_for('inspection.inspect_area', inspection_id=inspection_id, area_id=area_id))
     
@@ -390,7 +352,6 @@ def update_item(inspection_id, item_id):
 @inspection_bp.route('/<inspection_id>/category-comment/<category_id>', methods=['POST'])
 @require_auth
 def update_category_comment(inspection_id, category_id):
-    """Add/update category-level comment (HTMX)."""
     tenant_id = session['tenant_id']
     db = get_db()
     
@@ -405,14 +366,12 @@ def update_category_comment(inspection_id, category_id):
         abort(404)
     
     if comment:
-        # Check if category comment exists for this unit
         existing = query_db("""
             SELECT * FROM category_comment
             WHERE unit_id = ? AND category_template_id = ?
         """, [inspection['unit_id'], category_id], one=True)
         
         if existing:
-            # Add history entry
             history_id = generate_id()
             db.execute("""
                 INSERT INTO category_comment_history 
@@ -420,7 +379,6 @@ def update_category_comment(inspection_id, category_id):
                 VALUES (?, ?, ?, ?, ?, 'open')
             """, [history_id, tenant_id, existing['id'], inspection['cycle_id'], comment])
         else:
-            # Create new category comment
             cc_id = generate_id()
             db.execute("""
                 INSERT INTO category_comment 
@@ -428,7 +386,6 @@ def update_category_comment(inspection_id, category_id):
                 VALUES (?, ?, ?, ?, ?, 'open')
             """, [cc_id, tenant_id, inspection['unit_id'], category_id, inspection['cycle_id']])
             
-            # Add history entry
             history_id = generate_id()
             db.execute("""
                 INSERT INTO category_comment_history 
@@ -447,7 +404,6 @@ def update_category_comment(inspection_id, category_id):
 @inspection_bp.route('/<inspection_id>/submit', methods=['POST'])
 @require_auth
 def submit_inspection(inspection_id):
-    """Submit inspection - create defects and defect history."""
     tenant_id = session['tenant_id']
     db = get_db()
     
@@ -463,9 +419,7 @@ def submit_inspection(inspection_id):
     
     is_initial = inspection['cycle_number'] == 1
     
-    # Validation for initial inspection
     if is_initial:
-        # Check all non-skipped parent items inspected
         pending = query_db("""
             SELECT COUNT(*) as count 
             FROM inspection_item ii
@@ -480,7 +434,6 @@ def submit_inspection(inspection_id):
             flash(f"{pending['count']} main items not yet inspected", 'error')
             return redirect(url_for('inspection.inspect', inspection_id=inspection_id))
         
-        # Check defects have comments
         missing_comments = query_db("""
             SELECT it.item_description
             FROM inspection_item ii
@@ -496,7 +449,6 @@ def submit_inspection(inspection_id):
                 flash(f"Missing comment: {item['item_description']}", 'error')
             return redirect(url_for('inspection.inspect', inspection_id=inspection_id))
     
-    # Process defects
     defect_items = query_db("""
         SELECT ii.*, it.id as template_id
         FROM inspection_item ii
@@ -506,14 +458,23 @@ def submit_inspection(inspection_id):
     """, [inspection_id])
     
     for item in defect_items:
-        # Check if open defect exists for this item
         existing = query_db("""
             SELECT * FROM defect 
-            WHERE unit_id = ? AND item_template_id = ? AND status = 'open'
+            WHERE unit_id = ? AND item_template_id = ?
+            ORDER BY created_at DESC LIMIT 1
         """, [inspection['unit_id'], item['template_id']], one=True)
         
         if existing:
-            # Add history entry for existing defect
+            if existing['status'] == 'cleared':
+                db.execute("""
+                    UPDATE defect 
+                    SET status = 'open', 
+                        cleared_cycle_id = NULL, 
+                        cleared_at = NULL,
+                        updated_at = CURRENT_TIMESTAMP
+                    WHERE id = ?
+                """, [existing['id']])
+            
             history_id = generate_id()
             db.execute("""
                 INSERT INTO defect_history (id, tenant_id, defect_id, cycle_id, comment, status)
@@ -521,7 +482,6 @@ def submit_inspection(inspection_id):
             """, [history_id, tenant_id, existing['id'], inspection['cycle_id'], 
                   item['comment'] or 'Not rectified'])
         else:
-            # Create new defect
             defect_id = generate_id()
             db.execute("""
                 INSERT INTO defect (id, tenant_id, unit_id, item_template_id,
@@ -530,14 +490,12 @@ def submit_inspection(inspection_id):
             """, [defect_id, tenant_id, inspection['unit_id'], item['template_id'],
                   inspection['cycle_id'], item['status'], item['comment']])
             
-            # Add first history entry
             history_id = generate_id()
             db.execute("""
                 INSERT INTO defect_history (id, tenant_id, defect_id, cycle_id, comment, status)
                 VALUES (?, ?, ?, ?, ?, 'open')
             """, [history_id, tenant_id, defect_id, inspection['cycle_id'], item['comment']])
     
-    # Mark cleared defects (items that were OK this cycle but had open defects)
     ok_items = query_db("""
         SELECT ii.item_template_id
         FROM inspection_item ii
@@ -551,28 +509,24 @@ def submit_inspection(inspection_id):
         """, [inspection['unit_id'], item['item_template_id']], one=True)
         
         if defect:
-            # Clear the defect
             db.execute("""
                 UPDATE defect
                 SET status = 'cleared', cleared_cycle_id = ?, cleared_at = CURRENT_TIMESTAMP
                 WHERE id = ?
             """, [inspection['cycle_id'], defect['id']])
             
-            # Add cleared history entry
             history_id = generate_id()
             db.execute("""
                 INSERT INTO defect_history (id, tenant_id, defect_id, cycle_id, comment, status)
                 VALUES (?, ?, ?, ?, ?, 'cleared')
             """, [history_id, tenant_id, defect['id'], inspection['cycle_id'], 'Rectified'])
     
-    # Update inspection status
     db.execute("""
         UPDATE inspection 
         SET status = 'submitted', submitted_at = CURRENT_TIMESTAMP
         WHERE id = ?
     """, [inspection_id])
     
-    # Update unit status
     open_defects = query_db(
         "SELECT COUNT(*) as count FROM defect WHERE unit_id = ? AND status = 'open'",
         [inspection['unit_id']], one=True
@@ -583,7 +537,6 @@ def submit_inspection(inspection_id):
     
     db.commit()
     
-    # Redirect based on role
     role = session.get('role', 'student')
     if role == 'architect':
         return redirect(url_for('certification.dashboard'))
@@ -594,7 +547,6 @@ def submit_inspection(inspection_id):
 @inspection_bp.route('/<inspection_id>/progress')
 @require_auth
 def get_progress(inspection_id):
-    """Get progress stats (HTMX partial)."""
     progress_raw = query_db("""
         SELECT 
             COUNT(*) as total,
@@ -606,7 +558,6 @@ def get_progress(inspection_id):
         AND it.parent_item_id IS NULL
     """, [inspection_id], one=True)
     
-    # Defect count - ALL items (parent + sub-items)
     defect_count = query_db("""
         SELECT COUNT(*) as defects
         FROM inspection_item ii
