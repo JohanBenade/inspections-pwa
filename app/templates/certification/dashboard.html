@@ -69,8 +69,7 @@
         </div>
         <div class="divide-y">
             {% for unit in grouped.certified %}
-            <a href="{{ url_for('certification.view_unit', unit_id=unit.id) }}" 
-               class="p-4 flex items-center justify-between hover:bg-green-50 transition-colors block">
+            <div class="p-4 flex items-center justify-between hover:bg-green-50 transition-colors">
                 <div>
                     <span class="font-semibold text-gray-800">{{ unit.unit_code }}</span>
                     {% if unit.current_cycle %}
@@ -80,11 +79,16 @@
                     <span class="text-xs text-green-600 ml-2">{{ unit.cleared_defects }} defects cleared</span>
                     {% endif %}
                 </div>
-                <div class="flex items-center gap-3">
+                <div class="flex items-center gap-2">
                     <span class="text-green-600 text-sm font-medium">Certified</span>
-                    <span class="px-3 py-1 bg-green-100 text-green-700 text-sm rounded">View &rarr;</span>
+                    <a href="{{ url_for('pdf.download_defects_pdf', unit_id=unit.id) }}{% if cycle_filter %}?cycle={{ cycle_filter }}{% endif %}"
+                       class="px-2 py-1 bg-gray-100 text-gray-600 text-xs rounded hover:bg-gray-200" title="Download PDF">
+                        PDF
+                    </a>
+                    <a href="{{ url_for('certification.view_unit', unit_id=unit.id) }}" 
+                       class="px-3 py-1 bg-green-100 text-green-700 text-sm rounded">View &rarr;</a>
                 </div>
-            </a>
+            </div>
             {% endfor %}
         </div>
     </div>
@@ -102,19 +106,23 @@
         </div>
         <div class="divide-y">
             {% for unit in grouped.cleared %}
-            <a href="{{ url_for('certification.view_unit', unit_id=unit.id) }}" 
-               class="p-4 flex items-center justify-between hover:bg-blue-50 transition-colors block">
+            <div class="p-4 flex items-center justify-between hover:bg-blue-50 transition-colors">
                 <div>
                     <span class="font-semibold text-gray-800">{{ unit.unit_code }}</span>
                     {% if unit.current_cycle %}
                     <span class="text-xs bg-gray-100 text-gray-600 px-2 py-1 rounded ml-2">Cycle {{ unit.current_cycle }}</span>
                     {% endif %}
                 </div>
-                <div class="flex items-center gap-3">
+                <div class="flex items-center gap-2">
                     <span class="text-xs text-gray-500">{{ unit.last_inspector }} - {{ unit.last_inspection_date }}</span>
-                    <span class="px-3 py-1 bg-blue-100 text-blue-700 text-sm rounded">Review &rarr;</span>
+                    <a href="{{ url_for('pdf.download_defects_pdf', unit_id=unit.id) }}{% if cycle_filter %}?cycle={{ cycle_filter }}{% endif %}"
+                       class="px-2 py-1 bg-gray-100 text-gray-600 text-xs rounded hover:bg-gray-200" title="Download PDF">
+                        PDF
+                    </a>
+                    <a href="{{ url_for('certification.view_unit', unit_id=unit.id) }}" 
+                       class="px-3 py-1 bg-blue-100 text-blue-700 text-sm rounded">Review &rarr;</a>
                 </div>
-            </a>
+            </div>
             {% endfor %}
         </div>
     </div>
@@ -132,22 +140,26 @@
         </div>
         <div class="divide-y">
             {% for unit in grouped.defects_open %}
-            <a href="{{ url_for('certification.view_unit', unit_id=unit.id) }}" 
-               class="p-4 flex items-center justify-between hover:bg-red-50 transition-colors block">
+            <div class="p-4 flex items-center justify-between hover:bg-red-50 transition-colors">
                 <div>
                     <span class="font-semibold text-gray-800">{{ unit.unit_code }}</span>
                     {% if unit.current_cycle %}
                     <span class="text-xs bg-gray-100 text-gray-600 px-2 py-1 rounded ml-2">Cycle {{ unit.current_cycle }}</span>
                     {% endif %}
                 </div>
-                <div class="flex items-center gap-3">
+                <div class="flex items-center gap-2">
                     <span class="text-red-600 text-sm font-medium">{{ unit.open_defects }} open</span>
                     {% if unit.cleared_defects > 0 %}
                     <span class="text-green-600 text-xs">{{ unit.cleared_defects }} cleared</span>
                     {% endif %}
-                    <span class="px-3 py-1 bg-red-100 text-red-700 text-sm rounded">View &rarr;</span>
+                    <a href="{{ url_for('pdf.download_defects_pdf', unit_id=unit.id) }}{% if cycle_filter %}?cycle={{ cycle_filter }}{% endif %}"
+                       class="px-2 py-1 bg-gray-100 text-gray-600 text-xs rounded hover:bg-gray-200" title="Download PDF">
+                        PDF
+                    </a>
+                    <a href="{{ url_for('certification.view_unit', unit_id=unit.id) }}" 
+                       class="px-3 py-1 bg-red-100 text-red-700 text-sm rounded">View &rarr;</a>
                 </div>
-            </a>
+            </div>
             {% endfor %}
         </div>
     </div>
@@ -165,19 +177,23 @@
         </div>
         <div class="divide-y">
             {% for unit in grouped.in_progress %}
-            <a href="{{ url_for('certification.view_unit', unit_id=unit.id) }}" 
-               class="p-4 flex items-center justify-between hover:bg-yellow-50 transition-colors block">
+            <div class="p-4 flex items-center justify-between hover:bg-yellow-50 transition-colors">
                 <div>
                     <span class="font-semibold text-gray-800">{{ unit.unit_code }}</span>
                     {% if unit.current_cycle %}
                     <span class="text-xs bg-yellow-100 text-yellow-700 px-2 py-1 rounded ml-2">Cycle {{ unit.current_cycle }}</span>
                     {% endif %}
                 </div>
-                <div class="flex items-center gap-3">
+                <div class="flex items-center gap-2">
                     <span class="text-yellow-600 text-sm">{{ unit.last_inspector }}</span>
-                    <span class="px-3 py-1 bg-yellow-100 text-yellow-700 text-sm rounded">View &rarr;</span>
+                    <a href="{{ url_for('pdf.download_defects_pdf', unit_id=unit.id) }}{% if cycle_filter %}?cycle={{ cycle_filter }}{% endif %}"
+                       class="px-2 py-1 bg-gray-100 text-gray-600 text-xs rounded hover:bg-gray-200" title="Download PDF">
+                        PDF
+                    </a>
+                    <a href="{{ url_for('certification.view_unit', unit_id=unit.id) }}" 
+                       class="px-3 py-1 bg-yellow-100 text-yellow-700 text-sm rounded">View &rarr;</a>
                 </div>
-            </a>
+            </div>
             {% endfor %}
         </div>
     </div>
@@ -195,8 +211,7 @@
         </div>
         <div class="divide-y">
             {% for unit in grouped.not_started %}
-            <a href="{{ url_for('certification.view_unit', unit_id=unit.id) }}" 
-               class="p-4 flex items-center justify-between hover:bg-gray-50 transition-colors block opacity-60">
+            <div class="p-4 flex items-center justify-between hover:bg-gray-50 transition-colors opacity-60">
                 <div>
                     <span class="font-semibold text-gray-800">{{ unit.unit_code }}</span>
                     {% if unit.assigned_cycle %}
@@ -204,7 +219,7 @@
                     {% endif %}
                 </div>
                 <span class="text-gray-500 text-sm">Awaiting inspection &rarr;</span>
-            </a>
+            </div>
             {% endfor %}
         </div>
     </div>
