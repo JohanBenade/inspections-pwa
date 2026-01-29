@@ -70,23 +70,15 @@
             padding-top: 15px;
         }
         
-        .metadata-table {
-            width: 100%;
-            margin: 0 0 18px 0;
-            border: none;
-            border-collapse: separate;
-            border-spacing: 0 8px;
-        }
-        
-        .metadata-table td {
-            padding: 0 0 8px 0;
-            vertical-align: bottom;
-            border: none;
+        .metadata-row {
+            margin-bottom: 12px;
+            padding-bottom: 6px;
             border-bottom: 1px solid #000;
+            display: flex;
+            justify-content: space-between;
         }
         
         .metadata-label {
-            width: 45%;
             font-weight: 400;
             font-size: 9pt;
         }
@@ -270,28 +262,26 @@
         </table>
     </div>
     
-    <table class="metadata-table">
-        <tr>
-            <td class="metadata-label">ATTENTION</td>
-            <td class="metadata-value">MAIN CONTRACTOR | RAUBEX</td>
-        </tr>
-        <tr>
-            <td class="metadata-label">RE:</td>
-            <td class="metadata-value">DEFECTIVE WORKS LIST</td>
-        </tr>
-        <tr>
-            <td class="metadata-label">PROJECT</td>
-            <td class="metadata-value">{{ project.project_name | upper }} | <span class="red-text">{{ phase.phase_name | upper }}</span></td>
-        </tr>
-        <tr>
-            <td class="metadata-label">DATE</td>
-            <td class="metadata-value red-text">{{ inspection_date }}</td>
-        </tr>
-        <tr>
-            <td class="metadata-label">UNIT NO / AREA OF INSPECTION</td>
-            <td class="metadata-value red-text">{{ unit.unit_number }}</td>
-        </tr>
-    </table>
+    <div class="metadata-row">
+        <span class="metadata-label">ATTENTION</span>
+        <span class="metadata-value">MAIN CONTRACTOR | RAUBEX</span>
+    </div>
+    <div class="metadata-row">
+        <span class="metadata-label">RE:</span>
+        <span class="metadata-value">DEFECTIVE WORKS LIST</span>
+    </div>
+    <div class="metadata-row">
+        <span class="metadata-label">PROJECT</span>
+        <span class="metadata-value">{{ project.project_name | upper }} | <span class="red-text">{{ phase.phase_name | upper }}</span></span>
+    </div>
+    <div class="metadata-row">
+        <span class="metadata-label">DATE</span>
+        <span class="metadata-value red-text">{{ inspection_date }}</span>
+    </div>
+    <div class="metadata-row">
+        <span class="metadata-label">UNIT NO / AREA OF INSPECTION</span>
+        <span class="metadata-value red-text">{{ unit.unit_number }}</span>
+    </div>
     
     <div class="standards">
         <div class="standards-title">Standard of measurement for items on defective works list:</div>
