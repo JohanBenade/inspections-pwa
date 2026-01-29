@@ -240,7 +240,10 @@ def get_defects_data(tenant_id, unit_id, cycle_id=None):
         defects_by_area[area_name]['categories'][cat_name]['defects'].append({
             'id': f"DEF-{defect_counter:03d}",
             'description': description,
-            'comment': d['defect_comment'] or d['original_comment'],
+            # Don't show "Rectified" as comment if status is rectified - it's redundant
+            'comment': (d['defect_comment'] or d['original_comment']) 
+                       if (d['defect_comment'] or '').lower() not in ['rectified', 'fixed'] 
+                       else d['original_comment'],
             'type': d['defect_type'],
             'raised_cycle': raised_cycle,
             'display_status': display_status
