@@ -118,11 +118,11 @@ def get_defects_data(tenant_id, unit_id, cycle_id=None):
         if key not in category_comments:
             category_comments[key] = c['latest_comment']
     
-    # Get excluded items for this cycle
-    excluded_items = []
+    # Get excluded items for this cycle - grouped by area
+    excluded_by_area = {}
     if cycle_id:
         excluded = query_db("""
-            SELECT it.item_description, ct.category_name, at.area_name,
+            SELECT it.item_description, ct.category_name, at.area_name, at.area_order,
                    cei.reason
             FROM cycle_excluded_item cei
             JOIN item_template it ON cei.item_template_id = it.id
@@ -131,15 +131,11 @@ def get_defects_data(tenant_id, unit_id, cycle_id=None):
             WHERE cei.cycle_id = ?
             ORDER BY at.area_order, ct.category_order
         """, [cycle_id])
-        excluded_items = [
-            {
-                'area': e['area_name'],
-                'category': e['category_name'],
-                'description': e['item_description'],
-                'reason': e['reason'] if e['reason'] else None
-            }
-            for e in excluded
-        ]
+        for e in excluded:
+            area_name = e['area_name']
+            if area_name not in excluded_by_area:
+                excluded_by_area[area_name] = []
+            excluded_by_area[area_name].append(e['item_description'])
     
     # Get general notes (from cycle's general_notes field)
     general_notes = []
@@ -164,6 +160,7 @@ def get_defects_data(tenant_id, unit_id, cycle_id=None):
                 'name': area_name,
                 'order': d['area_order'],
                 'note': area_notes.get(area_name),
+                'excluded_items': excluded_by_area.get(area_name, []),
                 'categories': {}
             }
         
@@ -203,6 +200,7 @@ def get_defects_data(tenant_id, unit_id, cycle_id=None):
         areas_list.append({
             'name': area_name,
             'note': area_data['note'],
+            'excluded_items': area_data.get('excluded_items', []),
             'categories': categories_list
         })
     
@@ -214,7 +212,7 @@ def get_defects_data(tenant_id, unit_id, cycle_id=None):
     """, [inspection['id']], one=True)['count'] if inspection else 0
     
     total_defects = len(defects)
-    total_excluded = len(excluded_items)
+    total_excluded = sum(len(items) for items in excluded_by_area.values())
     total_passed = total_inspected - total_defects - total_excluded
     
     # Format inspection date
@@ -235,7 +233,6 @@ def get_defects_data(tenant_id, unit_id, cycle_id=None):
         'cycle': cycle,
         'inspection': inspection,
         'defects_by_area': areas_list,
-        'excluded_items': excluded_items,
         'general_notes': general_notes,
         'summary': {
             'total': total_inspected,

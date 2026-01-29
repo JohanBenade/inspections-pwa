@@ -137,6 +137,23 @@
             margin-left: 10px;
         }
         
+        .area-excluded {
+            font-style: italic;
+            color: #666;
+            font-size: 8pt;
+            margin-left: 10px;
+            margin-bottom: 6px;
+        }
+        
+        .area-excluded-title {
+            margin-bottom: 2px;
+        }
+        
+        .area-excluded-item {
+            margin-left: 12px;
+            margin-bottom: 1px;
+        }
+        
         .category-row {
             margin-left: 12px;
             margin-bottom: 3px;
@@ -315,6 +332,15 @@
         
         {% if area.note %}
         <div class="area-note">Note: {{ area.note }}</div>
+        {% endif %}
+        
+        {% if area.excluded_items %}
+        <div class="area-excluded">
+            <div class="area-excluded-title">Items not inspected:</div>
+            {% for item in area.excluded_items %}
+            <div class="area-excluded-item">&#8226; {{ item }}</div>
+            {% endfor %}
+        </div>
         {% endif %}
         
         {% for category in area.categories %}
