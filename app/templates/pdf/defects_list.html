@@ -295,6 +295,10 @@
         <span class="metadata-label">UNIT NO / AREA OF INSPECTION</span>
         <span class="metadata-value red-text">{{ unit.unit_number }}</span>
     </div>
+    <div class="metadata-row">
+        <span class="metadata-label">INSPECTION CYCLE</span>
+        <span class="metadata-value red-text">{{ cycle.cycle_number }}</span>
+    </div>
     
     <div class="standards">
         <div class="standards-title"><span>Standard of measurement for items on defective works list:</span></div>
@@ -330,24 +334,6 @@
         {% endfor %}
     </div>
     {% endfor %}
-    
-    {% if general_notes %}
-    <div class="notes-section">
-        <div class="notes-title"><span>General Notes</span></div>
-        {% for note in general_notes %}
-        <div class="notes-item">- {{ note }}</div>
-        {% endfor %}
-    </div>
-    {% endif %}
-    
-    {% if excluded_items %}
-    <div class="notes-section">
-        <div class="notes-title"><span>Items that will not be tested on first inspection.</span></div>
-        {% for item in excluded_items %}
-        <div class="notes-item">- {{ item.description }}{% if item.reason %} ({{ item.reason }}){% endif %}</div>
-        {% endfor %}
-    </div>
-    {% endif %}
     
     <div class="inspection-details">
         <p><span class="detail-label">Inspection Date:</span> {{ inspection_date }}</p>
