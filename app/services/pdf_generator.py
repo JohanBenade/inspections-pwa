@@ -50,7 +50,7 @@ def get_defects_data(tenant_id, unit_id, cycle_id=None):
     inspections = []
     if cycle_id:
         inspections = query_db("""
-            SELECT i.*, ic.cycle_number
+            SELECT i.*, ic.cycle_number, ic.id as cycle_id
             FROM inspection i
             JOIN inspection_cycle ic ON i.cycle_id = ic.id
             WHERE i.unit_id = ? AND i.tenant_id = ? AND ic.cycle_number <= ?
@@ -73,8 +73,8 @@ def get_defects_data(tenant_id, unit_id, cycle_id=None):
     inspection_query += " ORDER BY ic.cycle_number DESC LIMIT 1"
     inspection = query_db(inspection_query, params, one=True)
     
-    # Get ALL defects for this unit - both open and closed
-    # We'll determine display status based on status and raised_cycle
+    # Get ALL defects for this unit - both open and cleared
+    # Include cleared_cycle_id for tracking when defects were rectified
     defect_query = """
         SELECT d.*, 
                it.item_description,
@@ -82,16 +82,18 @@ def get_defects_data(tenant_id, unit_id, cycle_id=None):
                ct.category_name, ct.category_order,
                at.area_name, at.area_order,
                ic_raised.cycle_number as raised_cycle,
+               ic_cleared.cycle_number as cleared_cycle,
                dh.comment as defect_comment
         FROM defect d
         JOIN item_template it ON d.item_template_id = it.id
         JOIN category_template ct ON it.category_id = ct.id
         JOIN area_template at ON ct.area_id = at.id
         JOIN inspection_cycle ic_raised ON d.raised_cycle_id = ic_raised.id
+        LEFT JOIN inspection_cycle ic_cleared ON d.cleared_cycle_id = ic_cleared.id
         LEFT JOIN item_template parent ON it.parent_item_id = parent.id
         LEFT JOIN (
             SELECT defect_id, comment FROM defect_history 
-            WHERE id IN (SELECT MIN(id) FROM defect_history GROUP BY defect_id)
+            WHERE id IN (SELECT MAX(id) FROM defect_history GROUP BY defect_id)
         ) dh ON dh.defect_id = d.id
         WHERE d.unit_id = ? AND ic_raised.cycle_number <= ?
         ORDER BY at.area_order, ct.category_order, it.item_order
@@ -156,6 +158,9 @@ def get_defects_data(tenant_id, unit_id, cycle_id=None):
     total_not_rectified = 0
     total_new = 0
     
+    # Track defect counts per cycle for timeline
+    cycle_stats = {}
+    
     for d in defects:
         area_name = d['area_name']
         cat_name = d['category_name']
@@ -185,12 +190,27 @@ def get_defects_data(tenant_id, unit_id, cycle_id=None):
         
         # Determine defect status for display
         raised_cycle = d['raised_cycle']
+        cleared_cycle = d['cleared_cycle']
         status = d['status']
         
-        if status == 'closed':
-            # Rectified (at some point)
+        # Track stats per cycle
+        if raised_cycle not in cycle_stats:
+            cycle_stats[raised_cycle] = {'raised': 0, 'rectified': 0}
+        cycle_stats[raised_cycle]['raised'] += 1
+        
+        if cleared_cycle and cleared_cycle not in cycle_stats:
+            cycle_stats[cleared_cycle] = {'raised': 0, 'rectified': 0}
+        if cleared_cycle:
+            cycle_stats[cleared_cycle]['rectified'] += 1
+        
+        # Determine display status
+        if status == 'cleared' and cleared_cycle == cycle_number:
+            # Rectified THIS cycle - show with strikethrough
             display_status = 'rectified'
             total_rectified += 1
+        elif status == 'cleared' and cleared_cycle and cleared_cycle < cycle_number:
+            # Rectified in a PREVIOUS cycle - don't show at all
+            continue
         elif status == 'open' and raised_cycle < cycle_number:
             # Open from previous cycle - not rectified
             display_status = 'not_rectified'
@@ -200,7 +220,10 @@ def get_defects_data(tenant_id, unit_id, cycle_id=None):
             display_status = 'new'
             total_new += 1
         else:
+            # Fallback for cycle 1 or other cases
             display_status = 'open'
+            if cycle_number == 1:
+                total_new += 1
         
         defects_by_area[area_name]['categories'][cat_name]['defects'].append({
             'id': f"DEF-{defect_counter:03d}",
@@ -217,19 +240,23 @@ def get_defects_data(tenant_id, unit_id, cycle_id=None):
     for area_name, area_data in sorted(defects_by_area.items(), key=lambda x: x[1]['order']):
         categories_list = []
         for cat_name, cat_data in sorted(area_data['categories'].items(), key=lambda x: x[1]['order']):
-            categories_list.append({
-                'name': cat_name,
-                'note': cat_data.get('note'),
-                'defects': cat_data['defects']
+            # Only include categories that have defects
+            if cat_data['defects']:
+                categories_list.append({
+                    'name': cat_name,
+                    'note': cat_data.get('note'),
+                    'defects': cat_data['defects']
+                })
+        # Only include areas that have categories with defects
+        if categories_list or area_data.get('excluded_items') or area_data.get('note'):
+            areas_list.append({
+                'name': area_name,
+                'note': area_data['note'],
+                'excluded_items': area_data.get('excluded_items', []),
+                'categories': categories_list
             })
-        areas_list.append({
-            'name': area_name,
-            'note': area_data['note'],
-            'excluded_items': area_data.get('excluded_items', []),
-            'categories': categories_list
-        })
     
-    # Build inspection timeline
+    # Build inspection timeline with defect counts
     inspection_timeline = []
     for insp in inspections:
         insp_date = None
@@ -241,14 +268,32 @@ def get_defects_data(tenant_id, unit_id, cycle_id=None):
             except (ValueError, AttributeError):
                 insp_date = str(raw_date)
         
+        insp_cycle_num = insp['cycle_number']
+        stats = cycle_stats.get(insp_cycle_num, {'raised': 0, 'rectified': 0})
+        
+        # Calculate outstanding at time of this cycle
+        # For cycle N: outstanding = all raised up to N - all rectified up to N
+        total_raised_to_cycle = sum(
+            cycle_stats.get(c, {'raised': 0})['raised'] 
+            for c in range(1, insp_cycle_num + 1)
+        )
+        total_rectified_to_cycle = sum(
+            cycle_stats.get(c, {'rectified': 0})['rectified'] 
+            for c in range(1, insp_cycle_num + 1)
+        )
+        outstanding = total_raised_to_cycle - total_rectified_to_cycle
+        
         inspection_timeline.append({
-            'cycle_number': insp['cycle_number'],
+            'cycle_number': insp_cycle_num,
             'date': insp_date,
-            'inspector': insp['inspector_name']
+            'inspector': insp['inspector_name'],
+            'raised': stats['raised'],
+            'rectified': stats['rectified'],
+            'outstanding': outstanding
         })
     
     # Calculate summary
-    total_defects = len(defects)
+    total_defects = total_rectified + total_not_rectified + total_new
     total_excluded = sum(len(items) for items in excluded_by_area.values())
     
     # Format inspection date

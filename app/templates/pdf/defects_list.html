@@ -91,6 +91,10 @@
             color: #cc0000;
         }
         
+        .blue-text {
+            color: #0066cc;
+        }
+        
         .summary-box {
             background-color: #f5f5f5;
             border: 1px solid #ddd;
@@ -119,10 +123,14 @@
         }
         
         .summary-value.rectified {
-            color: #228B22;
+            color: #0066cc;
         }
         
         .summary-value.not-rectified {
+            color: #cc0000;
+        }
+        
+        .summary-value.new-defects {
             color: #cc0000;
         }
         
@@ -215,17 +223,22 @@
         
         .defect-item.rectified {
             text-decoration: line-through;
-            color: #666;
+            color: #0066cc;
         }
         
         .defect-item .not-rectified-marker {
             color: #cc0000;
-            font-weight: bold;
+            font-weight: 400;
         }
         
-        .defect-item .cycle-marker {
-            color: #666;
-            font-size: 8pt;
+        .defect-item .new-marker {
+            color: #cc0000;
+            font-weight: 400;
+        }
+        
+        .defect-item .rectified-marker {
+            color: #0066cc;
+            font-weight: 400;
         }
         
         .inspection-timeline {
@@ -373,7 +386,7 @@
         {% if summary.new > 0 %}
         <div class="summary-row">
             <span class="summary-label">New defects this cycle:</span>
-            <span class="summary-value">{{ summary.new }}</span>
+            <span class="summary-value new-defects">{{ summary.new }}</span>
         </div>
         {% endif %}
     </div>
@@ -398,7 +411,7 @@
         
         {% if area.excluded_items %}
         <div class="area-excluded">
-            <div class="area-excluded-title">Items not inspected:</div>
+            <div class="area-excluded-title">Excluded items:</div>
             {% for item in area.excluded_items %}
             <div class="area-excluded-item">&#8226; {{ item }}</div>
             {% endfor %}
@@ -414,7 +427,7 @@
             {% endif %}
             {% for defect in category.defects %}
             <div class="defect-item {% if defect.display_status == 'rectified' %}rectified{% endif %}">
-                &#8226; {% if defect.description %}{{ defect.description }}{% endif %}{% if defect.comment %} - {{ defect.comment }}{% endif %}{% if defect.display_status == 'not_rectified' %} <span class="not-rectified-marker">(Not rectified)</span>{% endif %}{% if defect.display_status == 'new' and cycle_number > 1 %} <span class="cycle-marker">(Cycle {{ defect.raised_cycle }})</span>{% endif %}
+                &#8226; {% if defect.description %}{{ defect.description }}{% endif %}{% if defect.comment %} - {{ defect.comment }}{% endif %}{% if defect.display_status == 'rectified' %} <span class="rectified-marker">(Rectified)</span>{% elif defect.display_status == 'not_rectified' %} <span class="not-rectified-marker">(Not rectified)</span>{% elif defect.display_status == 'new' and cycle_number > 1 %} <span class="new-marker">(New)</span>{% endif %}
             </div>
             {% endfor %}
         </div>
@@ -423,12 +436,16 @@
     </div>
     {% endfor %}
     
-    {% if inspection_timeline and cycle_number > 1 %}
+    {% if inspection_timeline %}
     <div class="inspection-timeline">
         <div class="timeline-title">Inspection History</div>
         {% for entry in inspection_timeline %}
         <div class="timeline-entry">
-            Cycle {{ entry.cycle_number }}: {{ entry.date }} - Inspected by {{ entry.inspector }}
+            {% if entry.cycle_number == 1 %}
+            Cycle {{ entry.cycle_number }}: {{ entry.date }} - {{ entry.inspector }} ({{ entry.raised }} defects raised)
+            {% else %}
+            Cycle {{ entry.cycle_number }}: {{ entry.date }} - {{ entry.inspector }} ({{ entry.rectified }} rectified, {{ entry.outstanding }} outstanding{% if entry.raised > 0 %}, {{ entry.raised }} new{% endif %})
+            {% endif %}
         </div>
         {% endfor %}
     </div>
