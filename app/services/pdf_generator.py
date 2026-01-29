@@ -38,12 +38,27 @@ def get_defects_data(tenant_id, unit_id, cycle_id=None):
     
     # Get cycle info if specified
     cycle = None
+    cycle_number = 1
     if cycle_id:
         cycle = query_db("""
             SELECT * FROM inspection_cycle WHERE id = ?
         """, [cycle_id], one=True)
+        if cycle:
+            cycle_number = cycle['cycle_number']
     
-    # Get latest inspection for this unit (and cycle if specified)
+    # Get all inspections for this unit up to current cycle
+    inspections = []
+    if cycle_id:
+        inspections = query_db("""
+            SELECT i.*, ic.cycle_number, u2.display_name as inspector_display_name
+            FROM inspection i
+            JOIN inspection_cycle ic ON i.cycle_id = ic.id
+            LEFT JOIN user u2 ON i.inspector_name = u2.display_name
+            WHERE i.unit_id = ? AND i.tenant_id = ? AND ic.cycle_number <= ?
+            ORDER BY ic.cycle_number ASC
+        """, [unit_id, tenant_id, cycle_number])
+    
+    # Get latest inspection for this unit and cycle
     inspection_query = """
         SELECT i.*, ic.cycle_number
         FROM inspection i
@@ -59,32 +74,44 @@ def get_defects_data(tenant_id, unit_id, cycle_id=None):
     inspection_query += " ORDER BY ic.cycle_number DESC LIMIT 1"
     inspection = query_db(inspection_query, params, one=True)
     
-    # Get defects grouped by area and category
+    # Get defects - ALL relevant to this cycle:
+    # 1. Open defects raised in any cycle up to this one
+    # 2. Defects closed IN this cycle (for strikethrough)
     defect_query = """
         SELECT d.*, 
                it.item_description,
                parent.item_description as parent_description,
                ct.category_name, ct.category_order,
                at.area_name, at.area_order,
-               ic.cycle_number as raised_cycle,
+               ic_raised.cycle_number as raised_cycle,
+               ic_closed.cycle_number as closed_cycle,
                dh.comment as defect_comment
         FROM defect d
         JOIN item_template it ON d.item_template_id = it.id
         JOIN category_template ct ON it.category_id = ct.id
         JOIN area_template at ON ct.area_id = at.id
-        JOIN inspection_cycle ic ON d.raised_cycle_id = ic.id
+        JOIN inspection_cycle ic_raised ON d.raised_cycle_id = ic_raised.id
+        LEFT JOIN inspection_cycle ic_closed ON d.closed_cycle_id = ic_closed.id
         LEFT JOIN item_template parent ON it.parent_item_id = parent.id
         LEFT JOIN (
             SELECT defect_id, comment FROM defect_history 
             WHERE id IN (SELECT MIN(id) FROM defect_history GROUP BY defect_id)
         ) dh ON dh.defect_id = d.id
-        WHERE d.unit_id = ? AND d.status = 'open'
+        WHERE d.unit_id = ?
     """
     defect_params = [unit_id]
     
-    if cycle_id:
-        defect_query += " AND d.raised_cycle_id = ?"
-        defect_params.append(cycle_id)
+    if cycle_id and cycle_number:
+        # Get defects that are either:
+        # - Still open AND raised before or in this cycle
+        # - Closed IN this specific cycle (to show as rectified)
+        defect_query += """ AND (
+            (d.status = 'open' AND ic_raised.cycle_number <= ?)
+            OR (d.status = 'closed' AND ic_closed.cycle_number = ?)
+        )"""
+        defect_params.extend([cycle_number, cycle_number])
+    else:
+        defect_query += " AND d.status = 'open'"
     
     defect_query += " ORDER BY at.area_order, ct.category_order, it.item_order"
     
@@ -137,19 +164,15 @@ def get_defects_data(tenant_id, unit_id, cycle_id=None):
                 excluded_by_area[area_name] = []
             excluded_by_area[area_name].append(e['item_description'])
     
-    # Get general notes (from cycle's general_notes field)
-    general_notes = []
-    if cycle_id:
-        cycle_notes = query_db("""
-            SELECT general_notes FROM inspection_cycle WHERE id = ?
-        """, [cycle_id], one=True)
-        if cycle_notes and cycle_notes['general_notes']:
-            notes_text = cycle_notes['general_notes']
-            general_notes = [n.strip() for n in notes_text.split('\n') if n.strip()]
-    
     # Structure defects by area -> category
     defects_by_area = {}
     defect_counter = 1
+    
+    # Summary counters
+    total_open_previous = 0
+    total_rectified = 0
+    total_not_rectified = 0
+    total_new = 0
     
     for d in defects:
         area_name = d['area_name']
@@ -178,12 +201,34 @@ def get_defects_data(tenant_id, unit_id, cycle_id=None):
         if d['parent_description']:
             description = f"{d['parent_description']} - {description}"
         
+        # Determine defect status for display
+        raised_cycle = d['raised_cycle']
+        closed_cycle = d['closed_cycle']
+        status = d['status']
+        
+        if status == 'closed' and closed_cycle == cycle_number:
+            # Rectified in this cycle
+            display_status = 'rectified'
+            total_rectified += 1
+        elif status == 'open' and raised_cycle < cycle_number:
+            # Open from previous cycle - not rectified
+            display_status = 'not_rectified'
+            total_not_rectified += 1
+            total_open_previous += 1
+        elif status == 'open' and raised_cycle == cycle_number:
+            # New defect this cycle
+            display_status = 'new'
+            total_new += 1
+        else:
+            display_status = 'open'
+        
         defects_by_area[area_name]['categories'][cat_name]['defects'].append({
             'id': f"DEF-{defect_counter:03d}",
             'description': description,
             'comment': d['defect_comment'] or d['original_comment'],
             'type': d['defect_type'],
-            'raised_cycle': d['raised_cycle']
+            'raised_cycle': raised_cycle,
+            'display_status': display_status
         })
         defect_counter += 1
     
@@ -204,16 +249,27 @@ def get_defects_data(tenant_id, unit_id, cycle_id=None):
             'categories': categories_list
         })
     
-    # Calculate summary
-    total_inspected = query_db("""
-        SELECT COUNT(*) as count FROM inspection_item ii
-        JOIN item_template it ON ii.item_template_id = it.id
-        WHERE ii.inspection_id = ? AND it.parent_item_id IS NULL
-    """, [inspection['id']], one=True)['count'] if inspection else 0
+    # Build inspection timeline
+    inspection_timeline = []
+    for insp in inspections:
+        insp_date = None
+        raw_date = insp.get('inspection_date')
+        if raw_date:
+            try:
+                dt = datetime.fromisoformat(str(raw_date).replace('Z', '+00:00'))
+                insp_date = dt.strftime('%d.%m.%Y')
+            except (ValueError, AttributeError):
+                insp_date = str(raw_date)
+        
+        inspection_timeline.append({
+            'cycle_number': insp['cycle_number'],
+            'date': insp_date,
+            'inspector': insp['inspector_name']
+        })
     
+    # Calculate summary
     total_defects = len(defects)
     total_excluded = sum(len(items) for items in excluded_by_area.values())
-    total_passed = total_inspected - total_defects - total_excluded
     
     # Format inspection date
     insp_date = None
@@ -231,13 +287,15 @@ def get_defects_data(tenant_id, unit_id, cycle_id=None):
         'project': {'project_name': unit['project_name']},
         'phase': {'phase_name': unit['phase_name']},
         'cycle': cycle,
+        'cycle_number': cycle_number,
         'inspection': inspection,
+        'inspection_timeline': inspection_timeline,
         'defects_by_area': areas_list,
-        'general_notes': general_notes,
         'summary': {
-            'total': total_inspected,
-            'passed': max(0, total_passed),
-            'defects': total_defects,
+            'total': total_defects,
+            'rectified': total_rectified,
+            'not_rectified': total_not_rectified,
+            'new': total_new,
             'excluded': total_excluded
         },
         'inspection_date': insp_date or datetime.now().strftime('%d.%m.%Y'),

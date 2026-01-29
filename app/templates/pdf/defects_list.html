@@ -91,6 +91,41 @@
             color: #cc0000;
         }
         
+        .summary-box {
+            background-color: #f5f5f5;
+            border: 1px solid #ddd;
+            padding: 10px 15px;
+            margin: 12px 0;
+            font-size: 9pt;
+        }
+        
+        .summary-title {
+            font-weight: bold;
+            margin-bottom: 6px;
+        }
+        
+        .summary-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 2px;
+        }
+        
+        .summary-label {
+            font-weight: 300;
+        }
+        
+        .summary-value {
+            font-weight: bold;
+        }
+        
+        .summary-value.rectified {
+            color: #228B22;
+        }
+        
+        .summary-value.not-rectified {
+            color: #cc0000;
+        }
+        
         .standards {
             margin: 16px 0 12px 0;
             font-size: 9pt;
@@ -178,27 +213,34 @@
             font-size: 9pt;
         }
         
-        .notes-section {
-            margin: 15px 0;
+        .defect-item.rectified {
+            text-decoration: line-through;
+            color: #666;
         }
         
-        .notes-title {
+        .defect-item .not-rectified-marker {
+            color: #cc0000;
             font-weight: bold;
+        }
+        
+        .defect-item .cycle-marker {
+            color: #666;
+            font-size: 8pt;
+        }
+        
+        .inspection-timeline {
+            margin: 20px 0;
             font-size: 9pt;
-            margin-bottom: 8px;
         }
         
-        .notes-title span {
-            display: inline-block;
-            padding-bottom: 3px;
-            border-bottom: 1px solid #000;
+        .timeline-title {
+            font-weight: bold;
+            margin-bottom: 6px;
         }
         
-        .notes-item {
-            margin-left: 12px;
-            margin-bottom: 3px;
+        .timeline-entry {
+            margin-bottom: 2px;
             font-weight: 300;
-            font-size: 9pt;
         }
         
         .inspection-details {
@@ -314,8 +356,28 @@
     </div>
     <div class="metadata-row">
         <span class="metadata-label">INSPECTION CYCLE</span>
-        <span class="metadata-value red-text">{{ cycle.cycle_number }}</span>
+        <span class="metadata-value red-text">{{ cycle.cycle_number if cycle else '1' }}</span>
     </div>
+    
+    {% if cycle_number > 1 %}
+    <div class="summary-box">
+        <div class="summary-title">Defect Summary</div>
+        <div class="summary-row">
+            <span class="summary-label">Rectified this cycle:</span>
+            <span class="summary-value rectified">{{ summary.rectified }}</span>
+        </div>
+        <div class="summary-row">
+            <span class="summary-label">Not rectified:</span>
+            <span class="summary-value not-rectified">{{ summary.not_rectified }}</span>
+        </div>
+        {% if summary.new > 0 %}
+        <div class="summary-row">
+            <span class="summary-label">New defects this cycle:</span>
+            <span class="summary-value">{{ summary.new }}</span>
+        </div>
+        {% endif %}
+    </div>
+    {% endif %}
     
     <div class="standards">
         <div class="standards-title"><span>Standard of measurement for items on defective works list:</span></div>
@@ -351,8 +413,8 @@
             <div class="category-note">{{ category.note }}</div>
             {% endif %}
             {% for defect in category.defects %}
-            <div class="defect-item">
-                &#8226; {% if defect.description %}{{ defect.description }}{% endif %}{% if defect.comment %} - {{ defect.comment }}{% endif %}
+            <div class="defect-item {% if defect.display_status == 'rectified' %}rectified{% endif %}">
+                &#8226; {% if defect.description %}{{ defect.description }}{% endif %}{% if defect.comment %} - {{ defect.comment }}{% endif %}{% if defect.display_status == 'not_rectified' %} <span class="not-rectified-marker">(Not rectified)</span>{% endif %}{% if defect.display_status == 'new' and cycle_number > 1 %} <span class="cycle-marker">(Cycle {{ defect.raised_cycle }})</span>{% endif %}
             </div>
             {% endfor %}
         </div>
@@ -360,6 +422,17 @@
         {% endfor %}
     </div>
     {% endfor %}
+    
+    {% if inspection_timeline and cycle_number > 1 %}
+    <div class="inspection-timeline">
+        <div class="timeline-title">Inspection History</div>
+        {% for entry in inspection_timeline %}
+        <div class="timeline-entry">
+            Cycle {{ entry.cycle_number }}: {{ entry.date }} - Inspected by {{ entry.inspector }}
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
     
     <div class="inspection-details">
         <p><span class="detail-label">Inspection Date:</span> {{ inspection_date }}</p>
