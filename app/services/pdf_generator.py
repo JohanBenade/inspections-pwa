@@ -233,7 +233,7 @@ def get_defects_data(tenant_id, unit_id, cycle_id=None):
     inspection_timeline = []
     for insp in inspections:
         insp_date = None
-        raw_date = insp.get('inspection_date')
+        raw_date = insp['inspection_date'] if 'inspection_date' in insp.keys() else None
         if raw_date:
             try:
                 dt = datetime.fromisoformat(str(raw_date).replace('Z', '+00:00'))
