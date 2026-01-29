@@ -15,13 +15,13 @@ STATUS_INFO = {
         'title': 'Certified',
         'description': 'Units signed off by architect',
         'color': 'green',
-        'icon': '✓'
+        'icon': 'check'
     },
     'cleared': {
         'title': 'Ready to Certify',
         'description': 'All items OK - awaiting sign-off',
         'color': 'blue',
-        'icon': '○'
+        'icon': 'circle'
     },
     'defects_open': {
         'title': 'Defects Open',
@@ -33,13 +33,13 @@ STATUS_INFO = {
         'title': 'In Progress',
         'description': 'Inspection underway',
         'color': 'yellow',
-        'icon': '⋯'
+        'icon': '...'
     },
     'not_started': {
         'title': 'Not Started',
         'description': 'No inspection yet',
         'color': 'gray',
-        'icon': '−'
+        'icon': '-'
     }
 }
 
@@ -62,47 +62,68 @@ def dashboard():
         ORDER BY ic.cycle_number
     """, [tenant_id])
     
-    # Get all units with inspection summary
-    units = query_db("""
-        SELECT 
-            u.id,
-            u.block,
-            u.floor,
-            u.unit_number,
-            u.unit_number AS unit_code,
-            u.unit_type,
-            u.status,
-            ph.phase_name,
-            p.project_name,
-            (SELECT MAX(ic.cycle_number) FROM inspection i 
-             JOIN inspection_cycle ic ON i.cycle_id = ic.id
-             WHERE i.unit_id = u.id) AS current_cycle,
-            (SELECT COUNT(*) FROM defect WHERE unit_id = u.id AND status = 'open') AS open_defects,
-            (SELECT COUNT(*) FROM defect WHERE unit_id = u.id AND status = 'cleared') AS cleared_defects,
-            (SELECT i.inspector_name FROM inspection i 
-             JOIN inspection_cycle ic ON i.cycle_id = ic.id
-             WHERE i.unit_id = u.id 
-             ORDER BY ic.cycle_number DESC LIMIT 1) AS last_inspector,
-            (SELECT i.inspection_date FROM inspection i 
-             JOIN inspection_cycle ic ON i.cycle_id = ic.id
-             WHERE i.unit_id = u.id 
-             ORDER BY ic.cycle_number DESC LIMIT 1) AS last_inspection_date,
-            (SELECT ic.cycle_number FROM inspection_cycle ic
-             WHERE ic.phase_id = u.phase_id AND ic.status = 'active'
-             AND (ic.unit_start IS NULL OR (u.unit_number >= ic.unit_start AND u.unit_number <= ic.unit_end))
-             ORDER BY ic.cycle_number LIMIT 1) AS assigned_cycle
-        FROM unit u
-        JOIN phase ph ON u.phase_id = ph.id
-        JOIN project p ON ph.project_id = p.id
-        WHERE u.tenant_id = ?
-        ORDER BY u.unit_number
-    """, [tenant_id])
-    
-    # Filter by cycle if specified
+    # Build the query based on filter
     if cycle_filter:
-        cycle = query_db("SELECT * FROM inspection_cycle WHERE id = ?", [cycle_filter], one=True)
-        if cycle and cycle['unit_start'] and cycle['unit_end']:
-            units = [u for u in units if u['unit_number'] >= cycle['unit_start'] and u['unit_number'] <= cycle['unit_end']]
+        # Filter by specific cycle - show inspection status for that cycle
+        units = query_db("""
+            SELECT 
+                u.id,
+                u.unit_number,
+                u.unit_number AS unit_code,
+                u.status AS unit_status,
+                ic.cycle_number AS current_cycle,
+                ic.id AS cycle_id,
+                i.id AS inspection_id,
+                i.status AS inspection_status,
+                i.inspector_name AS last_inspector,
+                i.inspection_date AS last_inspection_date,
+                (SELECT COUNT(*) FROM defect d 
+                 WHERE d.unit_id = u.id AND d.status = 'open' 
+                 AND d.raised_cycle_id = ic.id) AS open_defects,
+                (SELECT COUNT(*) FROM defect d 
+                 WHERE d.unit_id = u.id AND d.status = 'cleared' 
+                 AND d.raised_cycle_id = ic.id) AS cleared_defects
+            FROM unit u
+            JOIN inspection_cycle ic ON ic.phase_id = u.phase_id
+            LEFT JOIN inspection i ON i.unit_id = u.id AND i.cycle_id = ic.id
+            WHERE u.tenant_id = ? 
+            AND ic.id = ?
+            AND (ic.unit_start IS NULL OR (u.unit_number >= ic.unit_start AND u.unit_number <= ic.unit_end))
+            ORDER BY u.unit_number
+        """, [tenant_id, cycle_filter])
+    else:
+        # All cycles - show latest inspection status for each unit
+        units = query_db("""
+            SELECT 
+                u.id,
+                u.unit_number,
+                u.unit_number AS unit_code,
+                u.status AS unit_status,
+                latest.cycle_number AS current_cycle,
+                latest.cycle_id,
+                latest.inspection_id,
+                latest.inspection_status,
+                latest.inspector_name AS last_inspector,
+                latest.inspection_date AS last_inspection_date,
+                (SELECT COUNT(*) FROM defect d WHERE d.unit_id = u.id AND d.status = 'open') AS open_defects,
+                (SELECT COUNT(*) FROM defect d WHERE d.unit_id = u.id AND d.status = 'cleared') AS cleared_defects
+            FROM unit u
+            LEFT JOIN (
+                SELECT 
+                    i.unit_id,
+                    i.id AS inspection_id,
+                    i.status AS inspection_status,
+                    i.inspector_name,
+                    i.inspection_date,
+                    ic.cycle_number,
+                    ic.id AS cycle_id,
+                    ROW_NUMBER() OVER (PARTITION BY i.unit_id ORDER BY ic.cycle_number DESC) as rn
+                FROM inspection i
+                JOIN inspection_cycle ic ON i.cycle_id = ic.id
+            ) latest ON latest.unit_id = u.id AND latest.rn = 1
+            WHERE u.tenant_id = ?
+            ORDER BY u.unit_number
+        """, [tenant_id])
     
     # Group by status
     grouped = {
@@ -114,11 +135,23 @@ def dashboard():
     }
     
     for unit in units:
-        status = unit['status'] or 'not_started'
-        if status in grouped:
-            grouped[status].append(unit)
+        # Determine display status based on inspection
+        if unit['inspection_id'] is None:
+            status = 'not_started'
+        elif unit['inspection_status'] == 'in_progress':
+            status = 'in_progress'
+        elif unit['unit_status'] == 'certified':
+            status = 'certified'
+        elif unit['open_defects'] == 0 and unit['cleared_defects'] > 0:
+            status = 'cleared'
+        elif unit['open_defects'] == 0 and unit['inspection_status'] == 'submitted':
+            status = 'cleared'
+        elif unit['open_defects'] > 0:
+            status = 'defects_open'
         else:
-            grouped['not_started'].append(unit)
+            status = 'not_started'
+        
+        grouped[status].append(unit)
     
     # Summary counts
     summary = {
@@ -141,6 +174,9 @@ def view_unit(unit_id):
     """Redirect to inspection page for this unit."""
     tenant_id = session['tenant_id']
     
+    # Check for cycle parameter
+    cycle_id = request.args.get('cycle')
+    
     unit = query_db(
         "SELECT * FROM unit WHERE id = ? AND tenant_id = ?",
         [unit_id, tenant_id], one=True
@@ -149,20 +185,24 @@ def view_unit(unit_id):
     if not unit:
         abort(404)
     
-    # Find latest inspection for this unit
-    inspection = query_db("""
-        SELECT i.id FROM inspection i
-        JOIN inspection_cycle ic ON i.cycle_id = ic.id
-        WHERE i.unit_id = ?
-        ORDER BY ic.cycle_number DESC
-        LIMIT 1
-    """, [unit_id], one=True)
+    # Find inspection for specified cycle or latest
+    if cycle_id:
+        inspection = query_db("""
+            SELECT i.id FROM inspection i
+            WHERE i.unit_id = ? AND i.cycle_id = ?
+        """, [unit_id, cycle_id], one=True)
+    else:
+        inspection = query_db("""
+            SELECT i.id FROM inspection i
+            JOIN inspection_cycle ic ON i.cycle_id = ic.id
+            WHERE i.unit_id = ?
+            ORDER BY ic.cycle_number DESC
+            LIMIT 1
+        """, [unit_id], one=True)
     
     if inspection:
-        # Go to existing inspection
         return redirect(url_for('inspection.inspect', inspection_id=inspection['id']))
     else:
-        # Start new inspection
         return redirect(url_for('inspection.start_inspection', unit_id=unit_id))
 
 
@@ -282,7 +322,7 @@ def update_category_note(unit_id):
     category_id = request.form.get('category_id')
     note = request.form.get('note', '').strip()
     
-    # Get latest active cycle for this phase (needed for raised_cycle_id)
+    # Get latest active cycle for this phase
     latest_cycle = query_db("""
         SELECT id FROM inspection_cycle 
         WHERE phase_id = ? AND status = 'active'
