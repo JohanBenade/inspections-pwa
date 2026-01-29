@@ -223,7 +223,7 @@
         
         .defect-item.rectified {
             text-decoration: line-through;
-            color: #0066cc;
+            color: #000;
         }
         
         .defect-item .not-rectified-marker {
@@ -239,6 +239,7 @@
         .defect-item .rectified-marker {
             color: #0066cc;
             font-weight: 400;
+            text-decoration: none;
         }
         
         .inspection-timeline {
@@ -444,7 +445,7 @@
             {% if entry.cycle_number == 1 %}
             Cycle {{ entry.cycle_number }}: {{ entry.date }} - {{ entry.inspector }} ({{ entry.raised }} defects raised)
             {% else %}
-            Cycle {{ entry.cycle_number }}: {{ entry.date }} - {{ entry.inspector }} ({{ entry.rectified }} rectified, {{ entry.outstanding }} outstanding{% if entry.raised > 0 %}, {{ entry.raised }} new{% endif %})
+            Cycle {{ entry.cycle_number }}: {{ entry.date }} - {{ entry.inspector }} ({{ entry.rectified }} rectified, {{ summary.not_rectified }} outstanding{% if entry.raised > 0 %}, {{ entry.raised }} new{% endif %})
             {% endif %}
         </div>
         {% endfor %}
