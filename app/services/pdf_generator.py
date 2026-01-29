@@ -50,10 +50,9 @@ def get_defects_data(tenant_id, unit_id, cycle_id=None):
     inspections = []
     if cycle_id:
         inspections = query_db("""
-            SELECT i.*, ic.cycle_number, u2.display_name as inspector_display_name
+            SELECT i.*, ic.cycle_number
             FROM inspection i
             JOIN inspection_cycle ic ON i.cycle_id = ic.id
-            LEFT JOIN user u2 ON i.inspector_name = u2.display_name
             WHERE i.unit_id = ? AND i.tenant_id = ? AND ic.cycle_number <= ?
             ORDER BY ic.cycle_number ASC
         """, [unit_id, tenant_id, cycle_number])
