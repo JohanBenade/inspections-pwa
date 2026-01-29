@@ -85,7 +85,7 @@
                        class="px-2 py-1 bg-gray-100 text-gray-600 text-xs rounded hover:bg-gray-200" title="Download PDF">
                         PDF
                     </a>
-                    <a href="{{ url_for('certification.view_unit', unit_id=unit.id) }}" 
+                    <a href="{{ url_for('certification.view_unit', unit_id=unit.id, cycle=unit.cycle_id) }}" 
                        class="px-3 py-1 bg-green-100 text-green-700 text-sm rounded">View &rarr;</a>
                 </div>
             </div>
@@ -119,7 +119,7 @@
                        class="px-2 py-1 bg-gray-100 text-gray-600 text-xs rounded hover:bg-gray-200" title="Download PDF">
                         PDF
                     </a>
-                    <a href="{{ url_for('certification.view_unit', unit_id=unit.id) }}" 
+                    <a href="{{ url_for('certification.view_unit', unit_id=unit.id, cycle=unit.cycle_id) }}" 
                        class="px-3 py-1 bg-blue-100 text-blue-700 text-sm rounded">Review &rarr;</a>
                 </div>
             </div>
@@ -156,7 +156,7 @@
                        class="px-2 py-1 bg-gray-100 text-gray-600 text-xs rounded hover:bg-gray-200" title="Download PDF">
                         PDF
                     </a>
-                    <a href="{{ url_for('certification.view_unit', unit_id=unit.id) }}" 
+                    <a href="{{ url_for('certification.view_unit', unit_id=unit.id, cycle=unit.cycle_id) }}" 
                        class="px-3 py-1 bg-red-100 text-red-700 text-sm rounded">View &rarr;</a>
                 </div>
             </div>
@@ -190,7 +190,7 @@
                        class="px-2 py-1 bg-gray-100 text-gray-600 text-xs rounded hover:bg-gray-200" title="Download PDF">
                         PDF
                     </a>
-                    <a href="{{ url_for('certification.view_unit', unit_id=unit.id) }}" 
+                    <a href="{{ url_for('certification.view_unit', unit_id=unit.id, cycle=unit.cycle_id) }}" 
                        class="px-3 py-1 bg-yellow-100 text-yellow-700 text-sm rounded">View &rarr;</a>
                 </div>
             </div>
