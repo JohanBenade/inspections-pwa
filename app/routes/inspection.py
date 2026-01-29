@@ -163,12 +163,17 @@ def inspect(inspection_id):
     if not is_initial:
         open_defects = query_db("""
             SELECT d.*, it.item_description, ct.category_name, at.area_name,
-                   ic.cycle_number as raised_cycle
+                   ic.cycle_number as raised_cycle,
+                   dh.comment as latest_comment
             FROM defect d
             JOIN item_template it ON d.item_template_id = it.id
             JOIN category_template ct ON it.category_id = ct.id
             JOIN area_template at ON ct.area_id = at.id
             JOIN inspection_cycle ic ON d.raised_cycle_id = ic.id
+            LEFT JOIN (
+                SELECT defect_id, comment FROM defect_history 
+                WHERE id IN (SELECT MAX(id) FROM defect_history GROUP BY defect_id)
+            ) dh ON dh.defect_id = d.id
             WHERE d.unit_id = ? AND d.status = 'open'
             ORDER BY at.area_order, ct.category_order, it.item_order
         """, [inspection['unit_id']])
@@ -228,7 +233,7 @@ def inspect_area(inspection_id, area_id):
     tenant_id = session['tenant_id']
     
     inspection = query_db("""
-        SELECT i.*, ic.cycle_number, ic.id as cycle_id
+        SELECT i.*, ic.cycle_number, ic.id as cycle_id, i.unit_id
         FROM inspection i 
         JOIN inspection_cycle ic ON i.cycle_id = ic.id 
         WHERE i.id = ? AND i.tenant_id = ?
@@ -239,6 +244,25 @@ def inspect_area(inspection_id, area_id):
     area = query_db("SELECT * FROM area_template WHERE id = ?", [area_id], one=True)
     if not area:
         abort(404)
+    
+    is_followup = inspection['cycle_number'] > 1
+    
+    # Get open defects for this unit, keyed by item_template_id
+    open_defects_map = {}
+    if is_followup:
+        open_defects = query_db("""
+            SELECT d.*, it.item_description, ic.cycle_number as raised_cycle,
+                   dh.comment as latest_comment
+            FROM defect d
+            JOIN item_template it ON d.item_template_id = it.id
+            JOIN inspection_cycle ic ON d.raised_cycle_id = ic.id
+            LEFT JOIN (
+                SELECT defect_id, comment FROM defect_history 
+                WHERE id IN (SELECT MAX(id) FROM defect_history GROUP BY defect_id)
+            ) dh ON dh.defect_id = d.id
+            WHERE d.unit_id = ? AND d.status = 'open'
+        """, [inspection['unit_id']])
+        open_defects_map = {d['item_template_id']: d for d in open_defects}
     
     # Get area-specific note for this cycle
     area_note = query_db("""
@@ -278,13 +302,27 @@ def inspect_area(inspection_id, area_id):
             ORDER BY it.item_order
         """, [inspection_id, inspection_id, cat['id']])
         
+        # Enrich items with defect info
+        items_with_defects = []
+        for item in items:
+            item_dict = dict(item)
+            defect = open_defects_map.get(item['id'])
+            if defect:
+                item_dict['has_open_defect'] = True
+                item_dict['defect_comment'] = defect['latest_comment'] or defect['original_comment']
+                item_dict['defect_cycle'] = defect['raised_cycle']
+                item_dict['defect_type'] = defect['defect_type']
+            else:
+                item_dict['has_open_defect'] = False
+            items_with_defects.append(item_dict)
+        
         # Check if all items in this category are skipped
         all_skipped = all(item['status'] == 'skipped' for item in items) if items else False
         
         categories_data.append({
             'id': cat['id'],
             'name': cat['category_name'],
-            'checklist': items,
+            'checklist': items_with_defects,
             'comment': cat_comment,
             'all_skipped': all_skipped
         })
@@ -293,7 +331,8 @@ def inspect_area(inspection_id, area_id):
                           inspection=inspection,
                           area=area,
                           area_note=area_note['note'] if area_note else None,
-                          categories=categories_data)
+                          categories=categories_data,
+                          is_followup=is_followup)
 
 
 @inspection_bp.route('/<inspection_id>/item/<item_id>', methods=['POST'])
