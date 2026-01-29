@@ -77,6 +77,19 @@ def start_inspection(unit_id):
     )
     excluded_ids = set(e['item_template_id'] for e in excluded_items)
     
+    # For follow-up cycles, get previous inspection statuses
+    previous_statuses = {}
+    if cycle['cycle_number'] > 1:
+        # Find previous cycle's inspection for this unit
+        prev_inspection = query_db("""
+            SELECT ii.item_template_id, ii.status, ii.comment
+            FROM inspection_item ii
+            JOIN inspection i ON ii.inspection_id = i.id
+            JOIN inspection_cycle ic ON i.cycle_id = ic.id
+            WHERE i.unit_id = ? AND ic.cycle_number = ?
+        """, [unit_id, cycle['cycle_number'] - 1])
+        previous_statuses = {p['item_template_id']: {'status': p['status'], 'comment': p['comment']} for p in prev_inspection}
+    
     # Create inspection_item records for all items
     items = query_db("""
         SELECT it.id
@@ -88,11 +101,25 @@ def start_inspection(unit_id):
     
     for item in items:
         item_id = generate_id()
-        status = 'skipped' if item['id'] in excluded_ids else 'pending'
+        
+        if item['id'] in excluded_ids:
+            # Excluded this cycle
+            status = 'skipped'
+            comment = None
+        elif item['id'] in previous_statuses:
+            # Copy from previous cycle
+            prev = previous_statuses[item['id']]
+            status = prev['status']
+            comment = prev['comment']
+        else:
+            # New item or first cycle
+            status = 'pending'
+            comment = None
+        
         db.execute("""
-            INSERT INTO inspection_item (id, tenant_id, inspection_id, item_template_id, status)
-            VALUES (?, ?, ?, ?, ?)
-        """, [item_id, tenant_id, inspection_id, item['id'], status])
+            INSERT INTO inspection_item (id, tenant_id, inspection_id, item_template_id, status, comment)
+            VALUES (?, ?, ?, ?, ?, ?)
+        """, [item_id, tenant_id, inspection_id, item['id'], status, comment])
     
     # Update unit status
     db.execute("UPDATE unit SET status = 'in_progress' WHERE id = ?", [unit_id])
