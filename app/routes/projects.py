@@ -133,11 +133,11 @@ def view_phase(phase_id):
                 (SELECT ic.cycle_number FROM inspection_cycle ic 
                  WHERE ic.phase_id = u.phase_id AND ic.status = 'active'
                  AND (ic.unit_start IS NULL OR (u.unit_number >= ic.unit_start AND u.unit_number <= ic.unit_end))
-                 ORDER BY ic.cycle_number LIMIT 1) as cycle_number,
+                 ORDER BY ic.cycle_number DESC LIMIT 1) as cycle_number,
                 (SELECT ic.id FROM inspection_cycle ic 
                  WHERE ic.phase_id = u.phase_id AND ic.status = 'active'
                  AND (ic.unit_start IS NULL OR (u.unit_number >= ic.unit_start AND u.unit_number <= ic.unit_end))
-                 ORDER BY ic.cycle_number LIMIT 1) as cycle_id,
+                 ORDER BY ic.cycle_number DESC LIMIT 1) as cycle_id,
                 (SELECT i.status FROM inspection i 
                  JOIN inspection_cycle ic ON i.cycle_id = ic.id
                  WHERE i.unit_id = u.id AND ic.status = 'active'
