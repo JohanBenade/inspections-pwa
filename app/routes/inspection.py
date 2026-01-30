@@ -97,8 +97,13 @@ def start_inspection(unit_id):
             comment = None
         elif item['id'] in previous_statuses:
             prev = previous_statuses[item['id']]
-            status = prev['status']
-            comment = prev['comment']
+            # Bug #1 fix: Don't copy 'skipped' from previous cycles
+            if prev['status'] == 'skipped':
+                status = 'pending'
+                comment = None
+            else:
+                status = prev['status']
+                comment = prev['comment']
         else:
             status = 'pending'
             comment = None
