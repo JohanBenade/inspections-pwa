@@ -243,6 +243,7 @@ def inspect(inspection_id):
 @require_auth
 def inspect_area(inspection_id, area_id):
     tenant_id = session['tenant_id']
+    filter_mode = request.args.get('filter', 'all')  # 'all' or 'defects'
     
     inspection = query_db("""
         SELECT i.*, u.unit_type, u.unit_number, ic.cycle_number, ic.id as cycle_id
@@ -256,6 +257,7 @@ def inspect_area(inspection_id, area_id):
         abort(404)
     
     is_initial = inspection['cycle_number'] == 1
+    is_followup = not is_initial
     
     area = query_db(
         "SELECT * FROM area_template WHERE id = ? AND tenant_id = ?",
@@ -265,59 +267,99 @@ def inspect_area(inspection_id, area_id):
     if not area:
         abort(404)
     
-    categories = query_db("""
-        SELECT ct.*, 
-               cc.id as comment_id,
+    # Get open defects for this unit (for highlighting)
+    open_defects_map = {}
+    if is_followup:
+        open_defects = query_db("""
+            SELECT d.item_template_id, d.original_comment, ic.cycle_number as raised_cycle
+            FROM defect d
+            JOIN inspection_cycle ic ON d.raised_cycle_id = ic.id
+            WHERE d.unit_id = ? AND d.status = 'open'
+        """, [inspection['unit_id']])
+        open_defects_map = {d['item_template_id']: d for d in open_defects}
+    
+    # Get category comments
+    cat_comments = query_db("""
+        SELECT cc.category_template_id, cc.id as comment_id,
                (SELECT comment FROM category_comment_history 
                 WHERE category_comment_id = cc.id 
-                ORDER BY created_at DESC LIMIT 1) as current_comment
+                ORDER BY created_at DESC LIMIT 1) as latest_comment
+        FROM category_comment cc
+        WHERE cc.unit_id = ?
+    """, [inspection['unit_id']])
+    cat_comment_map = {c['category_template_id']: c for c in cat_comments}
+    
+    categories = query_db("""
+        SELECT ct.*
         FROM category_template ct
-        LEFT JOIN category_comment cc ON ct.id = cc.category_template_id 
-            AND cc.unit_id = ?
         WHERE ct.area_id = ?
         ORDER BY ct.category_order
-    """, [inspection['unit_id'], area_id])
+    """, [area_id])
     
     category_data = []
     for cat in categories:
-        main_items = query_db("""
-            SELECT it.*, ii.status, ii.comment, ii.id as inspection_item_id
+        # Get all items for this category with their inspection status
+        items_raw = query_db("""
+            SELECT it.id as template_id, it.item_description, it.parent_item_id, it.item_order,
+                   ii.id, ii.status, ii.comment,
+                   (SELECT COUNT(*) FROM item_template WHERE parent_item_id = it.id) as child_count
             FROM item_template it
             JOIN inspection_item ii ON it.id = ii.item_template_id
             WHERE it.category_id = ? AND ii.inspection_id = ?
-            AND it.parent_item_id IS NULL
             ORDER BY it.item_order
         """, [cat['id'], inspection_id])
         
-        items_with_children = []
-        for item in main_items:
-            children = query_db("""
-                SELECT it.*, ii.status, ii.comment, ii.id as inspection_item_id
-                FROM item_template it
-                JOIN inspection_item ii ON it.id = ii.item_template_id
-                WHERE it.parent_item_id = ? AND ii.inspection_id = ?
-                ORDER BY it.item_order
-            """, [item['id'], inspection_id])
+        # Build parent status map for children
+        parent_status_map = {i['template_id']: i['status'] for i in items_raw if i['parent_item_id'] is None}
+        
+        # Build flat checklist with all needed attributes
+        checklist = []
+        all_skipped = True
+        
+        for item in items_raw:
+            # Determine if this item has an open defect
+            has_open_defect = item['template_id'] in open_defects_map
+            defect_info = open_defects_map.get(item['template_id'])
             
-            # Check for open defect on this item
-            open_defect = None
-            if not is_initial:
-                open_defect = query_db("""
-                    SELECT d.*, ic.cycle_number as raised_cycle
-                    FROM defect d
-                    JOIN inspection_cycle ic ON d.raised_cycle_id = ic.id
-                    WHERE d.unit_id = ? AND d.item_template_id = ? AND d.status = 'open'
-                """, [inspection['unit_id'], item['id']], one=True)
+            # Filter logic for follow-up cycles
+            if filter_mode == 'defects' and is_followup:
+                # Only show items with open defects or current defective status
+                is_defective = item['status'] in ['not_to_standard', 'not_installed']
+                if not has_open_defect and not is_defective:
+                    continue
             
-            items_with_children.append({
-                'item': dict(item),
-                'children': [dict(c) for c in children],
-                'open_defect': dict(open_defect) if open_defect else None
+            is_parent = item['parent_item_id'] is None
+            parent_status = None
+            if not is_parent:
+                parent_status = parent_status_map.get(item['parent_item_id'])
+            
+            if item['status'] != 'skipped':
+                all_skipped = False
+            
+            checklist.append({
+                'id': item['id'],  # inspection_item id for updates
+                'template_id': item['template_id'],
+                'item_description': item['item_description'],
+                'status': item['status'],
+                'comment': item['comment'],
+                'parent_item_id': item['parent_item_id'],
+                'depth': 0 if is_parent else 1,
+                'child_count': item['child_count'],
+                'parent_status': parent_status,
+                'has_open_defect': has_open_defect,
+                'defect_cycle': defect_info['raised_cycle'] if defect_info else None,
+                'defect_comment': defect_info['original_comment'] if defect_info else None,
             })
         
+        # Get category comment
+        cat_comment = cat_comment_map.get(cat['id'])
+        
         category_data.append({
-            'category': dict(cat),
-            'items': items_with_children
+            'id': cat['id'],
+            'name': cat['category_name'],
+            'checklist': checklist,
+            'all_skipped': all_skipped and len(checklist) > 0,
+            'comment': cat_comment,
         })
     
     area_note = query_db("""
@@ -330,6 +372,8 @@ def inspect_area(inspection_id, area_id):
                          area=area,
                          categories=category_data,
                          is_initial=is_initial,
+                         is_followup=is_followup,
+                         filter_mode=filter_mode,
                          area_note=area_note)
 
 
@@ -341,6 +385,7 @@ def update_item(inspection_id, item_id):
     
     status = request.form.get('status')
     comment = request.form.get('comment', '').strip() or None
+    area_id = request.form.get('area_id')
     
     inspection = query_db(
         "SELECT * FROM inspection WHERE id = ? AND tenant_id = ?",
@@ -376,6 +421,10 @@ def update_item(inspection_id, item_id):
         """, [status, inspection_id, item['item_template_id']])
     
     db.commit()
+    
+    # Return the updated area partial
+    if area_id:
+        return redirect(url_for('inspection.inspect_area', inspection_id=inspection_id, area_id=area_id))
     
     # Trigger HTMX to update progress bar and open defects
     from flask import Response
