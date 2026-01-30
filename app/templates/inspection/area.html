@@ -1,7 +1,7 @@
 <!-- Area inspection partial - loaded via HTMX -->
 <div class="space-y-6">
-    {% if is_followup %}
-    <!-- Filter Toggle (only for Cycle 2+) -->
+    {% if is_followup or inspection.status == 'submitted' %}
+    <!-- Filter Toggle (for Cycle 2+ OR when viewing submitted inspections) -->
     <div class="flex gap-2 mb-4">
         <button type="button"
             hx-get="{{ url_for('inspection.inspect_area', inspection_id=inspection.id, area_id=area.id) }}?filter=all"
@@ -17,7 +17,7 @@
             hx-swap="innerHTML"
             class="px-3 py-1.5 rounded text-sm font-medium transition-colors
                    {% if filter_mode == 'defects' %}bg-red-500 text-white{% else %}bg-gray-100 text-gray-600 hover:bg-gray-200{% endif %}">
-            Open Defects Only
+            Defects Only
         </button>
     </div>
     {% endif %}
