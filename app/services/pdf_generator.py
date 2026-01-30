@@ -269,6 +269,13 @@ def get_defects_data(tenant_id, unit_id, cycle_id=None):
                 'categories': categories_list
             })
     
+    # Calculate grand totals across all cycles
+    grand_total_raised = sum(stats['raised'] for stats in cycle_stats.values())
+    grand_total_rectified = sum(stats['rectified'] for stats in cycle_stats.values())
+    
+    # Determine if unit is certified (no outstanding defects)
+    is_certified = (total_not_rectified == 0 and total_new == 0 and cycle_number > 1)
+    
     # Build inspection timeline
     inspection_timeline = []
     for insp in inspections:
@@ -318,6 +325,9 @@ def get_defects_data(tenant_id, unit_id, cycle_id=None):
             except (ValueError, AttributeError):
                 insp_date = str(raw_date)
     
+    # Certification date is inspection date if certified
+    certification_date = insp_date if is_certified else None
+    
     return {
         'unit': unit,
         'project': {'project_name': unit['project_name']},
@@ -334,9 +344,14 @@ def get_defects_data(tenant_id, unit_id, cycle_id=None):
             'new': total_new,
             'excluded': total_excluded
         },
+        'grand_totals': {
+            'raised': grand_total_raised,
+            'rectified': grand_total_rectified
+        },
+        'is_certified': is_certified,
         'inspection_date': insp_date or datetime.now().strftime('%d.%m.%Y'),
         'inspector_name': inspection['inspector_name'] if inspection else 'N/A',
-        'certification_date': None
+        'certification_date': certification_date
     }
 
 

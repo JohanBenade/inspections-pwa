@@ -92,6 +92,10 @@
             color: #cc0000;
         }
         
+        .green-text {
+            color: #228B22;
+        }
+        
         .blue-text {
             color: #000;
         }
@@ -102,6 +106,11 @@
             padding: 10px 15px;
             margin: 12px 0;
             font-size: 9pt;
+        }
+        
+        .summary-box.certified {
+            background-color: #e8f5e9;
+            border: 1px solid #a5d6a7;
         }
         
         .summary-title {
@@ -133,6 +142,18 @@
         
         .summary-value.new-defects {
             color: #cc0000;
+        }
+        
+        .summary-divider {
+            border-top: 1px solid #ccc;
+            margin: 8px 0;
+        }
+        
+        .summary-status {
+            font-weight: bold;
+            font-size: 10pt;
+            color: #228B22;
+            margin-top: 4px;
         }
         
         .standards {
@@ -258,6 +279,11 @@
             font-weight: 300;
         }
         
+        .timeline-entry .certified-marker {
+            color: #228B22;
+            font-weight: bold;
+        }
+        
         .inspection-details {
             margin: 20px 0;
         }
@@ -375,23 +401,45 @@
     </div>
     
     {% if cycle_number > 1 %}
-    <div class="summary-box">
-        <div class="summary-title">Defect Summary</div>
-        <div class="summary-row">
-            <span class="summary-label">Rectified this cycle:</span>
-            <span class="summary-value rectified">{{ summary.rectified }}</span>
+        {% if is_certified %}
+        <!-- Certification Summary Box (unit cleared) -->
+        <div class="summary-box certified">
+            <div class="summary-title">Certification Summary</div>
+            <div class="summary-row">
+                <span class="summary-label">Total defects raised:</span>
+                <span class="summary-value">{{ grand_totals.raised }}</span>
+            </div>
+            <div class="summary-row">
+                <span class="summary-label">Total defects rectified:</span>
+                <span class="summary-value">{{ grand_totals.rectified }}</span>
+            </div>
+            <div class="summary-row">
+                <span class="summary-label">Outstanding:</span>
+                <span class="summary-value green-text">0</span>
+            </div>
+            <div class="summary-divider"></div>
+            <div class="summary-status">UNIT CLEARED &amp; CERTIFIED</div>
         </div>
-        <div class="summary-row">
-            <span class="summary-label">Not rectified:</span>
-            <span class="summary-value not-rectified">{{ summary.not_rectified }}</span>
-        </div>
-        {% if summary.new > 0 %}
-        <div class="summary-row">
-            <span class="summary-label">New defects this cycle:</span>
-            <span class="summary-value new-defects">{{ summary.new }}</span>
+        {% else %}
+        <!-- Defect Summary Box (defects still open) -->
+        <div class="summary-box">
+            <div class="summary-title">Defect Summary</div>
+            <div class="summary-row">
+                <span class="summary-label">Rectified this cycle:</span>
+                <span class="summary-value rectified">{{ summary.rectified }}</span>
+            </div>
+            <div class="summary-row">
+                <span class="summary-label">Not rectified:</span>
+                <span class="summary-value not-rectified">{{ summary.not_rectified }}</span>
+            </div>
+            {% if summary.new > 0 %}
+            <div class="summary-row">
+                <span class="summary-label">New defects this cycle:</span>
+                <span class="summary-value new-defects">{{ summary.new }}</span>
+            </div>
+            {% endif %}
         </div>
         {% endif %}
-    </div>
     {% endif %}
     
     <div class="standards">
@@ -445,8 +493,10 @@
         <div class="timeline-entry">
             {% if entry.cycle_number == 1 %}
             Cycle {{ entry.cycle_number }}: {{ entry.date }} - {{ entry.inspector }} ({{ entry.raised }} defects raised)
+            {% elif loop.last and is_certified %}
+            Cycle {{ entry.cycle_number }}: {{ entry.date }} - {{ entry.inspector }} ({{ entry.rectified }} rectified, {{ entry.outstanding }} outstanding) - <span class="certified-marker">Certified &#10003;</span>
             {% else %}
-            Cycle {{ entry.cycle_number }}: {{ entry.date }} - {{ entry.inspector }} ({{ entry.rectified }} rectified, {{ summary.not_rectified }} outstanding{% if entry.raised > 0 %}, {{ entry.raised }} new{% endif %})
+            Cycle {{ entry.cycle_number }}: {{ entry.date }} - {{ entry.inspector }} ({{ entry.rectified }} rectified, {{ entry.outstanding }} outstanding{% if entry.raised > 0 %}, {{ entry.raised }} new{% endif %})
             {% endif %}
         </div>
         {% endfor %}
@@ -461,8 +511,12 @@
     
     <div class="closing-section">
         <div class="closing-text">
+            {% if is_certified %}
+            <p>All defects have been rectified and this unit is hereby certified as complete.</p>
+            {% else %}
             <p>We trust you find the above in order and will rectify any defect within the afforded contract period.</p>
             <p>We await an invitation for a follow up inspection if required.</p>
+            {% endif %}
         </div>
         
         <div class="signature-block">
