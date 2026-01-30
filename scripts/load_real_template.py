@@ -2,12 +2,12 @@
 """
 Load real inspection template from Excel file.
 Designed for Power Park Student Housing Phase 3.
+Uses openpyxl (no pandas dependency).
 """
 
 import sqlite3
 import uuid
-import pandas as pd
-from pathlib import Path
+from openpyxl import load_workbook
 
 # Configuration
 DB_PATH = '/var/data/inspections.db'
@@ -15,15 +15,15 @@ EXCEL_PATH = 'attached_assets/Defective_works_Unit_empty_20260126.xlsx'
 TENANT_ID = 'MONOGRAPH'
 UNIT_TYPE = 'STANDARD'
 
-# Area definitions: (start_row, end_row, area_name)
+# Area definitions: (start_row, end_row, area_name) - 1-indexed for openpyxl
 AREAS = [
-    (23, 199, 'KITCHEN'),
-    (200, 240, 'LOUNGE'),
-    (241, 354, 'BATHROOM'),
-    (355, 445, 'BEDROOM A'),
-    (446, 536, 'BEDROOM B'),
-    (537, 627, 'BEDROOM C'),
-    (628, 747, 'BEDROOM D'),
+    (24, 200, 'KITCHEN'),
+    (201, 241, 'LOUNGE'),
+    (242, 355, 'BATHROOM'),
+    (356, 446, 'BEDROOM A'),
+    (447, 537, 'BEDROOM B'),
+    (538, 628, 'BEDROOM C'),
+    (629, 748, 'BEDROOM D'),
 ]
 
 
@@ -31,8 +31,12 @@ def generate_id():
     return str(uuid.uuid4())
 
 
+def get_cell_value(ws, row, col):
+    val = ws.cell(row=row, column=col).value
+    return str(val).strip() if val is not None else ""
+
+
 def is_category_header(col0, col1):
-    """Check if row is a category header (uppercase, no checkbox)"""
     if not col0:
         return False
     if col1 in ['False', 'True', 'FALSE', 'TRUE']:
@@ -45,14 +49,14 @@ def is_category_header(col0, col1):
 
 
 def is_inspection_item(col0, col1):
-    """Check if row is an inspection item (has checkbox value)"""
     return col0 and col1 in ['False', 'True', 'FALSE', 'TRUE']
 
 
 def load_template():
     print("Loading Excel file...")
-    df = pd.read_excel(EXCEL_PATH, header=None)
-    print(f"Total rows in Excel: {len(df)}")
+    wb = load_workbook(EXCEL_PATH, read_only=True, data_only=True)
+    ws = wb.active
+    print(f"Sheet: {ws.title}")
     
     conn = sqlite3.connect(DB_PATH)
     cur = conn.cursor()
@@ -83,9 +87,9 @@ def load_template():
         item_order = 0
         area_item_count = 0
         
-        for i in range(start, end + 1):
-            col0 = str(df.iloc[i, 0]).strip() if pd.notna(df.iloc[i, 0]) else ""
-            col1 = str(df.iloc[i, 1]).strip() if pd.notna(df.iloc[i, 1]) else ""
+        for row in range(start, end + 1):
+            col0 = get_cell_value(ws, row, 1)
+            col1 = get_cell_value(ws, row, 2)
             
             if not col0:
                 continue
@@ -106,13 +110,14 @@ def load_template():
                 cur.execute("""
                     INSERT INTO item_template 
                     (id, tenant_id, category_id, parent_item_id, item_description, item_order, depth)
-                    VALUES (?, ?, ?, ?, ?, ?, ?)"
+                    VALUES (?, ?, ?, ?, ?, ?, ?)
                 """, (item_id, TENANT_ID, area_id, current_category_id, col0, item_order, 1))
         
         print(f"  {area_name}: {area_item_count} items")
         total_items += area_item_count
     
     conn.commit()
+    wb.close()
     
     cur.execute("SELECT area_name FROM area_template WHERE tenant_id = ? ORDER BY area_order", (TENANT_ID,))
     areas_result = [row[0] for row in cur.fetchall()]
