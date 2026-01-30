@@ -1,0 +1,23 @@
+{% if not is_initial and open_defects %}
+<div id="open-defects-section" class="bg-red-50 border border-red-200 rounded-lg p-4 mb-4"
+     hx-get="{{ url_for('inspection.get_open_defects', inspection_id=inspection_id) }}"
+     hx-trigger="areaUpdated from:body"
+     hx-swap="outerHTML">
+    <h3 class="font-medium text-red-800 mb-2">Open Defects ({{ open_defects|length }})</h3>
+    <div class="space-y-2">
+        {% for defect in open_defects %}
+        <div class="text-sm">
+            <span class="text-red-700 font-medium">{{ defect.area_name }} / {{ defect.category_name }}</span>
+            <span class="text-red-600">- {{ defect.item_description }}</span>
+            <span class="text-red-500 text-xs">(Cycle {{ defect.raised_cycle }})</span>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% else %}
+<div id="open-defects-section" class="hidden"
+     hx-get="{{ url_for('inspection.get_open_defects', inspection_id=inspection_id) }}"
+     hx-trigger="areaUpdated from:body"
+     hx-swap="outerHTML">
+</div>
+{% endif %}

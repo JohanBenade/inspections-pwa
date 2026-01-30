@@ -38,21 +38,8 @@
         </div>
     </div>
 
-    <!-- Open Defects from Previous Cycles -->
-    {% if not is_initial and open_defects %}
-    <div class="bg-red-50 border border-red-200 rounded-lg p-4 mb-4">
-        <h3 class="font-medium text-red-800 mb-2">Open Defects ({{ open_defects|length }})</h3>
-        <div class="space-y-2">
-            {% for defect in open_defects %}
-            <div class="text-sm">
-                <span class="text-red-700 font-medium">{{ defect.area_name }} / {{ defect.category_name }}</span>
-                <span class="text-red-600">- {{ defect.item_description }}</span>
-                <span class="text-red-500 text-xs">(Cycle {{ defect.raised_cycle }})</span>
-            </div>
-            {% endfor %}
-        </div>
-    </div>
-    {% endif %}
+    <!-- Open Defects from Previous Cycles (now a partial that refreshes) -->
+    {% include 'inspection/_open_defects.html' %}
 
     <!-- Area Tabs -->
     <div class="bg-white rounded-lg shadow mb-4">
@@ -114,10 +101,16 @@
                 
                 <!-- Content -->
                 <h3 class="text-lg font-semibold text-gray-900 text-center mb-2">Submit Inspection?</h3>
-                <p class="text-sm text-gray-500 text-center mb-6">
+                <p class="text-sm text-gray-500 text-center mb-2">
                     Please confirm all items have been checked before submitting.
+                </p>
+                <!-- Defect count that updates dynamically -->
+                <p id="submit-defect-count" class="text-sm text-center mb-6"
+                   hx-get="{{ url_for('inspection.get_defect_count', inspection_id=inspection.id) }}"
+                   hx-trigger="areaUpdated from:body"
+                   hx-swap="innerHTML">
                     {% if progress.defects > 0 %}
-                    <br><span class="text-red-600 font-medium">{{ progress.defects }} defect{{ 's' if progress.defects != 1 else '' }} will be raised.</span>
+                    <span class="text-red-600 font-medium">{{ progress.defects }} defect{{ 's' if progress.defects != 1 else '' }} will be raised.</span>
                     {% endif %}
                 </p>
                 
