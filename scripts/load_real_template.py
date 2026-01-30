@@ -21,6 +21,7 @@ td = {'KITCHEN': {'o': 1, 'cats': {'DOORS': {'o': 1, 'i': [{'n': 'D1 & D1a leaf'
 for i, nm in enumerate(['BEDROOM A', 'BEDROOM B', 'BEDROOM C', 'BEDROOM D'], 4):
     td[nm] = {'o': i, 'cats': copy.deepcopy(bc)}
 
+# Columns: id, tenant_id, category_id, parent_item_id, item_description, item_order, depth
 for an, ad in td.items():
     aid = gen_id()
     cur.execute('INSERT INTO area_template VALUES (?,?,?,?,?)', [aid, tenant_id, an, ad['o'], 'standard'])
@@ -30,10 +31,12 @@ for an, ad in td.items():
         io = 1
         for it in cd['i']:
             pid = gen_id()
-            cur.execute('INSERT INTO item_template VALUES (?,?,?,?,?,NULL)', [pid, tenant_id, cid, it['n'], io])
+            # parent: depth=0
+            cur.execute('INSERT INTO item_template (id, tenant_id, category_id, parent_item_id, item_description, item_order, depth) VALUES (?,?,?,?,?,?,?)', [pid, tenant_id, cid, None, it['n'], io, 0])
             io += 1
             for ch in it['c']:
-                cur.execute('INSERT INTO item_template VALUES (?,?,?,?,?,?)', [gen_id(), tenant_id, cid, ch, io, pid])
+                # child: depth=1
+                cur.execute('INSERT INTO item_template (id, tenant_id, category_id, parent_item_id, item_description, item_order, depth) VALUES (?,?,?,?,?,?,?)', [gen_id(), tenant_id, cid, pid, ch, io, 1])
                 io += 1
 
 conn.commit()
