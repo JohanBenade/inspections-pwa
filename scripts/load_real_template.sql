@@ -8,13 +8,13 @@ DELETE FROM item_template WHERE tenant_id = 'MONOGRAPH';
 DELETE FROM category_template WHERE tenant_id = 'MONOGRAPH';
 DELETE FROM area_template WHERE tenant_id = 'MONOGRAPH';
 
-INSERT INTO area_template (id, tenant_id, area_name, area_order) VALUES ('f02dcb81', 'MONOGRAPH', 'KITCHEN', 1);
-INSERT INTO area_template (id, tenant_id, area_name, area_order) VALUES ('53c2b174', 'MONOGRAPH', 'LOUNGE', 2);
-INSERT INTO area_template (id, tenant_id, area_name, area_order) VALUES ('72264fe6', 'MONOGRAPH', 'BATHROOM', 3);
-INSERT INTO area_template (id, tenant_id, area_name, area_order) VALUES ('383b8cb4', 'MONOGRAPH', 'BEDROOM A', 4);
-INSERT INTO area_template (id, tenant_id, area_name, area_order) VALUES ('62f71a83', 'MONOGRAPH', 'BEDROOM B', 5);
-INSERT INTO area_template (id, tenant_id, area_name, area_order) VALUES ('f9af3e17', 'MONOGRAPH', 'BEDROOM C', 6);
-INSERT INTO area_template (id, tenant_id, area_name, area_order) VALUES ('9cea6eef', 'MONOGRAPH', 'BEDROOM D', 7);
+INSERT INTO area_template (id, tenant_id, unit_type, area_name, area_order) VALUES ('f02dcb81', 'MONOGRAPH', '4-Bed', 'KITCHEN', 1);
+INSERT INTO area_template (id, tenant_id, unit_type, area_name, area_order) VALUES ('53c2b174', 'MONOGRAPH', '4-Bed', 'LOUNGE', 2);
+INSERT INTO area_template (id, tenant_id, unit_type, area_name, area_order) VALUES ('72264fe6', 'MONOGRAPH', '4-Bed', 'BATHROOM', 3);
+INSERT INTO area_template (id, tenant_id, unit_type, area_name, area_order) VALUES ('383b8cb4', 'MONOGRAPH', '4-Bed', 'BEDROOM A', 4);
+INSERT INTO area_template (id, tenant_id, unit_type, area_name, area_order) VALUES ('62f71a83', 'MONOGRAPH', '4-Bed', 'BEDROOM B', 5);
+INSERT INTO area_template (id, tenant_id, unit_type, area_name, area_order) VALUES ('f9af3e17', 'MONOGRAPH', '4-Bed', 'BEDROOM C', 6);
+INSERT INTO area_template (id, tenant_id, unit_type, area_name, area_order) VALUES ('9cea6eef', 'MONOGRAPH', '4-Bed', 'BEDROOM D', 7);
 
 INSERT INTO category_template (id, tenant_id, area_id, category_name, category_order) VALUES ('6c4d9bac', 'MONOGRAPH', 'f02dcb81', 'DOORS', 1);
 INSERT INTO category_template (id, tenant_id, area_id, category_name, category_order) VALUES ('35956ff8', 'MONOGRAPH', 'f02dcb81', 'WALLS', 2);
