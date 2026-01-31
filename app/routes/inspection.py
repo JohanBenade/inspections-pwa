@@ -551,7 +551,7 @@ def submit_inspection(inspection_id):
         
         if pending['count'] > 0:
             from flask import flash
-            flash(f"{pending['count']} main items not yet inspected", 'error')
+            flash(f"{pending['count']} items not yet inspected", 'error')
             return redirect(url_for('inspection.inspect', inspection_id=inspection_id))
         
         missing_comments = query_db("""
