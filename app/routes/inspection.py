@@ -149,7 +149,7 @@ def inspect(inspection_id):
         FROM inspection_item ii
         JOIN item_template it ON ii.item_template_id = it.id
         WHERE ii.inspection_id = ?
-        AND it.parent_item_id IS NULL
+        
     """, [inspection_id], one=True)
     
     defect_count = query_db("""
@@ -546,7 +546,7 @@ def submit_inspection(inspection_id):
             JOIN item_template it ON ii.item_template_id = it.id
             WHERE ii.inspection_id = ? 
             AND ii.status = 'pending'
-            AND it.parent_item_id IS NULL
+            
         """, [inspection_id], one=True)
         
         if pending['count'] > 0:
@@ -675,7 +675,7 @@ def get_progress(inspection_id):
         FROM inspection_item ii
         JOIN item_template it ON ii.item_template_id = it.id
         WHERE ii.inspection_id = ?
-        AND it.parent_item_id IS NULL
+        
     """, [inspection_id], one=True)
     
     defect_count = query_db("""
