@@ -257,7 +257,7 @@ def inspect_area(inspection_id, area_id):
     
     # Show filter for architect role always, or for follow-up inspections
     user_role = session.get('role', 'student')
-    show_filter = (user_role == 'architect') or is_followup
+    show_filter = True  # Show filter for all users
     
     area = query_db(
         "SELECT * FROM area_template WHERE id = ? AND tenant_id = ?",
