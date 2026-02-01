@@ -11,13 +11,17 @@
 <div class="w-full bg-gray-200 rounded-full h-2.5">
     <div class="bg-blue-600 rounded-full h-2.5 transition-all" style="width: {{ pct }}%"></div>
 </div>
-<div class="flex justify-between text-xs mt-1">
+<div class="flex justify-between items-center text-xs mt-1">
     {% if progress.defects > 0 %}
     <span class="text-red-600">{{ progress.defects }} defect{% if progress.defects != 1 %}s{% endif %}</span>
     {% else %}
     <span></span>
     {% endif %}
     {% if pct >= 100 %}
-    <span class="text-green-600 font-medium">Ready to submit</span>
+    <button type="button" 
+            onclick="document.getElementById('submit-modal').classList.remove('hidden')"
+            class="px-3 py-1 bg-green-600 text-white text-xs font-medium rounded hover:bg-green-700 transition-colors">
+        Submit
+    </button>
     {% endif %}
 </div>
