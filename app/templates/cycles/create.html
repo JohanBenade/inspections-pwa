@@ -53,7 +53,7 @@
                 General Notes
             </label>
             <textarea id="general_notes" name="general_notes" rows="4"
-                      class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 auto-caps"
                       placeholder="Site conditions, items not testable, contractor notes..."></textarea>
             <p class="text-xs text-gray-500 mt-1">These notes will appear on all inspection reports for this cycle</p>
         </div>
@@ -74,4 +74,15 @@
         </p>
     </form>
 </div>
+
+<script>
+    // Auto-capitalize first character
+    document.querySelectorAll('.auto-caps').forEach(function(input) {
+        input.addEventListener('input', function(e) {
+            if (this.value.length === 1) {
+                this.value = this.value.charAt(0).toUpperCase();
+            }
+        });
+    });
+</script>
 {% endblock %}
