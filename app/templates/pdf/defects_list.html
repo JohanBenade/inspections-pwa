@@ -400,7 +400,28 @@
         <span class="metadata-value red-text">{{ cycle.cycle_number if cycle else '1' }}</span>
     </div>
     
-    {% if cycle_number > 1 %}
+    {% if cycle_number == 1 %}
+    <!-- Cycle 1 Inspection Summary Box -->
+    <div class="summary-box">
+        <div class="summary-title">Inspection Summary</div>
+        <div class="summary-row">
+            <span class="summary-label">Total items:</span>
+            <span class="summary-value">{{ inspection_summary.total }}</span>
+        </div>
+        <div class="summary-row">
+            <span class="summary-label">Excluded:</span>
+            <span class="summary-value">{{ inspection_summary.excluded }}</span>
+        </div>
+        <div class="summary-row">
+            <span class="summary-label">Inspected:</span>
+            <span class="summary-value">{{ inspection_summary.inspected }}</span>
+        </div>
+        <div class="summary-row">
+            <span class="summary-label">Defects raised:</span>
+            <span class="summary-value not-rectified">{{ inspection_summary.defects }}</span>
+        </div>
+    </div>
+    {% elif cycle_number > 1 %}
         {% if is_certified %}
         <!-- Certification Summary Box (unit cleared) -->
         <div class="summary-box certified">

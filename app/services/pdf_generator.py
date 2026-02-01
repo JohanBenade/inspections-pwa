@@ -328,6 +328,22 @@ def get_defects_data(tenant_id, unit_id, cycle_id=None):
     # Certification date is inspection date if certified
     certification_date = insp_date if is_certified else None
     
+    # Get total inspection items for Cycle 1 summary
+    total_items = 0
+    if inspection:
+        item_count = query_db(
+            "SELECT COUNT(*) as cnt FROM inspection_item WHERE inspection_id = ?",
+            [inspection['id']], one=True
+        )
+        total_items = item_count['cnt'] if item_count else 0
+    
+    inspection_summary = {
+        'total': total_items,
+        'excluded': total_excluded,
+        'inspected': total_items - total_excluded,
+        'defects': total_new if cycle_number == 1 else total_defects
+    }
+    
     return {
         'unit': unit,
         'project': {'project_name': unit['project_name']},
@@ -348,6 +364,7 @@ def get_defects_data(tenant_id, unit_id, cycle_id=None):
             'raised': grand_total_raised,
             'rectified': grand_total_rectified
         },
+        'inspection_summary': inspection_summary,
         'is_certified': is_certified,
         'inspection_date': insp_date or datetime.now().strftime('%d.%m.%Y'),
         'inspector_name': inspection['inspector_name'] if inspection else 'N/A',
