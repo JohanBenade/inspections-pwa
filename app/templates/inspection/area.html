@@ -19,6 +19,14 @@
                    {% if filter_mode == 'defects' %}bg-red-500 text-white{% else %}bg-gray-100 text-gray-600 hover:bg-gray-200{% endif %}">
             Defects Only
         </button>
+        <button type="button"
+            hx-get="{{ url_for('inspection.inspect_area', inspection_id=inspection.id, area_id=area.id) }}?filter=excluded"
+            hx-target="#area-content"
+            hx-swap="innerHTML"
+            class="px-3 py-1.5 rounded text-sm font-medium transition-colors
+                   {% if filter_mode == 'excluded' %}bg-orange-500 text-white{% else %}bg-gray-100 text-gray-600 hover:bg-gray-200{% endif %}">
+            Excluded
+        </button>
     </div>
     {% endif %}
 

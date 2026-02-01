@@ -360,6 +360,11 @@ def inspect_area(inspection_id, area_id):
                     if not is_defective and not has_open_defect:
                         continue
             
+            if filter_mode == 'excluded':
+                # Only show skipped/excluded items
+                if item['status'] != 'skipped':
+                    continue
+            
             parent_status = None
             if is_child:
                 parent_status = parent_status_map.get(item['parent_item_id'])
