@@ -587,3 +587,7 @@ INSERT INTO item_template (id, tenant_id, category_id, parent_item_id, item_desc
 INSERT INTO item_template (id, tenant_id, category_id, parent_item_id, item_description, item_order, depth) VALUES ('34d53e14', 'MONOGRAPH', '1c737d4a', NULL, 'Blind', 9, 0);
 INSERT INTO item_template (id, tenant_id, category_id, parent_item_id, item_description, item_order, depth) VALUES ('e4104535', 'MONOGRAPH', '1c737d4a', '34d53e14', 'installation', 10, 1);
 INSERT INTO item_template (id, tenant_id, category_id, parent_item_id, item_description, item_order, depth) VALUES ('5d30fb30', 'MONOGRAPH', '1c737d4a', '34d53e14', 'operation', 11, 1);
+-- Added 01 Feb 2026: Missing items for exclusion tracking
+INSERT INTO item_template (id, tenant_id, category_id, parent_item_id, item_description, item_order, depth) VALUES ('ff57e58c', 'MONOGRAPH', 'c8b4c5ed', NULL, 'fire blanket', 9, 1);
+INSERT INTO item_template (id, tenant_id, category_id, parent_item_id, item_description, item_order, depth) VALUES ('74fef16f', 'MONOGRAPH', 'ec6d163b', '2a603234', 'control panel', 17, 1);
+INSERT INTO item_template (id, tenant_id, category_id, parent_item_id, item_description, item_order, depth) VALUES ('6a8feed6', 'MONOGRAPH', '0e4d88ff', 'f82f2865', 'control panel', 14, 1);
