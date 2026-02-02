@@ -2,7 +2,7 @@
 PDF routes - Generate and download PDF reports.
 """
 from flask import Blueprint, session, abort, Response
-from app.auth import require_architect
+from app.auth import require_team_lead
 from app.services.db import query_db
 from app.services.pdf_generator import generate_defects_pdf, generate_pdf_filename
 
@@ -10,7 +10,7 @@ pdf_bp = Blueprint('pdf', __name__, url_prefix='/pdf')
 
 
 @pdf_bp.route('/defects/<unit_id>')
-@require_architect
+@require_team_lead
 def download_defects_pdf(unit_id):
     """Generate and download defects list PDF for a unit."""
     tenant_id = session['tenant_id']
@@ -61,7 +61,7 @@ def download_defects_pdf(unit_id):
 
 
 @pdf_bp.route('/defects/<unit_id>/preview')
-@require_architect
+@require_team_lead
 def preview_defects_pdf(unit_id):
     """Preview defects list PDF in browser (inline)."""
     tenant_id = session['tenant_id']

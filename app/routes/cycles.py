@@ -4,7 +4,7 @@ Create cycles, set exclusions, add general notes.
 """
 from datetime import date
 from flask import Blueprint, render_template, session, redirect, url_for, abort, request
-from app.auth import require_architect
+from app.auth import require_team_lead, require_manager
 from app.utils import generate_id
 from app.services.db import get_db, query_db
 
@@ -12,7 +12,7 @@ cycles_bp = Blueprint('cycles', __name__, url_prefix='/cycles')
 
 
 @cycles_bp.route('/')
-@require_architect
+@require_team_lead
 def list_cycles():
     """List all inspection cycles for current phase."""
     tenant_id = session['tenant_id']
@@ -46,7 +46,7 @@ def list_cycles():
 
 
 @cycles_bp.route('/create', methods=['GET', 'POST'])
-@require_architect
+@require_team_lead
 def create_cycle():
     """Create a new inspection cycle."""
     tenant_id = session['tenant_id']
@@ -106,7 +106,7 @@ def create_cycle():
 
 
 @cycles_bp.route('/<cycle_id>')
-@require_architect
+@require_team_lead
 def view_cycle(cycle_id):
     """View cycle details and inspection status."""
     tenant_id = session['tenant_id']
@@ -171,7 +171,7 @@ def view_cycle(cycle_id):
 
 
 @cycles_bp.route('/<cycle_id>/edit', methods=['GET', 'POST'])
-@require_architect
+@require_team_lead
 def edit_cycle(cycle_id):
     """Edit cycle - set exclusions and notes."""
     tenant_id = session['tenant_id']
@@ -299,7 +299,7 @@ def edit_cycle(cycle_id):
 
 
 @cycles_bp.route('/<cycle_id>/exclude', methods=['POST'])
-@require_architect
+@require_team_lead
 def toggle_exclusion(cycle_id):
     """Toggle item exclusion (HTMX)."""
     tenant_id = session['tenant_id']
@@ -341,7 +341,7 @@ def toggle_exclusion(cycle_id):
 
 
 @cycles_bp.route('/<cycle_id>/close', methods=['POST'])
-@require_architect
+@require_manager
 def close_cycle(cycle_id):
     """Close a cycle (no more inspections allowed)."""
     tenant_id = session['tenant_id']
@@ -362,7 +362,7 @@ def close_cycle(cycle_id):
 
 
 @cycles_bp.route('/<cycle_id>/reopen', methods=['POST'])
-@require_architect
+@require_manager
 def reopen_cycle(cycle_id):
     """Reopen a closed cycle."""
     tenant_id = session['tenant_id']
@@ -383,7 +383,7 @@ def reopen_cycle(cycle_id):
 
 
 @cycles_bp.route('/<cycle_id>/delete', methods=['POST'])
-@require_architect
+@require_manager
 def delete_cycle(cycle_id):
     """Delete a cycle (only if no inspections started)."""
     tenant_id = session['tenant_id']

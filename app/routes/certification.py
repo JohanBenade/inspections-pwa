@@ -3,7 +3,7 @@ Certification routes - Architect's management dashboard.
 View units by status, certify cleared units, reopen if needed.
 """
 from flask import Blueprint, render_template, session, redirect, url_for, abort, request
-from app.auth import require_architect
+from app.auth import require_team_lead, require_manager
 from app.services.db import get_db, query_db
 
 certification_bp = Blueprint('certification', __name__, url_prefix='/certification')
@@ -44,7 +44,7 @@ STATUS_INFO = {
 
 
 @certification_bp.route('/')
-@require_architect
+@require_team_lead
 def dashboard():
     """Certification Dashboard - units grouped by status."""
     tenant_id = session['tenant_id']
@@ -173,7 +173,7 @@ def dashboard():
 
 
 @certification_bp.route('/unit/<unit_id>')
-@require_architect
+@require_team_lead
 def view_unit(unit_id):
     """Redirect to inspection page for this unit."""
     tenant_id = session['tenant_id']
@@ -207,7 +207,7 @@ def view_unit(unit_id):
 
 
 @certification_bp.route('/unit/<unit_id>/certify', methods=['POST'])
-@require_architect
+@require_manager
 def certify_unit(unit_id):
     tenant_id = session['tenant_id']
     db = get_db()
@@ -230,7 +230,7 @@ def certify_unit(unit_id):
 
 
 @certification_bp.route('/unit/<unit_id>/reopen', methods=['POST'])
-@require_architect
+@require_manager
 def reopen_unit(unit_id):
     tenant_id = session['tenant_id']
     db = get_db()
@@ -253,7 +253,7 @@ def reopen_unit(unit_id):
 
 
 @certification_bp.route('/unit/<unit_id>/defect/<defect_id>/update', methods=['POST'])
-@require_architect
+@require_team_lead
 def update_defect(unit_id, defect_id):
     tenant_id = session['tenant_id']
     db = get_db()
@@ -295,7 +295,7 @@ def update_defect(unit_id, defect_id):
 
 
 @certification_bp.route('/unit/<unit_id>/category-note', methods=['POST'])
-@require_architect
+@require_team_lead
 def update_category_note(unit_id):
     tenant_id = session['tenant_id']
     db = get_db()

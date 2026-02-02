@@ -5,14 +5,14 @@ Project-level view of all defects across units.
 from datetime import date
 from collections import OrderedDict
 from flask import Blueprint, render_template, session, request, abort
-from app.auth import require_auth
+from app.auth import require_team_lead
 from app.services.db import query_db
 
 defects_bp = Blueprint('defects', __name__, url_prefix='/defects')
 
 
 @defects_bp.route('/')
-@require_auth
+@require_team_lead
 def register():
     """Defects register - filterable list of all defects."""
     tenant_id = session['tenant_id']
@@ -174,7 +174,7 @@ def register():
 
 
 @defects_bp.route('/phase/<phase_id>')
-@require_auth
+@require_team_lead
 def phase_register(phase_id):
     """Phase-level defects register with grouping by unit."""
     tenant_id = session['tenant_id']
