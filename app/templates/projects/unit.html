@@ -68,32 +68,36 @@
 <div class="mb-6">
     <h2 class="text-lg font-semibold text-gray-800 mb-3">Open Defects ({{ open_defects|length }})</h2>
     <div class="bg-white rounded-lg shadow overflow-hidden">
-        <table class="min-w-full">
-            <thead class="bg-gray-100">
-                <tr>
-                    <th class="px-4 py-2 text-left text-xs font-medium text-gray-500">Item</th>
-                    <th class="px-4 py-2 text-left text-xs font-medium text-gray-500">Area / Category</th>
-                    <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 w-1/3">Description</th>
-                    <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 w-24">Raised</th>
-                    <th class="px-4 py-2 text-center text-xs font-medium text-gray-500 w-16">Status</th>
-                </tr>
-            </thead>
-            <tbody class="divide-y divide-gray-100">
-                {% for defect in open_defects %}
-                <tr class="hover:bg-gray-50">
-                    <td class="px-4 py-2 text-sm text-gray-900">{{ defect.item_description }}</td>
-                    <td class="px-4 py-2 text-xs text-gray-500">{{ defect.area_name }} / {{ defect.category_name }}</td>
-                    <td class="px-4 py-2 text-sm text-red-700 w-1/3">{{ defect.original_comment or "-" }}</td>
-                    <td class="px-4 py-2 text-xs text-gray-500 w-24">{{ defect.created_at[:10] if defect.created_at else "" }}<br></td>
-                    <td class="px-4 py-2 text-center w-16"><span class="px-2 py-1 text-xs font-medium rounded bg-red-100 text-red-800">Open</span></td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
+        {% set current_area = namespace(value='') %}
+        {% set current_cat = namespace(value='') %}
+        
+        {% for defect in open_defects %}
+            {% if defect.area_name != current_area.value or defect.category_name != current_cat.value %}
+                {% if current_area.value != '' %}
+                </tbody></table>
+                {% endif %}
+                <!-- Category Header -->
+                <div class="bg-gray-100 px-4 py-2 border-b border-t">
+                    <span class="font-semibold text-gray-800">{{ defect.area_name }}</span>
+                    <span class="text-gray-500 mx-2">&rsaquo;</span>
+                    <span class="text-gray-700">{{ defect.category_name }}</span>
+                </div>
+                <table class="min-w-full">
+                <tbody class="divide-y divide-gray-100">
+                {% set current_area.value = defect.area_name %}
+                {% set current_cat.value = defect.category_name %}
+            {% endif %}
+            <tr class="hover:bg-gray-50">
+                <td class="px-4 py-2 text-sm text-gray-900 w-1/4">{{ defect.item_description }}</td>
+                <td class="px-4 py-2 text-sm text-red-700 w-1/3">{{ defect.original_comment or "-" }}</td>
+                <td class="px-4 py-2 text-xs text-gray-500 w-24">{{ defect.created_at[:10] if defect.created_at else "" }}</td>
+                <td class="px-4 py-2 text-center w-16"><span class="px-2 py-1 text-xs font-medium rounded bg-red-100 text-red-800">Open</span></td>
+            </tr>
+        {% endfor %}
+        </tbody></table>
     </div>
 </div>
 {% endif %}
-
 <!-- Inspection History -->
 {% if inspections %}
 <div>
