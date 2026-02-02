@@ -220,7 +220,7 @@ def inspect(inspection_id):
         [inspection['unit_id']], one=True
     )['count'] > 0
     
-    current_user = {'role': session.get('role', 'student')}
+    current_user = {'role': session.get('role', 'inspector')}
     
     return render_template('inspection/inspect.html',
                          inspection=inspection,
@@ -256,7 +256,7 @@ def inspect_area(inspection_id, area_id):
     is_followup = not is_initial
     
     # Show filter for architect role always, or for follow-up inspections
-    user_role = session.get('role', 'student')
+    user_role = session.get('role', 'inspector')
     show_filter = True  # Show filter for all users
     
     area = query_db(
@@ -662,8 +662,8 @@ def submit_inspection(inspection_id):
     
     db.commit()
     
-    role = session.get('role', 'student')
-    if role == 'architect':
+    role = session.get('role', 'inspector')
+    if role in ('manager', 'admin'):
         return redirect(url_for('certification.dashboard'))
     else:
         return redirect(url_for('projects.view_unit', unit_id=inspection['unit_id']))
