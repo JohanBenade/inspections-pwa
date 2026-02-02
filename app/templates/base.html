@@ -79,7 +79,7 @@
                         <a href="{{ url_for('projects.list_projects') }}" class="text-sm text-gray-300 hover:text-white">Projects</a>
                         {% if current_user.role in ['team_lead', 'manager', 'admin'] %}
                         <a href="{{ url_for('cycles.list_cycles') }}" class="text-sm text-gray-300 hover:text-white">Cycles</a>
-                        <a href="{{ url_for('certification.dashboard') }}" class="text-sm text-gray-300 hover:text-white">Certify</a>
+                        <a href="{{ url_for('certification.dashboard') }}" class="text-sm text-gray-300 hover:text-white">Approvals</a>
                         <a href="{{ url_for('defects.register') }}" class="text-sm text-gray-300 hover:text-white">Defects</a>
                         {% endif %}
                     </div>
@@ -150,7 +150,7 @@
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
                           d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"/>
                 </svg>
-                <span class="text-xs mt-1">Certify</span>
+                <span class="text-xs mt-1">Approvals</span>
             </a>
             
             <!-- Defects - team_lead and above -->
