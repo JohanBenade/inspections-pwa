@@ -225,11 +225,12 @@ def view_unit(unit_id):
     """, [unit_id, unit['phase_id'], unit['unit_code'], unit['unit_code']])
     
     open_defects = query_db("""
-        SELECT d.*, it.item_description, ct.category_name, at.area_name
+        SELECT d.*, it.item_description, ct.category_name, at.area_name, parent.item_description as parent_description
         FROM defect d
         JOIN item_template it ON d.item_template_id = it.id
         JOIN category_template ct ON it.category_id = ct.id
         JOIN area_template at ON ct.area_id = at.id
+        LEFT JOIN item_template parent ON it.parent_item_id = parent.id
         WHERE d.unit_id = ? AND d.status = 'open'
         ORDER BY at.area_order, ct.category_order, it.item_order
     """, [unit_id])
