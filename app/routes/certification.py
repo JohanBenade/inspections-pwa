@@ -11,50 +11,50 @@ certification_bp = Blueprint('certification', __name__, url_prefix='/certificati
 
 STATUS_INFO = {
     'certified': {
-        'title': 'Certified',
-        'description': 'Units signed off - no defects',
+        'title': 'Complete',
+        'description': 'Architect signed off. Zero defects. Unit done.',
         'color': 'green',
         'icon': 'check'
     },
     'pending_followup': {
-        'title': 'Pending Followup',
-        'description': 'Closed with defects - next cycle required',
+        'title': 'Needs Re-inspection',
+        'description': 'Architect closed unit with outstanding defects. Contractor must rectify. Next inspection cycle required.',
         'color': 'orange',
         'icon': 'arrow-right'
     },
     'approved': {
         'title': 'Approved',
-        'description': 'Ready for PDF and close',
+        'description': 'Architect approved. Generate PDF, then close unit.',
         'color': 'emerald',
         'icon': 'thumb-up'
     },
     'awaiting_approval': {
         'title': 'Awaiting Approval',
-        'description': 'Reviewed by Team Lead - needs Manager approval',
+        'description': 'Team Lead reviewed. Architect must approve.',
         'color': 'indigo',
         'icon': 'stamp'
     },
     'awaiting_review': {
         'title': 'Awaiting Review',
-        'description': 'Submitted - needs Team Lead review',
+        'description': 'Inspector submitted. Team Lead must review and confirm.',
         'color': 'purple',
         'icon': 'eye'
     },
     'defects_open': {
         'title': 'Defects Open',
-        'description': 'Has outstanding defects',
+        'description': 'Has outstanding defects from previous cycle.',
         'color': 'red',
         'icon': '!'
     },
     'in_progress': {
         'title': 'In Progress',
-        'description': 'Inspection underway',
+        'description': 'Inspector is marking items. Not yet submitted.',
         'color': 'yellow',
         'icon': '...'
     },
     'not_started': {
         'title': 'Not Started',
-        'description': 'No inspection yet',
+        'description': 'No inspector has started this unit.',
         'color': 'gray',
         'icon': '-'
     }
@@ -64,8 +64,6 @@ STATUS_INFO = {
 def get_unit_workflow_status(unit):
     """
     Determine the workflow status for a unit based on inspection status and defects.
-    Returns one of: certified, pending_followup, approved, awaiting_approval, 
-                    awaiting_review, defects_open, in_progress, not_started
     """
     if unit['inspection_id'] is None:
         return 'not_started'
@@ -223,6 +221,9 @@ def dashboard():
         status = get_unit_workflow_status(unit)
         grouped[status].append(unit)
     
+    # Count closed units (certified + pending_followup) for cycle progress
+    closed_count = len(grouped['certified']) + len(grouped['pending_followup'])
+    
     summary = {
         'total': len(units),
         'certified': len(grouped['certified']),
@@ -232,7 +233,8 @@ def dashboard():
         'awaiting_review': len(grouped['awaiting_review']),
         'defects': len(grouped['defects_open']),
         'in_progress': len(grouped['in_progress']),
-        'not_started': len(grouped['not_started'])
+        'not_started': len(grouped['not_started']),
+        'closed_count': closed_count
     }
     
     return render_template('certification/dashboard.html',
@@ -308,7 +310,8 @@ def review_unit(unit_id):
     db.commit()
     
     unit_num = query_db('SELECT unit_number FROM unit WHERE id = ?', [unit_id], one=True)['unit_number']
-    flash(f"Unit {unit_num} marked as reviewed", 'success')
+    reviewer = session.get('user_name', 'Team Lead')
+    flash(f"Unit {unit_num} reviewed by {reviewer} - now awaiting Architect approval", 'success')
     return redirect(url_for('certification.dashboard'))
 
 
@@ -342,7 +345,8 @@ def approve_unit(unit_id):
     db.commit()
     
     unit_num = query_db('SELECT unit_number FROM unit WHERE id = ?', [unit_id], one=True)['unit_number']
-    flash(f"Unit {unit_num} approved", 'success')
+    approver = session.get('user_name', 'Architect')
+    flash(f"Unit {unit_num} approved by {approver} - ready for PDF and close", 'success')
     return redirect(url_for('certification.dashboard'))
 
 
@@ -367,7 +371,7 @@ def certify_unit(unit_id):
     )['count']
     
     if open_defects > 0:
-        flash(f'Cannot certify: {open_defects} open defects remain', 'error')
+        flash(f'Cannot sign off: {open_defects} open defects remain', 'error')
         return redirect(url_for('certification.dashboard'))
     
     db.execute("UPDATE unit SET status = 'certified' WHERE id = ?", [unit_id])
@@ -387,7 +391,8 @@ def certify_unit(unit_id):
     
     db.commit()
     
-    flash(f"Unit {unit['unit_number']} certified - no defects", 'success')
+    signer = session.get('user_name', 'Architect')
+    flash(f"Unit {unit['unit_number']} signed off by {signer} - zero defects, unit complete", 'success')
     return redirect(url_for('certification.dashboard'))
 
 
@@ -412,7 +417,7 @@ def close_with_defects(unit_id):
     )['count']
     
     if open_defects == 0:
-        flash('No open defects - use Certify instead', 'error')
+        flash('No open defects - use Sign Off Complete instead', 'error')
         return redirect(url_for('certification.dashboard'))
     
     db.execute("UPDATE unit SET status = 'pending_followup' WHERE id = ?", [unit_id])
@@ -432,7 +437,7 @@ def close_with_defects(unit_id):
     
     db.commit()
     
-    flash(f"Unit {unit['unit_number']} closed - {open_defects} defects pending followup", 'success')
+    flash(f"Unit {unit['unit_number']} closed with {open_defects} defects - contractor must rectify before next inspection", 'success')
     return redirect(url_for('certification.dashboard'))
 
 
@@ -452,7 +457,7 @@ def reopen_unit(unit_id):
         abort(404)
     
     if unit['status'] not in ('certified', 'pending_followup'):
-        flash('Only certified or closed units can be reopened', 'error')
+        flash('Only completed or closed units can be reopened', 'error')
         return redirect(url_for('certification.dashboard'))
     
     db.execute("UPDATE unit SET status = 'in_progress' WHERE id = ?", [unit_id])
@@ -472,7 +477,7 @@ def reopen_unit(unit_id):
     
     db.commit()
     
-    flash(f"Unit {unit['unit_number']} reopened", 'success')
+    flash(f"Unit {unit['unit_number']} reopened - moved back to Approved", 'success')
     return redirect(url_for('certification.dashboard'))
 
 
