@@ -18,10 +18,12 @@
     <span></span>
     {% endif %}
     {% if pct >= 100 %}
-    <button type="button" 
-            onclick="document.getElementById('submit-modal').classList.remove('hidden')"
-            class="px-3 py-1 bg-green-600 text-white text-xs font-medium rounded hover:bg-green-700 transition-colors">
+    <a href="javascript:void(0)" 
+       ontouchend="document.getElementById('submit-modal').classList.remove('hidden')"
+       onclick="document.getElementById('submit-modal').classList.remove('hidden')"
+       class="px-3 py-1 bg-green-600 text-white text-xs font-medium rounded hover:bg-green-700 transition-colors cursor-pointer"
+       role="button">
         Submit
-    </button>
+    </a>
     {% endif %}
 </div>
