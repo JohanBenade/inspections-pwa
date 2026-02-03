@@ -136,6 +136,11 @@
                                 
                                 <!-- Workflow buttons based on status and role -->
                                 {% if status_key == 'awaiting_review' %}
+                                    <!-- PDF link -->
+                                    <a href="{{ url_for('pdf.generate_defects_list', inspection_id=unit.inspection_id) }}"
+                                       class="px-3 py-1 text-xs font-medium text-white bg-blue-600 rounded hover:bg-blue-700">
+                                        PDF
+                                    </a>
                                     <!-- Team Lead+ can mark as reviewed -->
                                     <form action="{{ url_for('certification.review_unit', unit_id=unit.id) }}" method="POST" class="inline">
                                         <button type="submit" 
@@ -153,6 +158,11 @@
                                     </form>
                                     {% endif %}
                                 {% elif status_key == 'awaiting_approval' %}
+                                    <!-- PDF link -->
+                                    <a href="{{ url_for('pdf.generate_defects_list', inspection_id=unit.inspection_id) }}"
+                                       class="px-3 py-1 text-xs font-medium text-white bg-blue-600 rounded hover:bg-blue-700">
+                                        PDF
+                                    </a>
                                     {% if user_role in ['manager', 'admin'] %}
                                     <form action="{{ url_for('certification.approve_unit', unit_id=unit.id) }}" method="POST" class="inline">
                                         <button type="submit" 
