@@ -39,25 +39,32 @@
     
     {% for category in categories %}
     {% if category.checklist or category.all_skipped %}
-    {% set should_collapse = category.all_skipped and filter_mode != 'excluded' %}
+    
+    {% if category.all_skipped and filter_mode != 'excluded' %}
+        {# Fully excluded categories hidden from All Items and Defects views #}
+    {% else %}
     <div class="border rounded-lg overflow-hidden">
-        <!-- Category Header - collapsible -->
-        <a href="javascript:void(0)" class="cat-toggle bg-gray-100 px-4 py-3 border-b flex justify-between items-center select-none no-underline block"
-           role="button">
+        <!-- Category Header - collapsible with inline handlers for Safari -->
+        <a href="javascript:void(0)"
+           onclick="var c=this.nextElementSibling;var ch=this.querySelector('.cat-chevron');if(c)c.classList.toggle('hidden');if(ch)ch.classList.toggle('rotate-90');return false"
+           ontouchend="event.preventDefault();var c=this.nextElementSibling;var ch=this.querySelector('.cat-chevron');if(c)c.classList.toggle('hidden');if(ch)ch.classList.toggle('rotate-90')"
+           class="bg-gray-100 px-4 py-3 border-b flex justify-between items-center select-none block"
+           role="button"
+           style="text-decoration:none">
             <div class="flex items-center gap-2">
                 <h3 class="font-semibold text-gray-800">{{ category.name }}</h3>
                 {% if category.all_skipped %}
                 <span class="text-xs bg-orange-100 text-orange-600 px-2 py-0.5 rounded-full font-medium">Excluded</span>
                 {% endif %}
             </div>
-            <svg class="cat-chevron w-4 h-4 text-gray-400 transform transition-transform duration-200 {% if not should_collapse %}rotate-90{% endif %}"
+            <svg class="cat-chevron w-4 h-4 text-gray-400 transform transition-transform duration-200 rotate-90"
                  fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
             </svg>
         </a>
         
         <!-- Category Content -->
-        <div class="category-content {% if should_collapse %}hidden{% endif %}">
+        <div>
             {% if category.all_skipped %}
             <!-- Excluded items list -->
             <div class="divide-y">
@@ -99,8 +106,8 @@
                 {% set is_defective = item.status in ['not_to_standard', 'not_installed'] %}
                 {% set show_as_defect = is_followup and has_defect %}
                 
-                {% if is_skipped and filter_mode != 'excluded' %}
-                    {# Hide excluded items in mixed categories - use Excluded filter to see them #}
+                {% if is_skipped %}
+                    {# Excluded items hidden - use Excluded filter to see them #}
                 {% else %}
                 <div class="p-3 {% if is_child %}pl-8 bg-gray-50{% endif %} {% if parent_not_installed %}opacity-40{% endif %} {% if show_as_defect %}bg-red-50 border-l-4 border-red-400{% endif %}">
                     <div class="flex justify-between items-start mb-2">
@@ -217,6 +224,8 @@
         </div>
     </div>
     {% endif %}
+    
+    {% endif %}
     {% endfor %}
     
     {% if not categories %}
@@ -237,22 +246,6 @@
             if (this.value.length === 1) {
                 this.value = this.value.charAt(0).toUpperCase();
             }
-        });
-    });
-    
-    // Category collapse/expand - Safari-safe event listeners
-    document.querySelectorAll('.cat-toggle').forEach(function(toggle) {
-        function handleToggle(e) {
-            e.preventDefault();
-            var content = toggle.parentElement.querySelector('.category-content');
-            var chevron = toggle.querySelector('.cat-chevron');
-            if (content) { content.classList.toggle('hidden'); }
-            if (chevron) { chevron.classList.toggle('rotate-90'); }
-        }
-        toggle.addEventListener('click', handleToggle);
-        toggle.addEventListener('touchend', function(e) {
-            e.preventDefault();
-            handleToggle(e);
         });
     });
     
