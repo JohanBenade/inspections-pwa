@@ -24,7 +24,7 @@
     </div>
 
     <!-- Summary Cards -->
-    <div class="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-3 mb-6">
+    <div class="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-3 mb-6">
         <div class="bg-white rounded-lg p-3 border border-gray-200 text-center">
             <div class="text-2xl font-bold text-gray-900">{{ summary.total }}</div>
             <div class="text-xs text-gray-500">Total</div>
@@ -53,6 +53,10 @@
             <div class="text-2xl font-bold text-green-700">{{ summary.certified }}</div>
             <div class="text-xs text-green-600">Certified</div>
         </div>
+        <div class="bg-orange-50 rounded-lg p-3 border border-orange-200 text-center">
+            <div class="text-2xl font-bold text-orange-700">{{ summary.pending_followup }}</div>
+            <div class="text-xs text-orange-600">Followup</div>
+        </div>
     </div>
 
     <!-- Flash Messages -->
@@ -69,7 +73,7 @@
     {% endwith %}
 
     <!-- Status Groups -->
-    {% set display_order = ['awaiting_review', 'awaiting_approval', 'approved', 'in_progress', 'not_started', 'certified'] %}
+    {% set display_order = ['awaiting_review', 'awaiting_approval', 'approved', 'in_progress', 'not_started', 'certified', 'pending_followup'] %}
     
     {% for status_key in display_order %}
     {% set units = grouped[status_key] %}
@@ -83,6 +87,7 @@
                 {% elif info.color == 'indigo' %}bg-indigo-100 text-indigo-700
                 {% elif info.color == 'emerald' %}bg-emerald-100 text-emerald-700
                 {% elif info.color == 'green' %}bg-green-100 text-green-700
+                {% elif info.color == 'orange' %}bg-orange-100 text-orange-700
                 {% elif info.color == 'yellow' %}bg-yellow-100 text-yellow-700
                 {% elif info.color == 'red' %}bg-red-100 text-red-700
                 {% else %}bg-gray-100 text-gray-700{% endif %}">
@@ -127,7 +132,7 @@
                             {% if unit.current_cycle %}Cycle {{ unit.current_cycle }}{% else %}-{% endif %}
                         </td>
                         <td class="px-4 py-3 text-right">
-                            <div class="flex items-center justify-end gap-2">
+                            <div class="flex items-center justify-end gap-2 flex-wrap">
                                 <!-- View button always shown -->
                                 <a href="{{ url_for('certification.view_unit', unit_id=unit.id) }}"
                                    class="px-3 py-1 text-xs font-medium text-gray-700 bg-gray-100 rounded hover:bg-gray-200">
@@ -136,12 +141,10 @@
                                 
                                 <!-- Workflow buttons based on status and role -->
                                 {% if status_key == 'awaiting_review' %}
-                                    <!-- PDF link -->
                                     <a href="{{ url_for('pdf.preview_defects_pdf', unit_id=unit.id) }}"
                                        class="px-3 py-1 text-xs font-medium text-white bg-blue-600 rounded hover:bg-blue-700">
                                         PDF
                                     </a>
-                                    <!-- Team Lead+ can mark as reviewed -->
                                     <form action="{{ url_for('certification.review_unit', unit_id=unit.id) }}" method="POST" class="inline">
                                         <button type="submit" 
                                                 class="px-3 py-1 text-xs font-medium text-white bg-purple-600 rounded hover:bg-purple-700">
@@ -149,7 +152,6 @@
                                         </button>
                                     </form>
                                     {% if user_role in ['manager', 'admin'] %}
-                                    <!-- Manager can skip review and approve directly -->
                                     <form action="{{ url_for('certification.approve_unit', unit_id=unit.id) }}" method="POST" class="inline">
                                         <button type="submit" 
                                                 class="px-3 py-1 text-xs font-medium text-white bg-indigo-600 rounded hover:bg-indigo-700">
@@ -157,8 +159,8 @@
                                         </button>
                                     </form>
                                     {% endif %}
+                                
                                 {% elif status_key == 'awaiting_approval' %}
-                                    <!-- PDF link -->
                                     <a href="{{ url_for('pdf.preview_defects_pdf', unit_id=unit.id) }}"
                                        class="px-3 py-1 text-xs font-medium text-white bg-blue-600 rounded hover:bg-blue-700">
                                         PDF
@@ -173,23 +175,45 @@
                                     {% else %}
                                     <span class="text-xs text-gray-400 italic">Awaiting manager</span>
                                     {% endif %}
+                                
                                 {% elif status_key == 'approved' %}
-                                    {% if user_role in ['manager', 'admin'] %}
-                                    <!-- PDF link -->
                                     <a href="{{ url_for('pdf.preview_defects_pdf', unit_id=unit.id) }}"
                                        class="px-3 py-1 text-xs font-medium text-white bg-blue-600 rounded hover:bg-blue-700">
                                         PDF
                                     </a>
-                                    {% if unit.open_defects == 0 %}
-                                    <form action="{{ url_for('certification.certify_unit', unit_id=unit.id) }}" method="POST" class="inline">
+                                    {% if user_role in ['manager', 'admin'] %}
+                                        {% if unit.open_defects == 0 or unit.open_defects is none %}
+                                        <form action="{{ url_for('certification.certify_unit', unit_id=unit.id) }}" method="POST" class="inline">
+                                            <button type="submit" 
+                                                    class="px-3 py-1 text-xs font-medium text-white bg-green-600 rounded hover:bg-green-700">
+                                                Certify
+                                            </button>
+                                        </form>
+                                        {% else %}
+                                        <form action="{{ url_for('certification.close_with_defects', unit_id=unit.id) }}" method="POST" class="inline">
+                                            <button type="submit" 
+                                                    class="px-3 py-1 text-xs font-medium text-white bg-orange-600 rounded hover:bg-orange-700">
+                                                Close - Defects
+                                            </button>
+                                        </form>
+                                        {% endif %}
+                                    {% endif %}
+                                
+                                {% elif status_key == 'certified' %}
+                                    {% if user_role in ['manager', 'admin'] %}
+                                    <form action="{{ url_for('certification.reopen_unit', unit_id=unit.id) }}" method="POST" class="inline">
                                         <button type="submit" 
-                                                class="px-3 py-1 text-xs font-medium text-white bg-green-600 rounded hover:bg-green-700">
-                                            Certify
+                                                class="px-3 py-1 text-xs font-medium text-gray-600 bg-gray-100 rounded hover:bg-gray-200">
+                                            Reopen
                                         </button>
                                     </form>
                                     {% endif %}
-                                    {% endif %}
-                                {% elif status_key == 'certified' %}
+                                
+                                {% elif status_key == 'pending_followup' %}
+                                    <a href="{{ url_for('pdf.preview_defects_pdf', unit_id=unit.id) }}"
+                                       class="px-3 py-1 text-xs font-medium text-white bg-blue-600 rounded hover:bg-blue-700">
+                                        PDF
+                                    </a>
                                     {% if user_role in ['manager', 'admin'] %}
                                     <form action="{{ url_for('certification.reopen_unit', unit_id=unit.id) }}" method="POST" class="inline">
                                         <button type="submit" 

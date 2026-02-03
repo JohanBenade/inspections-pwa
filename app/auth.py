@@ -33,7 +33,8 @@ def can_edit_inspection(inspection_status, user_role):
     Locking rules:
     - inspector: can only edit when status is 'in_progress' or None
     - team_lead: can edit 'in_progress' or 'submitted'
-    - manager/admin: can edit anything except 'closed'
+    - manager/admin: can edit anything except terminal states
+    - Terminal states (locked for everyone): closed, certified, pending_followup
     
     Returns: (can_edit: bool, reason: str or None)
     """
@@ -43,11 +44,11 @@ def can_edit_inspection(inspection_status, user_role):
     status = inspection_status.lower() if inspection_status else 'in_progress'
     role_level = get_role_level(user_role)
     
-    # Closed = locked for everyone
-    if status == 'closed':
+    # Terminal states = locked for everyone
+    if status in ('closed', 'certified', 'pending_followup'):
         return False, 'This inspection is closed and cannot be edited.'
     
-    # Manager/admin can edit anything except closed
+    # Manager/admin can edit anything except terminal states
     if role_level >= get_role_level('manager'):
         return True, None
     
@@ -101,6 +102,18 @@ def get_status_info_for_role(inspection_status, user_role):
             'message': 'Approved - Ready for PDF and close',
             'next_action': 'Generate PDF' if role_level >= get_role_level('manager') else None,
             'badge_color': 'green'
+        },
+        'certified': {
+            'locked': True,
+            'message': 'Certified - Unit signed off, no defects',
+            'next_action': None,
+            'badge_color': 'green'
+        },
+        'pending_followup': {
+            'locked': True,
+            'message': 'Closed - Defects remain, next cycle required',
+            'next_action': None,
+            'badge_color': 'orange'
         },
         'closed': {
             'locked': True,

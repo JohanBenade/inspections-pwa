@@ -1,6 +1,6 @@
 """
-Certification routes - Architect's management dashboard.
-View units by status, review, approve, certify, and close.
+Certification routes - Approvals dashboard.
+View units by status, review, approve, certify, and close per unit.
 """
 from flask import Blueprint, render_template, session, redirect, url_for, abort, request, flash
 from app.auth import require_team_lead, require_manager, get_role_level
@@ -12,9 +12,15 @@ certification_bp = Blueprint('certification', __name__, url_prefix='/certificati
 STATUS_INFO = {
     'certified': {
         'title': 'Certified',
-        'description': 'Units signed off by architect',
+        'description': 'Units signed off - no defects',
         'color': 'green',
         'icon': 'check'
+    },
+    'pending_followup': {
+        'title': 'Pending Followup',
+        'description': 'Closed with defects - next cycle required',
+        'color': 'orange',
+        'icon': 'arrow-right'
     },
     'approved': {
         'title': 'Approved',
@@ -58,8 +64,8 @@ STATUS_INFO = {
 def get_unit_workflow_status(unit):
     """
     Determine the workflow status for a unit based on inspection status and defects.
-    Returns one of: certified, approved, awaiting_approval, awaiting_review, 
-                    defects_open, in_progress, not_started
+    Returns one of: certified, pending_followup, approved, awaiting_approval, 
+                    awaiting_review, defects_open, in_progress, not_started
     """
     # No inspection yet
     if unit['inspection_id'] is None:
@@ -67,14 +73,19 @@ def get_unit_workflow_status(unit):
     
     inspection_status = unit['inspection_status'] or 'in_progress'
     unit_status = unit['unit_status']
-    open_defects = unit['open_defects'] or 0
     
-    # Already certified at unit level
+    # Check unit-level status first
     if unit_status == 'certified':
         return 'certified'
+    if unit_status == 'pending_followup':
+        return 'pending_followup'
     
     # Map inspection status to workflow status
-    if inspection_status == 'closed':
+    if inspection_status == 'certified':
+        return 'certified'
+    elif inspection_status == 'pending_followup':
+        return 'pending_followup'
+    elif inspection_status == 'closed':
         return 'certified'
     elif inspection_status == 'approved':
         return 'approved'
@@ -91,7 +102,7 @@ def get_unit_workflow_status(unit):
 @certification_bp.route('/')
 @require_team_lead
 def dashboard():
-    """Certification Dashboard - units grouped by workflow status."""
+    """Approvals Dashboard - units grouped by workflow status."""
     tenant_id = session['tenant_id']
     user_role = session.get('role', 'inspector')
     
@@ -179,6 +190,7 @@ def dashboard():
     # Group by workflow status
     grouped = {
         'certified': [],
+        'pending_followup': [],
         'approved': [],
         'awaiting_approval': [],
         'awaiting_review': [],
@@ -189,15 +201,12 @@ def dashboard():
     
     for unit in units:
         status = get_unit_workflow_status(unit)
-        # Override with defects_open if has open defects and not in workflow
-        if unit['open_defects'] and unit['open_defects'] > 0 and status in ('approved', 'awaiting_approval', 'awaiting_review'):
-            # Keep workflow status but note defects
-            pass
         grouped[status].append(unit)
     
     summary = {
         'total': len(units),
         'certified': len(grouped['certified']),
+        'pending_followup': len(grouped['pending_followup']),
         'approved': len(grouped['approved']),
         'awaiting_approval': len(grouped['awaiting_approval']),
         'awaiting_review': len(grouped['awaiting_review']),
@@ -256,7 +265,6 @@ def review_unit(unit_id):
     tenant_id = session['tenant_id']
     db = get_db()
     
-    # Get latest inspection for this unit
     inspection = query_db("""
         SELECT i.* FROM inspection i
         JOIN inspection_cycle ic ON i.cycle_id = ic.id
@@ -279,7 +287,8 @@ def review_unit(unit_id):
     """, [inspection['id']])
     db.commit()
     
-    flash(f"Unit {query_db('SELECT unit_number FROM unit WHERE id = ?', [unit_id], one=True)['unit_number']} marked as reviewed", 'success')
+    unit_num = query_db('SELECT unit_number FROM unit WHERE id = ?', [unit_id], one=True)['unit_number']
+    flash(f"Unit {unit_num} marked as reviewed", 'success')
     return redirect(url_for('certification.dashboard'))
 
 
@@ -290,7 +299,6 @@ def approve_unit(unit_id):
     tenant_id = session['tenant_id']
     db = get_db()
     
-    # Get latest inspection for this unit
     inspection = query_db("""
         SELECT i.* FROM inspection i
         JOIN inspection_cycle ic ON i.cycle_id = ic.id
@@ -314,14 +322,15 @@ def approve_unit(unit_id):
     """, [inspection['id']])
     db.commit()
     
-    flash(f"Unit {query_db('SELECT unit_number FROM unit WHERE id = ?', [unit_id], one=True)['unit_number']} approved", 'success')
+    unit_num = query_db('SELECT unit_number FROM unit WHERE id = ?', [unit_id], one=True)['unit_number']
+    flash(f"Unit {unit_num} approved", 'success')
     return redirect(url_for('certification.dashboard'))
 
 
 @certification_bp.route('/unit/<unit_id>/certify', methods=['POST'])
 @require_manager
 def certify_unit(unit_id):
-    """Manager certifies unit (final sign-off, 0 defects)."""
+    """Manager certifies unit (0 defects, unit complete)."""
     tenant_id = session['tenant_id']
     db = get_db()
     
@@ -343,10 +352,10 @@ def certify_unit(unit_id):
         flash(f'Cannot certify: {open_defects} open defects remain', 'error')
         return redirect(url_for('certification.dashboard'))
     
-    # Update unit status to certified
+    # Update unit status
     db.execute("UPDATE unit SET status = 'certified' WHERE id = ?", [unit_id])
     
-    # Also close the inspection
+    # Update inspection status to certified
     inspection = query_db("""
         SELECT i.id FROM inspection i
         JOIN inspection_cycle ic ON i.cycle_id = ic.id
@@ -356,20 +365,20 @@ def certify_unit(unit_id):
     if inspection:
         db.execute("""
             UPDATE inspection 
-            SET status = 'closed', updated_at = CURRENT_TIMESTAMP 
+            SET status = 'certified', updated_at = CURRENT_TIMESTAMP 
             WHERE id = ?
         """, [inspection['id']])
     
     db.commit()
     
-    flash(f"Unit {unit['unit_number']} certified", 'success')
+    flash(f"Unit {unit['unit_number']} certified - no defects", 'success')
     return redirect(url_for('certification.dashboard'))
 
 
-@certification_bp.route('/unit/<unit_id>/reopen', methods=['POST'])
+@certification_bp.route('/unit/<unit_id>/close-defects', methods=['POST'])
 @require_manager
-def reopen_unit(unit_id):
-    """Manager reopens a certified unit."""
+def close_with_defects(unit_id):
+    """Manager closes unit that has defects - pending followup (next cycle needed)."""
     tenant_id = session['tenant_id']
     db = get_db()
     
@@ -381,8 +390,56 @@ def reopen_unit(unit_id):
     if not unit:
         abort(404)
     
-    if unit['status'] != 'certified':
-        flash('Only certified units can be reopened', 'error')
+    # Verify there are open defects
+    open_defects = query_db(
+        "SELECT COUNT(*) as count FROM defect WHERE unit_id = ? AND status = 'open'",
+        [unit_id], one=True
+    )['count']
+    
+    if open_defects == 0:
+        flash('No open defects - use Certify instead', 'error')
+        return redirect(url_for('certification.dashboard'))
+    
+    # Update unit status
+    db.execute("UPDATE unit SET status = 'pending_followup' WHERE id = ?", [unit_id])
+    
+    # Update inspection status
+    inspection = query_db("""
+        SELECT i.id FROM inspection i
+        JOIN inspection_cycle ic ON i.cycle_id = ic.id
+        WHERE i.unit_id = ? ORDER BY ic.cycle_number DESC LIMIT 1
+    """, [unit_id], one=True)
+    
+    if inspection:
+        db.execute("""
+            UPDATE inspection 
+            SET status = 'pending_followup', updated_at = CURRENT_TIMESTAMP 
+            WHERE id = ?
+        """, [inspection['id']])
+    
+    db.commit()
+    
+    flash(f"Unit {unit['unit_number']} closed - {open_defects} defects pending followup", 'success')
+    return redirect(url_for('certification.dashboard'))
+
+
+@certification_bp.route('/unit/<unit_id>/reopen', methods=['POST'])
+@require_manager
+def reopen_unit(unit_id):
+    """Manager reopens a certified or pending_followup unit."""
+    tenant_id = session['tenant_id']
+    db = get_db()
+    
+    unit = query_db(
+        "SELECT * FROM unit WHERE id = ? AND tenant_id = ?",
+        [unit_id, tenant_id], one=True
+    )
+    
+    if not unit:
+        abort(404)
+    
+    if unit['status'] not in ('certified', 'pending_followup'):
+        flash('Only certified or closed units can be reopened', 'error')
         return redirect(url_for('certification.dashboard'))
     
     db.execute("UPDATE unit SET status = 'in_progress' WHERE id = ?", [unit_id])
@@ -404,7 +461,7 @@ def reopen_unit(unit_id):
     db.commit()
     
     flash(f"Unit {unit['unit_number']} reopened", 'success')
-    return redirect(url_for('certification.view_unit', unit_id=unit_id))
+    return redirect(url_for('certification.dashboard'))
 
 
 @certification_bp.route('/unit/<unit_id>/defect/<defect_id>/update', methods=['POST'])
