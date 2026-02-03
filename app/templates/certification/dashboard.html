@@ -137,7 +137,7 @@
                                 <!-- Workflow buttons based on status and role -->
                                 {% if status_key == 'awaiting_review' %}
                                     <!-- PDF link -->
-                                    <a href="{{ url_for('pdf.generate_defects_list', inspection_id=unit.inspection_id) }}"
+                                    <a href="{{ url_for('pdf.preview_defects_pdf', inspection_id=unit.inspection_id) }}"
                                        class="px-3 py-1 text-xs font-medium text-white bg-blue-600 rounded hover:bg-blue-700">
                                         PDF
                                     </a>
@@ -159,7 +159,7 @@
                                     {% endif %}
                                 {% elif status_key == 'awaiting_approval' %}
                                     <!-- PDF link -->
-                                    <a href="{{ url_for('pdf.generate_defects_list', inspection_id=unit.inspection_id) }}"
+                                    <a href="{{ url_for('pdf.preview_defects_pdf', inspection_id=unit.inspection_id) }}"
                                        class="px-3 py-1 text-xs font-medium text-white bg-blue-600 rounded hover:bg-blue-700">
                                         PDF
                                     </a>
@@ -176,7 +176,7 @@
                                 {% elif status_key == 'approved' %}
                                     {% if user_role in ['manager', 'admin'] %}
                                     <!-- PDF link -->
-                                    <a href="{{ url_for('pdf.generate_defects_list', inspection_id=unit.inspection_id) }}"
+                                    <a href="{{ url_for('pdf.preview_defects_pdf', inspection_id=unit.inspection_id) }}"
                                        class="px-3 py-1 text-xs font-medium text-white bg-blue-600 rounded hover:bg-blue-700">
                                         PDF
                                     </a>
