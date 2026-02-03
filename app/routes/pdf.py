@@ -95,10 +95,20 @@ def preview_defects_pdf(unit_id):
     if not pdf_bytes:
         abort(500, "Failed to generate PDF")
     
+    # Build filename
+    cycle_num = ''
+    if cycle_id:
+        c = query_db("SELECT cycle_number FROM inspection_cycle WHERE id = ?", [cycle_id], one=True)
+        if c:
+            cycle_num = f"_Cycle_{c['cycle_number']}"
+    from datetime import datetime
+    date_str = datetime.now().strftime('%Y%m%d')
+    filename = f"DEFECTS_Unit_{unit['unit_number']}{cycle_num}_{date_str}.pdf"
+
     return Response(
         pdf_bytes,
         mimetype='application/pdf',
         headers={
-            'Content-Disposition': 'inline'
+            'Content-Disposition': f'inline; filename="{filename}"'
         }
     )
