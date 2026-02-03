@@ -102,6 +102,7 @@
                     <tr>
                         <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Unit</th>
                         <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Inspector</th>
+                        <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Progress</th>
                         <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Defects</th>
                         <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Cycle</th>
                         <th class="px-4 py-2 text-right text-xs font-medium text-gray-500 uppercase">Actions</th>
@@ -120,7 +121,30 @@
                             {{ unit.last_inspector or '-' }}
                         </td>
                         <td class="px-4 py-3">
-                            {% if unit.open_defects and unit.open_defects > 0 %}
+                            {% if unit.total_items and unit.total_items > 0 %}
+                            {% set checkable = unit.total_items - (unit.excluded_items or 0) %}
+                            {% set done = (unit.completed_items or 0) - (unit.excluded_items or 0) %}
+                            {% set pct = (done * 100 / checkable) | int if checkable > 0 else 0 %}
+                            <div class="flex flex-col gap-1">
+                                <div class="flex items-center gap-2">
+                                    <div class="w-20 bg-gray-200 rounded-full h-2">
+                                        <div class="h-2 rounded-full {% if pct == 100 %}bg-green-500{% elif pct > 50 %}bg-blue-500{% else %}bg-yellow-500{% endif %}" 
+                                             style="width: {{ pct }}%"></div>
+                                    </div>
+                                    <span class="text-xs text-gray-500">{{ done }}/{{ checkable }}</span>
+                                </div>
+                                {% if unit.excluded_items and unit.excluded_items > 0 %}
+                                <span class="text-xs text-orange-500">{{ unit.excluded_items }} excl</span>
+                                {% endif %}
+                            </div>
+                            {% else %}
+                            <span class="text-gray-400 text-sm">-</span>
+                            {% endif %}
+                        </td>
+                        <td class="px-4 py-3">
+                            {% if unit.defect_items and unit.defect_items > 0 %}
+                            <span class="text-red-600 font-medium">{{ unit.defect_items }} defects</span>
+                            {% elif unit.open_defects and unit.open_defects > 0 %}
                             <span class="text-red-600 font-medium">{{ unit.open_defects }} open</span>
                             {% elif unit.cleared_defects and unit.cleared_defects > 0 %}
                             <span class="text-green-600">{{ unit.cleared_defects }} cleared</span>
@@ -133,13 +157,11 @@
                         </td>
                         <td class="px-4 py-3 text-right">
                             <div class="flex items-center justify-end gap-2 flex-wrap">
-                                <!-- View button always shown -->
                                 <a href="{{ url_for('certification.view_unit', unit_id=unit.id) }}"
                                    class="px-3 py-1 text-xs font-medium text-gray-700 bg-gray-100 rounded hover:bg-gray-200">
                                     View
                                 </a>
                                 
-                                <!-- Workflow buttons based on status and role -->
                                 {% if status_key == 'awaiting_review' %}
                                     <a href="{{ url_for('pdf.preview_defects_pdf', unit_id=unit.id) }}"
                                        class="px-3 py-1 text-xs font-medium text-white bg-blue-600 rounded hover:bg-blue-700">
@@ -234,7 +256,6 @@
     {% endif %}
     {% endfor %}
 
-    <!-- Empty state -->
     {% if summary.total == 0 %}
     <div class="text-center py-12 bg-white rounded-lg border border-gray-200">
         <p class="text-gray-500">No units found for the selected cycle.</p>

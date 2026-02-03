@@ -67,20 +67,17 @@ def get_unit_workflow_status(unit):
     Returns one of: certified, pending_followup, approved, awaiting_approval, 
                     awaiting_review, defects_open, in_progress, not_started
     """
-    # No inspection yet
     if unit['inspection_id'] is None:
         return 'not_started'
     
     inspection_status = unit['inspection_status'] or 'in_progress'
     unit_status = unit['unit_status']
     
-    # Check unit-level status first
     if unit_status == 'certified':
         return 'certified'
     if unit_status == 'pending_followup':
         return 'pending_followup'
     
-    # Map inspection status to workflow status
     if inspection_status == 'certified':
         return 'certified'
     elif inspection_status == 'pending_followup':
@@ -144,7 +141,19 @@ def dashboard():
                  JOIN inspection_cycle ic_c ON d.cleared_cycle_id = ic_c.id
                  WHERE d.unit_id = u.id 
                  AND ic_c.cycle_number = ?
-                ) AS cleared_defects
+                ) AS cleared_defects,
+                (SELECT COUNT(*) FROM inspection_item ii 
+                 WHERE ii.inspection_id = i.id
+                ) AS total_items,
+                (SELECT COUNT(*) FROM inspection_item ii 
+                 WHERE ii.inspection_id = i.id AND ii.status != 'pending'
+                ) AS completed_items,
+                (SELECT COUNT(*) FROM inspection_item ii 
+                 WHERE ii.inspection_id = i.id AND ii.status = 'skipped'
+                ) AS excluded_items,
+                (SELECT COUNT(*) FROM inspection_item ii 
+                 WHERE ii.inspection_id = i.id AND ii.status = 'not_to_standard'
+                ) AS defect_items
             FROM unit u
             JOIN inspection_cycle ic ON ic.id = ?
             LEFT JOIN inspection i ON i.unit_id = u.id AND i.cycle_id = ?
@@ -167,7 +176,19 @@ def dashboard():
                 latest.inspection_date AS last_inspection_date,
                 latest.submitted_at,
                 (SELECT COUNT(*) FROM defect d WHERE d.unit_id = u.id AND d.status = 'open') AS open_defects,
-                (SELECT COUNT(*) FROM defect d WHERE d.unit_id = u.id AND d.status = 'cleared') AS cleared_defects
+                (SELECT COUNT(*) FROM defect d WHERE d.unit_id = u.id AND d.status = 'cleared') AS cleared_defects,
+                (SELECT COUNT(*) FROM inspection_item ii 
+                 WHERE ii.inspection_id = latest.inspection_id
+                ) AS total_items,
+                (SELECT COUNT(*) FROM inspection_item ii 
+                 WHERE ii.inspection_id = latest.inspection_id AND ii.status != 'pending'
+                ) AS completed_items,
+                (SELECT COUNT(*) FROM inspection_item ii 
+                 WHERE ii.inspection_id = latest.inspection_id AND ii.status = 'skipped'
+                ) AS excluded_items,
+                (SELECT COUNT(*) FROM inspection_item ii 
+                 WHERE ii.inspection_id = latest.inspection_id AND ii.status = 'not_to_standard'
+                ) AS defect_items
             FROM unit u
             LEFT JOIN (
                 SELECT 
@@ -187,7 +208,6 @@ def dashboard():
             ORDER BY u.unit_number
         """, [tenant_id])
     
-    # Group by workflow status
     grouped = {
         'certified': [],
         'pending_followup': [],
@@ -310,7 +330,6 @@ def approve_unit(unit_id):
         flash('No inspection found for this unit', 'error')
         return redirect(url_for('certification.dashboard'))
     
-    # Manager can approve from submitted OR reviewed
     if inspection['status'] not in ('submitted', 'reviewed'):
         flash(f"Cannot approve: inspection is '{inspection['status']}'", 'error')
         return redirect(url_for('certification.dashboard'))
@@ -342,7 +361,6 @@ def certify_unit(unit_id):
     if not unit:
         abort(404)
     
-    # Check no open defects
     open_defects = query_db(
         "SELECT COUNT(*) as count FROM defect WHERE unit_id = ? AND status = 'open'",
         [unit_id], one=True
@@ -352,10 +370,8 @@ def certify_unit(unit_id):
         flash(f'Cannot certify: {open_defects} open defects remain', 'error')
         return redirect(url_for('certification.dashboard'))
     
-    # Update unit status
     db.execute("UPDATE unit SET status = 'certified' WHERE id = ?", [unit_id])
     
-    # Update inspection status to certified
     inspection = query_db("""
         SELECT i.id FROM inspection i
         JOIN inspection_cycle ic ON i.cycle_id = ic.id
@@ -390,7 +406,6 @@ def close_with_defects(unit_id):
     if not unit:
         abort(404)
     
-    # Verify there are open defects
     open_defects = query_db(
         "SELECT COUNT(*) as count FROM defect WHERE unit_id = ? AND status = 'open'",
         [unit_id], one=True
@@ -400,10 +415,8 @@ def close_with_defects(unit_id):
         flash('No open defects - use Certify instead', 'error')
         return redirect(url_for('certification.dashboard'))
     
-    # Update unit status
     db.execute("UPDATE unit SET status = 'pending_followup' WHERE id = ?", [unit_id])
     
-    # Update inspection status
     inspection = query_db("""
         SELECT i.id FROM inspection i
         JOIN inspection_cycle ic ON i.cycle_id = ic.id
@@ -444,7 +457,6 @@ def reopen_unit(unit_id):
     
     db.execute("UPDATE unit SET status = 'in_progress' WHERE id = ?", [unit_id])
     
-    # Reopen the inspection too
     inspection = query_db("""
         SELECT i.id FROM inspection i
         JOIN inspection_cycle ic ON i.cycle_id = ic.id
