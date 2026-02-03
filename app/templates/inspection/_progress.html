@@ -1,3 +1,4 @@
+{% set insp_status = inspection_status if inspection_status is defined else (inspection.status if inspection is defined else '') %}
 <div class="flex justify-between text-sm mb-2">
     <span class="font-medium text-gray-700">Progress</span>
     <span class="text-gray-500">
@@ -17,13 +18,17 @@
     {% else %}
     <span></span>
     {% endif %}
-    {% if pct >= 100 %}
-    <a href="javascript:void(0)" 
+    <span></span>
+</div>
+{% if pct >= 100 and insp_status == 'in_progress' %}
+<div class="mt-3 bg-green-50 border border-green-200 rounded-lg p-3 flex justify-between items-center">
+    <span class="text-green-700 font-medium text-sm">All items marked</span>
+    <a href="javascript:void(0)"
        ontouchend="document.getElementById('submit-modal').classList.remove('hidden')"
        onclick="document.getElementById('submit-modal').classList.remove('hidden')"
-       class="px-3 py-1 bg-green-600 text-white text-xs font-medium rounded hover:bg-green-700 transition-colors cursor-pointer"
+       class="px-4 py-2 bg-green-600 text-white text-sm font-medium rounded-lg hover:bg-green-700 transition-colors cursor-pointer"
        role="button">
-        Submit
+        Submit Inspection
     </a>
-    {% endif %}
 </div>
+{% endif %}

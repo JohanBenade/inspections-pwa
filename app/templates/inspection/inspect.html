@@ -4,7 +4,7 @@
 
 {% block content %}
 <div class="max-w-4xl mx-auto">
-    <!-- Header -->
+    <!-- Sticky Header -->
     <div class="bg-white rounded-lg shadow p-4 mb-4 sticky top-0 z-10">
         <div class="flex justify-between items-start">
             <div>
@@ -21,16 +21,10 @@
             <div class="text-right">
                 <div class="text-sm text-gray-500">Inspector</div>
                 <div class="font-medium">{{ inspection.inspector_name }}</div>
-                {% if pdf_available and current_user and current_user.role == 'architect' and inspection.status == 'submitted' %}
-                <a href="{{ url_for('pdf.download_defects_pdf', unit_id=inspection.unit_id) }}" 
-                   class="inline-block mt-2 px-3 py-1 bg-red-600 text-white text-xs rounded hover:bg-red-700">
-                    Download PDF
-                </a>
-                {% endif %}
             </div>
         </div>
         
-        <!-- Progress -->
+        <!-- Progress (includes submit banner at 100%) -->
         <div id="progress-bar" class="mt-4"
              hx-get="{{ url_for('inspection.get_progress', inspection_id=inspection.id) }}"
              hx-trigger="areaUpdated from:body">
@@ -38,7 +32,7 @@
         </div>
     </div>
 
-    <!-- Open Defects from Previous Cycles (now a partial that refreshes) -->
+    <!-- Open Defects from Previous Cycles -->
     {% include 'inspection/_open_defects.html' %}
 
     <!-- Area Tabs -->
@@ -71,73 +65,15 @@
         </div>
     </div>
 
-    <!-- Submit / Save Button -->
-    {% if inspection.status == 'in_progress' %}
-    <div class="bg-white rounded-lg shadow p-4">
-        <form id="submit-form" method="POST" action="{{ url_for('inspection.submit_inspection', inspection_id=inspection.id) }}">
-            <button type="button" 
-                    onclick="document.getElementById('submit-modal').classList.remove('hidden')"
-                    class="w-full bg-green-600 text-white py-3 rounded-lg font-medium hover:bg-green-700">
-                Submit Inspection
-            </button>
-        </form>
-    </div>
-    
-    <!-- Submit Confirmation Modal -->
-    <div id="submit-modal" class="hidden fixed inset-0 z-50 overflow-y-auto">
-        <!-- Backdrop -->
-        <div class="fixed inset-0 bg-black bg-opacity-50 transition-opacity" 
-             onclick="document.getElementById('submit-modal').classList.add('hidden')"></div>
-        
-        <!-- Modal -->
-        <div class="flex min-h-full items-center justify-center p-4">
-            <div class="relative bg-white rounded-xl shadow-xl max-w-sm w-full p-6 transform transition-all">
-                <!-- Icon -->
-                <div class="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-green-100 mb-4">
-                    <svg class="h-6 w-6 text-green-600" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                </div>
-                
-                <!-- Content -->
-                <h3 class="text-lg font-semibold text-gray-900 text-center mb-2">Submit Inspection?</h3>
-                <p class="text-sm text-gray-500 text-center mb-2">
-                    Please confirm all items have been checked before submitting.
-                </p>
-                <!-- Defect count that updates dynamically -->
-                <p id="submit-defect-count" class="text-sm text-center mb-6"
-                   hx-get="{{ url_for('inspection.get_defect_count', inspection_id=inspection.id) }}"
-                   hx-trigger="areaUpdated from:body"
-                   hx-swap="innerHTML">
-                    {% if progress.defects > 0 %}
-                    <span class="text-red-600 font-medium">{{ progress.defects }} defect{{ 's' if progress.defects != 1 else '' }} will be raised.</span>
-                    {% endif %}
-                </p>
-                
-                <!-- Buttons -->
-                <div class="flex gap-3">
-                    <button type="button" 
-                            onclick="document.getElementById('submit-modal').classList.add('hidden')"
-                            class="flex-1 px-4 py-2.5 bg-gray-100 text-gray-700 rounded-lg font-medium hover:bg-gray-200 transition-colors">
-                        Cancel
-                    </button>
-                    <button type="button"
-                            onclick="document.getElementById('submit-form').submit()"
-                            class="flex-1 px-4 py-2.5 bg-green-600 text-white rounded-lg font-medium hover:bg-green-700 transition-colors">
-                        Submit
-                    </button>
-                </div>
-            </div>
-        </div>
-    </div>
-    {% else %}
-    <!-- Already submitted - show status and allow architect to save changes -->
+    <!-- Submitted status -->
+    {% if inspection.status != 'in_progress' %}
     <div class="bg-green-50 border border-green-200 rounded-lg p-4 mb-4 text-center">
         <span class="text-green-700 font-medium">Inspection Submitted</span>
         <span class="text-green-600 text-sm ml-2">{{ inspection.submitted_at }}</span>
     </div>
-    
-    {% if current_user and current_user.role == 'architect' %}
+    {% endif %}
+
+    {% if current_user and current_user.role == 'architect' and inspection.status != 'in_progress' %}
     <div class="bg-white rounded-lg shadow p-4">
         <form method="POST" action="{{ url_for('inspection.submit_inspection', inspection_id=inspection.id) }}">
             <button type="submit" id="save-changes-btn" disabled
@@ -149,7 +85,6 @@
     </div>
     
     <script>
-        // Enable Save Changes button only when POST request completes (actual item change)
         document.body.addEventListener('htmx:afterRequest', function(evt) {
             if (evt.detail.requestConfig.verb === 'post') {
                 var btn = document.getElementById('save-changes-btn');
@@ -162,6 +97,50 @@
         });
     </script>
     {% endif %}
-    {% endif %}
 </div>
+
+<!-- Submit Confirmation Modal -->
+{% if inspection.status == 'in_progress' %}
+<div id="submit-modal" class="hidden fixed inset-0 z-50 overflow-y-auto">
+    <div class="fixed inset-0 bg-black bg-opacity-50 transition-opacity"
+         onclick="document.getElementById('submit-modal').classList.add('hidden')"></div>
+    
+    <div class="flex min-h-full items-center justify-center p-4">
+        <div class="relative bg-white rounded-xl shadow-xl max-w-sm w-full p-6 transform transition-all">
+            <div class="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-green-100 mb-4">
+                <svg class="h-6 w-6 text-green-600" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+            </div>
+            
+            <h3 class="text-lg font-semibold text-gray-900 text-center mb-2">Submit Inspection?</h3>
+            <p class="text-sm text-gray-500 text-center mb-2">
+                This will lock the inspection for review. Please confirm all items have been checked.
+            </p>
+            <p id="submit-defect-count" class="text-sm text-center mb-6"
+               hx-get="{{ url_for('inspection.get_defect_count', inspection_id=inspection.id) }}"
+               hx-trigger="areaUpdated from:body"
+               hx-swap="innerHTML">
+                {% if progress.defects > 0 %}
+                <span class="text-red-600 font-medium">{{ progress.defects }} defect{{ 's' if progress.defects != 1 else '' }} will be raised.</span>
+                {% endif %}
+            </p>
+            
+            <div class="flex gap-3">
+                <button type="button"
+                        onclick="document.getElementById('submit-modal').classList.add('hidden')"
+                        class="flex-1 px-4 py-2.5 bg-gray-100 text-gray-700 rounded-lg font-medium hover:bg-gray-200 transition-colors">
+                    Cancel
+                </button>
+                <form id="submit-form" method="POST" action="{{ url_for('inspection.submit_inspection', inspection_id=inspection.id) }}" class="flex-1">
+                    <button type="submit"
+                            class="w-full px-4 py-2.5 bg-green-600 text-white rounded-lg font-medium hover:bg-green-700 transition-colors">
+                        Confirm
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
 {% endblock %}

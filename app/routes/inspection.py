@@ -672,6 +672,11 @@ def submit_inspection(inspection_id):
 @inspection_bp.route('/<inspection_id>/progress')
 @require_auth
 def get_progress(inspection_id):
+    inspection = query_db(
+        "SELECT status FROM inspection WHERE id = ?",
+        [inspection_id], one=True
+    )
+    
     progress_raw = query_db("""
         SELECT 
             COUNT(*) as total,
@@ -698,7 +703,8 @@ def get_progress(inspection_id):
     }
     progress['active'] = progress['total'] - progress['skipped']
     
-    return render_template('inspection/_progress.html', progress=progress)
+    return render_template('inspection/_progress.html', progress=progress,
+                          inspection_status=inspection['status'] if inspection else 'unknown')
 
 
 @inspection_bp.route('/<inspection_id>/open-defects')
