@@ -95,7 +95,7 @@
                         <summary class="text-sm font-medium text-gray-700 cursor-pointer hover:text-blue-600 py-1">
                             {{ category.name }}
                             {% set ns = namespace(has_exclusions=false) %}
-                            {% for item in category.checklist %}{% if item.excluded %}{% set ns.has_exclusions = true %}{% endif %}{% endfor %}
+                            {% for item in category.checklist %}{% if item.is_excluded %}{% set ns.has_exclusions = true %}{% endif %}{% endfor %}
                             {% if ns.has_exclusions %}<span class="text-red-600 font-bold">*</span>{% endif %}
                         </summary>
                         <div class="ml-4 mt-1 space-y-1">
