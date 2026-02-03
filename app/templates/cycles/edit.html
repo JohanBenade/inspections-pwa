@@ -85,9 +85,6 @@
             <details class="mb-4" open>
                 <summary class="font-medium text-gray-900 cursor-pointer hover:text-blue-600 py-2">
                     {{ area.name }}
-                    {% set ns = namespace(has_exclusions=false) %}
-                    {% for cat in area.categories %}{% for item in cat.checklist %}{% if item.excluded %}{% set ns.has_exclusions = true %}{% endif %}{% endfor %}{% endfor %}
-                    {% if ns.has_exclusions %}<span class="text-red-600 font-bold">*</span>{% endif %}
                     {% if area.note %}
                     <span class="text-sm text-orange-600 font-normal ml-2">- {{ area.note }}</span>
                     {% endif %}
@@ -97,6 +94,9 @@
                     <details class="mb-2">
                         <summary class="text-sm font-medium text-gray-700 cursor-pointer hover:text-blue-600 py-1">
                             {{ category.name }}
+                            {% set ns = namespace(has_exclusions=false) %}
+                            {% for item in category.checklist %}{% if item.excluded %}{% set ns.has_exclusions = true %}{% endif %}{% endfor %}
+                            {% if ns.has_exclusions %}<span class="text-red-600 font-bold">*</span>{% endif %}
                         </summary>
                         <div class="ml-4 mt-1 space-y-1">
                             {% for item in category.checklist %}
