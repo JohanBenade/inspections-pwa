@@ -472,6 +472,13 @@
         <p>Any item that does not comply to the South African National Standards and accompanying codes shall be deemed defective.</p>
     </div>
     
+    {% if cycle and cycle.general_notes %}
+    <div class="standards">
+        <div class="standards-title"><span>General Notes:</span></div>
+        <p>{{ cycle.general_notes }}</p>
+    </div>
+    {% endif %}
+    
     {% for area in defects_by_area %}
     <div class="area-section">
         <div class="area-title"><span>{{ area.name }}</span></div>

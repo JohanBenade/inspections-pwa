@@ -56,6 +56,22 @@
         </div>
     </div>
 
+    <!-- General Notes -->
+    {% if cycle.general_notes %}
+    <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+        <h3 class="font-medium text-blue-800 mb-2">General Notes</h3>
+        <p class="text-sm text-blue-700">{{ cycle.general_notes }}</p>
+    </div>
+    {% endif %}
+
+    <!-- General Notes -->
+    {% if cycle.general_notes %}
+    <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+        <h3 class="font-medium text-blue-800 mb-2">General Notes</h3>
+        <p class="text-sm text-blue-700">{{ cycle.general_notes }}</p>
+    </div>
+    {% endif %}
+
     <!-- Area Notes -->
     {% if area_notes %}
     <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-6">
