@@ -50,35 +50,35 @@
         </div>
         <div class="bg-purple-50 rounded-lg p-3 border border-purple-200 text-center">
             <div class="text-2xl font-bold text-purple-700">{{ summary.awaiting_review }}</div>
-            <div class="text-xs text-purple-600">Review</div>
+            <div class="text-xs text-purple-600">Needs Review</div>
         </div>
         <div class="bg-indigo-50 rounded-lg p-3 border border-indigo-200 text-center">
             <div class="text-2xl font-bold text-indigo-700">{{ summary.awaiting_approval }}</div>
-            <div class="text-xs text-indigo-600">Approval</div>
+            <div class="text-xs text-indigo-600">Needs Sign-off</div>
         </div>
         <div class="bg-emerald-50 rounded-lg p-3 border border-emerald-200 text-center">
             <div class="text-2xl font-bold text-emerald-700">{{ summary.approved }}</div>
-            <div class="text-xs text-emerald-600">Approved</div>
+            <div class="text-xs text-emerald-600">Ready to Close</div>
         </div>
         <div class="bg-yellow-50 rounded-lg p-3 border border-yellow-200 text-center">
             <div class="text-2xl font-bold text-yellow-700">{{ summary.in_progress }}</div>
-            <div class="text-xs text-yellow-600">In Progress</div>
+            <div class="text-xs text-yellow-600">Inspecting</div>
         </div>
         <div class="bg-gray-50 rounded-lg p-3 border border-gray-200 text-center">
             <div class="text-2xl font-bold text-gray-400">{{ summary.not_started }}</div>
-            <div class="text-xs text-gray-400">Not Started</div>
+            <div class="text-xs text-gray-400">Queued</div>
         </div>
         <div class="bg-green-50 rounded-lg p-3 border border-green-200 text-center">
             <div class="text-2xl font-bold text-green-700">{{ summary.certified }}</div>
-            <div class="text-xs text-green-600">Complete</div>
+            <div class="text-xs text-green-600">Done</div>
         </div>
         <div class="bg-orange-50 rounded-lg p-3 border border-orange-200 text-center">
             <div class="text-2xl font-bold text-orange-700">{{ summary.pending_followup }}</div>
-            <div class="text-xs text-orange-600">Re-inspect</div>
+            <div class="text-xs text-orange-600">Has Defects</div>
         </div>
     </div>
 
-    <!-- Flash Messages (single instance) -->
+    <!-- Flash Messages -->
     {% with messages = get_flashed_messages(with_categories=true) %}
     {% if messages %}
     <div class="mb-4">
