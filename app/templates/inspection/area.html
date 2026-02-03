@@ -1,32 +1,41 @@
 <!-- Area inspection partial - loaded via HTMX -->
 <div class="space-y-4">
     {% if show_filter %}
-    <!-- Filter Toggle -->
-    <div class="flex gap-2 mb-4">
-        <button type="button"
-            hx-get="{{ url_for('inspection.inspect_area', inspection_id=inspection.id, area_id=area.id) }}?filter=all"
-            hx-target="#area-content"
-            hx-swap="innerHTML"
-            class="px-3 py-1.5 rounded text-sm font-medium transition-colors
-                   {% if filter_mode == 'all' %}bg-blue-500 text-white{% else %}bg-gray-100 text-gray-600 hover:bg-gray-200{% endif %}">
-            All Items
-        </button>
-        <button type="button"
-            hx-get="{{ url_for('inspection.inspect_area', inspection_id=inspection.id, area_id=area.id) }}?filter=defects"
-            hx-target="#area-content"
-            hx-swap="innerHTML"
-            class="px-3 py-1.5 rounded text-sm font-medium transition-colors
-                   {% if filter_mode == 'defects' %}bg-red-500 text-white{% else %}bg-gray-100 text-gray-600 hover:bg-gray-200{% endif %}">
-            Defects Only
-        </button>
-        <button type="button"
-            hx-get="{{ url_for('inspection.inspect_area', inspection_id=inspection.id, area_id=area.id) }}?filter=excluded"
-            hx-target="#area-content"
-            hx-swap="innerHTML"
-            class="px-3 py-1.5 rounded text-sm font-medium transition-colors
-                   {% if filter_mode == 'excluded' %}bg-orange-500 text-white{% else %}bg-gray-100 text-gray-600 hover:bg-gray-200{% endif %}">
-            Excluded
-        </button>
+    <!-- Filter Toggle + Expand/Collapse -->
+    <div class="flex justify-between items-center mb-4">
+        <div class="flex gap-2">
+            <button type="button"
+                hx-get="{{ url_for('inspection.inspect_area', inspection_id=inspection.id, area_id=area.id) }}?filter=all"
+                hx-target="#area-content"
+                hx-swap="innerHTML"
+                class="px-3 py-1.5 rounded text-sm font-medium transition-colors
+                       {% if filter_mode == 'all' %}bg-blue-500 text-white{% else %}bg-gray-100 text-gray-600 hover:bg-gray-200{% endif %}">
+                All Items
+            </button>
+            <button type="button"
+                hx-get="{{ url_for('inspection.inspect_area', inspection_id=inspection.id, area_id=area.id) }}?filter=defects"
+                hx-target="#area-content"
+                hx-swap="innerHTML"
+                class="px-3 py-1.5 rounded text-sm font-medium transition-colors
+                       {% if filter_mode == 'defects' %}bg-red-500 text-white{% else %}bg-gray-100 text-gray-600 hover:bg-gray-200{% endif %}">
+                Defects Only
+            </button>
+            <button type="button"
+                hx-get="{{ url_for('inspection.inspect_area', inspection_id=inspection.id, area_id=area.id) }}?filter=excluded"
+                hx-target="#area-content"
+                hx-swap="innerHTML"
+                class="px-3 py-1.5 rounded text-sm font-medium transition-colors
+                       {% if filter_mode == 'excluded' %}bg-orange-500 text-white{% else %}bg-gray-100 text-gray-600 hover:bg-gray-200{% endif %}">
+                Excluded
+            </button>
+        </div>
+        <a href="javascript:void(0)" id="toggle-all-btn"
+           onclick="var cats=document.querySelectorAll('.cat-content');var chevs=document.querySelectorAll('.cat-chevron');var btn=this;var anyHidden=false;cats.forEach(function(c){if(c.classList.contains('hidden'))anyHidden=true});cats.forEach(function(c){if(anyHidden)c.classList.remove('hidden');else c.classList.add('hidden')});chevs.forEach(function(ch){if(anyHidden)ch.classList.add('rotate-90');else ch.classList.remove('rotate-90')});btn.textContent=anyHidden?'Collapse All':'Expand All';return false"
+           ontouchend="event.preventDefault();this.click()"
+           class="text-sm text-blue-600 font-medium"
+           style="text-decoration:none">
+            Expand All
+        </a>
     </div>
     {% endif %}
 
@@ -43,28 +52,52 @@
     {% if category.all_skipped and filter_mode != 'excluded' %}
         {# Fully excluded categories hidden from All Items and Defects views #}
     {% else %}
+    
+    {# Count active items, marked items, and defects for this category #}
+    {% set ns = namespace(active=0, marked=0, defects=0) %}
+    {% for item in category.checklist %}
+        {% if item.status != 'skipped' %}
+            {% set ns.active = ns.active + 1 %}
+            {% if item.status not in ['pending', 'skipped'] %}
+                {% set ns.marked = ns.marked + 1 %}
+            {% endif %}
+            {% if item.status in ['not_to_standard', 'not_installed'] %}
+                {% set ns.defects = ns.defects + 1 %}
+            {% endif %}
+        {% endif %}
+    {% endfor %}
+    
     <div class="border rounded-lg overflow-hidden">
-        <!-- Category Header - collapsible with inline handlers for Safari -->
+        <!-- Category Header -->
         <a href="javascript:void(0)"
            onclick="var c=this.nextElementSibling;var ch=this.querySelector('.cat-chevron');if(c)c.classList.toggle('hidden');if(ch)ch.classList.toggle('rotate-90');return false"
            ontouchend="event.preventDefault();var c=this.nextElementSibling;var ch=this.querySelector('.cat-chevron');if(c)c.classList.toggle('hidden');if(ch)ch.classList.toggle('rotate-90')"
-           class="bg-gray-100 px-4 py-3 border-b flex justify-between items-center select-none block"
+           class="bg-gray-100 px-4 py-3 border-b flex items-center select-none block"
            role="button"
            style="text-decoration:none">
-            <div class="flex items-center gap-2">
-                <h3 class="font-semibold text-gray-800">{{ category.name }}</h3>
-                {% if category.all_skipped %}
-                <span class="text-xs bg-orange-100 text-orange-600 px-2 py-0.5 rounded-full font-medium">Excluded</span>
-                {% endif %}
-            </div>
-            <svg class="cat-chevron w-4 h-4 text-gray-400 transform transition-transform duration-200 rotate-90"
+            <svg class="cat-chevron w-4 h-4 text-gray-400 transform transition-transform duration-200 mr-3 flex-shrink-0"
                  fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
             </svg>
+            <h3 class="font-semibold text-gray-800 flex-1">{{ category.name }}</h3>
+            {% if category.all_skipped %}
+            <span class="text-xs bg-orange-100 text-orange-600 px-2 py-0.5 rounded-full font-medium ml-2">Excluded</span>
+            {% else %}
+            <span class="flex items-center gap-2 ml-2 flex-shrink-0">
+                {% if ns.active > 0 %}
+                <span class="text-xs {% if ns.marked == ns.active %}text-green-600 font-medium{% else %}text-gray-500{% endif %}">
+                    {{ ns.marked }}/{{ ns.active }}{% if ns.marked == ns.active %} &#10003;{% endif %}
+                </span>
+                {% endif %}
+                {% if ns.defects > 0 %}
+                <span class="text-xs text-red-600 font-medium">{{ ns.defects }} defect{% if ns.defects != 1 %}s{% endif %}</span>
+                {% endif %}
+            </span>
+            {% endif %}
         </a>
         
-        <!-- Category Content -->
-        <div>
+        <!-- Category Content - hidden by default -->
+        <div class="cat-content hidden">
             {% if category.all_skipped %}
             <!-- Excluded items list -->
             <div class="divide-y">
