@@ -110,23 +110,34 @@
         </div>
     </div>
 
-    <!-- 5. HEATMAP: AREA x UNIT -->
+    <!-- 5. HEATMAP: AREA x UNIT (sortable) -->
     <div class="bg-white rounded-lg shadow p-4">
-        <h2 class="text-lg font-semibold text-gray-900 mb-4">Heatmap: Defects by Unit &amp; Area</h2>
+        <h2 class="text-lg font-semibold text-gray-900 mb-1">Heatmap: Defects by Unit &amp; Area</h2>
+        <p class="text-xs text-gray-400 mb-4">Click any column header to sort. Default: worst units first.</p>
         <div class="overflow-x-auto">
-            <table class="w-full text-sm">
+            <table class="w-full text-sm" id="heatmapTable">
                 <thead>
                     <tr class="border-b border-gray-200">
-                        <th class="text-left py-2 px-2 text-gray-600 font-medium sticky left-0 bg-white">Unit</th>
+                        <th class="text-left py-2 px-2 text-gray-600 font-medium sticky left-0 bg-white cursor-pointer select-none hover:text-gray-900 transition-colors"
+                            onclick="sortHeatmap(-1)" data-col="-1">
+                            Unit <span class="sort-arrow text-xs"></span>
+                        </th>
                         {% for area in all_areas %}
-                        <th class="text-center py-2 px-2 text-gray-600 font-medium text-xs">{{ area }}</th>
+                        <th class="text-center py-2 px-2 text-gray-600 font-medium text-xs cursor-pointer select-none hover:text-gray-900 transition-colors"
+                            onclick="sortHeatmap({{ loop.index0 }})" data-col="{{ loop.index0 }}">
+                            {{ area }} <span class="sort-arrow text-xs"></span>
+                        </th>
                         {% endfor %}
-                        <th class="text-center py-2 px-2 text-gray-900 font-bold">Total</th>
+                        <th class="text-center py-2 px-2 text-gray-900 font-bold cursor-pointer select-none hover:text-blue-600 transition-colors"
+                            onclick="sortHeatmap({{ all_areas|length }})" data-col="{{ all_areas|length }}">
+                            Total <span class="sort-arrow text-xs"></span>
+                        </th>
                     </tr>
                 </thead>
-                <tbody>
+                <tbody id="heatmapBody">
                     {% for unit_num in all_units_sorted %}
-                    <tr class="border-b border-gray-100">
+                    <tr class="border-b border-gray-100 heatmap-row" data-unit="{{ unit_num }}" data-total="{{ unit_totals.get(unit_num, 0) }}"
+                        {% for area in all_areas %}data-area-{{ loop.index0 }}="{{ heatmap.get(unit_num, {}).get(area, 0) }}"{% endfor %}>
                         <td class="py-2 px-2 font-medium sticky left-0 bg-white">{{ unit_num }}</td>
                         {% for area in all_areas %}
                         {% set val = heatmap.get(unit_num, {}).get(area, 0) %}
@@ -145,8 +156,8 @@
                         <td class="text-center py-2 px-2 font-bold text-gray-900">{{ unit_totals.get(unit_num, 0) }}</td>
                     </tr>
                     {% endfor %}
-                    <!-- Column totals -->
-                    <tr class="border-t-2 border-gray-300 bg-gray-50">
+                    <!-- Column totals (pinned to bottom) -->
+                    <tr class="border-t-2 border-gray-300 bg-gray-50" id="heatmapTotals">
                         <td class="py-2 px-2 font-bold sticky left-0 bg-gray-50">Total</td>
                         {% for area in all_areas %}
                         <td class="text-center py-2 px-2 font-bold text-gray-900">{{ area_totals.get(area, 0) }}</td>
@@ -308,6 +319,67 @@ new Chart(catCtx, {
         }
     }
 });
+</script>
+
+<!-- Heatmap sort logic -->
+<script>
+(function() {
+    var currentCol = {{ all_areas|length }};  // default: Total column
+    var currentDir = 'desc';
+    var numAreas = {{ all_areas|length }};
+
+    function getVal(row, col) {
+        if (col === -1) return row.getAttribute('data-unit');
+        if (col === numAreas) return parseInt(row.getAttribute('data-total')) || 0;
+        return parseInt(row.getAttribute('data-area-' + col)) || 0;
+    }
+
+    window.sortHeatmap = function(col) {
+        if (col === currentCol) {
+            currentDir = currentDir === 'desc' ? 'asc' : 'desc';
+        } else {
+            currentCol = col;
+            currentDir = (col === -1) ? 'asc' : 'desc';
+        }
+
+        var tbody = document.getElementById('heatmapBody');
+        var rows = Array.from(tbody.querySelectorAll('.heatmap-row'));
+        var totalsRow = document.getElementById('heatmapTotals');
+
+        rows.sort(function(a, b) {
+            var va = getVal(a, col);
+            var vb = getVal(b, col);
+            var cmp;
+            if (col === -1) {
+                cmp = va.localeCompare(vb);
+            } else {
+                cmp = va - vb;
+            }
+            return currentDir === 'desc' ? -cmp : cmp;
+        });
+
+        rows.forEach(function(row) { tbody.appendChild(row); });
+        tbody.appendChild(totalsRow);
+
+        // Update arrows
+        var arrows = document.querySelectorAll('#heatmapTable .sort-arrow');
+        arrows.forEach(function(a) { a.textContent = ''; });
+
+        var activeHeader = document.querySelector('#heatmapTable th[data-col="' + col + '"] .sort-arrow');
+        if (activeHeader) {
+            activeHeader.textContent = currentDir === 'desc' ? ' \u25BC' : ' \u25B2';
+        }
+
+        // Highlight active column header
+        var headers = document.querySelectorAll('#heatmapTable th');
+        headers.forEach(function(h) { h.classList.remove('text-blue-600'); });
+        var activeTh = document.querySelector('#heatmapTable th[data-col="' + col + '"]');
+        if (activeTh) activeTh.classList.add('text-blue-600');
+    };
+
+    // Auto-sort on load: Total descending
+    sortHeatmap(numAreas);
+})();
 </script>
 {% endif %}
 {% endblock %}
