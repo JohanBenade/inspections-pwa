@@ -2,6 +2,7 @@
 Cycle routes - Inspection cycle management for architect.
 Create cycles, set exclusions, add general notes.
 """
+import re
 from datetime import date
 from flask import Blueprint, render_template, session, redirect, url_for, abort, request
 from app.auth import require_team_lead, require_manager
@@ -10,6 +11,46 @@ from app.services.db import get_db, query_db
 
 cycles_bp = Blueprint('cycles', __name__, url_prefix='/cycles')
 
+
+# --- Rich text sanitization helpers ---
+
+ALLOWED_TAGS = {'p', 'br', 'strong', 'em', 'u', 'ol', 'ul', 'li', 'b', 'i'}
+EMPTY_QUILL_VALUES = {'', '<p><br></p>', '<p></p>'}
+
+
+def sanitize_html(html_str):
+    """Allow only safe formatting tags from rich text editor."""
+    if not html_str:
+        return html_str
+
+    def replace_tag(match):
+        full = match.group(0)
+        tag_match = re.match(r'</?(\w+)', full)
+        if tag_match:
+            tag = tag_match.group(1).lower()
+            if tag in ALLOWED_TAGS:
+                if full.startswith('</'):
+                    return '</{}>'.format(tag)
+                elif tag == 'br':
+                    return '<br>'
+                else:
+                    return '<{}>'.format(tag)
+        return ''
+
+    return re.sub(r'<[^>]+>', replace_tag, html_str).strip()
+
+
+def clean_notes(value):
+    """Sanitize and clean rich text notes. Return None if empty."""
+    if not value:
+        return None
+    value = sanitize_html(value.strip())
+    if value in EMPTY_QUILL_VALUES:
+        return None
+    return value
+
+
+# --- Routes ---
 
 @cycles_bp.route('/')
 @require_team_lead
@@ -73,7 +114,8 @@ def create_cycle():
     """, [phase['id']])
     
     if request.method == 'POST':
-        general_notes = request.form.get('general_notes', '').strip()
+        general_notes = clean_notes(request.form.get('general_notes', ''))
+        exclusion_notes = clean_notes(request.form.get('exclusion_notes', ''))
         unit_start = request.form.get('unit_start', '').strip() or None
         unit_end = request.form.get('unit_end', '').strip() or None
         
@@ -87,9 +129,9 @@ def create_cycle():
         # Create cycle
         cycle_id = generate_id()
         db.execute("""
-            INSERT INTO inspection_cycle (id, tenant_id, phase_id, cycle_number, unit_start, unit_end, general_notes, created_by)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-        """, [cycle_id, tenant_id, phase['id'], next_number, unit_start, unit_end, general_notes or None, user_id])
+            INSERT INTO inspection_cycle (id, tenant_id, phase_id, cycle_number, unit_start, unit_end, general_notes, exclusion_notes, created_by)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """, [cycle_id, tenant_id, phase['id'], next_number, unit_start, unit_end, general_notes, exclusion_notes, user_id])
         
         db.commit()
         
@@ -189,13 +231,14 @@ def edit_cycle(cycle_id):
         abort(404)
     
     if request.method == 'POST':
-        general_notes = request.form.get('general_notes', '').strip()
+        general_notes = clean_notes(request.form.get('general_notes', ''))
+        exclusion_notes = clean_notes(request.form.get('exclusion_notes', ''))
         unit_start = request.form.get('unit_start', '').strip() or None
         unit_end = request.form.get('unit_end', '').strip() or None
         
         db.execute("""
-            UPDATE inspection_cycle SET general_notes = ?, unit_start = ?, unit_end = ? WHERE id = ?
-        """, [general_notes or None, unit_start, unit_end, cycle_id])
+            UPDATE inspection_cycle SET general_notes = ?, exclusion_notes = ?, unit_start = ?, unit_end = ? WHERE id = ?
+        """, [general_notes, exclusion_notes, unit_start, unit_end, cycle_id])
         
         # Save area notes
         # First get all areas

@@ -17,6 +17,21 @@ def _get_weasyprint():
         return None
 
 
+def plain_text_to_html(text):
+    """Convert plain text with line breaks to HTML paragraphs.
+    If text already contains HTML tags, return as-is.
+    """
+    if not text:
+        return text
+    if '<' in text:
+        return text
+    lines = text.split('\n')
+    return ''.join(
+        '<p>{}</p>'.format(line.strip()) if line.strip() else '<p><br></p>'
+        for line in lines
+    )
+
+
 def get_defects_data(tenant_id, unit_id, cycle_id=None):
     """
     Fetch all defects for a unit, optionally filtered by cycle.
@@ -139,24 +154,14 @@ def get_defects_data(tenant_id, unit_id, cycle_id=None):
         if key not in category_comments:
             category_comments[key] = c['latest_comment']
     
-    # Get excluded items for this cycle
-    excluded_by_area = {}
+    # Get excluded items count for summary (not for listing in PDF)
+    excluded_count = 0
     if cycle_id:
-        excluded = query_db("""
-            SELECT it.item_description, ct.category_name, at.area_name, at.area_order,
-                   cei.reason
-            FROM cycle_excluded_item cei
-            JOIN item_template it ON cei.item_template_id = it.id
-            JOIN category_template ct ON it.category_id = ct.id
-            JOIN area_template at ON ct.area_id = at.id
-            WHERE cei.cycle_id = ?
-            ORDER BY at.area_order, ct.category_order
-        """, [cycle_id])
-        for e in excluded:
-            area_name = e['area_name']
-            if area_name not in excluded_by_area:
-                excluded_by_area[area_name] = []
-            excluded_by_area[area_name].append(e['item_description'])
+        count_row = query_db(
+            "SELECT COUNT(*) as cnt FROM cycle_excluded_item WHERE cycle_id = ?",
+            [cycle_id], one=True
+        )
+        excluded_count = count_row['cnt'] if count_row else 0
     
     # Structure defects by area -> category
     defects_by_area = {}
@@ -179,7 +184,6 @@ def get_defects_data(tenant_id, unit_id, cycle_id=None):
                 'name': area_name,
                 'order': d['area_order'],
                 'note': area_notes.get(area_name),
-                'excluded_items': excluded_by_area.get(area_name, []),
                 'categories': {}
             }
         
@@ -195,7 +199,7 @@ def get_defects_data(tenant_id, unit_id, cycle_id=None):
         # Build description with parent context
         description = d['item_description']
         if d['parent_description']:
-            description = f"{d['parent_description']} - {description}"
+            description = '{} - {}'.format(d['parent_description'], description)
         
         # Determine defect status for display
         raised_cycle = d['raised_cycle']
@@ -238,7 +242,7 @@ def get_defects_data(tenant_id, unit_id, cycle_id=None):
                 total_new += 1
         
         defects_by_area[area_name]['categories'][cat_name]['defects'].append({
-            'id': f"DEF-{defect_counter:03d}",
+            'id': 'DEF-{:03d}'.format(defect_counter),
             'description': description,
             # Don't show "Rectified" as comment if status is rectified - it's redundant
             'comment': (d['defect_comment'] or d['original_comment']) 
@@ -261,11 +265,10 @@ def get_defects_data(tenant_id, unit_id, cycle_id=None):
                     'note': cat_data.get('note'),
                     'defects': cat_data['defects']
                 })
-        if categories_list or area_data.get('excluded_items') or area_data.get('note'):
+        if categories_list or area_data.get('note'):
             areas_list.append({
                 'name': area_name,
                 'note': area_data['note'],
-                'excluded_items': area_data.get('excluded_items', []),
                 'categories': categories_list
             })
     
@@ -312,7 +315,6 @@ def get_defects_data(tenant_id, unit_id, cycle_id=None):
     
     # Calculate summary
     total_defects = total_rectified + total_not_rectified + total_new
-    total_excluded = sum(len(items) for items in excluded_by_area.values())
     
     # Format inspection date
     insp_date = None
@@ -339,10 +341,24 @@ def get_defects_data(tenant_id, unit_id, cycle_id=None):
     
     inspection_summary = {
         'total': total_items,
-        'excluded': total_excluded,
-        'inspected': total_items - total_excluded,
+        'excluded': excluded_count,
+        'inspected': total_items - excluded_count,
         'defects': total_new if cycle_number == 1 else total_defects
     }
+    
+    # Process notes for PDF rendering (convert plain text to HTML if needed)
+    general_notes_html = None
+    exclusion_notes_html = None
+    if cycle:
+        gn = cycle['general_notes']
+        if gn:
+            general_notes_html = plain_text_to_html(gn)
+        try:
+            en = cycle['exclusion_notes']
+            if en:
+                exclusion_notes_html = plain_text_to_html(en)
+        except (IndexError, KeyError):
+            pass
     
     return {
         'unit': unit,
@@ -358,7 +374,7 @@ def get_defects_data(tenant_id, unit_id, cycle_id=None):
             'rectified': total_rectified,
             'not_rectified': total_not_rectified,
             'new': total_new,
-            'excluded': total_excluded
+            'excluded': excluded_count
         },
         'grand_totals': {
             'raised': grand_total_raised,
@@ -368,7 +384,9 @@ def get_defects_data(tenant_id, unit_id, cycle_id=None):
         'is_certified': is_certified,
         'inspection_date': insp_date or datetime.now().strftime('%d.%m.%Y'),
         'inspector_name': inspection['inspector_name'] if inspection else 'N/A',
-        'certification_date': certification_date
+        'certification_date': certification_date,
+        'general_notes_html': general_notes_html,
+        'exclusion_notes_html': exclusion_notes_html
     }
 
 
@@ -386,8 +404,8 @@ def generate_defects_pdf(tenant_id, unit_id, cycle_id=None):
     logo_path = os.path.join(static_folder, 'monograph_logo.jpg')
     signature_path = os.path.join(static_folder, 'kevin_signature.png')
     
-    logo_url = f"file://{logo_path}" if os.path.exists(logo_path) else ''
-    signature_url = f"file://{signature_path}" if os.path.exists(signature_path) else ''
+    logo_url = 'file://{}'.format(logo_path) if os.path.exists(logo_path) else ''
+    signature_url = 'file://{}'.format(signature_path) if os.path.exists(signature_path) else ''
     
     html_content = render_template(
         'pdf/defects_list.html',
@@ -408,5 +426,5 @@ def generate_pdf_filename(unit, cycle=None):
     unit_num = unit['unit_number']
     
     if cycle:
-        return f"DEFECTS_Unit_{unit_num}_Cycle_{cycle['cycle_number']}_{date_str}.pdf"
-    return f"DEFECTS_Unit_{unit_num}_{date_str}.pdf"
+        return 'DEFECTS_Unit_{}_Cycle_{}_{}.pdf'.format(unit_num, cycle['cycle_number'], date_str)
+    return 'DEFECTS_Unit_{}_{}.pdf'.format(unit_num, date_str)

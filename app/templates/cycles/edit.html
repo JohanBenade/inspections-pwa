@@ -3,6 +3,15 @@
 {% block title %}Edit Cycle {{ cycle.cycle_number }} - {{ cycle.project_name }}{% endblock %}
 
 {% block content %}
+<!-- Quill CSS -->
+<link href="https://cdnjs.cloudflare.com/ajax/libs/quill/1.3.7/quill.snow.min.css" rel="stylesheet">
+<style>
+    .ql-toolbar.ql-snow { border-radius: 0.5rem 0.5rem 0 0; border-color: #d1d5db; }
+    .ql-container.ql-snow { border-radius: 0 0 0.5rem 0.5rem; border-color: #d1d5db; min-height: 120px; font-size: 14px; }
+    .ql-editor { min-height: 120px; }
+    .ql-editor p { margin-bottom: 2px; }
+</style>
+
 <div class="max-w-4xl mx-auto">
     <!-- Header -->
     <div class="mb-6">
@@ -13,7 +22,7 @@
         <p class="text-gray-600">{{ cycle.project_name }} - {{ cycle.phase_name }}</p>
     </div>
 
-    <form method="POST">
+    <form method="POST" id="cycle-form">
         <!-- Unit Range -->
         <div class="bg-white rounded-lg shadow p-6 mb-6">
             <h2 class="font-semibold text-gray-900 mb-4">Unit Range</h2>
@@ -40,10 +49,17 @@
         <!-- General Notes -->
         <div class="bg-white rounded-lg shadow p-6 mb-6">
             <h2 class="font-semibold text-gray-900 mb-4">General Notes</h2>
-            <textarea id="general_notes" name="general_notes" rows="4"
-                      class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 auto-caps"
-                      placeholder="Site conditions, items not testable, contractor notes...">{{ cycle.general_notes or '' }}</textarea>
-            <p class="text-xs text-gray-500 mt-1">These notes will appear on all inspection reports for this cycle</p>
+            <input type="hidden" name="general_notes" id="general_notes_input">
+            <div id="general_notes_editor"></div>
+            <p class="text-xs text-gray-500 mt-2">These notes will appear on all inspection reports for this cycle</p>
+        </div>
+
+        <!-- Exclusion Notes -->
+        <div class="bg-white rounded-lg shadow p-6 mb-6">
+            <h2 class="font-semibold text-gray-900 mb-4">Exclusion Notes</h2>
+            <input type="hidden" name="exclusion_notes" id="exclusion_notes_input">
+            <div id="exclusion_notes_editor"></div>
+            <p class="text-xs text-gray-500 mt-2">Explain what items are excluded and why. Appears on all inspection reports for this cycle.</p>
         </div>
 
         <!-- Area Notes -->
@@ -115,8 +131,55 @@
     </div>
 </div>
 
+<!-- Quill JS -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/quill/1.3.7/quill.min.js"></script>
 <script>
-    // Auto-capitalize first character
+    var toolbarOptions = [['bold', 'underline'], [{ 'list': 'ordered'}, { 'list': 'bullet' }]];
+
+    // General Notes editor
+    var generalEditor = new Quill('#general_notes_editor', {
+        theme: 'snow',
+        modules: { toolbar: toolbarOptions },
+        placeholder: 'Site conditions, items not testable, contractor notes...'
+    });
+
+    // Exclusion Notes editor
+    var exclusionEditor = new Quill('#exclusion_notes_editor', {
+        theme: 'snow',
+        modules: { toolbar: toolbarOptions },
+        placeholder: 'Items not yet installed, items excluded at contractor request...'
+    });
+
+    // Load existing General Notes content
+    var existingGeneral = {{ (cycle.general_notes or '') | tojson }};
+    if (existingGeneral) {
+        // Convert plain text (no HTML tags) to paragraphs for Quill
+        if (existingGeneral.indexOf('<') === -1) {
+            existingGeneral = existingGeneral.split('\n').map(function(line) {
+                return '<p>' + (line.trim() || '<br>') + '</p>';
+            }).join('');
+        }
+        generalEditor.root.innerHTML = existingGeneral;
+    }
+
+    // Load existing Exclusion Notes content
+    var existingExclusion = {{ (cycle.exclusion_notes or '') | tojson }};
+    if (existingExclusion) {
+        if (existingExclusion.indexOf('<') === -1) {
+            existingExclusion = existingExclusion.split('\n').map(function(line) {
+                return '<p>' + (line.trim() || '<br>') + '</p>';
+            }).join('');
+        }
+        exclusionEditor.root.innerHTML = existingExclusion;
+    }
+
+    // On form submit, copy editor content to hidden inputs
+    document.getElementById('cycle-form').addEventListener('submit', function() {
+        document.getElementById('general_notes_input').value = generalEditor.root.innerHTML;
+        document.getElementById('exclusion_notes_input').value = exclusionEditor.root.innerHTML;
+    });
+
+    // Auto-capitalize first character on area note inputs
     document.querySelectorAll('.auto-caps').forEach(function(input) {
         input.addEventListener('input', function(e) {
             if (this.value.length === 1) {

@@ -178,6 +178,58 @@
             font-weight: 300;
         }
         
+        .rich-text {
+            font-size: 9pt;
+            font-weight: 300;
+        }
+        
+        .rich-text p {
+            margin: 0 0 2px 0;
+            font-weight: 300;
+        }
+        
+        .rich-text strong, .rich-text b {
+            font-weight: 600;
+        }
+        
+        .rich-text u {
+            text-decoration: underline;
+        }
+        
+        .rich-text ul {
+            margin: 0 0 4px 20px;
+            padding: 0;
+            list-style-type: disc;
+        }
+        
+        .rich-text ol {
+            margin: 0 0 4px 20px;
+            padding: 0;
+            list-style-type: decimal;
+        }
+        
+        .rich-text li {
+            margin: 0 0 1px 0;
+            font-weight: 300;
+        }
+        
+        .defects-header {
+            margin: 20px 0 12px 0;
+            font-size: 9pt;
+        }
+        
+        .defects-header-title {
+            font-weight: bold;
+            font-size: 9pt;
+            margin-bottom: 6px;
+        }
+        
+        .defects-header-title span {
+            display: inline-block;
+            padding-bottom: 3px;
+            border-bottom: 1px solid #000;
+        }
+        
         .area-section {
             margin: 15px 0;
         }
@@ -200,23 +252,6 @@
             margin-bottom: 6px;
             font-size: 8pt;
             margin-left: 10px;
-        }
-        
-        .area-excluded {
-            font-style: italic;
-            color: #666;
-            font-size: 8pt;
-            margin-left: 10px;
-            margin-bottom: 6px;
-        }
-        
-        .area-excluded-title {
-            margin-bottom: 2px;
-        }
-        
-        .area-excluded-item {
-            margin-left: 12px;
-            margin-bottom: 1px;
         }
         
         .category-row {
@@ -472,10 +507,23 @@
         <p>Any item that does not comply to the South African National Standards and accompanying codes shall be deemed defective.</p>
     </div>
     
-    {% if cycle and cycle.general_notes %}
+    {% if general_notes_html %}
     <div class="standards">
         <div class="standards-title"><span>General Notes:</span></div>
-        <p>{{ cycle.general_notes }}</p>
+        <div class="rich-text">{{ general_notes_html | safe }}</div>
+    </div>
+    {% endif %}
+    
+    {% if exclusion_notes_html %}
+    <div class="standards">
+        <div class="standards-title"><span>Exclusion Notes:</span></div>
+        <div class="rich-text">{{ exclusion_notes_html | safe }}</div>
+    </div>
+    {% endif %}
+    
+    {% if defects_by_area %}
+    <div class="defects-header">
+        <div class="defects-header-title"><span>Defective Works:</span></div>
     </div>
     {% endif %}
     
@@ -485,15 +533,6 @@
         
         {% if area.note %}
         <div class="area-note">Note: {{ area.note }}</div>
-        {% endif %}
-        
-        {% if area.excluded_items %}
-        <div class="area-excluded">
-            <div class="area-excluded-title">Excluded items:</div>
-            {% for item in area.excluded_items %}
-            <div class="area-excluded-item">&#8226; {{ item }}</div>
-            {% endfor %}
-        </div>
         {% endif %}
         
         {% for category in area.categories %}
