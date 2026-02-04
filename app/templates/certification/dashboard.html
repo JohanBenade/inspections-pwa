@@ -118,10 +118,14 @@
                     {% for unit in units %}
                     <tr class="hover:bg-gray-50">
                         <td class="px-4 py-3">
+                            {% if status_key == 'awaiting_approval' and user_role not in ['manager', 'admin'] %}
+                            <span class="font-medium text-gray-800">Unit {{ unit.unit_number }}</span>
+                            {% else %}
                             <a href="{{ url_for('certification.view_unit', unit_id=unit.id) }}" 
                                class="font-medium text-blue-600 hover:text-blue-800">
                                 Unit {{ unit.unit_number }}
                             </a>
+                            {% endif %}
                         </td>
                         <td class="px-4 py-3 text-sm text-gray-600">
                             {{ unit.last_inspector or '-' }}
@@ -187,10 +191,14 @@
                     {% for unit in units %}
                     <tr class="hover:bg-gray-50">
                         <td class="px-4 py-3">
+                            {% if status_key == 'awaiting_approval' and user_role not in ['manager', 'admin'] %}
+                            <span class="font-medium text-gray-800">Unit {{ unit.unit_number }}</span>
+                            {% else %}
                             <a href="{{ url_for('certification.view_unit', unit_id=unit.id) }}" 
                                class="font-medium text-blue-600 hover:text-blue-800">
                                 Unit {{ unit.unit_number }}
                             </a>
+                            {% endif %}
                         </td>
                         <td class="px-4 py-3 text-sm text-gray-600">
                             {{ unit.last_inspector or '-' }}
@@ -233,10 +241,12 @@
                         <td class="px-4 py-3 text-right">
                             <div class="flex items-center justify-end gap-2 flex-wrap">
                                 <!-- Open inspection -->
+                                {% if not (status_key == 'awaiting_approval' and user_role not in ['manager', 'admin']) %}
                                 <a href="{{ url_for('certification.view_unit', unit_id=unit.id) }}"
                                    class="px-3 py-1.5 text-xs font-medium text-blue-700 bg-blue-50 border border-blue-200 rounded hover:bg-blue-100">
                                     {% if status_key == 'awaiting_review' %}Review{% elif status_key in ['certified', 'pending_followup'] %}View{% else %}Open{% endif %}
                                 </a>
+                                {% endif %}
                                 
                                 {% if status_key == 'awaiting_review' %}
                                     <a href="{{ url_for('pdf.preview_defects_pdf', unit_id=unit.id) }}"
