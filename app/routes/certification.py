@@ -441,6 +441,56 @@ def close_with_defects(unit_id):
     return redirect(url_for('certification.dashboard'))
 
 
+@certification_bp.route('/unit/<unit_id>/approve-and-close', methods=['POST'])
+@require_manager
+def approve_and_close(unit_id):
+    """Manager approves and closes unit in one step. Auto-determines certified vs pending_followup."""
+    tenant_id = session['tenant_id']
+    db = get_db()
+
+    unit = query_db('SELECT * FROM unit WHERE id = ? AND tenant_id = ?', [unit_id, tenant_id], one=True)
+    if not unit:
+        abort(404)
+
+    inspection = query_db("""
+        SELECT i.* FROM inspection i
+        JOIN inspection_cycle ic ON i.cycle_id = ic.id
+        WHERE i.unit_id = ? AND i.tenant_id = ?
+        ORDER BY ic.cycle_number DESC LIMIT 1
+    """, [unit_id, tenant_id], one=True)
+
+    if not inspection:
+        flash('No inspection found for this unit', 'error')
+        return redirect(url_for('certification.dashboard'))
+
+    if inspection['status'] not in ('submitted', 'reviewed'):
+        flash(f"Cannot approve: inspection is '{inspection['status']}'", 'error')
+        return redirect(url_for('certification.dashboard'))
+
+    open_defects = query_db(
+        "SELECT COUNT(*) as count FROM defect WHERE unit_id = ? AND status = 'open'",
+        [unit_id], one=True
+    )['count']
+
+    if open_defects > 0:
+        new_status = 'pending_followup'
+        msg = f"Unit {unit['unit_number']} approved and closed with {open_defects} defects - contractor must rectify"
+    else:
+        new_status = 'certified'
+        msg = f"Unit {unit['unit_number']} approved and certified - zero defects"
+
+    db.execute('UPDATE unit SET status = ? WHERE id = ?', [new_status, unit_id])
+    db.execute("""
+        UPDATE inspection
+        SET status = ?, updated_at = CURRENT_TIMESTAMP
+        WHERE id = ?
+    """, [new_status, inspection['id']])
+    db.commit()
+
+    flash(msg, 'success')
+    return redirect(url_for('certification.dashboard', download=unit_id))
+
+
 @certification_bp.route('/unit/<unit_id>/reopen', methods=['POST'])
 @require_manager
 def reopen_unit(unit_id):

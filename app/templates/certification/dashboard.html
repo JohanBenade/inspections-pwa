@@ -281,10 +281,10 @@
                                        class="px-3 py-1.5 text-xs font-medium text-white bg-blue-600 rounded hover:bg-blue-700">
                                         PDF
                                     </a>
-                                    <form action="{{ url_for('certification.approve_unit', unit_id=unit.id) }}" method="POST" class="inline">
+                                    <form action="{{ url_for('certification.approve_and_close', unit_id=unit.id) }}" method="POST" class="inline">
                                         <button type="submit" 
-                                                class="px-4 py-2 text-sm font-semibold text-white bg-indigo-600 rounded-lg hover:bg-indigo-700 shadow-sm">
-                                            Approve
+                                                class="px-4 py-2 text-sm font-semibold text-white bg-green-600 rounded-lg hover:bg-green-700 shadow-sm">
+                                            Approve &amp; Close
                                         </button>
                                     </form>
                                     {% else %}
@@ -356,4 +356,17 @@
     </div>
     {% endif %}
 </div>
+{% endblock %}
+
+{% block extra_scripts %}
+{% if request.args.get('download') %}
+<script>
+window.addEventListener('load', function() {
+    var iframe = document.createElement('iframe');
+    iframe.style.display = 'none';
+    iframe.src = '/pdf/defects/' + '{{ request.args.get("download") }}';
+    document.body.appendChild(iframe);
+});
+</script>
+{% endif %}
 {% endblock %}
