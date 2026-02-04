@@ -217,26 +217,20 @@ def get_defects_data(tenant_id, unit_id, cycle_id=None):
             cycle_stats[cleared_cycle]['rectified'] += 1
         
         # Determine display status based on state AT this cycle
-        # Check if cleared_cycle is set AND cleared_cycle <= current cycle
         was_cleared = cleared_cycle and cleared_cycle <= cycle_number
         
         if was_cleared and cleared_cycle == cycle_number:
-            # Rectified THIS cycle - show with strikethrough
             display_status = 'rectified'
             total_rectified += 1
         elif was_cleared and cleared_cycle < cycle_number:
-            # Rectified in a PREVIOUS cycle - don't show at all
             continue
         elif raised_cycle < cycle_number:
-            # Open from previous cycle - not rectified
             display_status = 'not_rectified'
             total_not_rectified += 1
         elif raised_cycle == cycle_number:
-            # New defect this cycle
             display_status = 'new'
             total_new += 1
         else:
-            # Fallback for cycle 1
             display_status = 'open'
             if cycle_number == 1:
                 total_new += 1
@@ -244,7 +238,6 @@ def get_defects_data(tenant_id, unit_id, cycle_id=None):
         defects_by_area[area_name]['categories'][cat_name]['defects'].append({
             'id': 'DEF-{:03d}'.format(defect_counter),
             'description': description,
-            # Don't show "Rectified" as comment if status is rectified - it's redundant
             'comment': (d['defect_comment'] or d['original_comment']) 
                        if (d['defect_comment'] or '').lower() not in ['rectified', 'fixed'] 
                        else d['original_comment'],
