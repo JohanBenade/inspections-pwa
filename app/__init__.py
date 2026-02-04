@@ -29,6 +29,10 @@ def create_app():
     app.register_blueprint(defects_bp)
     app.register_blueprint(certification_bp)
     app.register_blueprint(cycles_bp)
+
+    # Analytics blueprint (manager + admin only)
+    from app.routes.analytics import analytics_bp
+    app.register_blueprint(analytics_bp)
     
     # PDF blueprint (optional - requires weasyprint + system libs)
     try:
