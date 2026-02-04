@@ -12,13 +12,13 @@ analytics_bp = Blueprint('analytics', __name__, url_prefix='/analytics')
 
 # Area colour mapping (consistent across all charts)
 AREA_COLOURS = {
-    'Kitchen': '#3b82f6',
-    'Bathroom': '#14b8a6',
-    'Bedroom A': '#a855f7',
-    'Bedroom B': '#6366f1',
-    'Bedroom C': '#ec4899',
-    'Bedroom D': '#f97316',
-    'Lounge': '#22c55e',
+    'KITCHEN': '#3b82f6',
+    'BATHROOM': '#14b8a6',
+    'BEDROOM A': '#a855f7',
+    'BEDROOM B': '#6366f1',
+    'BEDROOM C': '#ec4899',
+    'BEDROOM D': '#f97316',
+    'LOUNGE': '#22c55e',
 }
 
 
