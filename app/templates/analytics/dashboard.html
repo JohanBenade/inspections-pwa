@@ -239,7 +239,7 @@ new Chart(areaCtx, {
     data: {
         labels: {{ area_data.labels | tojson }},
         datasets: [{
-            data: {{ area_data.values | tojson }},
+            data: {{ area_data.counts | tojson }},
             backgroundColor: {{ area_data.colours | tojson }},
             borderWidth: 2,
             borderColor: '#ffffff'
@@ -283,7 +283,7 @@ new Chart(catCtx, {
     data: {
         labels: {{ category_data.labels | tojson }},
         datasets: [{
-            data: {{ category_data.values | tojson }},
+            data: {{ category_data.counts | tojson }},
             backgroundColor: '#ef4444',
             borderRadius: 4
         }]

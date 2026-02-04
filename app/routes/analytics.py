@@ -101,7 +101,7 @@ def dashboard():
 
     area_data = {
         'labels': [r['area_name'] for r in by_area],
-        'values': [r['cnt'] for r in by_area],
+        'counts': [r['cnt'] for r in by_area],
         'colours': [AREA_COLOURS.get(r['area_name'], '#9ca3af') for r in by_area],
     }
 
@@ -118,7 +118,7 @@ def dashboard():
 
     category_data = {
         'labels': [r['category_name'].upper() for r in by_category],
-        'values': [r['cnt'] for r in by_category],
+        'counts': [r['cnt'] for r in by_category],
     }
 
     # --- 4. UNIT RANKING ---
