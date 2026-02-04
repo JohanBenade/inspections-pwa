@@ -259,11 +259,11 @@
                                     {% endif %}
                                 
                                 {% elif status_key == 'awaiting_approval' %}
+                                    {% if user_role in ['manager', 'admin'] %}
                                     <a href="{{ url_for('pdf.preview_defects_pdf', unit_id=unit.id) }}"
                                        class="px-3 py-1.5 text-xs font-medium text-white bg-blue-600 rounded hover:bg-blue-700">
                                         PDF
                                     </a>
-                                    {% if user_role in ['manager', 'admin'] %}
                                     <form action="{{ url_for('certification.approve_unit', unit_id=unit.id) }}" method="POST" class="inline">
                                         <button type="submit" 
                                                 class="px-4 py-2 text-sm font-semibold text-white bg-indigo-600 rounded-lg hover:bg-indigo-700 shadow-sm">
@@ -271,7 +271,7 @@
                                         </button>
                                     </form>
                                     {% else %}
-                                    <span class="text-xs text-gray-400 italic">Reviewed - Manager will approve</span>
+                                    <span class="text-sm text-gray-400 italic">Reviewed - Manager will approve</span>
                                     {% endif %}
                                 
                                 {% elif status_key == 'approved' %}
