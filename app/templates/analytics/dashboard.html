@@ -59,7 +59,7 @@
         <!-- 2. DEFECTS BY AREA (Donut) -->
         <div class="bg-white rounded-lg shadow p-4">
             <h2 class="text-lg font-semibold text-gray-900 mb-4">Defects by Area</h2>
-            <div class="relative" style="max-height: 320px;">
+            <div class="relative" style="height: 300px;">
                 <canvas id="areaChart"></canvas>
             </div>
         </div>
@@ -247,7 +247,7 @@ new Chart(areaCtx, {
     },
     options: {
         responsive: true,
-        maintainAspectRatio: true,
+        maintainAspectRatio: false,
         plugins: {
             legend: {
                 position: 'right',
@@ -292,7 +292,7 @@ new Chart(catCtx, {
     options: {
         indexAxis: 'y',
         responsive: true,
-        maintainAspectRatio: true,
+        maintainAspectRatio: false,
         plugins: {
             legend: { display: false }
         },
