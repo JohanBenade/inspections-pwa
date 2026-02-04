@@ -113,7 +113,7 @@
     <!-- 5. HEATMAP: AREA x UNIT (sortable) -->
     <div class="bg-white rounded-lg shadow p-4">
         <h2 class="text-lg font-semibold text-gray-900 mb-1">Heatmap: Defects by Unit &amp; Area</h2>
-        <p class="text-xs text-gray-400 mb-4">Click any column header to sort. Default: worst units first.</p>
+        <p class="text-xs text-gray-400 mb-4">Click any column header to sort.</p>
         <div class="overflow-x-auto">
             <table class="w-full text-sm" id="heatmapTable">
                 <thead>
@@ -324,8 +324,8 @@ new Chart(catCtx, {
 <!-- Heatmap sort logic -->
 <script>
 (function() {
-    var currentCol = {{ all_areas|length }};  // default: Total column
-    var currentDir = 'desc';
+    var currentCol = -1;  // default: Unit column
+    var currentDir = 'asc';
     var numAreas = {{ all_areas|length }};
 
     function getVal(row, col) {
@@ -377,8 +377,8 @@ new Chart(catCtx, {
         if (activeTh) activeTh.classList.add('text-blue-600');
     };
 
-    // Auto-sort on load: Total descending
-    sortHeatmap(numAreas);
+    // Auto-sort on load: Unit ascending
+    sortHeatmap(-1);
 })();
 </script>
 {% endif %}
