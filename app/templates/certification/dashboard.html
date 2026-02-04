@@ -225,9 +225,7 @@
                             {% endif %}
                         </td>
                         <td class="px-4 py-3">
-                            {% if unit.defect_items and unit.defect_items > 0 %}
-                            <span class="text-red-600 font-medium">{{ unit.defect_items }}</span>
-                            {% elif unit.open_defects and unit.open_defects > 0 %}
+                            {% if unit.open_defects and unit.open_defects > 0 %}
                             <span class="text-red-600 font-medium">{{ unit.open_defects }}</span>
                             {% elif unit.cleared_defects and unit.cleared_defects > 0 %}
                             <span class="text-green-600">{{ unit.cleared_defects }} cleared</span>
