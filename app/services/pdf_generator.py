@@ -376,6 +376,7 @@ def get_defects_data(tenant_id, unit_id, cycle_id=None):
         'inspection_summary': inspection_summary,
         'is_certified': is_certified,
         'inspection_date': insp_date or datetime.now().strftime('%d.%m.%Y'),
+        'inspection_date_raw': raw_date or '',
         'inspector_name': inspection['inspector_name'] if inspection else 'N/A',
         'certification_date': certification_date,
         'general_notes_html': general_notes_html,

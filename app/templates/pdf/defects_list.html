@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>{{ unit.unit_number }}_UNIT_INSPECTION {% if cycle %}{{ "%02d"|format(cycle.cycle_number) }}{% else %}01{% endif %}_{{ inspection_date[-4:] }}{{ inspection_date[3:5] }}{{ inspection_date[:2] }}</title>
+    <title>{{ unit.unit_number }}_UNIT_INSPECTION {% if cycle %}{{ "%02d"|format(cycle.cycle_number) }}{% else %}01{% endif %}_{{ inspection_date_raw|replace("-","") }}</title>
     <style>
         @page {
             size: A4;
