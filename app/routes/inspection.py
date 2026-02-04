@@ -255,7 +255,7 @@ def inspect_area(inspection_id, area_id):
     is_initial = inspection['cycle_number'] == 1
     is_followup = not is_initial
     
-    # Show filter for architect role always, or for follow-up inspections
+    # Show filter for all users
     user_role = session.get('role', 'inspector')
     show_filter = True  # Show filter for all users
     
@@ -657,8 +657,8 @@ def submit_inspection(inspection_id):
         [inspection['unit_id']], one=True
     )
     
-    unit_status = 'defects_open' if open_defects['count'] > 0 else 'cleared'
-    db.execute("UPDATE unit SET status = ? WHERE id = ?", [unit_status, inspection['unit_id']])
+    # Unit stays in_progress after submit - manager sets certified/pending_followup via Approvals
+    # No unit status change needed here
     
     db.commit()
     

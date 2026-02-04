@@ -73,7 +73,7 @@
     </div>
     {% endif %}
 
-    {% if current_user and current_user.role == 'architect' and inspection.status != 'in_progress' %}
+    {% if current_user and current_user.role in ['manager', 'admin'] and inspection.status != 'in_progress' %}
     <div class="bg-white rounded-lg shadow p-4">
         <form method="POST" action="{{ url_for('inspection.submit_inspection', inspection_id=inspection.id) }}">
             <button type="submit" id="save-changes-btn" disabled

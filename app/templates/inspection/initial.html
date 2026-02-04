@@ -5,7 +5,7 @@
 <!-- Sticky header with back link and submit button -->
 <div class="bg-white border-b sticky top-0 z-10 shadow-sm">
     <div class="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between">
-        {% if current_user.role == 'architect' %}
+        {% if current_user.role in ['manager', 'admin'] %}
         <a href="{{ url_for('certification.view_unit', unit_id=inspection.unit_id) }}" 
            class="text-blue-600 hover:underline flex items-center gap-1">
             <span>←</span> Back to Unit {{ inspection.unit_code }}
