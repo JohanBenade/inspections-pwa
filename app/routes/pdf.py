@@ -49,7 +49,9 @@ def download_defects_pdf(unit_id):
         abort(500, "Failed to generate PDF")
     
     # Generate filename
-    filename = generate_pdf_filename(unit, cycle)
+    insp = query_db("SELECT inspection_date FROM inspection WHERE unit_id = ? AND cycle_id = ?", [unit_id, cycle_id], one=True)
+    insp_date = insp['inspection_date'] if insp else None
+    filename = generate_pdf_filename(unit, cycle, inspection_date=insp_date)
     
     return Response(
         pdf_bytes,
@@ -96,14 +98,12 @@ def preview_defects_pdf(unit_id):
         abort(500, "Failed to generate PDF")
     
     # Build filename
-    cycle_num = ''
+    cycle_obj = None
     if cycle_id:
-        c = query_db("SELECT cycle_number FROM inspection_cycle WHERE id = ?", [cycle_id], one=True)
-        if c:
-            cycle_num = f"_Cycle_{c['cycle_number']}"
-    from datetime import datetime
-    date_str = datetime.now().strftime('%Y%m%d')
-    filename = f"DEFECTS_Unit_{unit['unit_number']}{cycle_num}_{date_str}.pdf"
+        cycle_obj = query_db("SELECT cycle_number FROM inspection_cycle WHERE id = ?", [cycle_id], one=True)
+    insp = query_db("SELECT inspection_date FROM inspection WHERE unit_id = ? AND cycle_id = ?", [unit_id, cycle_id], one=True)
+    insp_date = insp['inspection_date'] if insp else None
+    filename = generate_pdf_filename(unit, cycle_obj, inspection_date=insp_date)
 
     return Response(
         pdf_bytes,

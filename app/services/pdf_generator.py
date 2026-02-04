@@ -413,11 +413,14 @@ def generate_defects_pdf(tenant_id, unit_id, cycle_id=None):
     return pdf_bytes
 
 
-def generate_pdf_filename(unit, cycle=None):
-    """Generate filename for PDF."""
-    date_str = datetime.now().strftime('%Y%m%d')
+def generate_pdf_filename(unit, cycle=None, inspection_date=None):
+    """Generate filename matching Word doc naming: XXX_UNIT_INSPECTION 01_20260127.pdf"""
     unit_num = unit['unit_number']
-    
+    cycle_num = '01'
     if cycle:
-        return 'DEFECTS_Unit_{}_Cycle_{}_{}.pdf'.format(unit_num, cycle['cycle_number'], date_str)
-    return 'DEFECTS_Unit_{}_{}.pdf'.format(unit_num, date_str)
+        cycle_num = '{:02d}'.format(cycle['cycle_number'])
+    if inspection_date:
+        date_str = inspection_date.replace('-', '')
+    else:
+        date_str = datetime.now().strftime('%Y%m%d')
+    return '{}_UNIT_INSPECTION {}_{}.pdf'.format(unit_num, cycle_num, date_str)
