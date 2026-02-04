@@ -12,25 +12,25 @@ certification_bp = Blueprint('certification', __name__, url_prefix='/certificati
 STATUS_INFO = {
     'certified': {
         'title': 'Complete',
-        'description': 'Architect signed off. Zero defects. Unit done.',
+        'description': 'Signed off with zero defects. Unit complete.',
         'color': 'green',
         'icon': 'check'
     },
     'pending_followup': {
         'title': 'Needs Re-inspection',
-        'description': 'Architect closed unit with outstanding defects. Contractor must rectify. Next inspection cycle required.',
+        'description': 'Closed with outstanding defects. Contractor must rectify.',
         'color': 'orange',
         'icon': 'arrow-right'
     },
     'approved': {
         'title': 'Approved',
-        'description': 'Architect approved. Generate PDF, then close unit.',
+        'description': 'Approved. Generate PDF, then close unit.',
         'color': 'emerald',
         'icon': 'thumb-up'
     },
     'awaiting_approval': {
         'title': 'Awaiting Approval',
-        'description': 'Team Lead reviewed. Architect must approve.',
+        'description': 'Team Lead reviewed. Manager must approve.',
         'color': 'indigo',
         'icon': 'stamp'
     },
@@ -517,9 +517,8 @@ def update_defect(unit_id, defect_id):
         [unit_id], one=True
     )['count']
     
-    if open_count == 0:
-        db.execute("UPDATE unit SET status = 'cleared' WHERE id = ?", [unit_id])
-        db.commit()
+    # Unit status only changes via Approvals workflow (certify/close_with_defects)
+    # No automatic unit status change when defects are cleared
     
     return redirect(url_for('certification.view_unit', unit_id=unit_id))
 
