@@ -266,6 +266,13 @@
                                             Approve
                                         </button>
                                     </form>
+                                    {% else %}
+                                    <form action="{{ url_for('certification.review_unit', unit_id=unit.id) }}" method="POST" class="inline">
+                                        <button type="submit" 
+                                                class="px-4 py-2 text-sm font-semibold text-white bg-purple-600 rounded-lg hover:bg-purple-700 shadow-sm">
+                                            Send to Manager
+                                        </button>
+                                    </form>
                                     {% endif %}
                                 
                                 {% elif status_key == 'awaiting_approval' %}
