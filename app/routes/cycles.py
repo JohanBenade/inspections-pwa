@@ -70,7 +70,7 @@ def list_cycles():
         abort(404)
     
     cycles = query_db("""
-        SELECT ic.*,
+        SELECT ic.*, ic.block, ic.floor,
             insp.name as created_by_name,
             (SELECT COUNT(*) FROM unit u WHERE u.phase_id = ic.phase_id
                 AND (ic.unit_start IS NULL OR u.unit_number >= ic.unit_start)
@@ -288,10 +288,28 @@ def view_cycle(cycle_id):
     )
     excluded_unit_ids = set(eu['unit_id'] for eu in excluded_units)
 
+    # Get defaults for Add Unit form (most common values from units in this cycle)
+    unit_defaults_row = query_db("""
+        SELECT block, floor, unit_type, COUNT(*) as cnt
+        FROM unit
+        WHERE phase_id = ?
+            AND (? IS NULL OR unit_number >= ?)
+            AND (? IS NULL OR unit_number <= ?)
+        GROUP BY block, floor, unit_type
+        ORDER BY cnt DESC
+        LIMIT 1
+    """, [cycle['phase_id'], cycle['unit_start'], cycle['unit_start'], 
+         cycle['unit_end'], cycle['unit_end']], one=True)
+    unit_defaults = {
+        'block': unit_defaults_row['block'] if unit_defaults_row else '',
+        'floor': unit_defaults_row['floor'] if unit_defaults_row else 0,
+        'unit_type': unit_defaults_row['unit_type'] if unit_defaults_row else '4-Bed'
+    }
+
     return render_template('cycles/view.html', cycle=cycle, units=units, excluded=excluded, 
                           area_notes=area_notes, has_inspections=has_inspections,
                           inspectors=inspectors, assignment_map=assignment_map,
-                          excluded_unit_ids=excluded_unit_ids)
+                          excluded_unit_ids=excluded_unit_ids, unit_defaults=unit_defaults)
 
 
 @cycles_bp.route('/<cycle_id>/edit', methods=['GET', 'POST'])
@@ -609,4 +627,61 @@ def toggle_unit_exclusion(cycle_id):
     
     db.commit()
     
+    return redirect(url_for('cycles.view_cycle', cycle_id=cycle_id))
+
+
+@cycles_bp.route('/<cycle_id>/add-unit', methods=['POST'])
+@require_team_lead
+def add_unit(cycle_id):
+    """Add a new unit to this cycle."""
+    tenant_id = session['tenant_id']
+    db = get_db()
+    
+    cycle = query_db(
+        "SELECT * FROM inspection_cycle WHERE id = ? AND tenant_id = ?",
+        [cycle_id, tenant_id], one=True
+    )
+    
+    if not cycle or cycle['status'] != 'active':
+        abort(404)
+    
+    unit_number = request.form.get('unit_number', '').strip().zfill(3)
+    block = request.form.get('block', '').strip() or None
+    floor_val = request.form.get('floor', '0')
+    floor = int(floor_val) if floor_val.strip() != '' else 0
+    unit_type = request.form.get('unit_type', '4-Bed').strip()
+    
+    # Check if unit already exists
+    existing = query_db(
+        "SELECT id, unit_number FROM unit WHERE unit_number = ? AND phase_id = ?",
+        [unit_number, cycle['phase_id']], one=True
+    )
+    
+    if existing:
+        flash('Unit {} already exists'.format(unit_number), 'error')
+        return redirect(url_for('cycles.view_cycle', cycle_id=cycle_id))
+    
+    # Create unit
+    unit_id = generate_id()
+    db.execute("""
+        INSERT INTO unit (id, tenant_id, phase_id, unit_number, unit_type, block, floor, status)
+        VALUES (?, ?, ?, ?, ?, ?, ?, 'not_started')
+    """, [unit_id, tenant_id, cycle['phase_id'], unit_number, unit_type, block, floor])
+    
+    # Expand cycle range if needed
+    new_start = cycle['unit_start']
+    new_end = cycle['unit_end']
+    if new_start is None or unit_number < new_start:
+        new_start = unit_number
+    if new_end is None or unit_number > new_end:
+        new_end = unit_number
+    
+    if new_start != cycle['unit_start'] or new_end != cycle['unit_end']:
+        db.execute("""
+            UPDATE inspection_cycle SET unit_start = ?, unit_end = ? WHERE id = ?
+        """, [new_start, new_end, cycle_id])
+    
+    db.commit()
+    
+    flash('Unit {} added'.format(unit_number), 'success')
     return redirect(url_for('cycles.view_cycle', cycle_id=cycle_id))

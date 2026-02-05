@@ -44,12 +44,14 @@
                    class="bg-gray-100 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-200">
                     Edit
                 </a>
+                {% if session.get('role') in ['manager', 'admin'] %}
                 <form method="POST" action="{{ url_for('cycles.close_cycle', cycle_id=cycle.id) }}" class="inline">
                     <button type="submit" class="bg-orange-100 text-orange-700 px-4 py-2 rounded-lg hover:bg-orange-200"
                             onclick="return confirm('Close this cycle? No more inspections can be added.')">
                         Close Cycle
                     </button>
                 </form>
+                {% endif %}
                 {% else %}
                 <form method="POST" action="{{ url_for('cycles.reopen_cycle', cycle_id=cycle.id) }}" class="inline">
                     <button type="submit" class="bg-green-100 text-green-700 px-4 py-2 rounded-lg hover:bg-green-200">
