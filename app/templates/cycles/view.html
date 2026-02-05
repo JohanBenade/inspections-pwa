@@ -84,6 +84,44 @@
     {% endif %}
     {% endwith %}
 
+    <!-- Add Unit -->
+    {% if cycle.status == "active" %}
+    <div class="bg-white rounded-lg shadow mb-6">
+        <form method="POST" action="{{ url_for('cycles.add_unit', cycle_id=cycle.id) }}" class="p-4">
+            <div class="flex flex-wrap items-end gap-3">
+                <div>
+                    <label class="block text-xs font-medium text-gray-500 mb-1">Unit Number</label>
+                    <input type="text" name="unit_number" required placeholder="e.g. 057"
+                           class="w-24 text-sm border border-gray-300 rounded px-3 py-2 focus:ring-1 focus:ring-blue-500 focus:border-blue-500">
+                </div>
+                <div>
+                    <label class="block text-xs font-medium text-gray-500 mb-1">Block</label>
+                    <input type="text" name="block" value="{{ unit_defaults.block or '' }}"
+                           class="w-28 text-sm border border-gray-300 rounded px-3 py-2 focus:ring-1 focus:ring-blue-500 focus:border-blue-500">
+                </div>
+                <div>
+                    <label class="block text-xs font-medium text-gray-500 mb-1">Floor</label>
+                    <select name="floor" class="text-sm border border-gray-300 rounded px-3 py-2 focus:ring-1 focus:ring-blue-500">
+                        <option value="0" {% if unit_defaults.floor == 0 %}selected{% endif %}>Ground Floor</option>
+                        <option value="1" {% if unit_defaults.floor == 1 %}selected{% endif %}>1st Floor</option>
+                        <option value="2" {% if unit_defaults.floor == 2 %}selected{% endif %}>2nd Floor</option>
+                        <option value="3" {% if unit_defaults.floor == 3 %}selected{% endif %}>3rd Floor</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-xs font-medium text-gray-500 mb-1">Type</label>
+                    <input type="text" name="unit_type" value="{{ unit_defaults.unit_type or '4-Bed' }}"
+                           class="w-24 text-sm border border-gray-300 rounded px-3 py-2 focus:ring-1 focus:ring-blue-500 focus:border-blue-500">
+                </div>
+                <button type="submit"
+                        class="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-700">
+                    Add Unit
+                </button>
+            </div>
+        </form>
+    </div>
+    {% endif %}
+
     <!-- General Notes -->
     {% if cycle.general_notes %}
     <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
