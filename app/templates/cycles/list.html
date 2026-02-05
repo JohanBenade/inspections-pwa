@@ -4,7 +4,6 @@
 
 {% block content %}
 <div class="max-w-4xl mx-auto">
-    <!-- Header -->
     <div class="flex justify-between items-center mb-6">
         <div>
             <h1 class="text-2xl font-bold text-gray-900">Inspection Cycles</h1>
@@ -51,7 +50,6 @@
                     <div class="text-xs text-gray-500">units submitted</div>
                 </div>
             </div>
-            <!-- Progress bar -->
             <div class="mt-3 h-2 bg-gray-200 rounded-full overflow-hidden">
                 {% set pct = (cycle.units_submitted / cycle.total_units * 100) if cycle.total_units > 0 else 0 %}
                 <div class="h-full bg-green-500" style="width: {{ pct }}%"></div>

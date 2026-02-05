@@ -12,12 +12,10 @@
 </style>
 
 <div class="max-w-4xl mx-auto">
-    <!-- Back -->
     <a href="{{ url_for('cycles.list_cycles') }}" class="text-blue-600 hover:underline text-sm">
         &larr; Back to Cycles
     </a>
 
-    <!-- Header -->
     <div class="flex justify-between items-start mt-2 mb-6 flex-wrap gap-3">
         <div>
             <div class="flex items-center gap-2">
@@ -61,7 +59,6 @@
         </div>
     </div>
 
-    <!-- Flash Messages -->
     {% with messages = get_flashed_messages(with_categories=true) %}
     {% if messages %}
     <div class="mb-4">
@@ -74,7 +71,6 @@
     {% endif %}
     {% endwith %}
 
-    <!-- Stats -->
     {% set active_units = units|rejectattr('unit_id', 'in', excluded_unit_ids)|list %}
     {% set total_defects = active_units|sum(attribute='open_defects') %}
     {% set reviewed_count = active_units|selectattr('inspection_status', 'equalto', 'reviewed')|list|length %}
@@ -99,7 +95,6 @@
         </div>
     </div>
 
-    <!-- Unit Summary Table -->
     <div class="bg-white rounded-lg shadow mb-6">
         <div class="p-4 border-b">
             <h2 class="font-semibold text-gray-900">Unit Summary</h2>
@@ -155,7 +150,6 @@
         </div>
     </div>
 
-    <!-- General Notes -->
     {% if cycle.general_notes %}
     <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
         <h3 class="font-medium text-blue-800 mb-2">General Notes</h3>
@@ -163,7 +157,6 @@
     </div>
     {% endif %}
 
-    <!-- Exclusion Notes -->
     {% if cycle.exclusion_notes %}
     <div class="bg-orange-50 border border-orange-200 rounded-lg p-4 mb-4">
         <h3 class="font-medium text-orange-800 mb-2">Exclusion Notes</h3>
@@ -171,7 +164,6 @@
     </div>
     {% endif %}
 
-    <!-- Area Notes -->
     {% if area_notes %}
     <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-4">
         <h3 class="font-medium text-yellow-800 mb-2">Area Notes</h3>
@@ -186,7 +178,6 @@
     </div>
     {% endif %}
 
-    <!-- Excluded Items -->
     {% if excluded %}
     <div class="bg-gray-50 border border-gray-200 rounded-lg p-4 mb-6">
         <a href="javascript:void(0)"
@@ -213,7 +204,6 @@
     </div>
     {% endif %}
 
-    <!-- Cycle Actions (secondary) -->
     <div class="border-t pt-4 mt-2 flex items-center gap-4">
         {% if cycle.status == 'active' %}
         {% if session.get('role') in ['manager', 'admin'] %}
