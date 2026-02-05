@@ -81,7 +81,7 @@
             </svg>
             <h3 class="font-semibold text-gray-800 flex-1">{{ category.name }}</h3>
             {% if category.all_skipped %}
-            <span class="text-xs bg-orange-100 text-orange-600 px-2 py-0.5 rounded-full font-medium ml-2">Excluded</span>
+            <span class="text-xs bg-orange-100 text-orange-600 px-2 py-0.5 rounded-full font-medium ml-2">{{ category.checklist|length }} excluded</span>
             {% else %}
             <span class="flex items-center gap-2 ml-2 flex-shrink-0">
                 {% if ns.active > 0 %}
