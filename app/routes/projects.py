@@ -107,7 +107,7 @@ def view_phase(phase_id):
                 FROM unit u
                 WHERE u.phase_id = ? AND u.tenant_id = ?
                 AND u.unit_number >= ? AND u.unit_number <= ?
-                ORDER BY u.unit_number
+                ORDER BY u.block, u.floor, u.unit_number
             """, [cycle['cycle_number'], cycle['id'], cycle['id'], cycle['id'], 
                   phase_id, tenant_id, cycle['unit_start'], cycle['unit_end']])
         else:
@@ -122,7 +122,7 @@ def view_phase(phase_id):
                     (SELECT COUNT(*) FROM defect d WHERE d.unit_id = u.id AND d.status = 'open') as open_defects
                 FROM unit u
                 WHERE u.phase_id = ? AND u.tenant_id = ?
-                ORDER BY u.unit_number
+                ORDER BY u.block, u.floor, u.unit_number
             """, [cycle['cycle_number'], cycle['id'], cycle['id'], cycle['id'], phase_id, tenant_id])
     elif active_cycles:
         # No filter - show all units in any active cycle with their cycle info
@@ -154,7 +154,7 @@ def view_phase(phase_id):
                 WHERE ic.phase_id = u.phase_id AND ic.status = 'active'
                 AND (ic.unit_start IS NULL OR (u.unit_number >= ic.unit_start AND u.unit_number <= ic.unit_end))
             )
-            ORDER BY u.unit_number
+            ORDER BY u.block, u.floor, u.unit_number
         """, [phase_id, tenant_id])
     else:
         # No active cycles - show all units
@@ -168,7 +168,7 @@ def view_phase(phase_id):
                 (SELECT COUNT(*) FROM defect d WHERE d.unit_id = u.id AND d.status = 'open') as open_defects
             FROM unit u
             WHERE u.phase_id = ? AND u.tenant_id = ?
-            ORDER BY u.unit_number
+            ORDER BY u.block, u.floor, u.unit_number
         """, [phase_id, tenant_id])
     
     # Stats
