@@ -1,6 +1,56 @@
 {% extends "base.html" %}
 
-{% block title %}Cycle {{ cycle.cycle_number }} - {{ cycle.project_name }}{% endblock %}
+{% block title %}Cycle {{ cycle.cycle_number }} - {{ cycle.project_name }}<!-- Custom Confirm Modal -->
+<div id="confirm-modal" class="fixed inset-0 z-50 hidden">
+    <div class="fixed inset-0 bg-black bg-opacity-40" onclick="closeConfirm()"></div>
+    <div class="fixed inset-0 flex items-center justify-center p-4">
+        <div class="bg-white rounded-xl shadow-xl max-w-sm w-full p-6 relative">
+            <h3 class="text-lg font-semibold text-gray-900 mb-2" id="confirm-title"></h3>
+            <p class="text-sm text-gray-600 mb-6" id="confirm-message"></p>
+            <div class="flex justify-end gap-3">
+                <button onclick="closeConfirm()"
+                        class="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200">
+                    Cancel
+                </button>
+                <button id="confirm-action"
+                        class="px-4 py-2 text-sm font-medium text-white rounded-lg">
+                    Confirm
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+let pendingEl = null;
+
+function showConfirm(title, message, actionLabel, actionColor, triggerEl) {
+    pendingEl = triggerEl;
+    document.getElementById("confirm-title").textContent = title;
+    document.getElementById("confirm-message").textContent = message;
+    const btn = document.getElementById("confirm-action");
+    btn.textContent = actionLabel;
+    btn.className = "px-4 py-2 text-sm font-medium text-white rounded-lg " + actionColor;
+    document.getElementById("confirm-modal").classList.remove("hidden");
+}
+
+function closeConfirm() {
+    document.getElementById("confirm-modal").classList.add("hidden");
+    pendingEl = null;
+}
+
+function confirmAndFire() {
+    if (pendingEl) {
+        pendingEl.removeAttribute("onclick");
+        pendingEl.setAttribute("data-confirmed", "true");
+        htmx.trigger(pendingEl, "confirmed");
+    }
+    closeConfirm();
+}
+
+document.getElementById("confirm-action").addEventListener("click", confirmAndFire);
+</script>
+{% endblock %}
 
 {% block content %}
 {% set floor_names = {0: 'Ground Floor', 1: '1st Floor', 2: '2nd Floor', 3: '3rd Floor'} %}
@@ -225,13 +275,25 @@
                                 </a>
                                 {% endif %}
                                 {% if cycle.status == 'active' and not unit.inspection_id %}
+                                {% if is_excluded %}
                                 <button type="button"
                                         hx-post="{{ url_for('cycles.toggle_unit_exclusion', cycle_id=cycle.id) }}"
                                         hx-vals='{"unit_id": "{{ unit.unit_id }}"}' 
-                                        class="text-xs {% if is_excluded %}text-green-600 hover:text-green-800{% else %}text-red-600 hover:text-red-800{% endif %} underline"
-                                        onclick="return confirm('{% if is_excluded %}Include{% else %}Exclude{% endif %} unit {{ unit.unit_number }}?')">
-                                    {% if is_excluded %}Include{% else %}Exclude{% endif %}
+                                        hx-trigger="confirmed"
+                                        class="text-xs text-green-600 hover:text-green-800 underline"
+                                        onclick="showConfirm('Include Unit {{ unit.unit_number }}', 'This unit will be added back to the active cycle.', 'Include', 'bg-green-600 hover:bg-green-700', this)">
+                                    Include
                                 </button>
+                                {% else %}
+                                <button type="button"
+                                        hx-post="{{ url_for('cycles.toggle_unit_exclusion', cycle_id=cycle.id) }}"
+                                        hx-vals='{"unit_id": "{{ unit.unit_id }}"}' 
+                                        hx-trigger="confirmed"
+                                        class="text-xs text-red-600 hover:text-red-800 underline"
+                                        onclick="showConfirm('Exclude Unit {{ unit.unit_number }}', 'This unit will be removed from the active cycle. You can include it again later.', 'Exclude', 'bg-red-600 hover:bg-red-700', this)">
+                                    Exclude
+                                </button>
+                                {% endif %}
                                 {% endif %}
                             </div>
                         </td>
