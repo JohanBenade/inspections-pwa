@@ -1,10 +1,10 @@
 """
-Cycle routes - Inspection cycle management for architect.
-Create cycles, set exclusions, add general notes.
+Cycle routes - Inspection cycle management.
+Create cycles, set exclusions, add general notes, assign inspectors.
 """
 import re
 from datetime import date
-from flask import Blueprint, render_template, session, redirect, url_for, abort, request
+from flask import Blueprint, render_template, session, redirect, url_for, abort, request, flash
 from app.auth import require_team_lead, require_manager
 from app.utils import generate_id
 from app.services.db import get_db, query_db
@@ -58,7 +58,6 @@ def list_cycles():
     """List all inspection cycles for current phase."""
     tenant_id = session['tenant_id']
     
-    # Get first phase for now (single project assumption)
     phase = query_db("""
         SELECT ph.*, p.project_name, p.client_name
         FROM phase ph
@@ -89,12 +88,11 @@ def list_cycles():
 @cycles_bp.route('/create', methods=['GET', 'POST'])
 @require_team_lead
 def create_cycle():
-    """Create a new inspection cycle."""
+    """Create a new inspection cycle with optional unit creation and exclusion copying."""
     tenant_id = session['tenant_id']
     user_id = session['user_id']
     db = get_db()
     
-    # Get phase
     phase = query_db("""
         SELECT ph.*, p.project_name
         FROM phase ph
@@ -106,45 +104,102 @@ def create_cycle():
     if not phase:
         abort(404)
     
-    # Get all units for dropdown
-    units = query_db("""
-        SELECT unit_number FROM unit 
-        WHERE phase_id = ? 
-        ORDER BY unit_number
-    """, [phase['id']])
-    
     if request.method == 'POST':
-        general_notes = clean_notes(request.form.get('general_notes', ''))
-        exclusion_notes = clean_notes(request.form.get('exclusion_notes', ''))
+        cycle_number = int(request.form.get('cycle_number', 1))
+        block = request.form.get('block', '').strip() or None
+        floor_val = request.form.get('floor', '')
+        floor = int(floor_val) if floor_val.strip() != '' else None
         unit_start = request.form.get('unit_start', '').strip() or None
         unit_end = request.form.get('unit_end', '').strip() or None
+        unit_type = request.form.get('unit_type', '4-Bed').strip()
+        copy_from = request.form.get('copy_exclusions_from', '').strip() or None
+        general_notes = clean_notes(request.form.get('general_notes', ''))
+        exclusion_notes = clean_notes(request.form.get('exclusion_notes', ''))
         
-        # Get next cycle number
-        last_cycle = query_db(
-            "SELECT MAX(cycle_number) as max_num FROM inspection_cycle WHERE phase_id = ?",
-            [phase['id']], one=True
-        )
-        next_number = (last_cycle['max_num'] or 0) + 1
+        # Create missing units in range
+        units_created = 0
+        if unit_start and unit_end:
+            start_num = int(unit_start)
+            end_num = int(unit_end)
+            for num in range(start_num, end_num + 1):
+                unit_number = str(num).zfill(3)
+                existing = query_db(
+                    "SELECT id FROM unit WHERE unit_number = ? AND phase_id = ?",
+                    [unit_number, phase['id']], one=True
+                )
+                if not existing:
+                    unit_id = generate_id()
+                    db.execute("""
+                        INSERT INTO unit (id, tenant_id, phase_id, unit_number, unit_type, block, floor, status)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, 'not_started')
+                    """, [unit_id, tenant_id, phase['id'], unit_number, unit_type, block, floor])
+                    units_created += 1
         
-        # Create cycle
+        # Create cycle record
         cycle_id = generate_id()
         db.execute("""
-            INSERT INTO inspection_cycle (id, tenant_id, phase_id, cycle_number, unit_start, unit_end, general_notes, exclusion_notes, created_by)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-        """, [cycle_id, tenant_id, phase['id'], next_number, unit_start, unit_end, general_notes, exclusion_notes, user_id])
+            INSERT INTO inspection_cycle 
+            (id, tenant_id, phase_id, cycle_number, unit_start, unit_end, block, floor, general_notes, exclusion_notes, created_by)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """, [cycle_id, tenant_id, phase['id'], cycle_number, unit_start, unit_end, block, floor, general_notes, exclusion_notes, user_id])
+        
+        # Copy exclusions from source cycle
+        exclusions_copied = 0
+        if copy_from:
+            source_exclusions = query_db(
+                "SELECT item_template_id, reason FROM cycle_excluded_item WHERE cycle_id = ?",
+                [copy_from]
+            )
+            for exc in source_exclusions:
+                exc_id = generate_id()
+                db.execute("""
+                    INSERT INTO cycle_excluded_item (id, tenant_id, cycle_id, item_template_id, reason)
+                    VALUES (?, ?, ?, ?, ?)
+                """, [exc_id, tenant_id, cycle_id, exc['item_template_id'], exc['reason']])
+                exclusions_copied += 1
+            
+            # Also copy area notes from source cycle
+            source_notes = query_db(
+                "SELECT area_template_id, note FROM cycle_area_note WHERE cycle_id = ?",
+                [copy_from]
+            )
+            for note in source_notes:
+                note_id = generate_id()
+                db.execute("""
+                    INSERT INTO cycle_area_note (id, tenant_id, cycle_id, area_template_id, note)
+                    VALUES (?, ?, ?, ?, ?)
+                """, [note_id, tenant_id, cycle_id, note['area_template_id'], note['note']])
         
         db.commit()
+        
+        msg_parts = ['Cycle {} created'.format(cycle_number)]
+        if units_created > 0:
+            msg_parts.append('{} units added'.format(units_created))
+        if exclusions_copied > 0:
+            msg_parts.append('{} exclusions copied'.format(exclusions_copied))
+        flash('. '.join(msg_parts), 'success')
         
         return redirect(url_for('cycles.edit_cycle', cycle_id=cycle_id))
     
     # GET - show form
-    last_cycle = query_db(
-        "SELECT MAX(cycle_number) as max_num FROM inspection_cycle WHERE phase_id = ?",
-        [phase['id']], one=True
-    )
-    next_number = (last_cycle['max_num'] or 0) + 1
+    existing_cycles = query_db("""
+        SELECT ic.id, ic.cycle_number, ic.block, ic.unit_start, ic.unit_end,
+            (SELECT COUNT(*) FROM cycle_excluded_item WHERE cycle_id = ic.id) as exclusion_count
+        FROM inspection_cycle ic
+        WHERE ic.tenant_id = ?
+        ORDER BY ic.cycle_number DESC
+    """, [tenant_id])
     
-    return render_template('cycles/create.html', phase=phase, next_number=next_number, units=units)
+    existing_blocks = query_db("""
+        SELECT DISTINCT block FROM unit 
+        WHERE tenant_id = ? AND block IS NOT NULL 
+        ORDER BY block
+    """, [tenant_id])
+    
+    return render_template('cycles/create.html', 
+                          phase=phase, 
+                          existing_cycles=existing_cycles,
+                          existing_blocks=existing_blocks)
 
 
 @cycles_bp.route('/<cycle_id>')
@@ -172,16 +227,16 @@ def view_cycle(cycle_id):
         range_filter = "AND u.unit_number >= ? AND u.unit_number <= ?"
         params.extend([cycle['unit_start'], cycle['unit_end']])
     
-    units = query_db(f"""
+    units = query_db("""
         SELECT u.unit_number, u.status as unit_status, u.id as unit_id,
             i.id as inspection_id, i.status as inspection_status,
             i.inspection_date, i.inspector_name,
             (SELECT COUNT(*) FROM defect d WHERE d.unit_id = u.id AND d.status = 'open') as open_defects
         FROM unit u
         LEFT JOIN inspection i ON i.unit_id = u.id AND i.cycle_id = ?
-        WHERE u.phase_id = ? {range_filter}
+        WHERE u.phase_id = ? {}
         ORDER BY u.unit_number
-    """, params)
+    """.format(range_filter), params)
     
     # Get excluded items
     excluded = query_db("""
@@ -208,8 +263,23 @@ def view_cycle(cycle_id):
     # Check if any inspections exist (for delete button)
     has_inspections = any(u['inspection_id'] for u in units)
     
+    # Get all inspectors for assignment dropdown
+    inspectors = query_db("""
+        SELECT id, name FROM inspector 
+        WHERE tenant_id = ? AND role IN ('inspector', 'team_lead') AND active = 1
+        ORDER BY name
+    """, [tenant_id])
+    
+    # Get current assignments
+    assignments = query_db("""
+        SELECT unit_id, inspector_id FROM cycle_unit_assignment
+        WHERE cycle_id = ?
+    """, [cycle_id])
+    assignment_map = {a['unit_id']: a['inspector_id'] for a in assignments}
+    
     return render_template('cycles/view.html', cycle=cycle, units=units, excluded=excluded, 
-                          area_notes=area_notes, has_inspections=has_inspections)
+                          area_notes=area_notes, has_inspections=has_inspections,
+                          inspectors=inspectors, assignment_map=assignment_map)
 
 
 @cycles_bp.route('/<cycle_id>/edit', methods=['GET', 'POST'])
@@ -241,7 +311,6 @@ def edit_cycle(cycle_id):
         """, [general_notes, exclusion_notes, unit_start, unit_end, cycle_id])
         
         # Save area notes
-        # First get all areas
         unit = query_db(
             "SELECT unit_type FROM unit WHERE phase_id = ? LIMIT 1",
             [cycle['phase_id']], one=True
@@ -253,16 +322,13 @@ def edit_cycle(cycle_id):
             """, [tenant_id, unit['unit_type']])
             
             for area in areas:
-                area_note = request.form.get(f'area_note_{area["id"]}', '').strip()
+                area_note = request.form.get('area_note_{}'.format(area['id']), '').strip()
                 
-                # Delete existing note
                 db.execute("""
                     DELETE FROM cycle_area_note WHERE cycle_id = ? AND area_template_id = ?
                 """, [cycle_id, area['id']])
                 
-                # Insert if not empty
                 if area_note:
-                    from app.utils import generate_id
                     note_id = generate_id()
                     db.execute("""
                         INSERT INTO cycle_area_note (id, tenant_id, cycle_id, area_template_id, note)
@@ -274,7 +340,6 @@ def edit_cycle(cycle_id):
         return redirect(url_for('cycles.view_cycle', cycle_id=cycle_id))
     
     # GET - show edit form with item tree for exclusions
-    # Get unit type from first unit
     unit = query_db(
         "SELECT unit_type FROM unit WHERE phase_id = ? LIMIT 1",
         [cycle['phase_id']], one=True
@@ -283,21 +348,18 @@ def edit_cycle(cycle_id):
     if not unit:
         abort(404)
     
-    # Get all areas with categories and items
     areas = query_db("""
         SELECT * FROM area_template
         WHERE tenant_id = ? AND unit_type = ?
         ORDER BY area_order
     """, [tenant_id, unit['unit_type']])
     
-    # Get existing area notes
     area_notes = query_db("""
         SELECT area_template_id, note FROM cycle_area_note
         WHERE cycle_id = ?
     """, [cycle_id])
     area_notes_dict = {n['area_template_id']: n['note'] for n in area_notes}
     
-    # Build tree structure
     template_tree = []
     for area in areas:
         categories = query_db("""
@@ -331,7 +393,6 @@ def edit_cycle(cycle_id):
             'note': area_notes_dict.get(area['id'], '')
         })
     
-    # Get all units for range dropdowns
     units = query_db("""
         SELECT unit_number FROM unit 
         WHERE phase_id = ? 
@@ -351,18 +412,15 @@ def toggle_exclusion(cycle_id):
     item_id = request.form.get('item_id')
     reason = request.form.get('reason', '').strip()
     
-    # Check if already excluded
     existing = query_db(
         "SELECT id FROM cycle_excluded_item WHERE cycle_id = ? AND item_template_id = ?",
         [cycle_id, item_id], one=True
     )
     
     if existing:
-        # Remove exclusion
         db.execute("DELETE FROM cycle_excluded_item WHERE id = ?", [existing['id']])
         is_excluded = False
     else:
-        # Add exclusion
         exc_id = generate_id()
         db.execute("""
             INSERT INTO cycle_excluded_item (id, tenant_id, cycle_id, item_template_id, reason)
@@ -372,7 +430,6 @@ def toggle_exclusion(cycle_id):
     
     db.commit()
     
-    # Return updated checkbox state
     item = query_db("SELECT item_description FROM item_template WHERE id = ?", [item_id], one=True)
     
     return render_template('cycles/_exclusion_row.html', 
@@ -381,6 +438,55 @@ def toggle_exclusion(cycle_id):
                           is_excluded=is_excluded,
                           reason=reason,
                           cycle_id=cycle_id)
+
+
+@cycles_bp.route('/<cycle_id>/assign', methods=['POST'])
+@require_team_lead
+def assign_inspector(cycle_id):
+    """Assign inspector to unit for this cycle (HTMX)."""
+    tenant_id = session['tenant_id']
+    db = get_db()
+    
+    unit_id = request.form.get('unit_id')
+    inspector_id = request.form.get('inspector_id')
+    
+    if not unit_id:
+        return '', 400
+    
+    if not inspector_id:
+        # Remove assignment
+        db.execute("""
+            DELETE FROM cycle_unit_assignment 
+            WHERE cycle_id = ? AND unit_id = ?
+        """, [cycle_id, unit_id])
+        db.commit()
+        return '<span class="text-xs text-gray-400">Removed</span>'
+    
+    # Get inspector name
+    inspector = query_db("SELECT name FROM inspector WHERE id = ?", [inspector_id], one=True)
+    if not inspector:
+        return '', 404
+    
+    # Upsert assignment
+    existing = query_db(
+        "SELECT id FROM cycle_unit_assignment WHERE cycle_id = ? AND unit_id = ?",
+        [cycle_id, unit_id], one=True
+    )
+    
+    if existing:
+        db.execute("""
+            UPDATE cycle_unit_assignment SET inspector_id = ? WHERE id = ?
+        """, [inspector_id, existing['id']])
+    else:
+        assign_id = generate_id()
+        db.execute("""
+            INSERT INTO cycle_unit_assignment (id, tenant_id, cycle_id, unit_id, inspector_id)
+            VALUES (?, ?, ?, ?, ?)
+        """, [assign_id, tenant_id, cycle_id, unit_id, inspector_id])
+    
+    db.commit()
+    
+    return '<span class="text-xs text-green-600">{}</span>'.format(inspector['name'])
 
 
 @cycles_bp.route('/<cycle_id>/close', methods=['POST'])
@@ -440,23 +546,21 @@ def delete_cycle(cycle_id):
     if not cycle:
         abort(404)
     
-    # Check if any inspections exist for this cycle
     inspections = query_db(
         "SELECT COUNT(*) as count FROM inspection WHERE cycle_id = ?",
         [cycle_id], one=True
     )
     
     if inspections['count'] > 0:
-        from flask import flash
-        flash(f"Cannot delete: {inspections['count']} inspection(s) exist for this cycle", 'error')
+        flash('Cannot delete: {} inspection(s) exist for this cycle'.format(inspections['count']), 'error')
         return redirect(url_for('cycles.view_cycle', cycle_id=cycle_id))
     
-    # Delete in order: area notes, excluded items, then cycle
+    # Delete in order: area notes, excluded items, assignments, then cycle
     db.execute("DELETE FROM cycle_area_note WHERE cycle_id = ?", [cycle_id])
     db.execute("DELETE FROM cycle_excluded_item WHERE cycle_id = ?", [cycle_id])
+    db.execute("DELETE FROM cycle_unit_assignment WHERE cycle_id = ?", [cycle_id])
     db.execute("DELETE FROM inspection_cycle WHERE id = ?", [cycle_id])
     db.commit()
     
-    from flask import flash
-    flash(f"Cycle {cycle['cycle_number']} deleted", 'success')
+    flash('Cycle {} deleted'.format(cycle['cycle_number']), 'success')
     return redirect(url_for('cycles.list_cycles'))
