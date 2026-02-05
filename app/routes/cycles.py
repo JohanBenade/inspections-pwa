@@ -72,7 +72,11 @@ def list_cycles():
     cycles = query_db("""
         SELECT ic.*,
             insp.name as created_by_name,
-            (SELECT COUNT(*) FROM unit u WHERE u.phase_id = ic.phase_id) as total_units,
+            (SELECT COUNT(*) FROM unit u WHERE u.phase_id = ic.phase_id
+                AND (ic.unit_start IS NULL OR u.unit_number >= ic.unit_start)
+                AND (ic.unit_end IS NULL OR u.unit_number <= ic.unit_end)
+                AND u.id NOT IN (SELECT ceu.unit_id FROM cycle_excluded_unit ceu WHERE ceu.cycle_id = ic.id)
+            ) as total_units,
             (SELECT COUNT(DISTINCT i.unit_id) FROM inspection i WHERE i.cycle_id = ic.id) as units_inspected,
             (SELECT COUNT(DISTINCT i.unit_id) FROM inspection i WHERE i.cycle_id = ic.id AND i.status = 'submitted') as units_submitted,
             (SELECT COUNT(*) FROM cycle_excluded_item cei WHERE cei.cycle_id = ic.id) as excluded_count
@@ -277,9 +281,17 @@ def view_cycle(cycle_id):
     """, [cycle_id])
     assignment_map = {a['unit_id']: a['inspector_id'] for a in assignments}
     
+    # Get excluded units for this cycle
+    excluded_units = query_db(
+        "SELECT unit_id FROM cycle_excluded_unit WHERE cycle_id = ?",
+        [cycle_id]
+    )
+    excluded_unit_ids = set(eu['unit_id'] for eu in excluded_units)
+
     return render_template('cycles/view.html', cycle=cycle, units=units, excluded=excluded, 
                           area_notes=area_notes, has_inspections=has_inspections,
-                          inspectors=inspectors, assignment_map=assignment_map)
+                          inspectors=inspectors, assignment_map=assignment_map,
+                          excluded_unit_ids=excluded_unit_ids)
 
 
 @cycles_bp.route('/<cycle_id>/edit', methods=['GET', 'POST'])
@@ -555,12 +567,47 @@ def delete_cycle(cycle_id):
         flash('Cannot delete: {} inspection(s) exist for this cycle'.format(inspections['count']), 'error')
         return redirect(url_for('cycles.view_cycle', cycle_id=cycle_id))
     
-    # Delete in order: area notes, excluded items, assignments, then cycle
+    # Delete in order: area notes, excluded items, excluded units, assignments, then cycle
     db.execute("DELETE FROM cycle_area_note WHERE cycle_id = ?", [cycle_id])
     db.execute("DELETE FROM cycle_excluded_item WHERE cycle_id = ?", [cycle_id])
+    db.execute("DELETE FROM cycle_excluded_unit WHERE cycle_id = ?", [cycle_id])
     db.execute("DELETE FROM cycle_unit_assignment WHERE cycle_id = ?", [cycle_id])
     db.execute("DELETE FROM inspection_cycle WHERE id = ?", [cycle_id])
     db.commit()
     
     flash('Cycle {} deleted'.format(cycle['cycle_number']), 'success')
     return redirect(url_for('cycles.list_cycles'))
+
+
+@cycles_bp.route('/<cycle_id>/exclude-unit', methods=['POST'])
+@require_team_lead
+def toggle_unit_exclusion(cycle_id):
+    """Toggle unit exclusion from this cycle (HTMX)."""
+    from flask import make_response
+    tenant_id = session['tenant_id']
+    db = get_db()
+    
+    unit_id = request.form.get('unit_id')
+    
+    if not unit_id:
+        return '', 400
+    
+    existing = query_db(
+        "SELECT id FROM cycle_excluded_unit WHERE cycle_id = ? AND unit_id = ?",
+        [cycle_id, unit_id], one=True
+    )
+    
+    if existing:
+        db.execute("DELETE FROM cycle_excluded_unit WHERE id = ?", [existing['id']])
+    else:
+        exc_id = generate_id()
+        db.execute("""
+            INSERT INTO cycle_excluded_unit (id, tenant_id, cycle_id, unit_id)
+            VALUES (?, ?, ?, ?)
+        """, [exc_id, tenant_id, cycle_id, unit_id])
+    
+    db.commit()
+    
+    resp = make_response('')
+    resp.headers['HX-Refresh'] = 'true'
+    return resp
