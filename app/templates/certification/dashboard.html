@@ -3,6 +3,7 @@
 {% block title %}Approvals{% endblock %}
 
 {% block content %}
+{% set floor_names = {0: 'Ground Floor', 1: '1st Floor', 2: '2nd Floor', 3: '3rd Floor'} %}
 <div class="max-w-6xl mx-auto">
     <!-- Header with cycle progress -->
     <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-4 gap-4">
@@ -82,16 +83,58 @@
             <span class="text-sm text-gray-400">units waiting for inspection</span>
         </a>
         <div id="not-started-content" class="hidden mt-3">
-            <div class="bg-white rounded-lg border border-gray-200 p-4">
-                <div class="flex flex-wrap gap-2">
-                    {% for unit in units %}
-                    <a href="{{ url_for('certification.view_unit', unit_id=unit.id) }}"
-                       class="px-3 py-2 text-sm font-medium text-gray-700 bg-gray-50 border border-gray-200 rounded hover:bg-blue-50 hover:text-blue-700 hover:border-blue-200 transition-colors">
-                        Unit {{ unit.unit_number }}
-                    </a>
+            {% for block_name, block_units_iter in units|groupby('block') %}
+            {% set block_units = block_units_iter|list %}
+            <div class="mb-3">
+                {% if block_name %}
+                <a href="javascript:void(0)"
+                   onclick="var c=this.nextElementSibling;var ch=this.querySelector('.blk-chv');c.classList.toggle('hidden');ch.classList.toggle('rotate-90');return false"
+                   ontouchend="event.preventDefault();this.click()"
+                   class="flex items-center gap-2 mb-2 select-none"
+                   style="text-decoration:none">
+                    <svg class="blk-chv w-3.5 h-3.5 text-gray-400 transform transition-transform duration-200 rotate-90 flex-shrink-0"
+                         fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+                    </svg>
+                    <span class="text-sm font-semibold text-gray-700">{{ block_name }}</span>
+                    <span class="text-xs text-gray-400">({{ block_units|length }})</span>
+                </a>
+                {% endif %}
+                <div>
+                    {% for floor_num, floor_units_iter in block_units|groupby('floor') %}
+                    {% set floor_units = floor_units_iter|list %}
+                    <div class="ml-4 mb-2">
+                        {% if floor_num is not none %}
+                        <a href="javascript:void(0)"
+                           onclick="var c=this.nextElementSibling;var ch=this.querySelector('.flr-chv');c.classList.toggle('hidden');ch.classList.toggle('rotate-90');return false"
+                           ontouchend="event.preventDefault();this.click()"
+                           class="flex items-center gap-2 mb-1 select-none"
+                           style="text-decoration:none">
+                            <svg class="flr-chv w-3 h-3 text-gray-400 transform transition-transform duration-200 rotate-90 flex-shrink-0"
+                                 fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+                            </svg>
+                            <span class="text-xs font-medium text-gray-500">{{ floor_names.get(floor_num, 'Floor ' ~ floor_num) }}</span>
+                            <span class="text-xs text-gray-400">({{ floor_units|length }})</span>
+                        </a>
+                        {% endif %}
+                        <div class="ml-4">
+                            <div class="bg-white rounded-lg border border-gray-200 p-4">
+                                <div class="flex flex-wrap gap-2">
+                                    {% for unit in floor_units %}
+                                    <a href="{{ url_for('certification.view_unit', unit_id=unit.id) }}"
+                                       class="px-3 py-2 text-sm font-medium text-gray-700 bg-gray-50 border border-gray-200 rounded hover:bg-blue-50 hover:text-blue-700 hover:border-blue-200 transition-colors">
+                                        Unit {{ unit.unit_number }}
+                                    </a>
+                                    {% endfor %}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                     {% endfor %}
                 </div>
             </div>
+            {% endfor %}
         </div>
         
         {% elif status_key == 'in_progress' %}
@@ -103,60 +146,98 @@
             </span>
         </div>
         <p class="text-sm text-gray-500 mb-3">{{ info.description }}</p>
-        
-        <div class="bg-white rounded-lg border border-gray-200 overflow-hidden">
-            <table class="min-w-full divide-y divide-gray-200">
-                <thead class="bg-gray-50">
-                    <tr>
-                        <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Unit</th>
-                        <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Inspector</th>
-                        <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Progress</th>
-                        <th class="px-4 py-2 text-right text-xs font-medium text-gray-500 uppercase">Actions</th>
-                    </tr>
-                </thead>
-                <tbody class="divide-y divide-gray-200">
-                    {% for unit in units %}
-                    <tr class="hover:bg-gray-50">
-                        <td class="px-4 py-3">
-                            {% if status_key == 'awaiting_approval' and user_role not in ['manager', 'admin'] %}
-                            <span class="font-medium text-gray-800">Unit {{ unit.unit_number }}</span>
-                            {% else %}
-                            <a href="{{ url_for('certification.view_unit', unit_id=unit.id) }}" 
-                               class="font-medium text-blue-600 hover:text-blue-800">
-                                Unit {{ unit.unit_number }}
-                            </a>
-                            {% endif %}
-                        </td>
-                        <td class="px-4 py-3 text-sm text-gray-600">
-                            {{ unit.last_inspector or '-' }}
-                        </td>
-                        <td class="px-4 py-3">
-                            {% if unit.total_items and unit.total_items > 0 %}
-                            {% set checkable = unit.total_items - (unit.excluded_items or 0) %}
-                            {% set done = (unit.completed_items or 0) - (unit.excluded_items or 0) %}
-                            {% set pct = (done * 100 / checkable) | int if checkable > 0 else 0 %}
-                            <div class="flex items-center gap-2">
-                                <div class="w-20 bg-gray-200 rounded-full h-2">
-                                    <div class="h-2 rounded-full {% if pct == 100 %}bg-green-500{% elif pct > 50 %}bg-blue-500{% else %}bg-yellow-500{% endif %}" 
-                                         style="width: {{ pct }}%"></div>
-                                </div>
-                                <span class="text-xs text-gray-500">{{ done }}/{{ checkable }}</span>
-                            </div>
-                            {% else %}
-                            <span class="text-gray-400 text-sm">-</span>
-                            {% endif %}
-                        </td>
-                        <td class="px-4 py-3 text-right">
-                            <a href="{{ url_for('certification.view_unit', unit_id=unit.id) }}"
-                               class="px-3 py-1.5 text-xs font-medium text-blue-700 bg-blue-50 border border-blue-200 rounded hover:bg-blue-100">
-                                Open
-                            </a>
-                        </td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
+
+        {% for block_name, block_units_iter in units|groupby('block') %}
+        {% set block_units = block_units_iter|list %}
+        <div class="mb-3">
+            {% if block_name %}
+            <a href="javascript:void(0)"
+               onclick="var c=this.nextElementSibling;var ch=this.querySelector('.blk-chv');c.classList.toggle('hidden');ch.classList.toggle('rotate-90');return false"
+               ontouchend="event.preventDefault();this.click()"
+               class="flex items-center gap-2 mb-2 select-none"
+               style="text-decoration:none">
+                <svg class="blk-chv w-3.5 h-3.5 text-gray-400 transform transition-transform duration-200 rotate-90 flex-shrink-0"
+                     fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+                </svg>
+                <span class="text-sm font-semibold text-gray-700">{{ block_name }}</span>
+                <span class="text-xs text-gray-400">({{ block_units|length }})</span>
+            </a>
+            {% endif %}
+            <div>
+                {% for floor_num, floor_units_iter in block_units|groupby('floor') %}
+                {% set floor_units = floor_units_iter|list %}
+                <div class="ml-4 mb-2">
+                    {% if floor_num is not none %}
+                    <a href="javascript:void(0)"
+                       onclick="var c=this.nextElementSibling;var ch=this.querySelector('.flr-chv');c.classList.toggle('hidden');ch.classList.toggle('rotate-90');return false"
+                       ontouchend="event.preventDefault();this.click()"
+                       class="flex items-center gap-2 mb-1 select-none"
+                       style="text-decoration:none">
+                        <svg class="flr-chv w-3 h-3 text-gray-400 transform transition-transform duration-200 rotate-90 flex-shrink-0"
+                             fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+                        </svg>
+                        <span class="text-xs font-medium text-gray-500">{{ floor_names.get(floor_num, 'Floor ' ~ floor_num) }}</span>
+                        <span class="text-xs text-gray-400">({{ floor_units|length }})</span>
+                    </a>
+                    {% endif %}
+                    <div class="ml-4">
+                        <div class="bg-white rounded-lg border border-gray-200 overflow-hidden">
+                            <table class="min-w-full divide-y divide-gray-200">
+                                <thead class="bg-gray-50">
+                                    <tr>
+                                        <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Unit</th>
+                                        <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Inspector</th>
+                                        <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Progress</th>
+                                        <th class="px-4 py-2 text-right text-xs font-medium text-gray-500 uppercase">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="divide-y divide-gray-200">
+                                    {% for unit in floor_units %}
+                                    <tr class="hover:bg-gray-50">
+                                        <td class="px-4 py-3">
+                                            <a href="{{ url_for('certification.view_unit', unit_id=unit.id) }}" 
+                                               class="font-medium text-blue-600 hover:text-blue-800">
+                                                Unit {{ unit.unit_number }}
+                                            </a>
+                                        </td>
+                                        <td class="px-4 py-3 text-sm text-gray-600">
+                                            {{ unit.last_inspector or '-' }}
+                                        </td>
+                                        <td class="px-4 py-3">
+                                            {% if unit.total_items and unit.total_items > 0 %}
+                                            {% set checkable = unit.total_items - (unit.excluded_items or 0) %}
+                                            {% set done = (unit.completed_items or 0) - (unit.excluded_items or 0) %}
+                                            {% set pct = (done * 100 / checkable) | int if checkable > 0 else 0 %}
+                                            <div class="flex items-center gap-2">
+                                                <div class="w-20 bg-gray-200 rounded-full h-2">
+                                                    <div class="h-2 rounded-full {% if pct == 100 %}bg-green-500{% elif pct > 50 %}bg-blue-500{% else %}bg-yellow-500{% endif %}" 
+                                                         style="width: {{ pct }}%"></div>
+                                                </div>
+                                                <span class="text-xs text-gray-500">{{ done }}/{{ checkable }}</span>
+                                            </div>
+                                            {% else %}
+                                            <span class="text-gray-400 text-sm">-</span>
+                                            {% endif %}
+                                        </td>
+                                        <td class="px-4 py-3 text-right">
+                                            <a href="{{ url_for('certification.view_unit', unit_id=unit.id) }}"
+                                               class="px-3 py-1.5 text-xs font-medium text-blue-700 bg-blue-50 border border-blue-200 rounded hover:bg-blue-100">
+                                                Open
+                                            </a>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
         </div>
+        {% endfor %}
         
         {% else %}
         <!-- ACTIONABLE SECTIONS: Full table with all details -->
@@ -175,174 +256,211 @@
         </div>
         <p class="text-sm text-gray-500 mb-3">{{ info.description }}</p>
         
-        <div class="bg-white rounded-lg border border-gray-200 overflow-hidden">
-            <table class="min-w-full divide-y divide-gray-200">
-                <thead class="bg-gray-50">
-                    <tr>
-                        <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Unit</th>
-                        <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Inspector</th>
-                        <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Progress</th>
-                        <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Defects</th>
-                        <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Cycle</th>
-                        <th class="px-4 py-2 text-right text-xs font-medium text-gray-500 uppercase">Actions</th>
-                    </tr>
-                </thead>
-                <tbody class="divide-y divide-gray-200">
-                    {% for unit in units %}
-                    <tr class="hover:bg-gray-50">
-                        <td class="px-4 py-3">
-                            {% if status_key == 'awaiting_approval' and user_role not in ['manager', 'admin'] %}
-                            <span class="font-medium text-gray-800">Unit {{ unit.unit_number }}</span>
-                            {% else %}
-                            <a href="{{ url_for('certification.view_unit', unit_id=unit.id) }}" 
-                               class="font-medium text-blue-600 hover:text-blue-800">
-                                Unit {{ unit.unit_number }}
-                            </a>
-                            {% endif %}
-                        </td>
-                        <td class="px-4 py-3 text-sm text-gray-600">
-                            {{ unit.last_inspector or '-' }}
-                        </td>
-                        <td class="px-4 py-3">
-                            {% if unit.total_items and unit.total_items > 0 %}
-                            {% set checkable = unit.total_items - (unit.excluded_items or 0) %}
-                            {% set done = (unit.completed_items or 0) - (unit.excluded_items or 0) %}
-                            {% set pct = (done * 100 / checkable) | int if checkable > 0 else 0 %}
-                            <div class="flex flex-col gap-1">
-                                <div class="flex items-center gap-2">
-                                    <div class="w-20 bg-gray-200 rounded-full h-2">
-                                        <div class="h-2 rounded-full {% if pct == 100 %}bg-green-500{% elif pct > 50 %}bg-blue-500{% else %}bg-yellow-500{% endif %}" 
-                                             style="width: {{ pct }}%"></div>
-                                    </div>
-                                    <span class="text-xs text-gray-500">{{ done }}/{{ checkable }}</span>
-                                </div>
-                                {% if unit.excluded_items and unit.excluded_items > 0 %}
-                                <span class="text-xs text-orange-500">{{ unit.excluded_items }} excl</span>
-                                {% endif %}
-                            </div>
-                            {% else %}
-                            <span class="text-gray-400 text-sm">-</span>
-                            {% endif %}
-                        </td>
-                        <td class="px-4 py-3">
-                            {% if unit.open_defects and unit.open_defects > 0 %}
-                            <span class="text-red-600 font-medium">{{ unit.open_defects }}</span>
-                            {% elif unit.cleared_defects and unit.cleared_defects > 0 %}
-                            <span class="text-green-600">{{ unit.cleared_defects }} cleared</span>
-                            {% else %}
-                            <span class="text-gray-400">-</span>
-                            {% endif %}
-                        </td>
-                        <td class="px-4 py-3 text-sm text-gray-600">
-                            {% if unit.current_cycle %}{{ unit.current_cycle }}{% else %}-{% endif %}
-                        </td>
-                        <td class="px-4 py-3 text-right">
-                            <div class="flex items-center justify-end gap-2 flex-wrap">
-                                <!-- Open inspection -->
-                                {% if not (status_key == 'awaiting_approval' and user_role not in ['manager', 'admin']) %}
-                                <a href="{{ url_for('certification.view_unit', unit_id=unit.id) }}"
-                                   class="px-3 py-1.5 text-xs font-medium text-blue-700 bg-blue-50 border border-blue-200 rounded hover:bg-blue-100">
-                                    {% if status_key == 'awaiting_review' %}Review{% elif status_key in ['certified', 'pending_followup'] %}View{% else %}Open{% endif %}
-                                </a>
-                                {% endif %}
-                                
-                                {% if status_key == 'awaiting_review' %}
-                                    <a href="{{ url_for('pdf.preview_defects_pdf', unit_id=unit.id) }}"
-                                       class="px-3 py-1.5 text-xs font-medium text-white bg-blue-600 rounded hover:bg-blue-700">
-                                        PDF
-                                    </a>
+        {% for block_name, block_units_iter in units|groupby('block') %}
+        {% set block_units = block_units_iter|list %}
+        <div class="mb-3">
+            {% if block_name %}
+            <a href="javascript:void(0)"
+               onclick="var c=this.nextElementSibling;var ch=this.querySelector('.blk-chv');c.classList.toggle('hidden');ch.classList.toggle('rotate-90');return false"
+               ontouchend="event.preventDefault();this.click()"
+               class="flex items-center gap-2 mb-2 select-none"
+               style="text-decoration:none">
+                <svg class="blk-chv w-3.5 h-3.5 text-gray-400 transform transition-transform duration-200 rotate-90 flex-shrink-0"
+                     fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+                </svg>
+                <span class="text-sm font-semibold text-gray-700">{{ block_name }}</span>
+                <span class="text-xs text-gray-400">({{ block_units|length }})</span>
+            </a>
+            {% endif %}
+            <div>
+                {% for floor_num, floor_units_iter in block_units|groupby('floor') %}
+                {% set floor_units = floor_units_iter|list %}
+                <div class="ml-4 mb-2">
+                    {% if floor_num is not none %}
+                    <a href="javascript:void(0)"
+                       onclick="var c=this.nextElementSibling;var ch=this.querySelector('.flr-chv');c.classList.toggle('hidden');ch.classList.toggle('rotate-90');return false"
+                       ontouchend="event.preventDefault();this.click()"
+                       class="flex items-center gap-2 mb-1 select-none"
+                       style="text-decoration:none">
+                        <svg class="flr-chv w-3 h-3 text-gray-400 transform transition-transform duration-200 rotate-90 flex-shrink-0"
+                             fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+                        </svg>
+                        <span class="text-xs font-medium text-gray-500">{{ floor_names.get(floor_num, 'Floor ' ~ floor_num) }}</span>
+                        <span class="text-xs text-gray-400">({{ floor_units|length }})</span>
+                    </a>
+                    {% endif %}
+                    <div class="ml-4">
+                        <div class="bg-white rounded-lg border border-gray-200 overflow-hidden">
+                            <table class="min-w-full divide-y divide-gray-200">
+                                <thead class="bg-gray-50">
+                                    <tr>
+                                        <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Unit</th>
+                                        <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Inspector</th>
+                                        <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Progress</th>
+                                        <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Defects</th>
+                                        <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Cycle</th>
+                                        <th class="px-4 py-2 text-right text-xs font-medium text-gray-500 uppercase">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="divide-y divide-gray-200">
+                                    {% for unit in floor_units %}
+                                    <tr class="hover:bg-gray-50">
+                                        <td class="px-4 py-3">
+                                            {% if status_key == 'awaiting_approval' and user_role not in ['manager', 'admin'] %}
+                                            <span class="font-medium text-gray-800">Unit {{ unit.unit_number }}</span>
+                                            {% else %}
+                                            <a href="{{ url_for('certification.view_unit', unit_id=unit.id) }}" 
+                                               class="font-medium text-blue-600 hover:text-blue-800">
+                                                Unit {{ unit.unit_number }}
+                                            </a>
+                                            {% endif %}
+                                        </td>
+                                        <td class="px-4 py-3 text-sm text-gray-600">
+                                            {{ unit.last_inspector or '-' }}
+                                        </td>
+                                        <td class="px-4 py-3">
+                                            {% if unit.total_items and unit.total_items > 0 %}
+                                            {% set checkable = unit.total_items - (unit.excluded_items or 0) %}
+                                            {% set done = (unit.completed_items or 0) - (unit.excluded_items or 0) %}
+                                            {% set pct = (done * 100 / checkable) | int if checkable > 0 else 0 %}
+                                            <div class="flex flex-col gap-1">
+                                                <div class="flex items-center gap-2">
+                                                    <div class="w-20 bg-gray-200 rounded-full h-2">
+                                                        <div class="h-2 rounded-full {% if pct == 100 %}bg-green-500{% elif pct > 50 %}bg-blue-500{% else %}bg-yellow-500{% endif %}" 
+                                                             style="width: {{ pct }}%"></div>
+                                                    </div>
+                                                    <span class="text-xs text-gray-500">{{ done }}/{{ checkable }}</span>
+                                                </div>
+                                                {% if unit.excluded_items and unit.excluded_items > 0 %}
+                                                <span class="text-xs text-orange-500">{{ unit.excluded_items }} excl</span>
+                                                {% endif %}
+                                            </div>
+                                            {% else %}
+                                            <span class="text-gray-400 text-sm">-</span>
+                                            {% endif %}
+                                        </td>
+                                        <td class="px-4 py-3">
+                                            {% if unit.open_defects and unit.open_defects > 0 %}
+                                            <span class="text-red-600 font-medium">{{ unit.open_defects }}</span>
+                                            {% elif unit.cleared_defects and unit.cleared_defects > 0 %}
+                                            <span class="text-green-600">{{ unit.cleared_defects }} cleared</span>
+                                            {% else %}
+                                            <span class="text-gray-400">-</span>
+                                            {% endif %}
+                                        </td>
+                                        <td class="px-4 py-3 text-sm text-gray-600">
+                                            {% if unit.current_cycle %}{{ unit.current_cycle }}{% else %}-{% endif %}
+                                        </td>
+                                        <td class="px-4 py-3 text-right">
+                                            <div class="flex items-center justify-end gap-2 flex-wrap">
+                                                <!-- Open inspection -->
+                                                {% if not (status_key == 'awaiting_approval' and user_role not in ['manager', 'admin']) %}
+                                                <a href="{{ url_for('certification.view_unit', unit_id=unit.id) }}"
+                                                   class="px-3 py-1.5 text-xs font-medium text-blue-700 bg-blue-50 border border-blue-200 rounded hover:bg-blue-100">
+                                                    {% if status_key == 'awaiting_review' %}Review{% elif status_key in ['certified', 'pending_followup'] %}View{% else %}Open{% endif %}
+                                                </a>
+                                                {% endif %}
+                                                
+                                                {% if status_key == 'awaiting_review' %}
+                                                    <a href="{{ url_for('pdf.preview_defects_pdf', unit_id=unit.id) }}"
+                                                       class="px-3 py-1.5 text-xs font-medium text-white bg-blue-600 rounded hover:bg-blue-700">
+                                                        PDF
+                                                    </a>
 
-
-
-
-
-
-                                    {% if user_role in ['manager', 'admin'] %}
-                                    <form action="{{ url_for('certification.approve_unit', unit_id=unit.id) }}" method="POST" class="inline">
-                                        <button type="submit" 
-                                                class="px-4 py-2 text-sm font-semibold text-white bg-indigo-600 rounded-lg hover:bg-indigo-700 shadow-sm">
-                                            Approve
-                                        </button>
-                                    </form>
-                                    {% else %}
-                                    <form action="{{ url_for('certification.review_unit', unit_id=unit.id) }}" method="POST" class="inline">
-                                        <button type="submit" 
-                                                class="px-4 py-2 text-sm font-semibold text-white bg-purple-600 rounded-lg hover:bg-purple-700 shadow-sm">
-                                            Send to Manager
-                                        </button>
-                                    </form>
-                                    {% endif %}
-                                
-                                {% elif status_key == 'awaiting_approval' %}
-                                    {% if user_role in ['manager', 'admin'] %}
-                                    <a href="{{ url_for('pdf.preview_defects_pdf', unit_id=unit.id) }}"
-                                       class="px-3 py-1.5 text-xs font-medium text-white bg-blue-600 rounded hover:bg-blue-700">
-                                        PDF
-                                    </a>
-                                    <form action="{{ url_for('certification.approve_and_close', unit_id=unit.id) }}" method="POST" class="inline">
-                                        <button type="submit" 
-                                                class="px-4 py-2 text-sm font-semibold text-white bg-green-600 rounded-lg hover:bg-green-700 shadow-sm">
-                                            Approve &amp; Close
-                                        </button>
-                                    </form>
-                                    {% else %}
-                                    <span class="text-sm text-gray-400 italic">Reviewed - Manager will approve</span>
-                                    {% endif %}
-                                
-                                {% elif status_key == 'approved' %}
-                                    <a href="{{ url_for('pdf.preview_defects_pdf', unit_id=unit.id) }}"
-                                       class="px-3 py-1.5 text-xs font-medium text-white bg-blue-600 rounded hover:bg-blue-700">
-                                        PDF
-                                    </a>
-                                    {% if user_role in ['manager', 'admin'] %}
-                                        {% if unit.open_defects == 0 or unit.open_defects is none %}
-                                        <form action="{{ url_for('certification.certify_unit', unit_id=unit.id) }}" method="POST" class="inline">
-                                            <button type="submit" 
-                                                    class="px-4 py-2 text-sm font-semibold text-white bg-green-600 rounded-lg hover:bg-green-700 shadow-sm">
-                                                Sign Off Complete
-                                            </button>
-                                        </form>
-                                        {% else %}
-                                        <form action="{{ url_for('certification.close_with_defects', unit_id=unit.id) }}" method="POST" class="inline">
-                                            <button type="submit" 
-                                                    class="px-4 py-2 text-sm font-semibold text-white bg-orange-500 rounded-lg hover:bg-orange-600 shadow-sm">
-                                                Close Unit - Defects Remain
-                                            </button>
-                                        </form>
-                                        {% endif %}
-                                    {% endif %}
-                                
-                                {% elif status_key == 'certified' %}
-                                    {% if user_role in ['manager', 'admin'] %}
-                                    <form action="{{ url_for('certification.reopen_unit', unit_id=unit.id) }}" method="POST" class="inline">
-                                        <button type="submit" 
-                                                class="px-3 py-1.5 text-xs font-medium text-gray-600 bg-gray-100 border border-gray-300 rounded hover:bg-gray-200">
-                                            Reopen
-                                        </button>
-                                    </form>
-                                    {% endif %}
-                                
-                                {% elif status_key == 'pending_followup' %}
-                                    <a href="{{ url_for('pdf.preview_defects_pdf', unit_id=unit.id) }}"
-                                       class="px-3 py-1.5 text-xs font-medium text-white bg-blue-600 rounded hover:bg-blue-700">
-                                        PDF
-                                    </a>
-                                    {% if user_role in ['manager', 'admin'] %}
-                                    <form action="{{ url_for('certification.reopen_unit', unit_id=unit.id) }}" method="POST" class="inline">
-                                        <button type="submit" 
-                                                class="px-3 py-1.5 text-xs font-medium text-gray-600 bg-gray-100 border border-gray-300 rounded hover:bg-gray-200">
-                                            Reopen
-                                        </button>
-                                    </form>
-                                    {% endif %}
-                                {% endif %}
-                            </div>
-                        </td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
+                                                    {% if user_role in ['manager', 'admin'] %}
+                                                    <form action="{{ url_for('certification.approve_unit', unit_id=unit.id) }}" method="POST" class="inline">
+                                                        <button type="submit" 
+                                                                class="px-4 py-2 text-sm font-semibold text-white bg-indigo-600 rounded-lg hover:bg-indigo-700 shadow-sm">
+                                                            Approve
+                                                        </button>
+                                                    </form>
+                                                    {% else %}
+                                                    <form action="{{ url_for('certification.review_unit', unit_id=unit.id) }}" method="POST" class="inline">
+                                                        <button type="submit" 
+                                                                class="px-4 py-2 text-sm font-semibold text-white bg-purple-600 rounded-lg hover:bg-purple-700 shadow-sm">
+                                                            Send to Manager
+                                                        </button>
+                                                    </form>
+                                                    {% endif %}
+                                                
+                                                {% elif status_key == 'awaiting_approval' %}
+                                                    {% if user_role in ['manager', 'admin'] %}
+                                                    <a href="{{ url_for('pdf.preview_defects_pdf', unit_id=unit.id) }}"
+                                                       class="px-3 py-1.5 text-xs font-medium text-white bg-blue-600 rounded hover:bg-blue-700">
+                                                        PDF
+                                                    </a>
+                                                    <form action="{{ url_for('certification.approve_and_close', unit_id=unit.id) }}" method="POST" class="inline">
+                                                        <button type="submit" 
+                                                                class="px-4 py-2 text-sm font-semibold text-white bg-green-600 rounded-lg hover:bg-green-700 shadow-sm">
+                                                            Approve &amp; Close
+                                                        </button>
+                                                    </form>
+                                                    {% else %}
+                                                    <span class="text-sm text-gray-400 italic">Reviewed - Manager will approve</span>
+                                                    {% endif %}
+                                                
+                                                {% elif status_key == 'approved' %}
+                                                    <a href="{{ url_for('pdf.preview_defects_pdf', unit_id=unit.id) }}"
+                                                       class="px-3 py-1.5 text-xs font-medium text-white bg-blue-600 rounded hover:bg-blue-700">
+                                                        PDF
+                                                    </a>
+                                                    {% if user_role in ['manager', 'admin'] %}
+                                                        {% if unit.open_defects == 0 or unit.open_defects is none %}
+                                                        <form action="{{ url_for('certification.certify_unit', unit_id=unit.id) }}" method="POST" class="inline">
+                                                            <button type="submit" 
+                                                                    class="px-4 py-2 text-sm font-semibold text-white bg-green-600 rounded-lg hover:bg-green-700 shadow-sm">
+                                                                Sign Off Complete
+                                                            </button>
+                                                        </form>
+                                                        {% else %}
+                                                        <form action="{{ url_for('certification.close_with_defects', unit_id=unit.id) }}" method="POST" class="inline">
+                                                            <button type="submit" 
+                                                                    class="px-4 py-2 text-sm font-semibold text-white bg-orange-500 rounded-lg hover:bg-orange-600 shadow-sm">
+                                                                Close Unit - Defects Remain
+                                                            </button>
+                                                        </form>
+                                                        {% endif %}
+                                                    {% endif %}
+                                                
+                                                {% elif status_key == 'certified' %}
+                                                    {% if user_role in ['manager', 'admin'] %}
+                                                    <form action="{{ url_for('certification.reopen_unit', unit_id=unit.id) }}" method="POST" class="inline">
+                                                        <button type="submit" 
+                                                                class="px-3 py-1.5 text-xs font-medium text-gray-600 bg-gray-100 border border-gray-300 rounded hover:bg-gray-200">
+                                                            Reopen
+                                                        </button>
+                                                    </form>
+                                                    {% endif %}
+                                                
+                                                {% elif status_key == 'pending_followup' %}
+                                                    <a href="{{ url_for('pdf.preview_defects_pdf', unit_id=unit.id) }}"
+                                                       class="px-3 py-1.5 text-xs font-medium text-white bg-blue-600 rounded hover:bg-blue-700">
+                                                        PDF
+                                                    </a>
+                                                    {% if user_role in ['manager', 'admin'] %}
+                                                    <form action="{{ url_for('certification.reopen_unit', unit_id=unit.id) }}" method="POST" class="inline">
+                                                        <button type="submit" 
+                                                                class="px-3 py-1.5 text-xs font-medium text-gray-600 bg-gray-100 border border-gray-300 rounded hover:bg-gray-200">
+                                                            Reopen
+                                                        </button>
+                                                    </form>
+                                                    {% endif %}
+                                                {% endif %}
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
         </div>
+        {% endfor %}
         {% endif %}
     </div>
     {% endif %}

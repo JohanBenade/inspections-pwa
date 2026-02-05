@@ -120,6 +120,8 @@ def dashboard():
                 u.id,
                 u.unit_number,
                 u.unit_number AS unit_code,
+                u.block,
+                u.floor,
                 u.status AS unit_status,
                 ? AS current_cycle,
                 ? AS cycle_id,
@@ -157,7 +159,7 @@ def dashboard():
             LEFT JOIN inspection i ON i.unit_id = u.id AND i.cycle_id = ?
             WHERE u.tenant_id = ? 
             AND (ic.unit_start IS NULL OR (u.unit_number >= ic.unit_start AND u.unit_number <= ic.unit_end))
-            ORDER BY u.unit_number
+            ORDER BY u.block, u.floor, u.unit_number
         """, [filter_cycle_num, cycle_filter, filter_cycle_num, filter_cycle_num, filter_cycle_num, cycle_filter, cycle_filter, tenant_id])
     else:
         units = query_db("""
@@ -165,6 +167,8 @@ def dashboard():
                 u.id,
                 u.unit_number,
                 u.unit_number AS unit_code,
+                u.block,
+                u.floor,
                 u.status AS unit_status,
                 latest.cycle_number AS current_cycle,
                 latest.cycle_id,
@@ -203,7 +207,7 @@ def dashboard():
                 JOIN inspection_cycle ic ON i.cycle_id = ic.id
             ) latest ON latest.unit_id = u.id AND latest.rn = 1
             WHERE u.tenant_id = ?
-            ORDER BY u.unit_number
+            ORDER BY u.block, u.floor, u.unit_number
         """, [tenant_id])
     
     grouped = {
