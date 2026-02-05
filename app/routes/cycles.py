@@ -183,7 +183,7 @@ def create_cycle():
             msg_parts.append('{} exclusions copied'.format(exclusions_copied))
         flash('. '.join(msg_parts), 'success')
         
-        return redirect(url_for('cycles.edit_cycle', cycle_id=cycle_id))
+        return redirect(url_for('cycles.manage_units', cycle_id=cycle_id))
     
     # GET - show form
     existing_cycles = query_db("""
@@ -308,6 +308,78 @@ def view_cycle(cycle_id):
 
     return render_template('cycles/view.html', cycle=cycle, units=units, excluded=excluded, 
                           area_notes=area_notes, has_inspections=has_inspections,
+                          inspectors=inspectors, assignment_map=assignment_map,
+                          excluded_unit_ids=excluded_unit_ids, unit_defaults=unit_defaults)
+
+
+
+@cycles_bp.route('/<cycle_id>/manage')
+@require_team_lead
+def manage_units(cycle_id):
+    """Manage units in cycle - assign inspectors, add/remove units."""
+    tenant_id = session['tenant_id']
+
+    cycle = query_db("""
+        SELECT ic.*, ph.phase_name, p.project_name
+        FROM inspection_cycle ic
+        JOIN phase ph ON ic.phase_id = ph.id
+        JOIN project p ON ph.project_id = p.id
+        WHERE ic.id = ? AND ic.tenant_id = ?
+    """, [cycle_id, tenant_id], one=True)
+
+    if not cycle:
+        abort(404)
+
+    range_filter = ""
+    params = [cycle_id, cycle['phase_id']]
+    if cycle['unit_start'] and cycle['unit_end']:
+        range_filter = "AND u.unit_number >= ? AND u.unit_number <= ?"
+        params.extend([cycle['unit_start'], cycle['unit_end']])
+
+    units = query_db("""
+        SELECT u.unit_number, u.status as unit_status, u.id as unit_id,
+            i.id as inspection_id, i.status as inspection_status,
+            i.inspector_name
+        FROM unit u
+        LEFT JOIN inspection i ON i.unit_id = u.id AND i.cycle_id = ?
+        WHERE u.phase_id = ? {}
+        ORDER BY u.unit_number
+    """.format(range_filter), params)
+
+    inspectors = query_db("""
+        SELECT id, name FROM inspector
+        WHERE tenant_id = ? AND role IN ('inspector', 'team_lead') AND active = 1
+        ORDER BY name
+    """, [tenant_id])
+
+    assignments = query_db(
+        "SELECT unit_id, inspector_id FROM cycle_unit_assignment WHERE cycle_id = ?",
+        [cycle_id]
+    )
+    assignment_map = {a['unit_id']: a['inspector_id'] for a in assignments}
+
+    excluded_units = query_db(
+        "SELECT unit_id FROM cycle_excluded_unit WHERE cycle_id = ?",
+        [cycle_id]
+    )
+    excluded_unit_ids = set(eu['unit_id'] for eu in excluded_units)
+
+    unit_defaults_row = query_db("""
+        SELECT block, floor, unit_type, COUNT(*) as cnt
+        FROM unit WHERE phase_id = ?
+            AND (? IS NULL OR unit_number >= ?)
+            AND (? IS NULL OR unit_number <= ?)
+        GROUP BY block, floor, unit_type
+        ORDER BY cnt DESC LIMIT 1
+    """, [cycle['phase_id'], cycle['unit_start'], cycle['unit_start'],
+         cycle['unit_end'], cycle['unit_end']], one=True)
+    unit_defaults = {
+        'block': unit_defaults_row['block'] if unit_defaults_row else '',
+        'floor': unit_defaults_row['floor'] if unit_defaults_row else 0,
+        'unit_type': unit_defaults_row['unit_type'] if unit_defaults_row else '4-Bed'
+    }
+
+    return render_template('cycles/manage.html', cycle=cycle, units=units,
                           inspectors=inspectors, assignment_map=assignment_map,
                           excluded_unit_ids=excluded_unit_ids, unit_defaults=unit_defaults)
 
@@ -627,7 +699,7 @@ def toggle_unit_exclusion(cycle_id):
     
     db.commit()
     
-    return redirect(url_for('cycles.view_cycle', cycle_id=cycle_id))
+    return redirect(url_for('cycles.manage_units', cycle_id=cycle_id))
 
 
 @cycles_bp.route('/<cycle_id>/add-unit', methods=['POST'])
@@ -659,7 +731,7 @@ def add_unit(cycle_id):
     
     if existing:
         flash('Unit {} already exists'.format(unit_number), 'error')
-        return redirect(url_for('cycles.view_cycle', cycle_id=cycle_id))
+        return redirect(url_for('cycles.manage_units', cycle_id=cycle_id))
     
     # Create unit
     unit_id = generate_id()
@@ -684,4 +756,4 @@ def add_unit(cycle_id):
     db.commit()
     
     flash('Unit {} added'.format(unit_number), 'success')
-    return redirect(url_for('cycles.view_cycle', cycle_id=cycle_id))
+    return redirect(url_for('cycles.manage_units', cycle_id=cycle_id))

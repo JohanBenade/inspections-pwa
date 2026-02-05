@@ -12,62 +12,52 @@
 </style>
 
 <div class="max-w-4xl mx-auto">
+    <!-- Back -->
+    <a href="{{ url_for('cycles.list_cycles') }}" class="text-blue-600 hover:underline text-sm">
+        &larr; Back to Cycles
+    </a>
+
     <!-- Header -->
-    <div class="mb-6">
-        <a href="{{ url_for('cycles.list_cycles') }}" class="text-blue-600 hover:underline text-sm">
-            &larr; Back to Cycles
-        </a>
-        <div class="flex justify-between items-start mt-2">
-            <div>
-                <h1 class="text-2xl font-bold text-gray-900">
-                    Cycle {{ cycle.cycle_number }}
-                    {% if cycle.status == 'active' %}
-                    <span class="text-sm bg-green-100 text-green-800 px-2 py-1 rounded ml-2">Active</span>
-                    {% else %}
-                    <span class="text-sm bg-gray-100 text-gray-600 px-2 py-1 rounded ml-2">Closed</span>
-                    {% endif %}
-                </h1>
-                <p class="text-gray-600">{{ cycle.project_name }} - {{ cycle.phase_name }}</p>
-                <p class="text-sm text-gray-500">Created by {{ cycle.created_by_name }} on {{ cycle.created_at[:10] }}</p>
-                {% if cycle.block %}
-                <p class="text-sm text-blue-600">
-                    {{ cycle.block }}{% if cycle.floor is not none %} - {{ floor_names.get(cycle.floor, 'Floor ' ~ cycle.floor) }}{% endif %}
-                    {% if cycle.unit_start and cycle.unit_end %} | Units {{ cycle.unit_start }} to {{ cycle.unit_end }}{% endif %}
-                </p>
-                {% elif cycle.unit_start and cycle.unit_end %}
-                <p class="text-sm text-blue-600">Units: {{ cycle.unit_start }} to {{ cycle.unit_end }}</p>
-                {% endif %}
-            </div>
-            <div class="flex gap-2">
+    <div class="flex justify-between items-start mt-2 mb-6 flex-wrap gap-3">
+        <div>
+            <div class="flex items-center gap-2">
+                <h1 class="text-2xl font-bold text-gray-900">Cycle {{ cycle.cycle_number }}</h1>
                 {% if cycle.status == 'active' %}
-                <a href="{{ url_for('cycles.edit_cycle', cycle_id=cycle.id) }}" 
-                   class="bg-gray-100 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-200">
-                    Cycle Settings
-                </a>
-                {% if session.get('role') in ['manager', 'admin'] %}
-                <form method="POST" action="{{ url_for('cycles.close_cycle', cycle_id=cycle.id) }}" class="inline">
-                    <button type="submit" class="bg-orange-100 text-orange-700 px-4 py-2 rounded-lg hover:bg-orange-200"
-                            onclick="return confirm('Close this cycle? No more inspections can be added.')">
-                        Close Cycle
-                    </button>
-                </form>
-                {% endif %}
+                <span class="text-sm bg-green-100 text-green-800 px-2 py-1 rounded">Active</span>
                 {% else %}
-                <form method="POST" action="{{ url_for('cycles.reopen_cycle', cycle_id=cycle.id) }}" class="inline">
-                    <button type="submit" class="bg-green-100 text-green-700 px-4 py-2 rounded-lg hover:bg-green-200">
-                        Reopen Cycle
-                    </button>
-                </form>
-                {% endif %}
-                {% if not has_inspections %}
-                <form method="POST" action="{{ url_for('cycles.delete_cycle', cycle_id=cycle.id) }}" class="inline">
-                    <button type="submit" class="bg-red-100 text-red-700 px-4 py-2 rounded-lg hover:bg-red-200"
-                            onclick="return confirm('Delete Cycle {{ cycle.cycle_number }}? This cannot be undone.')">
-                        Delete
-                    </button>
-                </form>
+                <span class="text-sm bg-gray-100 text-gray-600 px-2 py-1 rounded">Closed</span>
                 {% endif %}
             </div>
+            <p class="text-gray-600">{{ cycle.project_name }} - {{ cycle.phase_name }}</p>
+            {% if cycle.block %}
+            <p class="text-sm text-blue-600">
+                {{ cycle.block }}{% if cycle.floor is not none %} - {{ floor_names.get(cycle.floor, 'Floor ' ~ cycle.floor) }}{% endif %}
+                {% if cycle.unit_start and cycle.unit_end %} | Units {{ cycle.unit_start }} to {{ cycle.unit_end }}{% endif %}
+            </p>
+            {% elif cycle.unit_start and cycle.unit_end %}
+            <p class="text-sm text-blue-600">Units: {{ cycle.unit_start }} to {{ cycle.unit_end }}</p>
+            {% endif %}
+            <p class="text-sm text-gray-500">Created by {{ cycle.created_by_name }} on {{ cycle.created_at[:10] }}</p>
+        </div>
+        <div class="flex gap-2">
+            <a href="{{ url_for('cycles.edit_cycle', cycle_id=cycle.id) }}"
+               class="bg-gray-100 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-200 text-sm font-medium flex items-center gap-1">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                    <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/>
+                    <path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                </svg>
+                Edit Cycle
+            </a>
+            <a href="{{ url_for('cycles.manage_units', cycle_id=cycle.id) }}"
+               class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 text-sm font-medium flex items-center gap-1">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                    <path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/>
+                    <circle cx="9" cy="7" r="4"/>
+                    <path d="M23 21v-2a4 4 0 00-3-3.87"/>
+                    <path d="M16 3.13a4 4 0 010 7.75"/>
+                </svg>
+                Manage Units
+            </a>
         </div>
     </div>
 
@@ -84,47 +74,90 @@
     {% endif %}
     {% endwith %}
 
-    <!-- Add Unit -->
-    {% if cycle.status == "active" %}
-    <div class="bg-white rounded-lg shadow mb-6">
-        <form method="POST" action="{{ url_for('cycles.add_unit', cycle_id=cycle.id) }}" class="p-4">
-            <div class="flex flex-wrap items-end gap-3">
-                <div>
-                    <label class="block text-xs font-medium text-gray-500 mb-1">Unit Number</label>
-                    <input type="text" name="unit_number" required placeholder="e.g. 057"
-                           class="w-24 text-sm border border-gray-300 rounded px-3 py-2 focus:ring-1 focus:ring-blue-500 focus:border-blue-500">
-                </div>
-                <div>
-                    <label class="block text-xs font-medium text-gray-500 mb-1">Block</label>
-                    <input type="text" name="block" value="{{ unit_defaults.block or '' }}"
-                           class="w-28 text-sm border border-gray-300 rounded px-3 py-2 focus:ring-1 focus:ring-blue-500 focus:border-blue-500">
-                </div>
-                <div>
-                    <label class="block text-xs font-medium text-gray-500 mb-1">Floor</label>
-                    <select name="floor" class="text-sm border border-gray-300 rounded px-3 py-2 focus:ring-1 focus:ring-blue-500">
-                        <option value="0" {% if unit_defaults.floor == 0 %}selected{% endif %}>Ground Floor</option>
-                        <option value="1" {% if unit_defaults.floor == 1 %}selected{% endif %}>1st Floor</option>
-                        <option value="2" {% if unit_defaults.floor == 2 %}selected{% endif %}>2nd Floor</option>
-                        <option value="3" {% if unit_defaults.floor == 3 %}selected{% endif %}>3rd Floor</option>
-                    </select>
-                </div>
-                <div>
-                    <label class="block text-xs font-medium text-gray-500 mb-1">Type</label>
-                    <input type="text" name="unit_type" value="{{ unit_defaults.unit_type or '4-Bed' }}"
-                           class="w-24 text-sm border border-gray-300 rounded px-3 py-2 focus:ring-1 focus:ring-blue-500 focus:border-blue-500">
-                </div>
-                <button type="submit"
-                        class="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-700">
-                    Add Unit
-                </button>
-            </div>
-        </form>
+    <!-- Stats -->
+    {% set active_units = units|rejectattr('unit_id', 'in', excluded_unit_ids)|list %}
+    {% set total_defects = active_units|sum(attribute='open_defects') %}
+    {% set reviewed_count = active_units|selectattr('inspection_status', 'equalto', 'reviewed')|list|length %}
+    {% set submitted_count = active_units|selectattr('inspection_status', 'equalto', 'submitted')|list|length %}
+    {% set approved_count = active_units|selectattr('inspection_status', 'equalto', 'certified')|list|length + active_units|selectattr('inspection_status', 'equalto', 'pending_followup')|list|length %}
+    <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
+        <div class="bg-white rounded-lg shadow p-4 text-center">
+            <div class="text-2xl font-bold text-gray-900">{{ active_units|length }}</div>
+            <div class="text-xs text-gray-500 uppercase tracking-wide mt-1">Units</div>
+        </div>
+        <div class="bg-white rounded-lg shadow p-4 text-center">
+            <div class="text-2xl font-bold {% if total_defects > 0 %}text-red-600{% else %}text-green-600{% endif %}">{{ total_defects }}</div>
+            <div class="text-xs text-gray-500 uppercase tracking-wide mt-1">Open Defects</div>
+        </div>
+        <div class="bg-white rounded-lg shadow p-4 text-center">
+            <div class="text-2xl font-bold text-orange-600">{{ excluded|length }}</div>
+            <div class="text-xs text-gray-500 uppercase tracking-wide mt-1">Exclusions</div>
+        </div>
+        <div class="bg-white rounded-lg shadow p-4 text-center">
+            <div class="text-2xl font-bold text-green-600">{{ reviewed_count + submitted_count + approved_count }}/{{ active_units|length }}</div>
+            <div class="text-xs text-gray-500 uppercase tracking-wide mt-1">Complete</div>
+        </div>
     </div>
-    {% endif %}
+
+    <!-- Unit Summary Table -->
+    <div class="bg-white rounded-lg shadow mb-6">
+        <div class="p-4 border-b">
+            <h2 class="font-semibold text-gray-900">Unit Summary</h2>
+        </div>
+        <div class="overflow-x-auto">
+            <table class="min-w-full divide-y divide-gray-200">
+                <thead class="bg-gray-50">
+                    <tr>
+                        <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Unit</th>
+                        <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Inspector</th>
+                        <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Defects</th>
+                        <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
+                        <th class="px-4 py-2 text-right text-xs font-medium text-gray-500 uppercase"></th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-200">
+                    {% for unit in active_units %}
+                    <tr class="hover:bg-gray-50">
+                        <td class="px-4 py-3 font-medium text-gray-800">{{ unit.unit_number }}</td>
+                        <td class="px-4 py-3 text-sm text-gray-600">{{ unit.inspector_name or 'Not assigned' }}</td>
+                        <td class="px-4 py-3">
+                            {% if unit.open_defects and unit.open_defects > 0 %}
+                            <span class="text-sm text-red-600 font-medium">{{ unit.open_defects }}</span>
+                            {% else %}
+                            <span class="text-gray-400">-</span>
+                            {% endif %}
+                        </td>
+                        <td class="px-4 py-3">
+                            {% if unit.inspection_status == 'reviewed' %}
+                            <span class="bg-indigo-100 text-indigo-800 px-2 py-1 rounded text-xs">Reviewed</span>
+                            {% elif unit.inspection_status == 'submitted' %}
+                            <span class="bg-green-100 text-green-800 px-2 py-1 rounded text-xs">Submitted</span>
+                            {% elif unit.inspection_status == 'in_progress' %}
+                            <span class="bg-yellow-100 text-yellow-800 px-2 py-1 rounded text-xs">In Progress</span>
+                            {% elif unit.inspection_status == 'certified' %}
+                            <span class="bg-green-100 text-green-800 px-2 py-1 rounded text-xs">Certified</span>
+                            {% elif unit.inspection_status == 'pending_followup' %}
+                            <span class="bg-orange-100 text-orange-800 px-2 py-1 rounded text-xs">Pending</span>
+                            {% else %}
+                            <span class="bg-gray-100 text-gray-600 px-2 py-1 rounded text-xs">Not Started</span>
+                            {% endif %}
+                        </td>
+                        <td class="px-4 py-3 text-right">
+                            {% if unit.inspection_id %}
+                            <a href="{{ url_for('inspection.inspect', inspection_id=unit.inspection_id) }}"
+                               class="text-xs text-blue-600 hover:underline">Review</a>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
 
     <!-- General Notes -->
     {% if cycle.general_notes %}
-    <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+    <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
         <h3 class="font-medium text-blue-800 mb-2">General Notes</h3>
         <div class="text-sm text-blue-700 rich-notes" style="white-space: pre-line;">{{ cycle.general_notes | safe }}</div>
     </div>
@@ -132,7 +165,7 @@
 
     <!-- Exclusion Notes -->
     {% if cycle.exclusion_notes %}
-    <div class="bg-orange-50 border border-orange-200 rounded-lg p-4 mb-6">
+    <div class="bg-orange-50 border border-orange-200 rounded-lg p-4 mb-4">
         <h3 class="font-medium text-orange-800 mb-2">Exclusion Notes</h3>
         <div class="text-sm text-orange-700 rich-notes" style="white-space: pre-line;">{{ cycle.exclusion_notes | safe }}</div>
     </div>
@@ -140,7 +173,7 @@
 
     <!-- Area Notes -->
     {% if area_notes %}
-    <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-6">
+    <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-4">
         <h3 class="font-medium text-yellow-800 mb-2">Area Notes</h3>
         <div class="space-y-1">
             {% for note in area_notes %}
@@ -170,7 +203,7 @@
         <div id="excluded-list" class="hidden mt-2 space-y-1">
             {% for item in excluded %}
             <div class="text-sm text-gray-700">
-                {{ item.area_name }} / {{ item.category_name }} / 
+                {{ item.area_name }} / {{ item.category_name }} /
                 {% if item.parent_description %}{{ item.parent_description }} / {% endif %}
                 {{ item.item_description }}
                 {% if item.reason %}<span class="text-gray-500">- {{ item.reason }}</span>{% endif %}
@@ -180,165 +213,30 @@
     </div>
     {% endif %}
 
-    <!-- Units Grid with Inspector Assignment -->
-    <div class="bg-white rounded-lg shadow">
-        <div class="p-4 border-b flex justify-between items-center">
-            {% set active_units = units|rejectattr('unit_id', 'in', excluded_unit_ids)|list %}
-            <h2 class="font-semibold">Units ({{ active_units|length }}{% if excluded_unit_ids %} of {{ units|length }}{% endif %})</h2>
-            {% set assigned_count = assignment_map|length %}
-            {% if assigned_count > 0 %}
-            <span class="text-sm text-gray-500">{{ assigned_count }} assigned</span>
-            {% endif %}
-        </div>
-        <div class="overflow-x-auto">
-            <table class="min-w-full divide-y divide-gray-200">
-                <thead class="bg-gray-50">
-                    <tr>
-                        <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Unit</th>
-                        <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Assigned To</th>
-                        <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
-                        <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Defects</th>
-                        <th class="px-4 py-2 text-right text-xs font-medium text-gray-500 uppercase">Actions</th>
-                    </tr>
-                </thead>
-                <tbody class="divide-y divide-gray-200">
-                    {% for unit in units %}
-                    {% set is_excluded = unit.unit_id in excluded_unit_ids %}
-                    <tr class="{% if is_excluded %}bg-gray-100 opacity-60{% else %}hover:bg-gray-50{% endif %}">
-                        <td class="px-4 py-3">
-                            <span class="font-medium {% if is_excluded %}text-gray-400 line-through{% else %}text-gray-800{% endif %}">{{ unit.unit_number }}</span>
-                            {% if is_excluded %}<span class="text-xs text-gray-400 ml-1">(excluded)</span>{% endif %}
-                        </td>
-                        <td class="px-4 py-3">
-                            <div class="flex items-center gap-2">
-                                {% if cycle.status == 'active' %}
-                                <select name="inspector_id"
-                                        hx-post="{{ url_for('cycles.assign_inspector', cycle_id=cycle.id) }}"
-                                        hx-include="this"
-                                        hx-vals='{"unit_id": "{{ unit.unit_id }}"}'
-                                        hx-target="#assign-status-{{ unit.unit_number }}"
-                                        hx-swap="innerHTML"
-                                        class="text-sm border border-gray-300 rounded px-2 py-1 focus:ring-1 focus:ring-blue-500">
-                                    <option value="">-- Assign --</option>
-                                    {% for insp in inspectors %}
-                                    <option value="{{ insp.id }}" 
-                                        {% if assignment_map.get(unit.unit_id) == insp.id %}selected
-                                        {% elif unit.inspector_name == insp.name and not assignment_map.get(unit.unit_id) %}selected{% endif %}>
-                                        {{ insp.name }}
-                                    </option>
-                                    {% endfor %}
-                                </select>
-                                <span id="assign-status-{{ unit.unit_number }}"></span>
-                                {% else %}
-                                <span class="text-sm text-gray-600">{{ unit.inspector_name or 'Not assigned' }}</span>
-                                {% endif %}
-                            </div>
-                        </td>
-                        <td class="px-4 py-3">
-                            {% if unit.inspection_status == 'submitted' %}
-                            <span class="bg-green-100 text-green-800 px-2 py-1 rounded text-xs">Submitted</span>
-                            {% elif unit.inspection_status == 'reviewed' %}
-                            <span class="bg-indigo-100 text-indigo-800 px-2 py-1 rounded text-xs">Reviewed</span>
-                            {% elif unit.inspection_status == 'in_progress' %}
-                            <span class="bg-yellow-100 text-yellow-800 px-2 py-1 rounded text-xs">In Progress</span>
-                            {% elif unit.inspection_status == 'certified' %}
-                            <span class="bg-green-100 text-green-800 px-2 py-1 rounded text-xs">Certified</span>
-                            {% elif unit.inspection_status == 'pending_followup' %}
-                            <span class="bg-orange-100 text-orange-800 px-2 py-1 rounded text-xs">Pending</span>
-                            {% else %}
-                            <span class="bg-gray-100 text-gray-600 px-2 py-1 rounded text-xs">Not Started</span>
-                            {% endif %}
-                        </td>
-                        <td class="px-4 py-3">
-                            {% if unit.open_defects and unit.open_defects > 0 %}
-                            <span class="text-sm text-red-600 font-medium">{{ unit.open_defects }}</span>
-                            {% else %}
-                            <span class="text-gray-400">-</span>
-                            {% endif %}
-                        </td>
-                        <td class="px-4 py-3 text-right">
-                            <div class="flex items-center justify-end gap-2">
-                                {% if unit.inspection_id %}
-                                <a href="{{ url_for('inspection.inspect', inspection_id=unit.inspection_id) }}"
-                                   class="px-3 py-1.5 text-xs font-medium text-blue-700 bg-blue-50 border border-blue-200 rounded hover:bg-blue-100">
-                                    Review
-                                </a>
-                                {% endif %}
-                                {% if cycle.status == 'active' and not unit.inspection_id %}
-                                <form id="exclude-form-{{ unit.unit_number }}" method="POST" 
-                                      action="{{ url_for('cycles.toggle_unit_exclusion', cycle_id=cycle.id) }}" class="inline">
-                                    <input type="hidden" name="unit_id" value="{{ unit.unit_id }}">
-                                    {% if is_excluded %}
-                                    <button type="button"
-                                            onclick="showUnitConfirm('exclude-form-{{ unit.unit_number }}', '{{ unit.unit_number }}', false)"
-                                            class="text-xs text-green-600 hover:text-green-800 underline">
-                                        Include
-                                    </button>
-                                    {% else %}
-                                    <button type="button"
-                                            onclick="showUnitConfirm('exclude-form-{{ unit.unit_number }}', '{{ unit.unit_number }}', true)"
-                                            class="text-xs text-red-600 hover:text-red-800 underline">
-                                        Exclude
-                                    </button>
-                                    {% endif %}
-                                </form>
-                                {% endif %}
-                            </div>
-                        </td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-        </div>
+    <!-- Cycle Actions (secondary) -->
+    <div class="border-t pt-4 mt-2 flex items-center gap-4">
+        {% if cycle.status == 'active' %}
+        {% if session.get('role') in ['manager', 'admin'] %}
+        <form method="POST" action="{{ url_for('cycles.close_cycle', cycle_id=cycle.id) }}" class="inline">
+            <button type="submit" class="text-sm text-orange-600 hover:text-orange-800"
+                    onclick="return confirm('Close this cycle? No more inspections can be added.')">
+                Close Cycle
+            </button>
+        </form>
+        {% endif %}
+        {% else %}
+        <form method="POST" action="{{ url_for('cycles.reopen_cycle', cycle_id=cycle.id) }}" class="inline">
+            <button type="submit" class="text-sm text-green-600 hover:text-green-800">Reopen Cycle</button>
+        </form>
+        {% endif %}
+        {% if not has_inspections %}
+        <form method="POST" action="{{ url_for('cycles.delete_cycle', cycle_id=cycle.id) }}" class="inline">
+            <button type="submit" class="text-sm text-red-600 hover:text-red-800"
+                    onclick="return confirm('Delete Cycle {{ cycle.cycle_number }}? This cannot be undone.')">
+                Delete Cycle
+            </button>
+        </form>
+        {% endif %}
     </div>
 </div>
-
-<!-- Custom Confirm Modal -->
-<div id="confirm-modal" class="fixed inset-0 z-50 hidden">
-    <div class="fixed inset-0 bg-black bg-opacity-40" onclick="closeConfirm()"></div>
-    <div class="fixed inset-0 flex items-center justify-center p-4">
-        <div class="bg-white rounded-xl shadow-xl max-w-sm w-full p-6 relative">
-            <h3 class="text-lg font-semibold text-gray-900 mb-2" id="confirm-title"></h3>
-            <p class="text-sm text-gray-600 mb-6" id="confirm-message"></p>
-            <div class="flex justify-end gap-3">
-                <button onclick="closeConfirm()"
-                        class="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200">
-                    Cancel
-                </button>
-                <button id="confirm-action" onclick="doConfirm()"
-                        class="px-4 py-2 text-sm font-medium text-white rounded-lg">
-                    Confirm
-                </button>
-            </div>
-        </div>
-    </div>
-</div>
-
-<script>
-var pendingFormId = null;
-
-function showUnitConfirm(formId, unitNum, excluding) {
-    pendingFormId = formId;
-    document.getElementById("confirm-title").textContent = (excluding ? "Exclude" : "Include") + " Unit " + unitNum;
-    document.getElementById("confirm-message").textContent = excluding
-        ? "This unit will be removed from the active cycle. You can include it again later."
-        : "This unit will be added back to the active cycle.";
-    var btn = document.getElementById("confirm-action");
-    btn.textContent = excluding ? "Exclude" : "Include";
-    btn.className = "px-4 py-2 text-sm font-medium text-white rounded-lg " + (excluding ? "bg-red-600 hover:bg-red-700" : "bg-green-600 hover:bg-green-700");
-    document.getElementById("confirm-modal").classList.remove("hidden");
-}
-
-function closeConfirm() {
-    document.getElementById("confirm-modal").classList.add("hidden");
-    pendingFormId = null;
-}
-
-function doConfirm() {
-    if (pendingFormId) {
-        document.getElementById(pendingFormId).submit();
-    }
-    closeConfirm();
-}
-</script>
 {% endblock %}

@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %}Cycle {{ cycle.cycle_number }} Settings - {{ cycle.project_name }}{% endblock %}
+{% block title %}Edit Cycle {{ cycle.cycle_number }} - {{ cycle.project_name }}{% endblock %}
 
 {% block content %}
 <!-- Quill CSS -->
@@ -20,7 +20,7 @@
         </a>
         <div class="flex justify-between items-start mt-2">
             <div>
-                <h1 class="text-2xl font-bold text-gray-900">Cycle {{ cycle.cycle_number }} - Settings</h1>
+                <h1 class="text-2xl font-bold text-gray-900">Edit Cycle {{ cycle.cycle_number }}</h1>
                 <p class="text-gray-600">{{ cycle.project_name }} - {{ cycle.phase_name }}</p>
             </div>
             <button type="submit" form="cycle-form" class="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 text-sm"
