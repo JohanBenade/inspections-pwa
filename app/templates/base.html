@@ -7,7 +7,7 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     
-    <title>{% block title %}Inspections{% endblock %} | ArchOps</title>
+    <title>{% block title %}Inspections{% endblock %} | Monograph</title>
     
     <link rel="manifest" href="{{ url_for('static', filename='manifest.json') }}">
     <link rel="icon" type="image/png" href="{{ url_for('static', filename='icon-192.png') }}">
@@ -71,7 +71,7 @@
         <div class="max-w-7xl mx-auto px-4">
             <div class="flex justify-between items-center h-14">
                 <div class="flex items-center space-x-6">
-                    <a href="{{ url_for('home') }}" class="font-bold text-lg">ArchOps</a>
+                    <a href="{{ url_for('home') }}" class="font-bold text-lg">Monograph</a>
                     
                     {% if current_user %}
                     <!-- Desktop nav links -->
