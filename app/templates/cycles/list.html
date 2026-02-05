@@ -70,7 +70,7 @@
                 </a>
                 {% if cycle.status == 'active' %}
                 <a href="{{ url_for('cycles.edit_cycle', cycle_id=cycle.id) }}" 
-                   class="text-gray-600 hover:underline text-sm">Edit Exclusions</a>
+                   class="text-gray-600 hover:underline text-sm">Cycle Settings</a>
                 {% endif %}
                 {% if cycle.units_inspected == 0 %}
                 <form method="POST" action="{{ url_for('cycles.delete_cycle', cycle_id=cycle.id) }}" class="inline">
