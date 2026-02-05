@@ -582,15 +582,14 @@ def delete_cycle(cycle_id):
 @cycles_bp.route('/<cycle_id>/exclude-unit', methods=['POST'])
 @require_team_lead
 def toggle_unit_exclusion(cycle_id):
-    """Toggle unit exclusion from this cycle (HTMX)."""
-    from flask import make_response
+    """Toggle unit exclusion from this cycle."""
     tenant_id = session['tenant_id']
     db = get_db()
     
     unit_id = request.form.get('unit_id')
     
     if not unit_id:
-        return '', 400
+        abort(400)
     
     existing = query_db(
         "SELECT id FROM cycle_excluded_unit WHERE cycle_id = ? AND unit_id = ?",
@@ -599,15 +598,15 @@ def toggle_unit_exclusion(cycle_id):
     
     if existing:
         db.execute("DELETE FROM cycle_excluded_unit WHERE id = ?", [existing['id']])
+        flash('Unit included back in cycle', 'success')
     else:
         exc_id = generate_id()
         db.execute("""
             INSERT INTO cycle_excluded_unit (id, tenant_id, cycle_id, unit_id)
             VALUES (?, ?, ?, ?)
         """, [exc_id, tenant_id, cycle_id, unit_id])
+        flash('Unit excluded from cycle', 'success')
     
     db.commit()
     
-    resp = make_response('')
-    resp.headers['HX-Refresh'] = 'true'
-    return resp
+    return redirect(url_for('cycles.view_cycle', cycle_id=cycle_id))

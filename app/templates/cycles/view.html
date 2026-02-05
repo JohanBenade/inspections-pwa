@@ -22,12 +22,10 @@
 </div>
 
 <script>
-var pendingUrl = null;
-var pendingUnitId = null;
+var pendingFormId = null;
 
-function showUnitConfirm(url, unitId, unitNum, excluding) {
-    pendingUrl = url;
-    pendingUnitId = unitId;
+function showUnitConfirm(formId, unitNum, excluding) {
+    pendingFormId = formId;
     document.getElementById("confirm-title").textContent = (excluding ? "Exclude" : "Include") + " Unit " + unitNum;
     document.getElementById("confirm-message").textContent = excluding
         ? "This unit will be removed from the active cycle. You can include it again later."
@@ -40,16 +38,17 @@ function showUnitConfirm(url, unitId, unitNum, excluding) {
 
 function closeConfirm() {
     document.getElementById("confirm-modal").classList.add("hidden");
-    pendingUrl = null;
-    pendingUnitId = null;
+    pendingFormId = null;
 }
 
 function doConfirm() {
-    if (pendingUrl && pendingUnitId) {
-        htmx.ajax("POST", pendingUrl, {values: {unit_id: pendingUnitId}});
+    if (pendingFormId) {
+        document.getElementById(pendingFormId).submit();
     }
     closeConfirm();
 }
+
+document.getElementById("confirm-action").addEventListener("click", doConfirm);
 </script>
 {% endblock %}
 
@@ -276,19 +275,23 @@ function doConfirm() {
                                 </a>
                                 {% endif %}
                                 {% if cycle.status == 'active' and not unit.inspection_id %}
-                                {% if is_excluded %}
-                                <button type="button"
-                                        onclick="showUnitConfirm('{{ url_for('cycles.toggle_unit_exclusion', cycle_id=cycle.id) }}', '{{ unit.unit_id }}', '{{ unit.unit_number }}', false)"
-                                        class="text-xs text-green-600 hover:text-green-800 underline">
-                                    Include
-                                </button>
-                                {% else %}
-                                <button type="button"
-                                        onclick="showUnitConfirm('{{ url_for('cycles.toggle_unit_exclusion', cycle_id=cycle.id) }}', '{{ unit.unit_id }}', '{{ unit.unit_number }}', true)"
-                                        class="text-xs text-red-600 hover:text-red-800 underline">
-                                    Exclude
-                                </button>
-                                {% endif %}
+                                <form id="exclude-form-{{ unit.unit_number }}" method="POST" 
+                                      action="{{ url_for('cycles.toggle_unit_exclusion', cycle_id=cycle.id) }}" class="inline">
+                                    <input type="hidden" name="unit_id" value="{{ unit.unit_id }}">
+                                    {% if is_excluded %}
+                                    <button type="button"
+                                            onclick="showUnitConfirm('exclude-form-{{ unit.unit_number }}', '{{ unit.unit_number }}', false)"
+                                            class="text-xs text-green-600 hover:text-green-800 underline">
+                                        Include
+                                    </button>
+                                    {% else %}
+                                    <button type="button"
+                                            onclick="showUnitConfirm('exclude-form-{{ unit.unit_number }}', '{{ unit.unit_number }}', true)"
+                                            class="text-xs text-red-600 hover:text-red-800 underline">
+                                        Exclude
+                                    </button>
+                                    {% endif %}
+                                </form>
                                 {% endif %}
                             </div>
                         </td>
