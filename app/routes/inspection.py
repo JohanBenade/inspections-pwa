@@ -3,7 +3,7 @@ Inspection routes - Main inspection workflow.
 Inspections are conducted within a cycle created by the architect.
 """
 from datetime import date
-from flask import Blueprint, render_template, session, redirect, url_for, abort, request
+from flask import Blueprint, render_template, session, redirect, url_for, abort, request, jsonify
 from app.auth import require_auth
 from app.utils import generate_id
 from app.services.db import get_db, query_db
@@ -769,3 +769,35 @@ def get_defect_count(inspection_id):
         return f'<span class="text-red-600 font-medium">{count} defect{suffix} will be raised.</span>'
     else:
         return ''
+
+
+@inspection_bp.route('/api/suggestions/<item_template_id>')
+@require_auth
+def get_defect_suggestions(item_template_id):
+    """Return defect description suggestions as HTML pills."""
+    tenant_id = session['tenant_id']
+    
+    # Get the item's category
+    item = query_db("""
+        SELECT it.id, ct.category_name
+        FROM item_template it
+        JOIN category_template ct ON it.category_id = ct.id
+        WHERE it.id = ?
+    """, [item_template_id], one=True)
+    
+    if not item:
+        return ''
+    
+    # Get item-specific suggestions first (sorted by usage), then category fallbacks
+    suggestions = query_db("""
+        SELECT description, usage_count
+        FROM defect_library
+        WHERE tenant_id = ? AND category_name = ?
+        AND (item_template_id = ? OR item_template_id IS NULL)
+        ORDER BY 
+            CASE WHEN item_template_id = ? THEN 0 ELSE 1 END,
+            usage_count DESC
+        LIMIT 5
+    """, [tenant_id, item['category_name'], item_template_id, item_template_id])
+    
+    return render_template('inspection/_suggestions.html', suggestions=suggestions)

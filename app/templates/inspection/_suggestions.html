@@ -1,0 +1,12 @@
+{% if suggestions %}
+<div class="flex flex-wrap gap-1 mt-2">
+    {% for s in suggestions %}
+    <button type="button" 
+            onclick="var inp=this.closest('.defect-input-wrapper').querySelector('input');inp.value=this.textContent.trim();inp.dispatchEvent(new Event('blur',{bubbles:true}));"
+            ontouchend="event.preventDefault();this.click();"
+            class="text-xs bg-blue-50 text-blue-700 hover:bg-blue-100 px-2 py-1 rounded border border-blue-200 truncate max-w-full">
+        {{ s.description }}
+    </button>
+    {% endfor %}
+</div>
+{% endif %}

@@ -187,7 +187,7 @@
                     </div>
                     
                     {% if item.status == 'not_installed' %}
-                    <div class="mt-2">
+                    <div class="mt-2 defect-input-wrapper">
                         <input type="text" 
                                value="{{ item.comment or '' }}"
                                placeholder="Describe issue..."
@@ -197,6 +197,9 @@
                                hx-trigger="blur changed, keydown[key=='Enter']"
                                hx-target="#area-content"
                                name="comment">
+                        <div hx-get="{{ url_for('inspection.get_defect_suggestions', item_template_id=item.item_template_id) }}"
+                             hx-trigger="load"
+                             hx-swap="innerHTML"></div>
                     </div>
                     {% endif %}
                     
@@ -236,7 +239,7 @@
                     </div>
                     
                     {% if item.status in ['not_to_standard', 'not_installed'] %}
-                    <div class="mt-2">
+                    <div class="mt-2 defect-input-wrapper">
                         <input type="text" 
                                value="{{ item.comment or '' }}"
                                placeholder="{% if show_as_defect %}Update comment or leave blank...{% else %}Describe the defect...{% endif %}"
@@ -246,6 +249,9 @@
                                hx-trigger="blur changed, keydown[key=='Enter']"
                                hx-target="#area-content"
                                name="comment">
+                        <div hx-get="{{ url_for('inspection.get_defect_suggestions', item_template_id=item.item_template_id) }}"
+                             hx-trigger="load"
+                             hx-swap="innerHTML"></div>
                     </div>
                     {% endif %}
                     {% endif %}
