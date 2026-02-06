@@ -250,13 +250,15 @@ def view_cycle(cycle_id):
     units = query_db("""
         SELECT u.unit_number, u.status as unit_status, u.id as unit_id,
             i.id as inspection_id, i.status as inspection_status,
-            i.inspection_date, i.inspector_name,
+            i.inspection_date, COALESCE(i.inspector_name, assigned_insp.name) as inspector_name,
             (SELECT COUNT(*) FROM defect d WHERE d.unit_id = u.id AND d.status = 'open') as open_defects
         FROM unit u
         LEFT JOIN inspection i ON i.unit_id = u.id AND i.cycle_id = ?
+        LEFT JOIN cycle_unit_assignment cua ON cua.unit_id = u.id AND cua.cycle_id = ?
+        LEFT JOIN inspector assigned_insp ON cua.inspector_id = assigned_insp.id
         WHERE u.phase_id = ? {}
         ORDER BY u.unit_number
-    """.format(range_filter), params)
+    """.format(range_filter), [cycle_id, cycle_id] + params[1:])
     
     # Get excluded items
     excluded = query_db("""
