@@ -288,6 +288,24 @@
         });
     });
     
+    // Auto-expand categories with active defect inputs
+    document.querySelectorAll('.defect-input-wrapper').forEach(function(wrapper) {
+        var catContent = wrapper.closest('.cat-content');
+        var chevron = catContent ? catContent.previousElementSibling.querySelector('.cat-chevron') : null;
+        if (catContent) catContent.classList.remove('hidden');
+        if (chevron) chevron.classList.add('rotate-90');
+    });
+    
+    // Auto-focus the last defect input (most recently interacted)
+    var defectInputs = document.querySelectorAll('.defect-input-wrapper input[type="text"]');
+    if (defectInputs.length > 0) {
+        var lastEmpty = null;
+        defectInputs.forEach(function(inp) {
+            if (!inp.value) lastEmpty = inp;
+        });
+        if (lastEmpty) lastEmpty.focus();
+    }
+    
     // Trigger progress bar refresh
     document.body.dispatchEvent(new CustomEvent('areaUpdated'));
 </script>
