@@ -169,8 +169,9 @@ def dashboard():
             LEFT JOIN inspection i ON i.unit_id = u.id AND i.cycle_id = ?
             WHERE u.tenant_id = ? 
             AND (ic.unit_start IS NULL OR (u.unit_number >= ic.unit_start AND u.unit_number <= ic.unit_end))
+            AND u.id NOT IN (SELECT ceu.unit_id FROM cycle_excluded_unit ceu WHERE ceu.cycle_id = ?)
             ORDER BY u.block, u.floor, u.unit_number
-        """, [filter_cycle_num, cycle_filter, filter_cycle_num, filter_cycle_num, filter_cycle_num, cycle_filter, cycle_filter, tenant_id])
+        """, [filter_cycle_num, cycle_filter, filter_cycle_num, filter_cycle_num, filter_cycle_num, cycle_filter, cycle_filter, tenant_id, cycle_filter])
     else:
         units = query_db("""
             SELECT 
@@ -217,6 +218,11 @@ def dashboard():
                 JOIN inspection_cycle ic ON i.cycle_id = ic.id
             ) latest ON latest.unit_id = u.id AND latest.rn = 1
             WHERE u.tenant_id = ?
+            AND u.id NOT IN (
+                SELECT ceu.unit_id FROM cycle_excluded_unit ceu
+                JOIN inspection_cycle ic2 ON ceu.cycle_id = ic2.id
+                WHERE ic2.status = 'active'
+            )
             ORDER BY u.block, u.floor, u.unit_number
         """, [tenant_id])
     
