@@ -215,10 +215,19 @@ def dashboard():
                            inspector_stats=inspector_stats,
                            area_colours=AREA_COLOURS)
 
+# ============================================================
+# BI-WEEKLY REPORT ROUTES (v64g)
+# ============================================================
 
-# ============================================================
-# BI-WEEKLY REPORT ROUTES (v64)
-# ============================================================
+def _to_dicts(rows):
+    """Convert sqlite3.Row results to plain dicts."""
+    return [dict(r) for r in rows]
+
+
+def _to_dict(row):
+    """Convert a single sqlite3.Row to a plain dict."""
+    return dict(row) if row else None
+
 
 @analytics_bp.route('/report/<cycle_id>')
 @require_manager
@@ -246,9 +255,9 @@ def report_pdf(cycle_id):
     pdf_bytes = HTML(string=html_str, base_url=req.url_root).write_pdf()
 
     cycle = data['cycle']
-    block = cycle['block'] or 'Block'
+    block = cycle.get('block') or 'Block'
     fname = "Monograph_Inspection_Report_Cycle{}_{}_{}_.pdf".format(
-        cycle['cycle_number'], block.replace(' ', ''),
+        cycle.get('cycle_number', 1), block.replace(' ', ''),
         datetime.utcnow().strftime('%Y%m%d')
     )
 
@@ -260,39 +269,41 @@ def report_pdf(cycle_id):
 
 
 def _build_report_data(cycle_id):
-    """Gather all data needed for the bi-weekly report."""
-    import base64, os, math
+    """Gather all data needed for the bi-weekly report.
+    All query results are converted to plain dicts immediately
+    to avoid sqlite3.Row immutability issues.
+    """
+    import base64, os
     from flask import current_app
 
     tenant_id = session['tenant_id']
 
-    # Cycle info
-    cycle = query_db("""
+    # --- Cycle info ---
+    cycle = _to_dict(query_db("""
         SELECT id, cycle_number, block, floor, unit_start, unit_end,
                status, general_notes, exclusion_notes,
                request_received_date, started_at, created_at
         FROM inspection_cycle
         WHERE id = ? AND tenant_id = ?
-    """, [cycle_id, tenant_id], one=True)
+    """, [cycle_id, tenant_id], one=True))
 
     if not cycle:
         return None
 
-    # Items per unit (templates minus exclusions for this cycle)
+    # --- Items per unit ---
     total_templates = query_db("""
         SELECT COUNT(*) FROM item_template WHERE tenant_id = ?
     """, [tenant_id], one=True)[0]
     excluded_count = query_db("""
-        SELECT COUNT(DISTINCT it.id)
-        FROM item_template it
-        JOIN inspection_item ii ON ii.item_template_id = it.id
+        SELECT COUNT(DISTINCT ii.item_template_id)
+        FROM inspection_item ii
         JOIN inspection i ON ii.inspection_id = i.id
         WHERE i.cycle_id = ? AND i.tenant_id = ? AND ii.status = 'skipped'
     """, [cycle_id, tenant_id], one=True)[0]
     items_per_unit = total_templates - excluded_count if excluded_count > 0 else 438
 
-    # Active units in this cycle (from inspections or assignments, excluding excluded)
-    units = query_db("""
+    # --- Units with inspections in this cycle ---
+    units = _to_dicts(query_db("""
         SELECT u.id, u.unit_number, u.block, u.floor, u.status as unit_status,
                i.id as insp_id, i.status as insp_status, i.inspector_name,
                i.inspection_date, i.started_at as insp_started,
@@ -302,14 +313,14 @@ def _build_report_data(cycle_id):
         WHERE u.tenant_id = ?
         AND u.id NOT IN (SELECT unit_id FROM cycle_excluded_unit WHERE cycle_id = ?)
         ORDER BY u.unit_number
-    """, [cycle_id, tenant_id, cycle_id])
+    """, [cycle_id, tenant_id, cycle_id]))
 
     total_units = len(units)
     if total_units == 0:
         return None
 
-    # Defect counts per unit
-    unit_defects = query_db("""
+    # --- Defect counts per unit ---
+    unit_defects = _to_dicts(query_db("""
         SELECT u.unit_number, u.id as unit_id, COUNT(d.id) as defect_count
         FROM unit u
         JOIN inspection i2 ON i2.unit_id = u.id AND i2.cycle_id = ?
@@ -318,7 +329,7 @@ def _build_report_data(cycle_id):
         AND u.id NOT IN (SELECT unit_id FROM cycle_excluded_unit WHERE cycle_id = ?)
         GROUP BY u.id
         ORDER BY u.unit_number
-    """, [cycle_id, cycle_id, tenant_id, cycle_id])
+    """, [cycle_id, cycle_id, tenant_id, cycle_id]))
 
     total_defects = sum(u['defect_count'] for u in unit_defects)
     avg_defects = round(total_defects / total_units, 1) if total_units > 0 else 0
@@ -327,40 +338,40 @@ def _build_report_data(cycle_id):
 
     # Median
     counts_sorted = sorted([u['defect_count'] for u in unit_defects])
-    if len(counts_sorted) % 2 == 0:
-        mid = len(counts_sorted) // 2
-        median_defects = (counts_sorted[mid - 1] + counts_sorted[mid]) / 2
+    n = len(counts_sorted)
+    if n % 2 == 0:
+        median_defects = (counts_sorted[n // 2 - 1] + counts_sorted[n // 2]) / 2
     else:
-        median_defects = counts_sorted[len(counts_sorted) // 2]
+        median_defects = counts_sorted[n // 2]
 
     # Certified count
-    certified_count = sum(1 for u in units if u['unit_status'] == 'certified')
+    certified_count = sum(1 for u in units if u.get('unit_status') == 'certified')
 
-    # Pipeline counts
+    # --- Pipeline counts ---
     pipeline = {'not_started': 0, 'in_progress': 0, 'submitted': 0,
                 'under_review': 0, 'reviewed': 0, 'approved': 0,
                 'certified': 0, 'pending_followup': 0}
     for u in units:
-        status = u['insp_status'] or 'not_started'
+        status = u.get('insp_status') or 'not_started'
         if status in pipeline:
-            pipeline[status] = pipeline.get(status, 0) + 1
+            pipeline[status] += 1
 
-    # Pipeline dates (earliest timestamp for each stage)
+    # --- Pipeline dates ---
     pipeline_dates = {}
-    if cycle['request_received_date']:
+    if cycle.get('request_received_date'):
         pipeline_dates['requested'] = cycle['request_received_date']
-    insp_dates = [u['inspection_date'] for u in units if u['inspection_date']]
+    insp_dates = [u['inspection_date'] for u in units if u.get('inspection_date')]
     if insp_dates:
         pipeline_dates['inspected'] = min(insp_dates)
-    review_dates = [u['review_submitted_at'] for u in units if u['review_submitted_at']]
+    review_dates = [u['review_submitted_at'] for u in units if u.get('review_submitted_at')]
     if review_dates:
         pipeline_dates['reviewed'] = max(review_dates)[:10]
-    approved_dates = [u['approved_at'] for u in units if u['approved_at']]
+    approved_dates = [u['approved_at'] for u in units if u.get('approved_at')]
     if approved_dates:
         pipeline_dates['approved'] = max(approved_dates)[:10]
 
-    # Defects by area (item_template -> category_template -> area_template)
-    area_data = query_db("""
+    # --- Defects by area ---
+    area_data = _to_dicts(query_db("""
         SELECT at2.area_name as area, COUNT(d.id) as defect_count
         FROM defect d
         JOIN item_template it ON d.item_template_id = it.id
@@ -369,36 +380,32 @@ def _build_report_data(cycle_id):
         WHERE d.raised_cycle_id = ? AND d.tenant_id = ? AND d.status = 'open'
         GROUP BY at2.area_name
         ORDER BY defect_count DESC
-    """, [cycle_id, tenant_id])
+    """, [cycle_id, tenant_id]))
 
-    # Convert to plain dicts and compute donut chart SVG data
-    area_list = [dict(r) for r in area_data]
-    circumference = 439.82  # 2 * pi * 70
+    # Compute donut chart SVG data
+    circumference = 439.82
     offset = 0
-    for a in area_list:
+    for a in area_data:
         pct = a['defect_count'] / total_defects if total_defects > 0 else 0
         a['pct'] = round(pct * 100, 1)
         a['dash'] = round(pct * circumference, 2)
         a['offset'] = round(offset, 2)
         offset += a['dash']
-    area_data = area_list
 
-    # Top defect types
-    top_defects = query_db("""
+    # --- Top defect types ---
+    top_defects = _to_dicts(query_db("""
         SELECT original_comment as description, COUNT(*) as count
         FROM defect
         WHERE raised_cycle_id = ? AND tenant_id = ? AND status = 'open'
         GROUP BY original_comment
         ORDER BY count DESC
         LIMIT 10
-    """, [cycle_id, tenant_id])
+    """, [cycle_id, tenant_id]))
 
-    # Convert to plain dicts and add percentage
-    top_defects = [dict(r) for r in top_defects]
     for d in top_defects:
         d['pct'] = round((d['count'] / total_defects) * 100, 1) if total_defects > 0 else 0
 
-    # Merge unit data with defect counts and inspector info
+    # --- Unit table ---
     unit_map = {u['unit_number']: u for u in units}
     unit_table = []
     max_defects = max((u['defect_count'] for u in unit_defects), default=1)
@@ -408,8 +415,8 @@ def _build_report_data(cycle_id):
         unit_rate = round((ud['defect_count'] / items_per_unit) * 100, 1) if items_per_unit > 0 else 0
         unit_table.append({
             'unit_number': ud['unit_number'],
-            'block': info.get('block', cycle['block'] or ''),
-            'floor': info.get('floor', cycle['floor'] if cycle['floor'] is not None else ''),
+            'block': info.get('block', cycle.get('block') or ''),
+            'floor': info.get('floor', cycle.get('floor')),
             'inspector_name': info.get('inspector_name', ''),
             'defect_count': ud['defect_count'],
             'defect_rate': unit_rate,
@@ -421,7 +428,7 @@ def _build_report_data(cycle_id):
     # Floor display mapping
     floor_map = {0: 'Ground', 1: '1st', 2: '2nd', 3: '3rd'}
 
-    # Load images as base64
+    # --- Load images as base64 ---
     logo_b64 = ''
     sig_b64 = ''
     try:
@@ -437,7 +444,7 @@ def _build_report_data(cycle_id):
     except Exception:
         pass
 
-    # Area colours
+    # Area colours for report
     report_area_colours = ['#C8963E', '#3D6B8E', '#4A7C59', '#C44D3F', '#7B6B8D', '#5A8A7A', '#B07D4B']
 
     return {
