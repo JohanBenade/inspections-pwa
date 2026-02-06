@@ -187,24 +187,6 @@
                         </button>
                     </div>
                     
-                    {% if item.status == 'not_installed' %}
-                    <div class="mt-2 defect-input-wrapper">
-                        <input type="text" 
-                               value="{{ item.comment or '' }}"
-                               placeholder="Describe issue..."
-                               autocomplete="off"
-                               class="w-full px-3 py-2 border-2 border-red-300 rounded text-sm focus:ring-2 focus:ring-red-500 auto-caps"
-                               hx-post="{{ url_for('inspection.update_item', inspection_id=inspection.id, item_id=item.id) }}"
-                               hx-vals='{"status": "not_installed", "area_id": "{{ area.id }}"}'
-                               hx-trigger="blur changed, keydown[key=='Enter']"
-                               hx-target="#area-content"
-                               name="comment">
-                        <div hx-get="{{ url_for('inspection.get_defect_suggestions', item_template_id=item.template_id) }}"
-                             hx-trigger="load"
-                             hx-swap="innerHTML"></div>
-                    </div>
-                    {% endif %}
-                    
                     {% elif parent_not_installed %}
                     <div class="text-xs text-gray-400 italic">Parent not installed</div>
                     
