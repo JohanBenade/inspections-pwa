@@ -776,6 +776,7 @@ def get_defect_count(inspection_id):
 def get_defect_suggestions(item_template_id):
     """Return defect description suggestions as HTML pills."""
     tenant_id = session['tenant_id']
+    mode = request.args.get('mode', 'defect')
     
     # Get the item's category
     item = query_db("""
@@ -800,4 +801,4 @@ def get_defect_suggestions(item_template_id):
         LIMIT 5
     """, [tenant_id, item['category_name'], item_template_id, item_template_id])
     
-    return render_template('inspection/_suggestions.html', suggestions=suggestions)
+    return render_template('inspection/_suggestions.html', suggestions=suggestions, mode=mode)

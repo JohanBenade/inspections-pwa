@@ -256,6 +256,23 @@
                              hx-trigger="load"
                              hx-swap="innerHTML"></div>
                     </div>
+                    {% else %}
+                    <div class="mt-1">
+                        <a href="javascript:void(0)"
+                           onclick="var d=this.nextElementSibling;d.classList.toggle('hidden');if(!d.dataset.loaded){htmx.trigger(d,'loadPills');d.dataset.loaded='1'}"
+                           ontouchend="event.preventDefault();this.click()"
+                           class="text-xs text-gray-400 hover:text-blue-500"
+                           style="text-decoration:none">
+                            &#9432; common defects
+                        </a>
+                        <div class="hidden guide-pills"
+                             data-post-url="{{ url_for('inspection.update_item', inspection_id=inspection.id, item_id=item.id) }}"
+                             data-area-id="{{ area.id }}"
+                             hx-get="{{ url_for('inspection.get_defect_suggestions', item_template_id=item.template_id) }}?mode=guide"
+                             hx-trigger="loadPills once"
+                             hx-swap="innerHTML">
+                        </div>
+                    </div>
                     {% endif %}
                     {% endif %}
                 </div>

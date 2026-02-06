@@ -1,12 +1,21 @@
 {% if suggestions %}
 <div class="flex flex-wrap gap-1 mt-2">
     {% for s in suggestions %}
+    {% if mode == 'guide' %}
+    <button type="button"
+            onclick="var w=this.closest('.guide-pills');htmx.ajax('POST',w.dataset.postUrl,{target:'#area-content',swap:'innerHTML',values:{status:'not_to_standard',comment:this.textContent.trim(),area_id:w.dataset.areaId}})"
+            ontouchend="event.preventDefault();this.click()"
+            class="text-xs bg-gray-100 text-gray-500 hover:bg-red-100 hover:text-red-700 px-2 py-1 rounded border border-gray-200 truncate max-w-full">
+        {{ s.description }}
+    </button>
+    {% else %}
     <button type="button" 
             onclick="var inp=this.closest('.defect-input-wrapper').querySelector('input');inp.value=this.textContent.trim();inp.dispatchEvent(new Event('blur',{bubbles:true}));"
             ontouchend="event.preventDefault();this.click();"
             class="text-xs bg-blue-50 text-blue-700 hover:bg-blue-100 px-2 py-1 rounded border border-blue-200 truncate max-w-full">
         {{ s.description }}
     </button>
+    {% endif %}
     {% endfor %}
 </div>
 {% endif %}
