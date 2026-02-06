@@ -7,29 +7,7 @@
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;400;500;600&family=DM+Sans:wght@400;500;600;700&display=swap');
 
-:root {
-    --black: #0A0A0A;
-    --charcoal: #1A1A1A;
-    --slate: #2D2D2D;
-    --graphite: #404040;
-    --steel: #6B6B6B;
-    --silver: #9A9A9A;
-    --light: #E8E6E1;
-    --cream: #F5F3EE;
-    --white: #FAFAF8;
-    --accent: #C8963E;
-    --accent-light: #D4A94F;
-    --accent-muted: rgba(200,150,62,0.15);
-    --red: #C44D3F;
-    --red-muted: rgba(196,77,63,0.12);
-    --green: #4A7C59;
-    --green-muted: rgba(74,124,89,0.12);
-    --blue: #3D6B8E;
-    --blue-muted: rgba(61,107,142,0.12);
-    --font-display: 'Cormorant Garamond', Georgia, 'Times New Roman', serif;
-    --font-body: 'DM Sans', 'Helvetica Neue', Helvetica, Arial, sans-serif;
-}
-
+/* ── VARIABLES (hardcoded for WeasyPrint) ── */
 @page {
     size: A4;
     margin: 18mm 16mm 20mm 16mm;
@@ -44,9 +22,9 @@
 * { margin: 0; padding: 0; box-sizing: border-box; }
 
 body {
-    font-family: var(--font-body);
-    color: var(--charcoal);
-    background: var(--white);
+    font-family: 'DM Sans', 'Helvetica Neue', Helvetica, Arial, sans-serif;
+    color: #1A1A1A;
+    background: #FAFAF8;
     font-size: 11px;
     line-height: 1.5;
     -webkit-print-color-adjust: exact;
@@ -54,128 +32,115 @@ body {
 }
 
 .page { max-width: 800px; margin: 0 auto; padding: 0; }
+.clearfix::after { content: ""; display: table; clear: both; }
 
 /* ── HEADER ── */
 .report-header {
     padding-bottom: 16px;
-    border-bottom: 3px solid var(--black);
+    border-bottom: 3px solid #0A0A0A;
     margin-bottom: 20px;
 }
-.header-top {
-    display: flex;
-    justify-content: space-between;
-    align-items: flex-start;
-    margin-bottom: 20px;
-}
+.header-top { margin-bottom: 20px; }
+.header-top::after { content: ""; display: table; clear: both; }
+.logo-area { float: left; }
 .logo-area img { height: 36px; width: auto; }
 .logo-fallback {
-    font-family: var(--font-display);
+    font-family: 'Cormorant Garamond', Georgia, serif;
     font-size: 22px;
     font-weight: 300;
     letter-spacing: 6px;
     text-transform: uppercase;
-    color: var(--black);
+    color: #0A0A0A;
 }
 .logo-sub {
-    font-family: var(--font-display);
+    font-family: 'Cormorant Garamond', Georgia, serif;
     font-size: 12px;
     font-weight: 300;
     letter-spacing: 3px;
-    color: var(--steel);
+    color: #6B6B6B;
     margin-left: 8px;
 }
 .header-meta {
+    float: right;
     text-align: right;
     font-size: 10px;
     letter-spacing: 1.5px;
     text-transform: uppercase;
-    color: var(--steel);
+    color: #6B6B6B;
 }
 .header-meta .date {
     font-size: 11px;
     letter-spacing: 0;
     text-transform: none;
-    color: var(--charcoal);
+    color: #1A1A1A;
     margin-top: 2px;
 }
 .report-title {
-    font-family: var(--font-display);
+    font-family: 'Cormorant Garamond', Georgia, serif;
     font-size: 32px;
     font-weight: 300;
     letter-spacing: -0.3px;
-    color: var(--black);
+    color: #0A0A0A;
     line-height: 1.1;
     margin-bottom: 6px;
 }
 .report-subtitle {
     font-size: 11px;
-    color: var(--steel);
-    display: flex;
-    gap: 12px;
-    flex-wrap: wrap;
+    color: #6B6B6B;
 }
-.report-subtitle .sep { color: var(--light); }
+.report-subtitle .sep { color: #E8E6E1; padding: 0 6px; }
 
-/* ── KPI CARDS ── */
-.kpi-row {
-    display: flex;
-    gap: 6px;
-    margin-bottom: 24px;
-    flex-wrap: wrap;
-}
-.kpi-card {
-    flex: 1 1 110px;
+/* ── KPI CARDS (table layout) ── */
+.kpi-table { width: 100%; margin-bottom: 24px; border-collapse: separate; border-spacing: 6px 0; }
+.kpi-cell {
     padding: 12px 10px;
-    background: var(--cream);
-    border-left: 3px solid var(--accent);
-    min-width: 110px;
+    background: #F5F3EE;
+    border-left: 3px solid #C8963E;
+    vertical-align: top;
+    width: 16.66%;
 }
 .kpi-label {
     font-size: 8px;
     font-weight: 600;
     letter-spacing: 2px;
     text-transform: uppercase;
-    color: var(--steel);
+    color: #6B6B6B;
     margin-bottom: 4px;
 }
 .kpi-value {
-    font-family: var(--font-display);
+    font-family: 'Cormorant Garamond', Georgia, serif;
     font-size: 28px;
     font-weight: 300;
-    color: var(--black);
+    color: #0A0A0A;
     line-height: 1;
 }
 .kpi-sub {
     font-size: 9px;
-    color: var(--silver);
+    color: #9A9A9A;
     margin-top: 3px;
 }
 
 /* ── SECTIONS ── */
 .section { margin-top: 28px; page-break-inside: avoid; }
-.section-header {
-    display: flex;
-    align-items: baseline;
-    gap: 10px;
-    margin-bottom: 6px;
-}
+.section-header { margin-bottom: 6px; }
 .section-num {
     font-size: 10px;
     font-weight: 600;
     letter-spacing: 3px;
-    color: var(--accent);
+    color: #C8963E;
     text-transform: uppercase;
+    margin-right: 10px;
 }
 .section-title {
-    font-family: var(--font-display);
+    font-family: 'Cormorant Garamond', Georgia, serif;
     font-size: 22px;
     font-weight: 300;
     letter-spacing: 0.5px;
-    color: var(--black);
+    color: #0A0A0A;
 }
 .section-divider {
     height: 1px;
-    background: var(--accent);
+    background: #C8963E;
     margin-bottom: 14px;
 }
 
@@ -184,135 +149,156 @@ body {
     margin-top: 12px;
     padding: 10px 12px;
     font-size: 11px;
-    color: var(--charcoal);
+    color: #1A1A1A;
     line-height: 1.5;
 }
-.callout-gold { background: var(--accent-muted); border-left: 3px solid var(--accent); }
-.callout-blue { background: var(--blue-muted); border-left: 3px solid var(--blue); }
-.callout-green { background: var(--green-muted); border-left: 3px solid var(--green); }
-.callout-red { background: var(--red-muted); border-left: 3px solid var(--red); }
+.callout-gold { background: rgba(200,150,62,0.15); border-left: 3px solid #C8963E; }
+.callout-red { background: rgba(196,77,63,0.12); border-left: 3px solid #C44D3F; }
 .callout strong { font-weight: 600; }
 
-/* ── PIPELINE ── */
-.pipeline-wrap { background: var(--cream); padding: 20px 16px 14px; }
-.pipeline-row { display: flex; align-items: flex-start; position: relative; }
-.pipeline-step { flex: 1; text-align: center; position: relative; }
-.pipeline-step .connector {
-    position: absolute;
-    top: 14px;
-    left: 55%;
-    right: -45%;
-    height: 2px;
-    z-index: 0;
-}
-.pipeline-dot {
+/* ── PIPELINE (table layout) ── */
+.pipeline-wrap { background: #F5F3EE; padding: 20px 16px 14px; }
+.pipeline-table { width: 100%; border-collapse: collapse; }
+.pipeline-table td { text-align: center; vertical-align: top; padding: 0 4px; position: relative; }
+.pipeline-dot-done {
+    display: inline-block;
     width: 30px;
     height: 30px;
     border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    margin: 0 auto 6px;
-    position: relative;
-    z-index: 1;
+    background: #C8963E;
+    color: white;
+    border: 2px solid #C8963E;
+    text-align: center;
+    line-height: 26px;
     font-size: 11px;
     font-weight: 600;
 }
-.dot-done { background: var(--accent); color: white; border: 2px solid var(--accent); }
-.dot-partial { background: var(--accent-muted); color: var(--accent); border: 2px solid var(--accent); }
-.dot-empty { background: var(--white); color: var(--silver); border: 2px solid var(--light); }
+.pipeline-dot-empty {
+    display: inline-block;
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    background: #FAFAF8;
+    color: #9A9A9A;
+    border: 2px solid #E8E6E1;
+    text-align: center;
+    line-height: 26px;
+    font-size: 11px;
+    font-weight: 600;
+}
 .pipeline-label {
     font-size: 9px;
     font-weight: 600;
     letter-spacing: 1px;
     text-transform: uppercase;
-    color: var(--charcoal);
+    color: #1A1A1A;
+    margin-top: 6px;
 }
-.pipeline-label.muted { color: var(--silver); }
-.pipeline-date { font-size: 9px; color: var(--silver); margin-top: 1px; }
-.pipeline-days { font-size: 8px; color: var(--accent); margin-top: 1px; }
-
-/* ── AREA CHARTS ── */
-.area-grid { display: flex; gap: 20px; flex-wrap: wrap; }
-.area-bars { flex: 1 1 340px; min-width: 300px; }
-.area-donut { flex: 0 0 200px; display: flex; flex-direction: column; align-items: center; }
-.bar-row { margin-bottom: 8px; }
-.bar-label-row {
-    display: flex;
-    justify-content: space-between;
-    align-items: baseline;
-    margin-bottom: 2px;
-}
-.bar-label { font-size: 11px; color: var(--charcoal); }
-.bar-value { font-size: 11px; font-weight: 600; color: var(--black); }
-.bar-value .bar-pct { color: var(--silver); font-weight: 400; margin-left: 4px; }
-.bar-track { height: 5px; background: var(--light); border-radius: 3px; overflow: hidden; }
-.bar-fill { height: 100%; border-radius: 3px; }
-.donut-legend {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 3px 12px;
-    justify-content: center;
-    margin-top: 10px;
+.pipeline-label-muted {
     font-size: 9px;
+    font-weight: 600;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    color: #9A9A9A;
+    margin-top: 6px;
 }
-.legend-item { display: flex; align-items: center; gap: 4px; }
-.legend-dot { width: 7px; height: 7px; border-radius: 50%; }
+.pipeline-date { font-size: 9px; color: #9A9A9A; margin-top: 1px; }
+/* Connector line between pipeline dots */
+.pipeline-connector-row td { padding: 0; height: 2px; }
+.connector-done { background: #C8963E; height: 2px; }
+.connector-pending { background: #E8E6E1; height: 2px; }
+.connector-none { height: 2px; }
 
-/* ── TOP DEFECTS ── */
-.defect-list { list-style: none; }
-.defect-item {
-    display: flex;
-    align-items: center;
-    padding: 7px 0;
-    border-bottom: 1px solid var(--light);
-    gap: 10px;
+/* ── AREA CHARTS (float layout) ── */
+.area-grid::after { content: ""; display: table; clear: both; }
+.area-bars { float: left; width: 65%; }
+.area-donut { float: right; width: 30%; text-align: center; }
+.bar-row { margin-bottom: 8px; }
+.bar-label-row { margin-bottom: 2px; }
+.bar-label-row::after { content: ""; display: table; clear: both; }
+.bar-label { float: left; font-size: 11px; color: #1A1A1A; }
+.bar-value { float: right; font-size: 11px; font-weight: 600; color: #0A0A0A; }
+.bar-value .bar-pct { color: #9A9A9A; font-weight: 400; margin-left: 4px; }
+.bar-track { height: 5px; background: #E8E6E1; border-radius: 3px; overflow: hidden; clear: both; }
+.bar-fill { height: 5px; border-radius: 3px; display: block; }
+.donut-legend { margin-top: 10px; font-size: 9px; text-align: center; line-height: 2; }
+.legend-item { display: inline-block; margin: 0 4px; white-space: nowrap; }
+.legend-dot {
+    display: inline-block;
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    vertical-align: middle;
+    margin-right: 3px;
 }
-.defect-rank {
+
+/* ── TOP DEFECTS (table layout) ── */
+.defect-table { width: 100%; border-collapse: collapse; }
+.defect-table td { padding: 7px 4px; border-bottom: 1px solid #E8E6E1; vertical-align: middle; }
+.defect-rank-cell { width: 30px; text-align: center; }
+.defect-rank-top {
+    display: inline-block;
     width: 22px;
     height: 22px;
     border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
+    background: #C8963E;
+    color: white;
+    text-align: center;
+    line-height: 22px;
     font-size: 9px;
     font-weight: 600;
-    flex-shrink: 0;
 }
-.rank-top { background: var(--accent); color: white; }
-.rank-other { background: var(--cream); color: var(--steel); }
-.defect-desc { flex: 1; font-size: 11px; color: var(--charcoal); }
-.defect-bar-wrap { width: 80px; flex-shrink: 0; }
-.defect-bar-track { height: 3px; background: var(--light); border-radius: 2px; overflow: hidden; }
-.defect-bar-fill { height: 100%; border-radius: 2px; }
-.defect-count { font-size: 11px; font-weight: 600; color: var(--black); min-width: 20px; text-align: right; flex-shrink: 0; }
-.defect-pct { font-size: 10px; color: var(--silver); min-width: 34px; text-align: right; flex-shrink: 0; }
+.defect-rank-other {
+    display: inline-block;
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    background: #F5F3EE;
+    color: #6B6B6B;
+    text-align: center;
+    line-height: 22px;
+    font-size: 9px;
+    font-weight: 600;
+}
+.defect-desc-cell { font-size: 11px; color: #1A1A1A; }
+.defect-bar-cell { width: 80px; }
+.defect-bar-track { height: 3px; background: #E8E6E1; border-radius: 2px; overflow: hidden; }
+.defect-bar-fill { height: 3px; border-radius: 2px; display: block; }
+.defect-count-cell { width: 30px; text-align: right; font-size: 11px; font-weight: 600; color: #0A0A0A; }
+.defect-pct-cell { width: 38px; text-align: right; font-size: 10px; color: #9A9A9A; }
 
-/* ── UNIT BAR CHART ── */
-.unit-bars { display: flex; align-items: flex-end; gap: 4px; height: 160px; padding: 0 4px; }
-.unit-bar-col { flex: 1; display: flex; flex-direction: column; align-items: center; }
+/* ── UNIT BAR CHART (table layout) ── */
+.unit-chart-table { width: 100%; border-collapse: collapse; }
+.unit-chart-table td { text-align: center; vertical-align: bottom; padding: 0 2px; }
+.unit-bar-wrapper { height: 160px; position: relative; }
 .unit-bar {
-    width: 100%;
-    max-width: 36px;
+    position: absolute;
+    bottom: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 36px;
     border-radius: 3px 3px 0 0;
-    display: flex;
-    align-items: flex-start;
-    justify-content: center;
+}
+.unit-bar-count {
+    font-size: 8px;
+    font-weight: 600;
+    color: white;
+    text-align: center;
     padding-top: 3px;
-    min-height: 4px;
 }
-.unit-bar-count { font-size: 8px; font-weight: 600; color: white; }
-.unit-bar-label { font-size: 9px; color: var(--charcoal); margin-top: 4px; }
-.bar-legend {
-    display: flex;
-    gap: 16px;
-    margin-top: 8px;
-    font-size: 10px;
+.unit-bar-label { font-size: 9px; color: #1A1A1A; padding-top: 4px; }
+.bar-legend { margin-top: 8px; font-size: 10px; }
+.bar-legend-item { display: inline-block; margin-right: 14px; }
+.bar-legend-swatch {
+    display: inline-block;
+    width: 10px;
+    height: 10px;
+    border-radius: 2px;
+    vertical-align: middle;
+    margin-right: 4px;
 }
-.bar-legend-item { display: flex; align-items: center; gap: 5px; }
-.bar-legend-swatch { width: 10px; height: 10px; border-radius: 2px; }
 
-/* ── TABLE ── */
+/* ── DATA TABLE ── */
 .data-table { width: 100%; border-collapse: collapse; font-size: 10px; }
 .data-table thead th {
     padding: 7px 8px;
@@ -320,23 +306,23 @@ body {
     font-weight: 600;
     letter-spacing: 1.2px;
     text-transform: uppercase;
-    color: var(--steel);
-    border-bottom: 2px solid var(--black);
+    color: #6B6B6B;
+    border-bottom: 2px solid #0A0A0A;
 }
 .data-table tbody td {
     padding: 6px 8px;
-    border-bottom: 1px solid var(--light);
+    border-bottom: 1px solid #E8E6E1;
 }
-.data-table tbody tr:nth-child(even) { background: var(--cream); }
+.data-table tbody tr:nth-child(even) { background: #F5F3EE; }
 .data-table tfoot td {
     padding: 7px 8px;
     font-weight: 600;
-    border-top: 2px solid var(--black);
+    border-top: 2px solid #0A0A0A;
 }
 .text-right { text-align: right; }
 .text-center { text-align: center; }
 .font-semibold { font-weight: 600; }
-.text-black { color: var(--black); }
+.text-black { color: #0A0A0A; }
 .status-badge {
     display: inline-block;
     padding: 2px 8px;
@@ -346,57 +332,55 @@ body {
     letter-spacing: 0.5px;
     text-transform: uppercase;
 }
-.badge-reviewed { background: var(--accent-muted); color: var(--accent); }
-.badge-approved { background: var(--green-muted); color: var(--green); }
-.badge-pending { background: var(--red-muted); color: var(--red); }
-.badge-submitted { background: var(--blue-muted); color: var(--blue); }
-.variance-pos { color: var(--red); font-weight: 600; }
-.variance-neg { color: var(--green); font-weight: 600; }
-.variance-neutral { color: var(--charcoal); }
+.badge-reviewed { background: rgba(200,150,62,0.15); color: #C8963E; }
+.badge-approved { background: rgba(74,124,89,0.12); color: #4A7C59; }
+.badge-pending { background: rgba(196,77,63,0.12); color: #C44D3F; }
+.badge-submitted { background: rgba(61,107,142,0.12); color: #3D6B8E; }
+.variance-pos { color: #C44D3F; font-weight: 600; }
+.variance-neg { color: #4A7C59; font-weight: 600; }
+.variance-neutral { color: #1A1A1A; }
 
 /* ── SIGNATURE ── */
 .signature-block {
     margin-top: 36px;
     padding-top: 16px;
-    border-top: 1px solid var(--light);
-    display: flex;
-    justify-content: space-between;
-    gap: 40px;
+    border-top: 1px solid #E8E6E1;
     page-break-inside: avoid;
 }
-.sig-col { flex: 1; }
+.signature-block::after { content: ""; display: table; clear: both; }
+.sig-col-left { float: left; width: 48%; }
+.sig-col-right { float: right; width: 48%; }
 .sig-label {
     font-size: 9px;
     letter-spacing: 2px;
     text-transform: uppercase;
-    color: var(--steel);
+    color: #6B6B6B;
     margin-bottom: 16px;
 }
 .sig-image { height: 40px; width: auto; margin-bottom: 4px; }
-.sig-line { border-bottom: 1px solid var(--charcoal); padding-bottom: 3px; margin-bottom: 3px; }
-.sig-name { font-size: 12px; font-weight: 500; color: var(--black); }
-.sig-company { font-size: 10px; color: var(--steel); }
-.sig-date { font-size: 10px; color: var(--silver); }
-.sig-line-blank { border-bottom: 1px solid var(--light); padding-bottom: 3px; margin-bottom: 3px; min-width: 180px; }
-.sig-placeholder { font-size: 11px; color: var(--silver); font-style: italic; }
+.sig-line { border-bottom: 1px solid #1A1A1A; padding-bottom: 3px; margin-bottom: 3px; }
+.sig-name { font-size: 12px; font-weight: 500; color: #0A0A0A; }
+.sig-company { font-size: 10px; color: #6B6B6B; }
+.sig-date { font-size: 10px; color: #9A9A9A; }
+.sig-line-blank { border-bottom: 1px solid #E8E6E1; padding-bottom: 3px; margin-bottom: 3px; min-width: 180px; }
+.sig-placeholder { font-size: 11px; color: #9A9A9A; font-style: italic; }
 
 /* ── FOOTER ── */
 .report-footer {
     margin-top: 28px;
     padding-top: 14px;
-    border-top: 3px solid var(--black);
-    display: flex;
-    justify-content: space-between;
-    align-items: flex-end;
+    border-top: 3px solid #0A0A0A;
     page-break-inside: avoid;
 }
-.footer-right { text-align: right; font-size: 9px; color: var(--silver); line-height: 1.7; }
+.report-footer::after { content: ""; display: table; clear: both; }
+.footer-left { float: left; }
+.footer-right { float: right; text-align: right; font-size: 9px; color: #9A9A9A; line-height: 1.7; }
 .footer-disclaimer {
     margin-top: 14px;
     padding: 8px 12px;
-    background: var(--cream);
+    background: #F5F3EE;
     font-size: 9px;
-    color: var(--silver);
+    color: #9A9A9A;
     text-align: center;
     letter-spacing: 0.3px;
 }
@@ -412,23 +396,21 @@ body {
 }
 .toolbar a, .toolbar button {
     padding: 8px 16px;
-    font-family: var(--font-body);
+    font-family: 'DM Sans', Helvetica, Arial, sans-serif;
     font-size: 12px;
     font-weight: 600;
     border: none;
     border-radius: 4px;
     cursor: pointer;
     text-decoration: none;
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
+    display: inline-block;
 }
-.btn-pdf { background: var(--accent); color: white; }
-.btn-pdf:hover { background: var(--accent-light); }
-.btn-print { background: var(--cream); color: var(--charcoal); border: 1px solid var(--light); }
-.btn-print:hover { background: var(--light); }
-.btn-back { background: var(--cream); color: var(--charcoal); border: 1px solid var(--light); }
-.btn-back:hover { background: var(--light); }
+.btn-pdf { background: #C8963E; color: white; }
+.btn-pdf:hover { background: #D4A94F; }
+.btn-print { background: #F5F3EE; color: #1A1A1A; border: 1px solid #E8E6E1; }
+.btn-print:hover { background: #E8E6E1; }
+.btn-back { background: #F5F3EE; color: #1A1A1A; border: 1px solid #E8E6E1; }
+.btn-back:hover { background: #E8E6E1; }
 
 @media print { .toolbar { display: none !important; } }
 </style>
@@ -444,7 +426,7 @@ body {
 </div>
 {% endif %}
 
-<!-- ═══ HEADER ═══ -->
+<!-- HEADER -->
 <div class="report-header">
     <div class="header-top">
         <div class="logo-area">
@@ -470,41 +452,41 @@ body {
     </div>
 </div>
 
-<!-- ═══ KPI CARDS ═══ -->
-<div class="kpi-row">
-    <div class="kpi-card">
+<!-- KPI CARDS -->
+<table class="kpi-table"><tr>
+    <td class="kpi-cell">
         <div class="kpi-label">Units Inspected</div>
         <div class="kpi-value">{{ total_units }}</div>
         <div class="kpi-sub">of {{ total_units }} assigned</div>
-    </div>
-    <div class="kpi-card">
+    </td>
+    <td class="kpi-cell">
         <div class="kpi-label">Total Defects</div>
         <div class="kpi-value">{{ total_defects }}</div>
         <div class="kpi-sub">across all areas</div>
-    </div>
-    <div class="kpi-card">
+    </td>
+    <td class="kpi-cell">
         <div class="kpi-label">Avg Defects / Unit</div>
         <div class="kpi-value">{{ avg_defects }}</div>
         <div class="kpi-sub">median: {{ median_defects }}</div>
-    </div>
-    <div class="kpi-card">
+    </td>
+    <td class="kpi-cell">
         <div class="kpi-label">Items Inspected</div>
         <div class="kpi-value">{{ '{:,}'.format(total_items) }}</div>
         <div class="kpi-sub">{{ items_per_unit }} per unit x {{ total_units }}</div>
-    </div>
-    <div class="kpi-card">
+    </td>
+    <td class="kpi-cell">
         <div class="kpi-label">Defect Rate</div>
         <div class="kpi-value">{{ defect_rate }}%</div>
         <div class="kpi-sub">items flagged</div>
-    </div>
-    <div class="kpi-card">
+    </td>
+    <td class="kpi-cell">
         <div class="kpi-label">Certified</div>
         <div class="kpi-value">{{ certified_count }}</div>
         <div class="kpi-sub">of {{ total_units }} units</div>
-    </div>
-</div>
+    </td>
+</tr></table>
 
-<!-- ═══ 01 INSPECTION PIPELINE ═══ -->
+<!-- 01 INSPECTION PIPELINE -->
 <div class="section">
     <div class="section-header">
         <span class="section-num">01</span>
@@ -512,31 +494,46 @@ body {
     </div>
     <div class="section-divider"></div>
     <div class="pipeline-wrap">
-        <div class="pipeline-row">
-            {% set stages = [
-                ('Requested', pipeline_dates.get('requested', ''), true),
-                ('Inspected', pipeline_dates.get('inspected', ''), pipeline.in_progress + pipeline.submitted + pipeline.under_review + pipeline.reviewed + pipeline.approved + pipeline.certified + pipeline.pending_followup > 0),
-                ('Reviewed', pipeline_dates.get('reviewed', ''), pipeline.reviewed + pipeline.approved + pipeline.certified + pipeline.pending_followup > 0),
-                ('Approved', pipeline_dates.get('approved', ''), pipeline.approved + pipeline.certified + pipeline.pending_followup > 0),
-                ('Certified', '', pipeline.certified > 0)
-            ] %}
+        {% set stages = [
+            ('Requested', pipeline_dates.get('requested', ''), true),
+            ('Inspected', pipeline_dates.get('inspected', ''), pipeline.in_progress + pipeline.submitted + pipeline.under_review + pipeline.reviewed + pipeline.approved + pipeline.certified + pipeline.pending_followup > 0),
+            ('Reviewed', pipeline_dates.get('reviewed', ''), pipeline.reviewed + pipeline.approved + pipeline.certified + pipeline.pending_followup > 0),
+            ('Approved', pipeline_dates.get('approved', ''), pipeline.approved + pipeline.certified + pipeline.pending_followup > 0),
+            ('Certified', '', pipeline.certified > 0)
+        ] %}
+        <!-- Connector line row -->
+        <table class="pipeline-table">
+        <tr class="pipeline-connector-row">
             {% for label, date, done in stages %}
-            <div class="pipeline-step">
-                {% if not loop.last %}
-                <div class="connector" style="background: {% if done and stages[loop.index][2] %}var(--accent){% elif done %}var(--accent){% else %}var(--light){% endif %};"></div>
-                {% endif %}
-                {% if done %}
-                <div class="pipeline-dot dot-done">&#10003;</div>
+            <td>
+                {% if not loop.first %}
+                {% set prev_done = stages[loop.index0 - 1][2] %}
+                <div style="height: 2px; background: {% if prev_done and done %}#C8963E{% elif prev_done %}#C8963E{% else %}#E8E6E1{% endif %}; margin-top: 14px;"></div>
                 {% else %}
-                <div class="pipeline-dot dot-empty">-</div>
+                <div style="height: 2px; margin-top: 14px;"></div>
                 {% endif %}
-                <div class="pipeline-label {% if not done %}muted{% endif %}">{{ label }}</div>
+            </td>
+            {% endfor %}
+        </tr>
+        </table>
+        <!-- Dots row overlaid via negative margin -->
+        <table class="pipeline-table" style="margin-top: -18px;">
+        <tr>
+            {% for label, date, done in stages %}
+            <td>
+                {% if done %}
+                <div class="pipeline-dot-done">&#10003;</div>
+                {% else %}
+                <div class="pipeline-dot-empty">-</div>
+                {% endif %}
+                <div class="{% if done %}pipeline-label{% else %}pipeline-label-muted{% endif %}">{{ label }}</div>
                 {% if date %}
                 <div class="pipeline-date">{{ date }}</div>
                 {% endif %}
-            </div>
+            </td>
             {% endfor %}
-        </div>
+        </tr>
+        </table>
 
         {% set reviewed_count = pipeline.reviewed + pipeline.approved + pipeline.certified + pipeline.pending_followup %}
         {% set approved_count = pipeline.approved + pipeline.certified + pipeline.pending_followup %}
@@ -545,27 +542,24 @@ body {
             {{ total_units }} units inspected,
             {{ reviewed_count }} reviewed{% if approved_count > 0 %}, {{ approved_count }} approved{% endif %}.
             {% if certified_count > 0 %}{{ certified_count }} certified.{% endif %}
-            {% if pipeline_dates.get('requested') and pipeline_dates.get('reviewed') %}
-            Elapsed time from request to review: tracked via audit trail.
-            {% endif %}
         </div>
     </div>
 </div>
 
-<!-- ═══ 02 DEFECTS BY AREA ═══ -->
+<!-- 02 DEFECTS BY AREA -->
 <div class="section">
     <div class="section-header">
         <span class="section-num">02</span>
         <span class="section-title">Defect Distribution by Area</span>
     </div>
     <div class="section-divider"></div>
-    <div class="area-grid">
+    <div class="area-grid clearfix">
         <div class="area-bars">
             {% for area in area_data %}
             <div class="bar-row">
-                <div class="bar-label-row">
+                <div class="bar-label-row clearfix">
                     <span class="bar-label">{{ area.area }}</span>
-                    <span class="bar-value">{{ area.defect_count }}<span class="bar-pct">({{ area.pct }}%)</span></span>
+                    <span class="bar-value">{{ area.defect_count }}<span class="bar-pct"> ({{ area.pct }}%)</span></span>
                 </div>
                 <div class="bar-track">
                     <div class="bar-fill" style="width: {{ (area.defect_count / area_data[0].defect_count * 100) if area_data[0].defect_count > 0 else 0 }}%; background: {{ area_colours[loop.index0 % area_colours|length] }};"></div>
@@ -574,7 +568,7 @@ body {
             {% endfor %}
         </div>
         <div class="area-donut">
-            <svg viewBox="0 0 200 200" width="180" height="180">
+            <svg viewBox="0 0 200 200" width="160" height="160">
                 {% for area in area_data %}
                 <circle cx="100" cy="100" r="70"
                         fill="none"
@@ -584,55 +578,61 @@ body {
                         stroke-dashoffset="{{ -area.offset }}"
                         transform="rotate(-90 100 100)" />
                 {% endfor %}
-                <circle cx="100" cy="100" r="52" fill="var(--white)" />
-                <text x="100" y="96" text-anchor="middle" font-family="'Cormorant Garamond', Georgia, serif" font-size="28" font-weight="300" fill="var(--black)">{{ total_defects }}</text>
-                <text x="100" y="112" text-anchor="middle" font-family="'DM Sans', Helvetica, sans-serif" font-size="9" fill="var(--silver)">defects</text>
+                <circle cx="100" cy="100" r="52" fill="#FAFAF8" />
+                <text x="100" y="95" text-anchor="middle"
+                      font-family="'Cormorant Garamond', Georgia, serif"
+                      font-size="26" font-weight="300" fill="#0A0A0A">{{ total_defects }}</text>
+                <text x="100" y="112" text-anchor="middle"
+                      font-family="'DM Sans', Helvetica, sans-serif"
+                      font-size="9" fill="#9A9A9A">defects</text>
             </svg>
             <div class="donut-legend">
                 {% for area in area_data %}
-                <div class="legend-item">
-                    <div class="legend-dot" style="background: {{ area_colours[loop.index0 % area_colours|length] }};"></div>
-                    <span>{{ area.area }}</span>
-                </div>
+                <span class="legend-item">
+                    <span class="legend-dot" style="background: {{ area_colours[loop.index0 % area_colours|length] }};"></span>{{ area.area }}
+                </span>
                 {% endfor %}
             </div>
         </div>
     </div>
 
-    {% if area_data|length >= 2 %}
-    {% set top_two_pct = area_data[0].pct + area_data[1].pct %}
-    <div class="callout callout-blue">
-        <strong>Key finding:</strong> {{ area_data[0].area }} and {{ area_data[1].area }}
-        account for {{ top_two_pct }}% of all defects.
-        {% if area_data[0].area in ['Bathroom', 'Kitchen'] and area_data[1].area in ['Bathroom', 'Kitchen'] %}
-        Wet areas with plumbing and tiling work consistently produce the highest defect density.
-        {% endif %}
+    {% set top_two = area_data[:2] if area_data|length >= 2 else area_data %}
+    {% if top_two|length >= 2 %}
+    {% set combined_pct = top_two[0].pct + top_two[1].pct %}
+    <div class="callout callout-gold">
+        <strong>Key finding:</strong> {{ top_two[0].area }} and {{ top_two[1].area }} account for {{ combined_pct }}% of all defects.
     </div>
     {% endif %}
 </div>
 
-<!-- ═══ 03 TOP DEFECT TYPES ═══ -->
+<!-- 03 TOP DEFECT TYPES -->
 <div class="section">
     <div class="section-header">
         <span class="section-num">03</span>
         <span class="section-title">Most Common Defect Types</span>
     </div>
     <div class="section-divider"></div>
-    <ul class="defect-list">
+    <table class="defect-table">
         {% for d in top_defects %}
-        <li class="defect-item">
-            <div class="defect-rank {% if loop.index <= 3 %}rank-top{% else %}rank-other{% endif %}">{{ loop.index }}</div>
-            <div class="defect-desc">{{ d.description }}</div>
-            <div class="defect-bar-wrap">
+        <tr>
+            <td class="defect-rank-cell">
+                {% if loop.index <= 3 %}
+                <span class="defect-rank-top">{{ loop.index }}</span>
+                {% else %}
+                <span class="defect-rank-other">{{ loop.index }}</span>
+                {% endif %}
+            </td>
+            <td class="defect-desc-cell">{{ d.description }}</td>
+            <td class="defect-bar-cell">
                 <div class="defect-bar-track">
-                    <div class="defect-bar-fill" style="width: {{ (d.count / top_defects[0].count * 100) if top_defects[0].count > 0 else 0 }}%; background: {% if loop.index <= 3 %}var(--accent){% else %}var(--steel){% endif %};"></div>
+                    <div class="defect-bar-fill" style="width: {{ (d.count / top_defects[0].count * 100) if top_defects[0].count > 0 else 0 }}%; background: {% if loop.index <= 3 %}#C8963E{% else %}#6B6B6B{% endif %};"></div>
                 </div>
-            </div>
-            <div class="defect-count">{{ d.count }}</div>
-            <div class="defect-pct">{{ d.pct }}%</div>
-        </li>
+            </td>
+            <td class="defect-count-cell">{{ d.count }}</td>
+            <td class="defect-pct-cell">{{ d.pct }}%</td>
+        </tr>
         {% endfor %}
-    </ul>
+    </table>
 
     {% if top_defects|length >= 3 %}
     {% set top3_pct = top_defects[0].pct + top_defects[1].pct + top_defects[2].pct %}
@@ -645,46 +645,51 @@ body {
     {% endif %}
 </div>
 
-<!-- ═══ 04 DEFECT COUNT BY UNIT ═══ -->
+<!-- 04 DEFECT COUNT BY UNIT -->
 <div class="section">
     <div class="section-header">
         <span class="section-num">04</span>
         <span class="section-title">Defect Count by Unit</span>
     </div>
     <div class="section-divider"></div>
-    <div class="unit-bars">
-        {% for u in unit_table %}
-        {% set bar_h = (u.defect_count / max_defects * 140) if max_defects > 0 else 2 %}
-        <div class="unit-bar-col">
-            <div class="unit-bar" style="height: {{ bar_h if bar_h > 4 else 4 }}px; background: {% if u.defect_count > 30 %}var(--red){% elif u.defect_count > 20 %}var(--accent){% else %}var(--green){% endif %};">
-                {% if bar_h > 14 %}
-                <span class="unit-bar-count">{{ u.defect_count }}</span>
-                {% endif %}
-            </div>
-            <span class="unit-bar-label">{{ u.unit_number }}</span>
-        </div>
-        {% endfor %}
-    </div>
+    <table class="unit-chart-table">
+        <tr>
+            {% for u in unit_table %}
+            {% set bar_h = (u.defect_count / max_defects * 140) if max_defects > 0 else 2 %}
+            {% set bar_height = bar_h if bar_h > 4 else 4 %}
+            {% set bar_color = '#C44D3F' if u.defect_count > 30 else '#C8963E' if u.defect_count > 20 else '#4A7C59' %}
+            <td style="height: 160px; vertical-align: bottom;">
+                <div style="width: 36px; margin: 0 auto; height: {{ bar_height }}px; background: {{ bar_color }}; border-radius: 3px 3px 0 0; text-align: center; padding-top: 3px;">
+                    {% if bar_height > 14 %}
+                    <span style="font-size: 8px; font-weight: 600; color: white;">{{ u.defect_count }}</span>
+                    {% endif %}
+                </div>
+            </td>
+            {% endfor %}
+        </tr>
+        <tr>
+            {% for u in unit_table %}
+            <td class="unit-bar-label">{{ u.unit_number }}</td>
+            {% endfor %}
+        </tr>
+    </table>
     <div class="bar-legend">
-        <div class="bar-legend-item">
-            <div class="bar-legend-swatch" style="background: var(--green);"></div>
-            <span>&le; 20 defects</span>
-        </div>
-        <div class="bar-legend-item">
-            <div class="bar-legend-swatch" style="background: var(--accent);"></div>
-            <span>21-30 defects</span>
-        </div>
-        <div class="bar-legend-item">
-            <div class="bar-legend-swatch" style="background: var(--red);"></div>
-            <span>&gt; 30 defects</span>
-        </div>
-        <div class="bar-legend-item" style="color: var(--steel);">
+        <span class="bar-legend-item">
+            <span class="bar-legend-swatch" style="background: #4A7C59;"></span> &le; 20 defects
+        </span>
+        <span class="bar-legend-item">
+            <span class="bar-legend-swatch" style="background: #C8963E;"></span> 21-30 defects
+        </span>
+        <span class="bar-legend-item">
+            <span class="bar-legend-swatch" style="background: #C44D3F;"></span> &gt; 30 defects
+        </span>
+        <span class="bar-legend-item" style="color: #6B6B6B;">
             Average: {{ avg_defects }}
-        </div>
+        </span>
     </div>
 </div>
 
-<!-- ═══ 05 UNIT SUMMARY TABLE ═══ -->
+<!-- 05 UNIT SUMMARY TABLE -->
 <div class="section" style="page-break-before: auto;">
     <div class="section-header">
         <span class="section-num">05</span>
@@ -724,7 +729,7 @@ body {
                     {% elif u.insp_status == 'submitted' %}
                     <span class="status-badge badge-submitted">Submitted</span>
                     {% else %}
-                    <span class="status-badge" style="background: var(--cream); color: var(--steel);">{{ (u.insp_status or 'Not Started')|replace('_', ' ')|title }}</span>
+                    <span class="status-badge" style="background: #F5F3EE; color: #6B6B6B;">{{ (u.insp_status or 'Not Started')|replace('_', ' ')|title }}</span>
                     {% endif %}
                 </td>
             </tr>
@@ -735,18 +740,18 @@ body {
                 <td colspan="3" class="font-semibold">TOTAL / AVERAGE</td>
                 <td class="text-right font-semibold">{{ total_defects }}</td>
                 <td class="text-right font-semibold">{{ defect_rate }}%</td>
-                <td class="text-right" style="color: var(--silver);">-</td>
+                <td class="text-right" style="color: #9A9A9A;">-</td>
                 <td class="text-center">
-                    <span class="status-badge" style="background: var(--blue-muted); color: var(--blue);">{{ total_units }} / {{ total_units }}</span>
+                    <span class="status-badge" style="background: rgba(61,107,142,0.12); color: #3D6B8E;">{{ total_units }} / {{ total_units }}</span>
                 </td>
             </tr>
         </tfoot>
     </table>
 </div>
 
-<!-- ═══ SIGNATURE BLOCK ═══ -->
-<div class="signature-block">
-    <div class="sig-col">
+<!-- SIGNATURE BLOCK -->
+<div class="signature-block clearfix">
+    <div class="sig-col-left">
         <div class="sig-label">Prepared by</div>
         {% if sig_b64 %}
         <img src="data:image/png;base64,{{ sig_b64 }}" alt="Signature" class="sig-image">
@@ -757,7 +762,7 @@ body {
         <div class="sig-company">Monograph Architects</div>
         <div class="sig-date">{{ report_date }}</div>
     </div>
-    <div class="sig-col">
+    <div class="sig-col-right">
         <div class="sig-label">Acknowledged by</div>
         <div style="height: 40px;"></div>
         <div class="sig-line-blank">
@@ -768,15 +773,15 @@ body {
     </div>
 </div>
 
-<!-- ═══ FOOTER ═══ -->
-<div class="report-footer">
-    <div>
+<!-- FOOTER -->
+<div class="report-footer clearfix">
+    <div class="footer-left">
         {% if logo_b64 %}
         <img src="data:image/jpeg;base64,{{ logo_b64 }}" alt="Monograph" style="height: 24px; width: auto;">
         {% else %}
         <span class="logo-fallback" style="font-size: 16px;">MONOGRAPH</span>
         {% endif %}
-        <div style="font-size: 9px; color: var(--silver); margin-top: 4px;">
+        <div style="font-size: 9px; color: #9A9A9A; margin-top: 4px;">
             Power Park Student Housing - Phase 3 &middot; Cycle {{ cycle.cycle_number }}
         </div>
     </div>
