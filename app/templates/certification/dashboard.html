@@ -57,7 +57,7 @@
     {% endwith %}
 
     <!-- Status Groups -->
-    {% set display_order = ['awaiting_review', 'awaiting_approval', 'approved', 'in_progress', 'not_started', 'certified', 'pending_followup'] %}
+    {% set display_order = ['awaiting_review', 'under_review', 'awaiting_approval', 'approved', 'in_progress', 'not_started', 'certified', 'pending_followup'] %}
     
     {% for status_key in display_order %}
     {% set units = grouped[status_key] %}
@@ -245,6 +245,7 @@
             <h2 class="text-lg font-semibold text-gray-800">{{ info.title }}</h2>
             <span class="px-2 py-0.5 text-xs font-medium rounded-full
                 {% if info.color == 'purple' %}bg-purple-100 text-purple-700
+                {% elif info.color == 'blue' %}bg-blue-100 text-blue-700
                 {% elif info.color == 'indigo' %}bg-indigo-100 text-indigo-700
                 {% elif info.color == 'emerald' %}bg-emerald-100 text-emerald-700
                 {% elif info.color == 'green' %}bg-green-100 text-green-700
@@ -359,7 +360,7 @@
                                                 {% if not (status_key == 'awaiting_approval' and user_role not in ['manager', 'admin']) %}
                                                 <a href="{{ url_for('certification.view_unit', unit_id=unit.id) }}"
                                                    class="px-3 py-1.5 text-xs font-medium text-blue-700 bg-blue-50 border border-blue-200 rounded hover:bg-blue-100">
-                                                    {% if status_key == 'awaiting_review' %}Review{% elif status_key in ['certified', 'pending_followup'] %}View{% else %}Open{% endif %}
+                                                    {% if status_key in ['awaiting_review', 'under_review'] %}Review{% elif status_key in ['certified', 'pending_followup'] %}View{% else %}Open{% endif %}
                                                 </a>
                                                 {% endif %}
                                                 
@@ -377,9 +378,31 @@
                                                         </button>
                                                     </form>
                                                     {% else %}
-                                                    <form action="{{ url_for('certification.review_unit', unit_id=unit.id) }}" method="POST" class="inline">
+                                                    <form action="{{ url_for('certification.start_review', unit_id=unit.id) }}" method="POST" class="inline">
                                                         <button type="submit" 
                                                                 class="px-4 py-2 text-sm font-semibold text-white bg-purple-600 rounded-lg hover:bg-purple-700 shadow-sm">
+                                                            Start Review
+                                                        </button>
+                                                    </form>
+                                                    {% endif %}
+                                                
+                                                {% elif status_key == 'under_review' %}
+                                                    <a href="{{ url_for('pdf.preview_defects_pdf', unit_id=unit.id) }}"
+                                                       class="px-3 py-1.5 text-xs font-medium text-white bg-blue-600 rounded hover:bg-blue-700">
+                                                        PDF
+                                                    </a>
+
+                                                    {% if user_role in ['manager', 'admin'] %}
+                                                    <form action="{{ url_for('certification.approve_unit', unit_id=unit.id) }}" method="POST" class="inline">
+                                                        <button type="submit" 
+                                                                class="px-4 py-2 text-sm font-semibold text-white bg-indigo-600 rounded-lg hover:bg-indigo-700 shadow-sm">
+                                                            Approve
+                                                        </button>
+                                                    </form>
+                                                    {% else %}
+                                                    <form action="{{ url_for('certification.review_unit', unit_id=unit.id) }}" method="POST" class="inline">
+                                                        <button type="submit" 
+                                                                class="px-4 py-2 text-sm font-semibold text-white bg-blue-600 rounded-lg hover:bg-blue-700 shadow-sm">
                                                             Send to Manager
                                                         </button>
                                                     </form>
