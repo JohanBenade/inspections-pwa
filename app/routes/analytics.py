@@ -291,19 +291,18 @@ def _build_report_data(cycle_id):
     """, [cycle_id, tenant_id], one=True)[0]
     items_per_unit = total_templates - excluded_count if excluded_count > 0 else 438
 
-    # Active units in this cycle (excluding excluded)
+    # Active units in this cycle (from inspections or assignments, excluding excluded)
     units = query_db("""
         SELECT u.id, u.unit_number, u.block, u.floor, u.status as unit_status,
                i.id as insp_id, i.status as insp_status, i.inspector_name,
                i.inspection_date, i.started_at as insp_started,
                i.submitted_at, i.review_started_at, i.review_submitted_at, i.approved_at
         FROM unit u
-        JOIN cycle_unit_assignment cua ON cua.unit_id = u.id AND cua.cycle_id = ?
-        LEFT JOIN inspection i ON i.unit_id = u.id AND i.cycle_id = ?
+        JOIN inspection i ON i.unit_id = u.id AND i.cycle_id = ?
         WHERE u.tenant_id = ?
         AND u.id NOT IN (SELECT unit_id FROM cycle_excluded_unit WHERE cycle_id = ?)
         ORDER BY u.unit_number
-    """, [cycle_id, cycle_id, tenant_id, cycle_id])
+    """, [cycle_id, tenant_id, cycle_id])
 
     total_units = len(units)
     if total_units == 0:
@@ -313,7 +312,7 @@ def _build_report_data(cycle_id):
     unit_defects = query_db("""
         SELECT u.unit_number, u.id as unit_id, COUNT(d.id) as defect_count
         FROM unit u
-        JOIN cycle_unit_assignment cua ON cua.unit_id = u.id AND cua.cycle_id = ?
+        JOIN inspection i2 ON i2.unit_id = u.id AND i2.cycle_id = ?
         LEFT JOIN defect d ON d.unit_id = u.id AND d.raised_cycle_id = ? AND d.status = 'open'
         WHERE u.tenant_id = ?
         AND u.id NOT IN (SELECT unit_id FROM cycle_excluded_unit WHERE cycle_id = ?)
