@@ -575,11 +575,22 @@ def submit_inspection(inspection_id):
             return redirect(url_for('inspection.inspect', inspection_id=inspection_id))
     
     defect_items = query_db("""
-        SELECT ii.*, it.id as template_id
+        SELECT ii.*, it.id as template_id, it.parent_item_id
         FROM inspection_item ii
         JOIN item_template it ON ii.item_template_id = it.id
         WHERE ii.inspection_id = ?
         AND ii.status IN ('not_to_standard', 'not_installed')
+        AND NOT (
+            it.parent_item_id IS NOT NULL
+            AND ii.status = 'not_installed'
+            AND EXISTS (
+                SELECT 1 FROM inspection_item pi
+                JOIN item_template pt ON pi.item_template_id = pt.id
+                WHERE pi.inspection_id = ii.inspection_id
+                AND pt.id = it.parent_item_id
+                AND pi.status = 'not_installed'
+            )
+        )
     """, [inspection_id])
     
     for item in defect_items:
