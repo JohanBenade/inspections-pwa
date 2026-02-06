@@ -115,6 +115,7 @@
                     <input type="text" 
                            placeholder="Add category-level comment..."
                            value="{{ category.comment.latest_comment if category.comment else '' }}"
+                           autocomplete="off"
                            class="flex-1 px-2 py-1 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 auto-caps"
                            hx-post="{{ url_for('inspection.update_category_comment', inspection_id=inspection.id, category_id=category.id) }}"
                            hx-vals='{"area_id": "{{ area.id }}"}'
@@ -191,6 +192,7 @@
                         <input type="text" 
                                value="{{ item.comment or '' }}"
                                placeholder="Describe issue..."
+                               autocomplete="off"
                                class="w-full px-3 py-2 border-2 border-red-300 rounded text-sm focus:ring-2 focus:ring-red-500 auto-caps"
                                hx-post="{{ url_for('inspection.update_item', inspection_id=inspection.id, item_id=item.id) }}"
                                hx-vals='{"status": "not_installed", "area_id": "{{ area.id }}"}'
@@ -243,6 +245,7 @@
                         <input type="text" 
                                value="{{ item.comment or '' }}"
                                placeholder="{% if show_as_defect %}Update comment or leave blank...{% else %}Describe the defect...{% endif %}"
+                               autocomplete="off"
                                class="w-full px-3 py-2 border-2 border-red-300 rounded text-sm focus:ring-2 focus:ring-red-500 auto-caps"
                                hx-post="{{ url_for('inspection.update_item', inspection_id=inspection.id, item_id=item.id) }}"
                                hx-vals='{"status": "{{ item.status }}", "area_id": "{{ area.id }}"}'
