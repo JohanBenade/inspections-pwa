@@ -199,7 +199,7 @@
                                hx-trigger="blur changed, keydown[key=='Enter']"
                                hx-target="#area-content"
                                name="comment">
-                        <div hx-get="{{ url_for('inspection.get_defect_suggestions', item_template_id=item.item_template_id) }}"
+                        <div hx-get="{{ url_for('inspection.get_defect_suggestions', item_template_id=item.template_id) }}"
                              hx-trigger="load"
                              hx-swap="innerHTML"></div>
                     </div>
@@ -252,7 +252,7 @@
                                hx-trigger="blur changed, keydown[key=='Enter']"
                                hx-target="#area-content"
                                name="comment">
-                        <div hx-get="{{ url_for('inspection.get_defect_suggestions', item_template_id=item.item_template_id) }}"
+                        <div hx-get="{{ url_for('inspection.get_defect_suggestions', item_template_id=item.template_id) }}"
                              hx-trigger="load"
                              hx-swap="innerHTML"></div>
                     </div>
