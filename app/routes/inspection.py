@@ -460,6 +460,17 @@ def update_item(inspection_id, item_id):
             )
         """, [status, inspection_id, item['item_template_id']])
     
+    if item['parent_item_id'] is None and status == 'ok':
+        db.execute("""
+            UPDATE inspection_item 
+            SET status = 'pending', comment = NULL
+            WHERE inspection_id = ? 
+            AND item_template_id IN (
+                SELECT id FROM item_template WHERE parent_item_id = ?
+            )
+            AND status = 'not_installed'
+        """, [inspection_id, item['item_template_id']])
+    
     db.commit()
     
     if area_id:
