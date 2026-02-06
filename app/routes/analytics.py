@@ -278,20 +278,18 @@ def _build_report_data(cycle_id):
     if not cycle:
         return None
 
-    # Items per unit (count from actual inspection data)
-    items_per_unit_row = query_db("""
-        SELECT COUNT(ii.id)
-        FROM inspection i
-        JOIN inspection_item ii ON ii.inspection_id = i.id
-        WHERE i.cycle_id = ? AND i.tenant_id = ?
-        LIMIT 1
-    """, [cycle_id, tenant_id], one=True)
-    # Fallback: total templates minus known exclusions
-    if items_per_unit_row and items_per_unit_row[0] > 0:
-        total_items_all = items_per_unit_row[0]
-        items_per_unit = total_items_all // max(1, len(units)) if units else 438
-    else:
-        items_per_unit = 438
+    # Items per unit (templates minus exclusions for this cycle)
+    total_templates = query_db("""
+        SELECT COUNT(*) FROM item_template WHERE tenant_id = ?
+    """, [tenant_id], one=True)[0]
+    excluded_count = query_db("""
+        SELECT COUNT(DISTINCT it.id)
+        FROM item_template it
+        JOIN inspection_item ii ON ii.item_template_id = it.id
+        JOIN inspection i ON ii.inspection_id = i.id
+        WHERE i.cycle_id = ? AND i.tenant_id = ? AND ii.status = 'skipped'
+    """, [cycle_id, tenant_id], one=True)[0]
+    items_per_unit = total_templates - excluded_count if excluded_count > 0 else 438
 
     # Active units in this cycle (excluding excluded)
     units = query_db("""
