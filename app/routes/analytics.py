@@ -371,15 +371,17 @@ def _build_report_data(cycle_id):
         ORDER BY defect_count DESC
     """, [cycle_id, tenant_id])
 
-    # Compute donut chart SVG data
+    # Convert to plain dicts and compute donut chart SVG data
+    area_list = [dict(r) for r in area_data]
     circumference = 439.82  # 2 * pi * 70
     offset = 0
-    for a in area_data:
+    for a in area_list:
         pct = a['defect_count'] / total_defects if total_defects > 0 else 0
         a['pct'] = round(pct * 100, 1)
         a['dash'] = round(pct * circumference, 2)
         a['offset'] = round(offset, 2)
         offset += a['dash']
+    area_data = area_list
 
     # Top defect types
     top_defects = query_db("""
@@ -391,7 +393,8 @@ def _build_report_data(cycle_id):
         LIMIT 10
     """, [cycle_id, tenant_id])
 
-    # Add percentage
+    # Convert to plain dicts and add percentage
+    top_defects = [dict(r) for r in top_defects]
     for d in top_defects:
         d['pct'] = round((d['count'] / total_defects) * 100, 1) if total_defects > 0 else 0
 
