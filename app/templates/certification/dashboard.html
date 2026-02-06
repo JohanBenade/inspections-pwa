@@ -122,10 +122,9 @@
                             <div class="bg-white rounded-lg border border-gray-200 p-4">
                                 <div class="flex flex-wrap gap-2">
                                     {% for unit in floor_units %}
-                                    <a href="{{ url_for('certification.view_unit', unit_id=unit.id) }}"
-                                       class="px-3 py-2 text-sm font-medium text-gray-700 bg-gray-50 border border-gray-200 rounded hover:bg-blue-50 hover:text-blue-700 hover:border-blue-200 transition-colors">
+                                    <span class="px-3 py-2 text-sm font-medium text-gray-500 bg-gray-50 border border-gray-200 rounded">
                                         Unit {{ unit.unit_number }}
-                                    </a>
+                                    </span>
                                     {% endfor %}
                                 </div>
                             </div>
