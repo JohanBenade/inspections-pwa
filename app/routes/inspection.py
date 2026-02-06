@@ -450,7 +450,7 @@ def update_item(inspection_id, item_id):
         [status, comment, item_id]
     )
     
-    if item['parent_item_id'] is None and status in ('ok', 'skipped'):
+    if item['parent_item_id'] is None and status == 'skipped':
         db.execute("""
             UPDATE inspection_item 
             SET status = ?, comment = NULL
