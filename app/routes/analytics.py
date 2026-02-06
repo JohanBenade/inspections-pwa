@@ -359,13 +359,15 @@ def _build_report_data(cycle_id):
     if approved_dates:
         pipeline_dates['approved'] = max(approved_dates)[:10]
 
-    # Defects by area
+    # Defects by area (item_template -> category_template -> area_template)
     area_data = query_db("""
-        SELECT it.category_name as area, COUNT(d.id) as defect_count
+        SELECT at2.area_name as area, COUNT(d.id) as defect_count
         FROM defect d
         JOIN item_template it ON d.item_template_id = it.id
+        JOIN category_template ct ON it.category_id = ct.id
+        JOIN area_template at2 ON ct.area_id = at2.id
         WHERE d.raised_cycle_id = ? AND d.tenant_id = ? AND d.status = 'open'
-        GROUP BY it.category_name
+        GROUP BY at2.area_name
         ORDER BY defect_count DESC
     """, [cycle_id, tenant_id])
 
