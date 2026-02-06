@@ -54,6 +54,27 @@
             <p class="text-xs text-gray-500 mt-2">Only these units will be available for inspection in this cycle</p>
         </div>
 
+        <!-- Tracking Dates -->
+        <div class="bg-white rounded-lg shadow p-6 mb-6">
+            <h2 class="font-semibold text-gray-900 mb-4">Tracking</h2>
+            <div class="grid grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Request Received</label>
+                    <input type="date" name="request_received_date"
+                           value="{{ cycle.request_received_date or '' }}"
+                           class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                    <p class="text-xs text-gray-500 mt-1">When Raubex notified units are ready</p>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Cycle Start Date</label>
+                    <input type="date" name="started_at"
+                           value="{{ cycle.started_at[:10] if cycle.started_at else '' }}"
+                           class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                    <p class="text-xs text-gray-500 mt-1">Auto-set on first assignment if left blank</p>
+                </div>
+            </div>
+        </div>
+
         <!-- General Notes -->
         <div class="bg-white rounded-lg shadow p-6 mb-6">
             <h2 class="font-semibold text-gray-900 mb-4">General Notes</h2>

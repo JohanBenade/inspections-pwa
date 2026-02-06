@@ -422,10 +422,17 @@ def edit_cycle(cycle_id):
         exclusion_notes = clean_notes(request.form.get('exclusion_notes', ''))
         unit_start = request.form.get('unit_start', '').strip() or None
         unit_end = request.form.get('unit_end', '').strip() or None
+        request_received_date = request.form.get('request_received_date', '').strip() or None
+        started_at = request.form.get('started_at', '').strip() or None
+        if started_at:
+            started_at = started_at + 'T00:00:00+00:00'
         
         db.execute("""
-            UPDATE inspection_cycle SET general_notes = ?, exclusion_notes = ?, unit_start = ?, unit_end = ? WHERE id = ?
-        """, [general_notes, exclusion_notes, unit_start, unit_end, cycle_id])
+            UPDATE inspection_cycle 
+            SET general_notes = ?, exclusion_notes = ?, unit_start = ?, unit_end = ?,
+                request_received_date = ?, started_at = COALESCE(?, started_at)
+            WHERE id = ?
+        """, [general_notes, exclusion_notes, unit_start, unit_end, request_received_date, started_at, cycle_id])
         
         # Save area notes
         unit = query_db(
