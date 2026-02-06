@@ -3,10 +3,11 @@ Cycle routes - Inspection cycle management.
 Create cycles, set exclusions, add general notes, assign inspectors.
 """
 import re
-from datetime import date
+from datetime import date, datetime, timezone
 from flask import Blueprint, render_template, session, redirect, url_for, abort, request, flash
 from app.auth import require_team_lead, require_manager
 from app.utils import generate_id
+from app.utils.audit import log_audit
 from app.services.db import get_db, query_db
 
 cycles_bp = Blueprint('cycles', __name__, url_prefix='/cycles')
@@ -120,6 +121,14 @@ def create_cycle():
         general_notes = clean_notes(request.form.get('general_notes', ''))
         exclusion_notes = clean_notes(request.form.get('exclusion_notes', ''))
         
+        # Audit trail fields
+        request_received_date = request.form.get('request_received_date', '').strip() or None
+        started_at_date = request.form.get('started_at', '').strip() or None
+        # Convert date to timestamp if provided
+        started_at = None
+        if started_at_date:
+            started_at = started_at_date + 'T00:00:00'
+        
         # Create missing units in range
         units_created = 0
         if unit_start and unit_end:
@@ -139,13 +148,20 @@ def create_cycle():
                     """, [unit_id, tenant_id, phase['id'], unit_number, unit_type, block, floor])
                     units_created += 1
         
-        # Create cycle record
+        # Create cycle record with audit trail fields
         cycle_id = generate_id()
         db.execute("""
             INSERT INTO inspection_cycle 
-            (id, tenant_id, phase_id, cycle_number, unit_start, unit_end, block, floor, general_notes, exclusion_notes, created_by)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        """, [cycle_id, tenant_id, phase['id'], cycle_number, unit_start, unit_end, block, floor, general_notes, exclusion_notes, user_id])
+            (id, tenant_id, phase_id, cycle_number, unit_start, unit_end, block, floor, 
+             general_notes, exclusion_notes, created_by, request_received_date, started_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """, [cycle_id, tenant_id, phase['id'], cycle_number, unit_start, unit_end, block, floor, 
+              general_notes, exclusion_notes, user_id, request_received_date, started_at])
+        
+        log_audit(db, tenant_id, 'cycle', cycle_id, 'cycle_created',
+                  new_value='active',
+                  user_id=user_id, user_name=session['user_name'],
+                  metadata=f'{{"cycle_number": {cycle_number}, "block": "{block}", "units": "{unit_start}-{unit_end}"}}')
         
         # Copy exclusions from source cycle
         exclusions_copied = 0
@@ -585,6 +601,20 @@ def assign_inspector(cycle_id):
             VALUES (?, ?, ?, ?, ?)
         """, [assign_id, tenant_id, cycle_id, unit_id, inspector_id])
     
+    # Auto-set cycle.started_at on first assignment (if not already set)
+    cycle = query_db("SELECT started_at FROM inspection_cycle WHERE id = ?", [cycle_id], one=True)
+    if cycle and not cycle['started_at']:
+        now = datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S')
+        db.execute("UPDATE inspection_cycle SET started_at = ? WHERE id = ?", [now, cycle_id])
+        log_audit(db, tenant_id, 'cycle', cycle_id, 'cycle_started',
+                  new_value='first_assignment',
+                  user_id=session['user_id'], user_name=session['user_name'])
+    
+    log_audit(db, tenant_id, 'assignment', cycle_id, 'inspector_assigned',
+              new_value=inspector_id,
+              user_id=session['user_id'], user_name=session['user_name'],
+              metadata=f'{{"unit_id": "{unit_id}", "inspector": "{inspector["name"]}"}}')
+    
     db.commit()
     
     return '<span class="text-xs text-green-600">{}</span>'.format(inspector['name'])
@@ -606,6 +636,11 @@ def close_cycle(cycle_id):
         abort(404)
     
     db.execute("UPDATE inspection_cycle SET status = 'closed' WHERE id = ?", [cycle_id])
+    
+    log_audit(db, tenant_id, 'cycle', cycle_id, 'status_change',
+              old_value='active', new_value='closed',
+              user_id=session['user_id'], user_name=session['user_name'])
+    
     db.commit()
     
     return redirect(url_for('cycles.view_cycle', cycle_id=cycle_id))
@@ -627,6 +662,11 @@ def reopen_cycle(cycle_id):
         abort(404)
     
     db.execute("UPDATE inspection_cycle SET status = 'active' WHERE id = ?", [cycle_id])
+    
+    log_audit(db, tenant_id, 'cycle', cycle_id, 'status_change',
+              old_value='closed', new_value='active',
+              user_id=session['user_id'], user_name=session['user_name'])
+    
     db.commit()
     
     return redirect(url_for('cycles.view_cycle', cycle_id=cycle_id))

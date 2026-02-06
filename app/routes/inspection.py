@@ -2,10 +2,11 @@
 Inspection routes - Main inspection workflow.
 Inspections are conducted within a cycle created by the architect.
 """
-from datetime import date
+from datetime import date, datetime, timezone
 from flask import Blueprint, render_template, session, redirect, url_for, abort, request, jsonify
 from app.auth import require_auth
 from app.utils import generate_id
+from app.utils.audit import log_audit
 from app.services.db import get_db, query_db
 from app.services.template_loader import get_inspection_template
 
@@ -113,6 +114,11 @@ def start_inspection(unit_id):
         """, [item_id, tenant_id, inspection_id, item['id'], status, comment])
     
     db.execute("UPDATE unit SET status = 'in_progress' WHERE id = ?", [unit_id])
+    
+    log_audit(db, tenant_id, 'inspection', inspection_id, 'inspection_created',
+              new_value='in_progress',
+              user_id=session['user_id'], user_name=session['user_name'])
+    
     db.commit()
     
     return redirect(url_for('inspection.inspect', inspection_id=inspection_id))
@@ -445,25 +451,36 @@ def update_item(inspection_id, item_id):
     if not item:
         abort(404)
     
+    # Update item with marked_at timestamp
     db.execute(
-        "UPDATE inspection_item SET status = ?, comment = ? WHERE id = ?",
+        "UPDATE inspection_item SET status = ?, comment = ?, marked_at = CURRENT_TIMESTAMP WHERE id = ?",
         [status, comment, item_id]
     )
     
+    # Set inspection.started_at on first item marked
+    if status != 'pending' and not inspection['started_at']:
+        now = datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S')
+        db.execute("UPDATE inspection SET started_at = ? WHERE id = ?", [now, inspection_id])
+        log_audit(db, tenant_id, 'inspection', inspection_id, 'inspection_started',
+                  new_value='first_item_marked',
+                  user_id=session['user_id'], user_name=session['user_name'])
+    
+    # Cascade not_installed/skipped to children
     if item['parent_item_id'] is None and status in ('skipped', 'not_installed'):
         db.execute("""
             UPDATE inspection_item 
-            SET status = ?, comment = NULL
+            SET status = ?, comment = NULL, marked_at = CURRENT_TIMESTAMP
             WHERE inspection_id = ? 
             AND item_template_id IN (
                 SELECT id FROM item_template WHERE parent_item_id = ?
             )
         """, [status, inspection_id, item['item_template_id']])
     
+    # Reset cascaded not_installed children back to pending when parent marked OK
     if item['parent_item_id'] is None and status == 'ok':
         db.execute("""
             UPDATE inspection_item 
-            SET status = 'pending', comment = NULL
+            SET status = 'pending', comment = NULL, marked_at = NULL
             WHERE inspection_id = ? 
             AND item_template_id IN (
                 SELECT id FROM item_template WHERE parent_item_id = ?
@@ -673,6 +690,10 @@ def submit_inspection(inspection_id):
         SET status = 'submitted', submitted_at = CURRENT_TIMESTAMP
         WHERE id = ?
     """, [inspection_id])
+    
+    log_audit(db, tenant_id, 'inspection', inspection_id, 'inspection_submitted',
+              old_value='in_progress', new_value='submitted',
+              user_id=session['user_id'], user_name=session['user_name'])
     
     open_defects = query_db(
         "SELECT COUNT(*) as count FROM defect WHERE unit_id = ? AND status = 'open'",

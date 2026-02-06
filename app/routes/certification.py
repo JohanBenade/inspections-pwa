@@ -2,8 +2,10 @@
 Certification routes - Approvals dashboard.
 View units by status, review, approve, certify, and close per unit.
 """
+from datetime import datetime, timezone
 from flask import Blueprint, render_template, session, redirect, url_for, abort, request, flash
 from app.auth import require_team_lead, require_manager, get_role_level
+from app.utils.audit import log_audit
 from app.services.db import get_db, query_db
 
 certification_bp = Blueprint('certification', __name__, url_prefix='/certification')
@@ -33,6 +35,12 @@ STATUS_INFO = {
         'description': 'Team Lead reviewed. Manager must approve.',
         'color': 'indigo',
         'icon': 'stamp'
+    },
+    'under_review': {
+        'title': 'Under Review',
+        'description': 'Team Lead is actively reviewing this inspection.',
+        'color': 'blue',
+        'icon': 'eye'
     },
     'awaiting_review': {
         'title': 'Awaiting Review',
@@ -86,6 +94,8 @@ def get_unit_workflow_status(unit):
         return 'approved'
     elif inspection_status == 'reviewed':
         return 'awaiting_approval'
+    elif inspection_status == 'under_review':
+        return 'under_review'
     elif inspection_status == 'submitted':
         return 'awaiting_review'
     elif inspection_status == 'in_progress':
@@ -215,6 +225,7 @@ def dashboard():
         'pending_followup': [],
         'approved': [],
         'awaiting_approval': [],
+        'under_review': [],
         'awaiting_review': [],
         'defects_open': [],
         'in_progress': [],
@@ -234,6 +245,7 @@ def dashboard():
         'pending_followup': len(grouped['pending_followup']),
         'approved': len(grouped['approved']),
         'awaiting_approval': len(grouped['awaiting_approval']),
+        'under_review': len(grouped['under_review']),
         'awaiting_review': len(grouped['awaiting_review']),
         'defects': len(grouped['defects_open']),
         'in_progress': len(grouped['in_progress']),
@@ -284,10 +296,10 @@ def view_unit(unit_id):
         return redirect(url_for('inspection.start_inspection', unit_id=unit_id))
 
 
-@certification_bp.route('/unit/<unit_id>/review', methods=['POST'])
+@certification_bp.route('/unit/<unit_id>/start-review', methods=['POST'])
 @require_team_lead
-def review_unit(unit_id):
-    """Team Lead marks inspection as reviewed."""
+def start_review(unit_id):
+    """Team Lead starts reviewing an inspection. Sets under_review status."""
     tenant_id = session['tenant_id']
     db = get_db()
     
@@ -303,14 +315,67 @@ def review_unit(unit_id):
         return redirect(url_for('certification.dashboard'))
     
     if inspection['status'] != 'submitted':
-        flash(f"Cannot review: inspection is '{inspection['status']}', expected 'submitted'", 'error')
+        flash(f"Cannot start review: inspection is '{inspection['status']}', expected 'submitted'", 'error')
         return redirect(url_for('certification.dashboard'))
     
+    now = datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S')
     db.execute("""
         UPDATE inspection 
-        SET status = 'reviewed', updated_at = CURRENT_TIMESTAMP 
+        SET status = 'under_review', review_started_at = ?, updated_at = CURRENT_TIMESTAMP 
         WHERE id = ?
-    """, [inspection['id']])
+    """, [now, inspection['id']])
+    
+    log_audit(db, tenant_id, 'inspection', inspection['id'], 'review_started',
+              old_value='submitted', new_value='under_review',
+              user_id=session['user_id'], user_name=session['user_name'])
+    
+    db.commit()
+    
+    unit_num = query_db('SELECT unit_number FROM unit WHERE id = ?', [unit_id], one=True)['unit_number']
+    reviewer = session.get('user_name', 'Team Lead')
+    flash(f"Unit {unit_num} review started by {reviewer}", 'success')
+    return redirect(url_for('certification.view_unit', unit_id=unit_id))
+
+
+@certification_bp.route('/unit/<unit_id>/review', methods=['POST'])
+@require_team_lead
+def review_unit(unit_id):
+    """Team Lead sends inspection to manager (completes review)."""
+    tenant_id = session['tenant_id']
+    db = get_db()
+    
+    inspection = query_db("""
+        SELECT i.* FROM inspection i
+        JOIN inspection_cycle ic ON i.cycle_id = ic.id
+        WHERE i.unit_id = ? AND i.tenant_id = ?
+        ORDER BY ic.cycle_number DESC LIMIT 1
+    """, [unit_id, tenant_id], one=True)
+    
+    if not inspection:
+        flash('No inspection found for this unit', 'error')
+        return redirect(url_for('certification.dashboard'))
+    
+    if inspection['status'] not in ('submitted', 'under_review'):
+        flash(f"Cannot send to manager: inspection is '{inspection['status']}'", 'error')
+        return redirect(url_for('certification.dashboard'))
+    
+    now = datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S')
+    
+    # If review_started_at not set (skipped Start Review), set it now
+    review_started_update = ""
+    if not inspection['review_started_at']:
+        review_started_update = f", review_started_at = '{now}'"
+    
+    db.execute(f"""
+        UPDATE inspection 
+        SET status = 'reviewed', review_submitted_at = ?, updated_at = CURRENT_TIMESTAMP{review_started_update}
+        WHERE id = ?
+    """, [now, inspection['id']])
+    
+    log_audit(db, tenant_id, 'inspection', inspection['id'], 'review_submitted',
+              old_value=inspection['status'], new_value='reviewed',
+              user_id=session['user_id'], user_name=session['user_name'])
+    
     db.commit()
     
     unit_num = query_db('SELECT unit_number FROM unit WHERE id = ?', [unit_id], one=True)['unit_number']
@@ -341,11 +406,17 @@ def approve_unit(unit_id):
         flash(f"Cannot approve: inspection is '{inspection['status']}'", 'error')
         return redirect(url_for('certification.dashboard'))
     
+    now = datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S')
     db.execute("""
         UPDATE inspection 
-        SET status = 'approved', updated_at = CURRENT_TIMESTAMP 
+        SET status = 'approved', approved_at = ?, updated_at = CURRENT_TIMESTAMP 
         WHERE id = ?
-    """, [inspection['id']])
+    """, [now, inspection['id']])
+    
+    log_audit(db, tenant_id, 'inspection', inspection['id'], 'inspection_approved',
+              old_value=inspection['status'], new_value='approved',
+              user_id=session['user_id'], user_name=session['user_name'])
+    
     db.commit()
     
     unit_num = query_db('SELECT unit_number FROM unit WHERE id = ?', [unit_id], one=True)['unit_number']
@@ -378,7 +449,8 @@ def certify_unit(unit_id):
         flash(f'Cannot sign off: {open_defects} open defects remain', 'error')
         return redirect(url_for('certification.dashboard'))
     
-    db.execute("UPDATE unit SET status = 'certified' WHERE id = ?", [unit_id])
+    now = datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S')
+    db.execute("UPDATE unit SET status = 'certified', certified_at = ? WHERE id = ?", [now, unit_id])
     
     inspection = query_db("""
         SELECT i.id FROM inspection i
@@ -389,9 +461,17 @@ def certify_unit(unit_id):
     if inspection:
         db.execute("""
             UPDATE inspection 
-            SET status = 'certified', updated_at = CURRENT_TIMESTAMP 
+            SET status = 'certified', approved_at = COALESCE(approved_at, ?), updated_at = CURRENT_TIMESTAMP 
             WHERE id = ?
-        """, [inspection['id']])
+        """, [now, inspection['id']])
+        
+        log_audit(db, tenant_id, 'inspection', inspection['id'], 'unit_certified',
+                  old_value='approved', new_value='certified',
+                  user_id=session['user_id'], user_name=session['user_name'])
+    
+    log_audit(db, tenant_id, 'unit', unit_id, 'unit_certified',
+              new_value='certified',
+              user_id=session['user_id'], user_name=session['user_name'])
     
     db.commit()
     
@@ -424,6 +504,7 @@ def close_with_defects(unit_id):
         flash('No open defects - use Sign Off Complete instead', 'error')
         return redirect(url_for('certification.dashboard'))
     
+    now = datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S')
     db.execute("UPDATE unit SET status = 'pending_followup' WHERE id = ?", [unit_id])
     
     inspection = query_db("""
@@ -435,9 +516,18 @@ def close_with_defects(unit_id):
     if inspection:
         db.execute("""
             UPDATE inspection 
-            SET status = 'pending_followup', updated_at = CURRENT_TIMESTAMP 
+            SET status = 'pending_followup', approved_at = COALESCE(approved_at, ?), updated_at = CURRENT_TIMESTAMP 
             WHERE id = ?
-        """, [inspection['id']])
+        """, [now, inspection['id']])
+        
+        log_audit(db, tenant_id, 'inspection', inspection['id'], 'unit_pending_followup',
+                  new_value='pending_followup',
+                  user_id=session['user_id'], user_name=session['user_name'],
+                  metadata=f'{{"open_defects": {open_defects}}}')
+    
+    log_audit(db, tenant_id, 'unit', unit_id, 'unit_pending_followup',
+              new_value='pending_followup',
+              user_id=session['user_id'], user_name=session['user_name'])
     
     db.commit()
     
@@ -467,7 +557,7 @@ def approve_and_close(unit_id):
         flash('No inspection found for this unit', 'error')
         return redirect(url_for('certification.dashboard'))
 
-    if inspection['status'] not in ('submitted', 'reviewed'):
+    if inspection['status'] not in ('submitted', 'reviewed', 'under_review'):
         flash(f"Cannot approve: inspection is '{inspection['status']}'", 'error')
         return redirect(url_for('certification.dashboard'))
 
@@ -476,19 +566,33 @@ def approve_and_close(unit_id):
         [unit_id], one=True
     )['count']
 
+    now = datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S')
+
     if open_defects > 0:
         new_status = 'pending_followup'
         msg = f"Unit {unit['unit_number']} approved and closed with {open_defects} defects - contractor must rectify"
     else:
         new_status = 'certified'
         msg = f"Unit {unit['unit_number']} approved and certified - zero defects"
+        db.execute("UPDATE unit SET certified_at = ? WHERE id = ?", [now, unit_id])
 
     db.execute('UPDATE unit SET status = ? WHERE id = ?', [new_status, unit_id])
     db.execute("""
         UPDATE inspection
-        SET status = ?, updated_at = CURRENT_TIMESTAMP
+        SET status = ?, approved_at = ?, updated_at = CURRENT_TIMESTAMP
         WHERE id = ?
-    """, [new_status, inspection['id']])
+    """, [new_status, now, inspection['id']])
+    
+    log_audit(db, tenant_id, 'inspection', inspection['id'], 'inspection_approved',
+              old_value=inspection['status'], new_value=new_status,
+              user_id=session['user_id'], user_name=session['user_name'],
+              metadata=f'{{"open_defects": {open_defects}}}')
+    
+    log_audit(db, tenant_id, 'unit', unit_id, 
+              'unit_certified' if new_status == 'certified' else 'unit_pending_followup',
+              new_value=new_status,
+              user_id=session['user_id'], user_name=session['user_name'])
+    
     db.commit()
 
     flash(msg, 'success')
@@ -514,6 +618,7 @@ def reopen_unit(unit_id):
         flash('Only completed or closed units can be reopened', 'error')
         return redirect(url_for('certification.dashboard'))
     
+    old_status = unit['status']
     db.execute("UPDATE unit SET status = 'in_progress' WHERE id = ?", [unit_id])
     
     inspection = query_db("""
@@ -528,6 +633,16 @@ def reopen_unit(unit_id):
             SET status = 'approved', updated_at = CURRENT_TIMESTAMP 
             WHERE id = ?
         """, [inspection['id']])
+        
+        log_audit(db, tenant_id, 'inspection', inspection['id'], 'status_change',
+                  old_value=old_status, new_value='approved',
+                  user_id=session['user_id'], user_name=session['user_name'],
+                  metadata='{"action": "reopen"}')
+    
+    log_audit(db, tenant_id, 'unit', unit_id, 'status_change',
+              old_value=old_status, new_value='in_progress',
+              user_id=session['user_id'], user_name=session['user_name'],
+              metadata='{"action": "reopen"}')
     
     db.commit()
     
