@@ -264,7 +264,7 @@ def main():
         # Mark inspection item
         item_status = 'not_installed' if dtype == 'NI' else 'not_to_standard'
         cur.execute("""
-            UPDATE inspection_item SET status=?, defect_description=?, marked_at=?
+            UPDATE inspection_item SET status=?, comment=?, marked_at=?
             WHERE inspection_id=? AND item_template_id=?
         """, (item_status, washed_desc, now, insp_id, template_id))
 
