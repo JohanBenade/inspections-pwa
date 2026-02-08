@@ -31,7 +31,7 @@
                         {{ cycle.status | capitalize }}
                     </span>
                     {% if cycle.unit_count > 0 %}
-                    <a href="{{ url_for('analytics.report_view', cycle_id=cycle.id) }}" target="_blank"
+                    <a href="{{ url_for('analytics.report_view', cycle_id=cycle.id) }}"
                        class="px-4 py-2 text-sm font-medium text-white bg-gray-800 rounded hover:bg-gray-700">
                         View Report
                     </a>
