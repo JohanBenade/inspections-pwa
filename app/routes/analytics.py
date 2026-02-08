@@ -245,6 +245,7 @@ def reports():
 
 def _to_dicts(rows):
     """Convert sqlite3.Row results to plain dicts."""
+    return [dict(r) for r in rows]
 
 
 def _to_dict(row):
