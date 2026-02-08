@@ -420,7 +420,7 @@ body {
 
 {% if not is_pdf %}
 <div class="toolbar">
-    <a href="{{ url_for('analytics.dashboard', cycle=cycle.id) }}" class="btn-back">Back</a>
+    <a href="{{ url_for('analytics.reports') }}" class="btn-back">Back</a>
     <button onclick="window.print()" class="btn-print">Print</button>
     <a href="{{ url_for('analytics.report_pdf', cycle_id=cycle.id) }}" class="btn-pdf">Download PDF</a>
 </div>
@@ -437,7 +437,7 @@ body {
             {% endif %}
         </div>
         <div class="header-meta">
-            Bi-Weekly Inspection Report
+            Inspection Report
             <div class="date">{{ report_date }}</div>
         </div>
     </div>
@@ -750,27 +750,14 @@ body {
 </div>
 
 <!-- SIGNATURE BLOCK -->
-<div class="signature-block clearfix">
-    <div class="sig-col-left">
-        <div class="sig-label">Prepared by</div>
-        {% if sig_b64 %}
-        <img src="data:image/png;base64,{{ sig_b64 }}" alt="Signature" class="sig-image">
-        {% endif %}
-        <div class="sig-line">
-            <span class="sig-name">Kevin Coetzee</span>
-        </div>
-        <div class="sig-company">Monograph Architects</div>
-        <div class="sig-date">{{ report_date }}</div>
+<div class="signature-block">
+    <div class="sig-label">Prepared by</div>
+    <div class="sig-line">
+        <span class="sig-name">Kevin Coetzee</span>
     </div>
-    <div class="sig-col-right">
-        <div class="sig-label">Acknowledged by</div>
-        <div style="height: 40px;"></div>
-        <div class="sig-line-blank">
-            <span class="sig-placeholder">Raubex representative</span>
-        </div>
-        <div class="sig-company">Raubex Building</div>
-        <div class="sig-date">Date: _______________</div>
-    </div>
+    <div class="sig-company">Managing Director</div>
+    <div class="sig-company">Monograph Architects</div>
+    <div class="sig-date">{{ report_date }}</div>
 </div>
 
 <!-- FOOTER -->
@@ -786,8 +773,7 @@ body {
         </div>
     </div>
     <div class="footer-right">
-        Generated {{ report_date }}<br>
-        inspections.archpractice.co.za
+        Generated {{ report_date }}
     </div>
 </div>
 
