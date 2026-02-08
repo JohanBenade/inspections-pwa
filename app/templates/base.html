@@ -85,7 +85,7 @@
                         <a href="{{ url_for('defects.register') }}" class="text-sm text-gray-300 hover:text-white">Defects</a>
                         {% if current_user.role in ['manager', 'admin'] %}
                         <a href="{{ url_for('analytics.dashboard') }}" class="text-sm text-gray-300 hover:text-white">Analytics</a>
-                        <a href="/analytics/report/792812c7" class="text-sm text-gray-300 hover:text-white">Reports</a>
+                        <a href="{{ url_for('analytics.reports') }}" class="text-sm text-gray-300 hover:text-white">Reports</a>
                         {% endif %}
                         {% endif %}
                     </div>
@@ -182,7 +182,7 @@
                 </svg>
                 <span class="text-xs mt-1">Analytics</span>
             </a>
-            <a href="/analytics/report/792812c7" 
+            <a href="{{ url_for('analytics.reports') }}" 
                class="flex flex-col items-center text-gray-600 hover:text-primary tap-target"
                ontouchend="">
                 <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">

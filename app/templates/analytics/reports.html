@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+{% block title %}Reports{% endblock %}
+{% block content %}
+<div class="max-w-4xl mx-auto">
+    <h1 class="text-2xl font-bold text-gray-800 mb-6">Reports</h1>
+
+    {% if cycles %}
+    <div class="space-y-4">
+        {% for cycle in cycles %}
+        <div class="bg-white rounded-lg shadow p-5">
+            <div class="flex items-center justify-between">
+                <div>
+                    <h2 class="text-lg font-semibold text-gray-800">
+                        Cycle {{ cycle.cycle_number }} &mdash; Block {{ cycle.block }}
+                        {% if cycle.floor is not none %}
+                            {% if cycle.floor == 0 %}Ground{% elif cycle.floor == 1 %}1st{% elif cycle.floor == 2 %}2nd{% else %}Floor {{ cycle.floor }}{% endif %}
+                        {% endif %}
+                    </h2>
+                    <p class="text-sm text-gray-500 mt-1">
+                        Units {{ cycle.unit_start }} &ndash; {{ cycle.unit_end }}
+                        &middot; {{ cycle.unit_count }} unit{{ 's' if cycle.unit_count != 1 else '' }} inspected
+                        &middot; {{ cycle.defect_count }} open defect{{ 's' if cycle.defect_count != 1 else '' }}
+                    </p>
+                    {% if cycle.request_received_date %}
+                    <p class="text-xs text-gray-400 mt-1">Requested: {{ cycle.request_received_date }}</p>
+                    {% endif %}
+                </div>
+                <div class="flex items-center space-x-3">
+                    <span class="px-2 py-1 text-xs font-medium rounded
+                        {% if cycle.status == 'active' %}bg-green-100 text-green-700{% else %}bg-gray-100 text-gray-500{% endif %}">
+                        {{ cycle.status | capitalize }}
+                    </span>
+                    {% if cycle.unit_count > 0 %}
+                    <a href="{{ url_for('analytics.report_view', cycle_id=cycle.id) }}"
+                       class="px-4 py-2 text-sm font-medium text-white bg-gray-800 rounded hover:bg-gray-700">
+                        View Report
+                    </a>
+                    {% else %}
+                    <span class="px-4 py-2 text-sm font-medium text-gray-400 bg-gray-100 rounded">
+                        No Data
+                    </span>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="bg-white rounded-lg shadow p-8 text-center text-gray-500">
+        No inspection cycles found.
+    </div>
+    {% endif %}
+</div>
+{% endblock %}
