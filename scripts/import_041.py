@@ -20,56 +20,37 @@ TENANT = 'MONOGRAPH'
 CYCLE_ID = '36e85327'  # Block 6 cycle
 
 # ============================================================
-# DEFECT MAP (confirmed by Johan)
-# (area, category_search, item_search, raw_description, defect_type)
+# DEFECT MAP - HARDCODED TEMPLATE IDs (verified from DB)
+# (template_id, raw_description, defect_type)
 # defect_type: NTS = Not to Standard, NI = Not Installed
 # ============================================================
 DEFECTS = [
     # KITCHEN
-    ("KITCHEN", "DOORS", "soft joint",
-     "Soft joint has a portion missing along path to Bedroom C", "NTS"),
-    ("KITCHEN", "WALLS", "finish",
-     "Wall needs to be painted by W1 and by DB", "NTS"),
-    ("KITCHEN", "Bin drawer", "runner",
-     "Stiff operation", "NTS"),
-    ("KITCHEN", "Sink pack", "shelves",
-     "Shelf inside has water and is stained, to be cleaned", "NTS"),
-    ("KITCHEN", "Sink pack", "hinge",
-     "Left door hinge is loose", "NTS"),
-    ("KITCHEN", "Eye level pack", "carcass",
-     "Paint stains by DB and left door, needs cleaning inside", "NTS"),
+    ('d149df25', 'Soft joint has a portion missing along path to Bedroom C', 'NTS'),
+    ('16e941da', 'Wall needs to be painted by W1 and by DB', 'NTS'),
+    ('445ab368', 'Stiff operation', 'NTS'),
+    ('5158daf4', 'Shelf inside has water and is stained, to be cleaned', 'NTS'),
+    ('255488c3', 'Left door hinge is loose', 'NTS'),
+    ('8ada7164', 'Paint stains by DB and left door, needs cleaning inside', 'NTS'),
     # BATHROOM
-    ("BATHROOM", "DOORS", "finish",
-     "Stains to be cleaned off door", "NTS"),
-    ("BATHROOM", "DOORS", "D3",
-     "D3 difficult to open, needs force", "NTS"),
-    ("BATHROOM", "WHB", "installation",
-     "Cardboard used between WHB and stand to keep balance", "NTS"),
-    ("BATHROOM", "WC", "waste",
-     "Waste pipe to be installed, water running out of WC", "NTS"),
+    ('b6b5d166', 'Stains to be cleaned off door', 'NTS'),
+    ('a6939da2', 'D3 difficult to open, needs force', 'NTS'),
+    ('1e31c282', 'Cardboard used between WHB and stand to keep balance', 'NTS'),
+    ('8667f32c', 'Waste pipe to be installed, water running out of WC', 'NTS'),
     # BEDROOM A
-    ("BEDROOM A", "WALLS", "finish",
-     "Dent under W4", "NTS"),
+    ('e6f434e1', 'Dent under W4', 'NTS'),
     # BEDROOM B
-    ("BEDROOM B", "B.I.C", "shelf",
-     "Plastic shelf supporters inside B.I.C cracked", "NTS"),
-    ("BEDROOM B", "Study desk", "fixing",
-     "Study desk missing one screw", "NTS"),
+    ('2de13909', 'Plastic shelf supporters inside B.I.C cracked', 'NTS'),
+    ('5d1dc2bd', 'Study desk missing one screw', 'NTS'),
     # BEDROOM C
-    ("BEDROOM C", "B.I.C", "shelf",
-     "Plastic shelf supporters inside B.I.C cracked", "NTS"),
+    ('981e4097', 'Plastic shelf supporters inside B.I.C cracked', 'NTS'),
     # BEDROOM D
-    ("BEDROOM D", "DOORS", "finish",
-     "Dent by door handle", "NTS"),
-    ("BEDROOM D", "Ironmongery", "lockset",
-     "Lockset cylinder and thumb turn does not lock", "NTS"),
-    ("BEDROOM D", "FLOOR", "tile",
-     "Tile cracked/chipped by door stop", "NTS"),
-    ("BEDROOM D", "B.I.C", "shelf",
-     "Plastic shelf supporters inside B.I.C cracked", "NTS"),
+    ('212d83e1', 'Dent by door handle', 'NTS'),
+    ('bb4b4360', 'Lockset cylinder and thumb turn does not lock', 'NTS'),
+    ('54ac6a45', 'Tile cracked/chipped by door stop', 'NTS'),
+    ('263b99ba', 'Plastic shelf supporters inside B.I.C cracked', 'NTS'),
     # LOUNGE
-    ("LOUNGE", "ELECTRICAL", "Wi-Fi",
-     "Wi-Fi Repeater not installed", "NI"),
+    ('c4348cc6', 'Wi-Fi Repeater not installed', 'NI'),
 ]
 
 # ============================================================
@@ -81,7 +62,7 @@ def gen_id():
 def now_iso():
     return datetime.now(timezone.utc).isoformat()
 
-def fuzzy_match(text, candidates, threshold=0.6):
+def fuzzy_match(text, candidates, threshold=0.5):
     """Find best match from candidates. Returns (match_text, score) or (None, 0)."""
     best_match = None
     best_score = 0
@@ -95,49 +76,24 @@ def fuzzy_match(text, candidates, threshold=0.6):
         return best_match, best_score
     return None, 0
 
-def find_template_id(cur, area_name, cat_search, item_search):
-    """
-    Dynamic template ID lookup using the 3-table join.
-    Searches by area name, then filters by category/item keywords.
-    """
-    cur.execute("""
-        SELECT it.id, it.item_name, ct.category_name, at2.area_name
-        FROM item_template it
-        JOIN category_template ct ON it.category_id = ct.id
-        JOIN area_template at2 ON ct.area_id = at2.id
-        WHERE at2.area_name LIKE ? AND it.tenant_id = ?
-        AND it.parent_item_id IS NOT NULL
-    """, (f'%{area_name}%', TENANT))
-    rows = cur.fetchall()
-
-    # Score each candidate
-    best_id = None
-    best_score = 0
-    best_name = None
-    for row in rows:
-        tid, iname, cname, aname = row
-        # Both category and item must partially match
-        cat_score = SequenceMatcher(None, cat_search.lower(), cname.lower()).ratio()
-        item_score = SequenceMatcher(None, item_search.lower(), iname.lower()).ratio()
-        # Weighted: item name matters more
-        combined = (cat_score * 0.4) + (item_score * 0.6)
-        if combined > best_score:
-            best_score = combined
-            best_id = tid
-            best_name = f"{aname} > {cname} > {iname}"
-
-    if best_score < 0.3:
-        return None, None, best_score
-    return best_id, best_name, best_score
-
-def wash_description(cur, item_template_id, category_name, raw_desc):
+def wash_description(cur, item_template_id, raw_desc):
     """
     Two-tier defect library wash:
     1. Item-specific matches (item_template_id matches)
-    2. Category fallback (item_template_id IS NULL, category matches)
+    2. Category fallback (item_template_id IS NULL, same category)
     3. No match = use cleaned raw text + add to library
-    Returns (washed_description, match_source)
+    Returns (washed_description, match_source, category_name)
     """
+    # Get category name for this template
+    cur.execute("""
+        SELECT ct.category_name
+        FROM item_template it
+        JOIN category_template ct ON it.category_id = ct.id
+        WHERE it.id = ?
+    """, (item_template_id,))
+    cat_row = cur.fetchone()
+    cat_name = cat_row[0] if cat_row else 'UNKNOWN'
+
     # Tier 1: Item-specific
     cur.execute("""
         SELECT description FROM defect_library
@@ -147,29 +103,28 @@ def wash_description(cur, item_template_id, category_name, raw_desc):
     item_entries = [r[0] for r in cur.fetchall()]
 
     if item_entries:
-        match, score = fuzzy_match(raw_desc, item_entries, threshold=0.5)
+        match, score = fuzzy_match(raw_desc, item_entries)
         if match:
-            return match, f"item-specific (score={score:.2f})"
+            return match, f"item-specific (score={score:.2f})", cat_name
 
     # Tier 2: Category fallback
     cur.execute("""
         SELECT description FROM defect_library
         WHERE tenant_id = ? AND category_name = ? AND item_template_id IS NULL
         ORDER BY usage_count DESC
-    """, (TENANT, category_name))
+    """, (TENANT, cat_name))
     cat_entries = [r[0] for r in cur.fetchall()]
 
     if cat_entries:
-        match, score = fuzzy_match(raw_desc, cat_entries, threshold=0.5)
+        match, score = fuzzy_match(raw_desc, cat_entries)
         if match:
-            return match, f"category-fallback (score={score:.2f})"
+            return match, f"category-fallback (score={score:.2f})", cat_name
 
-    # Tier 3: No match - clean up and add to library
+    # Tier 3: No match - clean up raw text
     cleaned = raw_desc.strip()
-    # Capitalize first letter
     if cleaned:
         cleaned = cleaned[0].upper() + cleaned[1:]
-    return cleaned, "NEW (added to library)"
+    return cleaned, "NEW (added to library)", cat_name
 
 # ============================================================
 # MAIN IMPORT
@@ -185,7 +140,23 @@ def main():
     print(f"Cycle: {CYCLE_ID}")
     print()
 
-    # --- 1. GET UNIT ---
+    # --- 1. VERIFY TEMPLATE IDs EXIST ---
+    print("--- VERIFYING TEMPLATE IDs ---")
+    all_valid = True
+    for template_id, raw_desc, dtype in DEFECTS:
+        cur.execute('SELECT id FROM item_template WHERE id=? AND tenant_id=?',
+                    (template_id, TENANT))
+        if not cur.fetchone():
+            print(f"  MISSING: {template_id} ({raw_desc})")
+            all_valid = False
+    if not all_valid:
+        print("ABORTING - fix template IDs")
+        conn.close()
+        return
+    print(f"  All {len(DEFECTS)} template IDs verified")
+    print()
+
+    # --- 2. GET UNIT ---
     cur.execute('SELECT id FROM unit WHERE unit_number=? AND tenant_id=?',
                 (UNIT_NUMBER, TENANT))
     row = cur.fetchone()
@@ -196,7 +167,7 @@ def main():
     unit_id = row[0]
     print(f"Unit ID: {unit_id}")
 
-    # --- 2. CHECK/CREATE INSPECTION ---
+    # --- 3. CHECK/CREATE INSPECTION ---
     cur.execute('SELECT id, status FROM inspection WHERE unit_id=? AND cycle_id=?',
                 (unit_id, CYCLE_ID))
     row = cur.fetchone()
@@ -218,20 +189,18 @@ def main():
               INSPECTOR_ID, INSPECTOR_NAME, now, now, now))
         print(f"Created inspection: {insp_id}")
 
-    # --- 3. UPDATE INSPECTOR ASSIGNMENT ---
+    # --- 4. UPDATE INSPECTOR ASSIGNMENT ---
     cur.execute("""
         UPDATE inspection SET inspector_id=?, inspector_name=?, updated_at=?
         WHERE id=?
     """, (INSPECTOR_ID, INSPECTOR_NAME, now, insp_id))
-
-    # Update cycle_unit_assignment if exists
     cur.execute("""
         UPDATE cycle_unit_assignment SET inspector_id=?
         WHERE cycle_id=? AND unit_id=?
     """, (INSPECTOR_ID, CYCLE_ID, unit_id))
     print(f"Inspector set: {INSPECTOR_NAME}")
 
-    # --- 4. CREATE INSPECTION ITEMS (all 523) ---
+    # --- 5. CREATE INSPECTION ITEMS (all 523) ---
     cur.execute('SELECT COUNT(*) FROM inspection_item WHERE inspection_id=?', (insp_id,))
     existing_items = cur.fetchone()[0]
     if existing_items > 0:
@@ -241,13 +210,13 @@ def main():
         templates = cur.fetchall()
         for t in templates:
             cur.execute("""
-                INSERT INTO inspection_item (id, tenant_id, inspection_id, item_template_id, status, marked_at)
+                INSERT INTO inspection_item
+                (id, tenant_id, inspection_id, item_template_id, status, marked_at)
                 VALUES (?, ?, ?, ?, 'pending', NULL)
             """, (gen_id(), TENANT, insp_id, t[0]))
         print(f"Created {len(templates)} inspection items")
 
-    # --- 5. MARK EXCLUSIONS (status=skipped) ---
-    # Get excluded item template IDs from Block 5 cycle (same exclusions)
+    # --- 6. MARK EXCLUSIONS (status=skipped) ---
     cur.execute("""
         SELECT DISTINCT ii.item_template_id
         FROM inspection_item ii
@@ -266,55 +235,21 @@ def main():
         skipped_count += cur.rowcount
     print(f"Marked skipped: {skipped_count}")
 
-    # --- 6. MAP DEFECTS + WASH DESCRIPTIONS ---
+    # --- 7. WASH DESCRIPTIONS + CREATE DEFECTS ---
     print()
-    print("--- DEFECT MAPPING + WASH ---")
-    mapped_defects = []
-    errors = []
+    print("--- DEFECT WASH + CREATE ---")
     new_library = []
+    defect_count = 0
 
-    for i, (area, cat_search, item_search, raw_desc, dtype) in enumerate(DEFECTS, 1):
-        template_id, template_path, score = find_template_id(cur, area, cat_search, item_search)
-        if not template_id:
-            errors.append(f"  #{i}: FAILED to map: {area} > {cat_search} > {item_search} (score={score:.2f})")
-            continue
-
-        # Get category name for wash lookup
-        cur.execute("""
-            SELECT ct.category_name
-            FROM item_template it
-            JOIN category_template ct ON it.category_id = ct.id
-            WHERE it.id = ?
-        """, (template_id,))
-        cat_row = cur.fetchone()
-        cat_name = cat_row[0] if cat_row else cat_search
-
-        # Wash the description
-        washed_desc, wash_source = wash_description(cur, template_id, cat_name, raw_desc)
+    for template_id, raw_desc, dtype in DEFECTS:
+        washed_desc, wash_source, cat_name = wash_description(cur, template_id, raw_desc)
 
         if "NEW" in wash_source:
             new_library.append((template_id, cat_name, washed_desc))
 
-        mapped_defects.append((template_id, template_path, washed_desc, dtype, wash_source))
-        print(f"  #{i}: {template_path}")
-        print(f"       Raw: {raw_desc}")
-        print(f"       Washed: {washed_desc} [{wash_source}]")
+        print(f"  [{template_id}] Raw: {raw_desc}")
+        print(f"            Washed: {washed_desc} [{wash_source}]")
 
-    if errors:
-        print()
-        print("--- MAPPING ERRORS ---")
-        for e in errors:
-            print(e)
-        print("ABORTING - fix mapping errors before import")
-        conn.rollback()
-        conn.close()
-        return
-
-    # --- 7. CREATE DEFECT RECORDS + MARK NTS ---
-    print()
-    print("--- CREATING DEFECTS ---")
-    defect_count = 0
-    for template_id, template_path, washed_desc, dtype, wash_source in mapped_defects:
         # Create defect record
         defect_id = gen_id()
         defect_type = 'not_installed' if dtype == 'NI' else 'not_to_standard'
@@ -326,7 +261,7 @@ def main():
         """, (defect_id, TENANT, unit_id, template_id, CYCLE_ID,
               defect_type, washed_desc, now, now))
 
-        # Mark inspection item as NTS or not_installed
+        # Mark inspection item
         item_status = 'not_installed' if dtype == 'NI' else 'not_to_standard'
         cur.execute("""
             UPDATE inspection_item SET status=?, defect_description=?, marked_at=?
@@ -335,7 +270,7 @@ def main():
 
         defect_count += 1
 
-    print(f"Defects created: {defect_count}")
+    print(f"\nDefects created: {defect_count}")
 
     # --- 8. MARK REMAINING AS OK ---
     cur.execute("""
@@ -376,26 +311,26 @@ def main():
     print("=== VERIFICATION ===")
     cur.execute('SELECT COUNT(*) FROM inspection_item WHERE inspection_id=? AND status=?',
                 (insp_id, 'skipped'))
-    print(f"Skipped: {cur.fetchone()[0]}")
+    print(f"Skipped: {cur.fetchone()[0]} (expected 85)")
     cur.execute('SELECT COUNT(*) FROM inspection_item WHERE inspection_id=? AND status=?',
                 (insp_id, 'ok'))
-    print(f"OK: {cur.fetchone()[0]}")
+    print(f"OK: {cur.fetchone()[0]} (expected 419)")
     cur.execute('SELECT COUNT(*) FROM inspection_item WHERE inspection_id=? AND status IN (?,?)',
                 (insp_id, 'not_to_standard', 'not_installed'))
-    print(f"NTS/NI: {cur.fetchone()[0]}")
+    print(f"NTS/NI: {cur.fetchone()[0]} (expected 19)")
     cur.execute('SELECT COUNT(*) FROM inspection_item WHERE inspection_id=? AND status=?',
                 (insp_id, 'pending'))
-    print(f"Pending (should be 0): {cur.fetchone()[0]}")
+    print(f"Pending: {cur.fetchone()[0]} (expected 0)")
     cur.execute('SELECT COUNT(*) FROM defect WHERE unit_id=? AND raised_cycle_id=? AND status=?',
                 (unit_id, CYCLE_ID, 'open'))
-    print(f"Defects: {cur.fetchone()[0]}")
+    print(f"Defects: {cur.fetchone()[0]} (expected 19)")
 
     total = 0
     for status in ['skipped', 'ok', 'not_to_standard', 'not_installed', 'pending']:
         cur.execute('SELECT COUNT(*) FROM inspection_item WHERE inspection_id=? AND status=?',
                     (insp_id, status))
         total += cur.fetchone()[0]
-    print(f"Total items: {total} (should be 523)")
+    print(f"Total items: {total} (expected 523)")
 
     # COMMIT
     conn.commit()
