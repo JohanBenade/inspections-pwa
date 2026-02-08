@@ -241,7 +241,10 @@ def reports():
     cycles = [dict(r) for r in cycles]
     return render_template('analytics/reports.html', cycles=cycles)
 
-    return [dict(r) for r in rows]
+
+
+def _to_dicts(rows):
+    """Convert sqlite3.Row results to plain dicts."""
 
 
 def _to_dict(row):
