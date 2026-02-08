@@ -241,9 +241,9 @@ def main():
         templates = cur.fetchall()
         for t in templates:
             cur.execute("""
-                INSERT INTO inspection_item (id, inspection_id, item_template_id, status, marked_at)
-                VALUES (?, ?, ?, 'pending', NULL)
-            """, (gen_id(), insp_id, t[0]))
+                INSERT INTO inspection_item (id, tenant_id, inspection_id, item_template_id, status, marked_at)
+                VALUES (?, ?, ?, ?, 'pending', NULL)
+            """, (gen_id(), TENANT, insp_id, t[0]))
         print(f"Created {len(templates)} inspection items")
 
     # --- 5. MARK EXCLUSIONS (status=skipped) ---
