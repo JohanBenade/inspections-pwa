@@ -240,6 +240,27 @@ def reports():
     """, [tenant_id])
     cycles = [dict(r) for r in cycles]
     return render_template('analytics/reports.html', cycles=cycles)
+
+
+@analytics_bp.route('/reports')
+@require_manager
+def reports():
+    """Reports listing - select a cycle to view/download report."""
+    tenant_id = session['tenant_id']
+    cycles = query_db("""
+        SELECT ic.id, ic.cycle_number, ic.block, ic.floor, ic.unit_start, ic.unit_end,
+               ic.status, ic.request_received_date, ic.started_at,
+               COUNT(DISTINCT i.unit_id) AS unit_count,
+               COUNT(DISTINCT d.id) AS defect_count
+        FROM inspection_cycle ic
+        LEFT JOIN inspection i ON i.cycle_id = ic.id
+        LEFT JOIN defect d ON d.raised_cycle_id = ic.id AND d.status = 'open'
+        WHERE ic.tenant_id = ?
+        GROUP BY ic.id
+        ORDER BY ic.cycle_number DESC
+    """, [tenant_id])
+    cycles = [dict(r) for r in cycles]
+    return render_template('analytics/reports.html', cycles=cycles)
 def _to_dicts(rows):
     """Convert sqlite3.Row results to plain dicts."""
     return [dict(r) for r in rows]
