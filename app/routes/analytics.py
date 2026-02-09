@@ -479,7 +479,6 @@ def reports():
 
 
 @analytics_bp.route('/report/combined')
-@require_manager
 def combined_report_view(tenant_id=None):
     """Render combined bi-weekly report as HTML with toolbar."""
     data = _build_combined_report_data()
@@ -491,7 +490,6 @@ def combined_report_view(tenant_id=None):
 
 
 @analytics_bp.route('/report/combined/pdf')
-@require_manager
 def combined_report_pdf(tenant_id=None):
     """Generate combined bi-weekly report as PDF download."""
     from weasyprint import HTML
