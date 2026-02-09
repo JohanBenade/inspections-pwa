@@ -156,6 +156,36 @@ def dashboard():
         for d in defect_compare:
             d["block_labels"] = block_labels
 
+        # Category breakdown by block (for grouped comparison chart)
+        cat_by_block_raw = query_db(
+            "SELECT ct.category_name, ic.block, COUNT(*) as cnt "
+            "FROM defect d "
+            "JOIN item_template it ON d.item_template_id = it.id "
+            "JOIN category_template ct ON it.category_id = ct.id "
+            "JOIN inspection_cycle ic ON d.raised_cycle_id = ic.id "
+            "WHERE d.tenant_id = ? AND d.status = 'open' "
+            "GROUP BY ct.category_name, ic.block ORDER BY cnt DESC",
+            [tenant_id])
+        cat_by_block = {}
+        for r in cat_by_block_raw:
+            name = r["category_name"].upper()
+            if name not in cat_by_block:
+                cat_by_block[name] = {}
+            cat_by_block[name][r["block"]] = r["cnt"]
+        cat_compare_labels = sorted(cat_by_block.keys(),
+            key=lambda c: sum(cat_by_block[c].values()), reverse=True)
+        cat_compare_data = {
+            "labels": cat_compare_labels,
+            "block_labels": block_labels,
+            "datasets": []
+        }
+        for bl in block_labels:
+            cat_compare_data["datasets"].append({
+                "label": bl,
+                "colour": block_colours.get(bl, "#9ca3af"),
+                "data": [cat_by_block.get(c, {}).get(bl, 0) for c in cat_compare_labels]
+            })
+
         # Area data
         by_area = query_db(
             "SELECT at.area_name, COUNT(*) as cnt "
@@ -184,7 +214,7 @@ def dashboard():
 
         # Unit ranking
         unit_ranking = query_db(
-            "SELECT u.unit_number, u.id as unit_id, i.inspector_name, COUNT(d.id) as cnt "
+            "SELECT u.unit_number, u.id as unit_id, u.block, i.inspector_name, COUNT(d.id) as cnt "
             "FROM defect d JOIN unit u ON d.unit_id = u.id "
             "JOIN inspection i ON i.unit_id = u.id AND i.cycle_id = d.raised_cycle_id "
             "WHERE d.tenant_id = ? AND d.status = 'open' "
@@ -241,7 +271,7 @@ def dashboard():
             unit_totals=unit_totals, recurring=recurring,
             inspector_stats=inspector_stats, area_colours=AREA_COLOURS,
             trend_data=trend_data, area_compare_data=area_compare_data,
-            defect_compare=defect_compare)
+            defect_compare=defect_compare, cat_compare_data=cat_compare_data)
 
     # --- 1. SUMMARY STATS ---
     total_units = query_db("""
