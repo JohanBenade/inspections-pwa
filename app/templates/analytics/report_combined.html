@@ -1,0 +1,788 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Combined Inspection Report - {{ report_date }}</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;400;500;600&family=DM+Sans:wght@400;500;600;700&display=swap');
+
+@page {
+    size: A4;
+    margin: 18mm 16mm 20mm 16mm;
+    @bottom-center {
+        content: "Page " counter(page) " of " counter(pages);
+        font-family: 'DM Sans', Helvetica, Arial, sans-serif;
+        font-size: 8pt;
+        color: #9A9A9A;
+    }
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+    font-family: 'DM Sans', 'Helvetica Neue', Helvetica, Arial, sans-serif;
+    color: #1A1A1A;
+    background: #FAFAF8;
+    font-size: 11px;
+    line-height: 1.5;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+}
+
+.page { max-width: 800px; margin: 0 auto; padding: 0; }
+.clearfix::after { content: ""; display: table; clear: both; }
+
+/* -- TOOLBAR (HTML view only) -- */
+.toolbar {
+    background: #1A1A1A;
+    padding: 12px 20px;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+}
+.toolbar::after { content: ""; display: table; clear: both; }
+.toolbar a {
+    color: #FAFAF8;
+    text-decoration: none;
+    font-size: 13px;
+    font-weight: 500;
+    padding: 6px 14px;
+    border-radius: 6px;
+    display: inline-block;
+}
+.toolbar a:hover { background: rgba(255,255,255,0.1); }
+.toolbar .btn-gold {
+    background: #C8963E;
+    color: #fff;
+}
+.toolbar .btn-gold:hover { background: #b8862e; }
+@media print { .toolbar { display: none; } }
+
+/* -- HEADER -- */
+.report-header {
+    padding-bottom: 16px;
+    border-bottom: 3px solid #0A0A0A;
+    margin-bottom: 20px;
+}
+.header-top { margin-bottom: 20px; }
+.header-top::after { content: ""; display: table; clear: both; }
+.logo-area { float: left; }
+.logo-area img { height: 36px; width: auto; }
+.logo-fallback {
+    font-family: 'Cormorant Garamond', Georgia, serif;
+    font-size: 22px;
+    font-weight: 300;
+    letter-spacing: 6px;
+    text-transform: uppercase;
+    color: #0A0A0A;
+}
+.logo-sub {
+    font-family: 'Cormorant Garamond', Georgia, serif;
+    font-size: 12px;
+    font-weight: 300;
+    letter-spacing: 3px;
+    color: #6B6B6B;
+    margin-left: 8px;
+}
+.header-meta {
+    float: right;
+    text-align: right;
+    font-size: 10px;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: #6B6B6B;
+}
+.header-meta .date {
+    font-size: 11px;
+    letter-spacing: 0;
+    text-transform: none;
+    color: #1A1A1A;
+    margin-top: 2px;
+}
+.report-title {
+    font-family: 'Cormorant Garamond', Georgia, serif;
+    font-size: 32px;
+    font-weight: 300;
+    color: #0A0A0A;
+    letter-spacing: 1px;
+    margin-bottom: 6px;
+}
+.report-subtitle {
+    font-size: 13px;
+    color: #6B6B6B;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+}
+
+/* -- SECTION HEADERS -- */
+.section { margin-bottom: 28px; page-break-inside: avoid; }
+.section-header { margin-bottom: 14px; border-bottom: 1px solid #E5E5E5; padding-bottom: 8px; }
+.section-number {
+    font-family: 'DM Sans', sans-serif;
+    font-size: 11px;
+    font-weight: 700;
+    color: #C8963E;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    display: block;
+    margin-bottom: 2px;
+}
+.section-title {
+    font-family: 'Cormorant Garamond', Georgia, serif;
+    font-size: 20px;
+    font-weight: 400;
+    color: #0A0A0A;
+}
+
+/* -- KPI CARDS -- */
+.kpi-table { width: 100%; border-collapse: separate; border-spacing: 8px 0; margin-bottom: 20px; }
+.kpi-cell {
+    background: #F5F3EE;
+    border-left: 3px solid #C8963E;
+    padding: 12px 14px;
+    vertical-align: top;
+    width: 16.66%;
+}
+.kpi-value {
+    font-family: 'DM Sans', sans-serif;
+    font-size: 22px;
+    font-weight: 700;
+    color: #0A0A0A;
+    line-height: 1.2;
+}
+.kpi-value-red { color: #C44D3F; }
+.kpi-value-green { color: #4A7C59; }
+.kpi-label {
+    font-size: 9px;
+    color: #6B6B6B;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-top: 4px;
+}
+.kpi-trend {
+    font-size: 9px;
+    margin-top: 3px;
+    letter-spacing: 0;
+    text-transform: none;
+}
+.trend-up { color: #C44D3F; }
+.trend-down { color: #4A7C59; }
+.trend-neutral { color: #9A9A9A; }
+
+/* -- BATCH COMPARISON CARDS -- */
+.batch-table { width: 100%; border-collapse: separate; border-spacing: 10px 0; margin-bottom: 10px; }
+.batch-cell {
+    background: #F5F3EE;
+    padding: 16px 18px;
+    vertical-align: top;
+    width: 50%;
+}
+.batch-cell-b5 { border-left: 4px solid #C8963E; }
+.batch-cell-b6 { border-left: 4px solid #3D6B8E; }
+.batch-block-label {
+    font-family: 'DM Sans', sans-serif;
+    font-size: 10px;
+    font-weight: 700;
+    color: #6B6B6B;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    margin-bottom: 10px;
+}
+.batch-stats-table { width: 100%; border-collapse: collapse; }
+.batch-stats-table td { padding: 2px 0; }
+.batch-stat-value {
+    font-size: 20px;
+    font-weight: 700;
+    color: #0A0A0A;
+}
+.batch-stat-label {
+    font-size: 9px;
+    color: #9A9A9A;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+/* -- CALLOUT BOXES -- */
+.callout {
+    padding: 10px 14px;
+    margin: 12px 0;
+    font-size: 11px;
+    line-height: 1.5;
+}
+.callout-gold { border-left: 3px solid #C8963E; background: rgba(200,150,62,0.08); }
+.callout-blue { border-left: 3px solid #3D6B8E; background: rgba(61,107,142,0.08); }
+.callout-red { border-left: 3px solid #C44D3F; background: rgba(196,77,63,0.08); }
+.callout-green { border-left: 3px solid #4A7C59; background: rgba(74,124,89,0.08); }
+
+/* -- GROUPED BAR CHART (CSS) -- */
+.grouped-bar-table { width: 100%; border-collapse: collapse; }
+.grouped-bar-table td { padding: 3px 0; vertical-align: middle; }
+.bar-label-cell { width: 100px; text-align: right; padding-right: 10px; font-size: 10px; font-weight: 600; color: #1A1A1A; }
+.bar-track { width: auto; padding: 0; }
+.bar-fill {
+    display: inline-block;
+    height: 14px;
+    border-radius: 2px;
+    vertical-align: middle;
+}
+.bar-b5 { background: #C8963E; }
+.bar-b6 { background: #3D6B8E; }
+.bar-count-label {
+    display: inline-block;
+    font-size: 9px;
+    font-weight: 600;
+    color: #6B6B6B;
+    margin-left: 4px;
+    vertical-align: middle;
+}
+
+/* -- DATA TABLES -- */
+.data-table { width: 100%; border-collapse: collapse; font-size: 10px; }
+.data-table th {
+    background: #F5F3EE;
+    padding: 7px 8px;
+    text-align: left;
+    font-weight: 600;
+    font-size: 9px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: #6B6B6B;
+    border-bottom: 2px solid #E5E5E5;
+}
+.data-table td {
+    padding: 6px 8px;
+    border-bottom: 1px solid #F0F0F0;
+    vertical-align: middle;
+}
+.data-table tr:nth-child(even) td { background: #FAFAF8; }
+.text-right { text-align: right; }
+.text-center { text-align: center; }
+.font-bold { font-weight: 700; }
+
+/* -- RANK CIRCLE -- */
+.rank-circle {
+    display: inline-block;
+    width: 20px;
+    height: 20px;
+    line-height: 20px;
+    border-radius: 50%;
+    text-align: center;
+    font-size: 9px;
+    font-weight: 700;
+    color: #FAFAF8;
+}
+.rank-gold { background: #C8963E; }
+.rank-gray { background: #9A9A9A; }
+
+/* -- UNIT BAR CHART (vertical, CSS table) -- */
+.unit-bar-table { width: 100%; border-collapse: collapse; }
+.unit-bar-table td { vertical-align: bottom; text-align: center; padding: 0 2px; }
+.unit-bar {
+    display: inline-block;
+    width: 22px;
+    border-radius: 2px 2px 0 0;
+    min-height: 2px;
+}
+.unit-bar-label {
+    font-size: 8px;
+    font-weight: 600;
+    color: #FAFAF8;
+    display: block;
+    padding-top: 3px;
+}
+.unit-name-label {
+    font-size: 8px;
+    color: #6B6B6B;
+    padding-top: 4px;
+    transform: rotate(-45deg);
+    display: inline-block;
+    white-space: nowrap;
+}
+
+/* -- COLOUR BADGES -- */
+.badge-b5 {
+    display: inline-block;
+    padding: 1px 6px;
+    border-radius: 3px;
+    font-size: 8px;
+    font-weight: 600;
+    background: rgba(200,150,62,0.15);
+    color: #C8963E;
+}
+.badge-b6 {
+    display: inline-block;
+    padding: 1px 6px;
+    border-radius: 3px;
+    font-size: 8px;
+    font-weight: 600;
+    background: rgba(61,107,142,0.15);
+    color: #3D6B8E;
+}
+
+/* -- TREND ARROWS -- */
+.arrow-up { color: #C44D3F; font-weight: 700; }
+.arrow-down { color: #4A7C59; font-weight: 700; }
+.arrow-same { color: #9A9A9A; }
+
+/* -- LEGEND -- */
+.legend-table { border-collapse: collapse; margin: 8px 0; }
+.legend-swatch {
+    display: inline-block;
+    width: 12px;
+    height: 12px;
+    border-radius: 2px;
+    vertical-align: middle;
+    margin-right: 4px;
+}
+.legend-text { font-size: 10px; color: #6B6B6B; vertical-align: middle; }
+
+/* -- SIGNATURE -- */
+.sig-table { width: 100%; border-collapse: collapse; margin-top: 40px; }
+.sig-cell { width: 50%; vertical-align: top; padding: 0; }
+.sig-line { border-top: 1px solid #0A0A0A; padding-top: 6px; margin-top: 40px; width: 85%; }
+.sig-name { font-weight: 600; font-size: 12px; color: #0A0A0A; }
+.sig-company { font-size: 10px; color: #6B6B6B; margin-top: 1px; }
+.sig-title { font-size: 10px; color: #9A9A9A; margin-top: 1px; }
+.sig-date { font-size: 10px; color: #9A9A9A; margin-top: 6px; }
+.sig-image { height: 50px; width: auto; margin-bottom: -10px; }
+
+/* -- FOOTER -- */
+.report-footer {
+    margin-top: 30px;
+    padding-top: 12px;
+    border-top: 1px solid #E5E5E5;
+    font-size: 9px;
+    color: #9A9A9A;
+}
+.report-footer::after { content: ""; display: table; clear: both; }
+.footer-left { float: left; }
+.footer-right { float: right; text-align: right; }
+.footer-logo { height: 16px; width: auto; vertical-align: middle; margin-right: 6px; }
+
+/* -- DONUT (SVG) -- */
+.donut-container { text-align: center; margin: 10px 0; }
+.donut-label-table { width: 100%; border-collapse: collapse; margin-top: 8px; }
+.donut-label-table td { padding: 2px 6px; font-size: 10px; }
+.donut-swatch {
+    display: inline-block;
+    width: 10px;
+    height: 10px;
+    border-radius: 2px;
+    vertical-align: middle;
+    margin-right: 4px;
+}
+</style>
+</head>
+<body>
+
+{% if not is_pdf %}
+<div class="toolbar">
+    <a href="{{ url_for('analytics.reports') }}">&#8592; Back to Reports</a>
+    <a href="#" onclick="window.print(); return false;" style="margin-left: 12px;">&#128424; Print</a>
+    <a href="{{ url_for('analytics.combined_report_pdf') }}" class="btn-gold" style="float: right;">&#11015; Download PDF</a>
+</div>
+{% endif %}
+
+<div class="page" style="padding: 20px 10px;">
+
+<!-- ============ HEADER ============ -->
+<div class="report-header">
+    <div class="header-top clearfix">
+        <div class="logo-area">
+            {% if logo_b64 %}
+            <img src="data:image/jpeg;base64,{{ logo_b64 }}" alt="Monograph Architects">
+            {% else %}
+            <span class="logo-fallback">MONOGRAPH</span>
+            <span class="logo-sub">architects</span>
+            {% endif %}
+        </div>
+        <div class="header-meta">
+            <div>BI-WEEKLY INSPECTION REPORT</div>
+            <div class="date">{{ report_date }}</div>
+        </div>
+    </div>
+    <div class="report-title">Power Park Student Housing - Phase 3</div>
+    <div class="report-subtitle">Combined Project Report &bull; All Blocks &bull; {{ total_units }} Units Inspected</div>
+</div>
+
+<!-- ============ KPI CARDS ============ -->
+<table class="kpi-table">
+<tr>
+    <td class="kpi-cell">
+        <div class="kpi-value">{{ total_units }}</div>
+        <div class="kpi-label">Units Inspected</div>
+        <div class="kpi-trend trend-neutral">{{ b5.total_units }} + {{ b6.total_units }}</div>
+    </td>
+    <td class="kpi-cell">
+        <div class="kpi-value kpi-value-red">{{ total_defects }}</div>
+        <div class="kpi-label">Open Defects</div>
+        <div class="kpi-trend {% if trend.defect_change > 0 %}trend-up{% else %}trend-down{% endif %}">
+            {% if trend.defect_change > 0 %}&#9650;{% else %}&#9660;{% endif %} {{ trend.defect_change }}% B5&#8594;B6
+        </div>
+    </td>
+    <td class="kpi-cell">
+        <div class="kpi-value">{{ avg_defects }}</div>
+        <div class="kpi-label">Avg Defects / Unit</div>
+        <div class="kpi-trend {% if trend.avg_change > 0 %}trend-up{% else %}trend-down{% endif %}">
+            {% if trend.avg_change > 0 %}&#9650;{% else %}&#9660;{% endif %} {{ trend.avg_change }}% B5&#8594;B6
+        </div>
+    </td>
+    <td class="kpi-cell">
+        <div class="kpi-value">{{ items_per_unit }}</div>
+        <div class="kpi-label">Items / Unit</div>
+    </td>
+    <td class="kpi-cell">
+        <div class="kpi-value">{{ defect_rate }}%</div>
+        <div class="kpi-label">Defect Rate</div>
+        <div class="kpi-trend {% if trend.rate_change > 0 %}trend-up{% else %}trend-down{% endif %}">
+            {% if trend.rate_change > 0 %}&#9650;{% else %}&#9660;{% endif %} {{ trend.rate_change }}pp B5&#8594;B6
+        </div>
+    </td>
+    <td class="kpi-cell">
+        <div class="kpi-value">{{ certified_count }}</div>
+        <div class="kpi-label">Certified</div>
+        <div class="kpi-trend trend-neutral">{{ total_units }} total</div>
+    </td>
+</tr>
+</table>
+
+<!-- ============ 01: BATCH COMPARISON ============ -->
+<div class="section">
+    <div class="section-header">
+        <span class="section-number">01</span>
+        <span class="section-title">Batch Comparison</span>
+    </div>
+    <table class="batch-table">
+    <tr>
+        <td class="batch-cell batch-cell-b5">
+            <div class="batch-block-label">{{ b5.block }}</div>
+            <table class="batch-stats-table">
+            <tr>
+                <td style="width:33%"><div class="batch-stat-value">{{ b5.total_units }}</div><div class="batch-stat-label">Units</div></td>
+                <td style="width:33%"><div class="batch-stat-value" style="color:#C44D3F;">{{ b5.total_defects }}</div><div class="batch-stat-label">Defects</div></td>
+                <td style="width:33%"><div class="batch-stat-value">{{ b5.avg_defects }}</div><div class="batch-stat-label">Avg / Unit</div></td>
+            </tr>
+            <tr>
+                <td><div class="batch-stat-value">{{ b5.defect_rate }}%</div><div class="batch-stat-label">Defect Rate</div></td>
+                <td><div class="batch-stat-value">{{ b5.unit_range }}</div><div class="batch-stat-label">Unit Range</div></td>
+                <td><div class="batch-stat-value">{{ b5.inspection_date or '-' }}</div><div class="batch-stat-label">Inspected</div></td>
+            </tr>
+            </table>
+        </td>
+        <td class="batch-cell batch-cell-b6">
+            <div class="batch-block-label">{{ b6.block }}</div>
+            <table class="batch-stats-table">
+            <tr>
+                <td style="width:33%"><div class="batch-stat-value">{{ b6.total_units }}</div><div class="batch-stat-label">Units</div></td>
+                <td style="width:33%"><div class="batch-stat-value" style="color:#C44D3F;">{{ b6.total_defects }}</div><div class="batch-stat-label">Defects</div></td>
+                <td style="width:33%"><div class="batch-stat-value">{{ b6.avg_defects }}</div><div class="batch-stat-label">Avg / Unit</div></td>
+            </tr>
+            <tr>
+                <td><div class="batch-stat-value">{{ b6.defect_rate }}%</div><div class="batch-stat-label">Defect Rate</div></td>
+                <td><div class="batch-stat-value">{{ b6.unit_range }}</div><div class="batch-stat-label">Unit Range</div></td>
+                <td><div class="batch-stat-value">{{ b6.inspection_date or '-' }}</div><div class="batch-stat-label">Inspected</div></td>
+            </tr>
+            </table>
+        </td>
+    </tr>
+    </table>
+
+    {% if trend.avg_change > 10 %}
+    <div class="callout callout-red">
+        <strong>Note:</strong> Block 6 shows {{ trend.avg_change }}% higher average defects per unit compared to Block 5 ({{ b6.avg_defects }} vs {{ b5.avg_defects }}). This suggests increased quality issues in the later batch.
+    </div>
+    {% elif trend.avg_change < -10 %}
+    <div class="callout callout-green">
+        <strong>Note:</strong> Block 6 shows {{ trend.avg_change|abs }}% fewer average defects per unit compared to Block 5 ({{ b6.avg_defects }} vs {{ b5.avg_defects }}). Quality is trending positively.
+    </div>
+    {% else %}
+    <div class="callout callout-gold">
+        <strong>Note:</strong> Average defects per unit are similar across both blocks ({{ b5.avg_defects }} vs {{ b6.avg_defects }}), suggesting consistent quality levels.
+    </div>
+    {% endif %}
+</div>
+
+<!-- ============ 02: DEFECTS BY AREA - BATCH COMPARISON ============ -->
+<div class="section">
+    <div class="section-header">
+        <span class="section-number">02</span>
+        <span class="section-title">Defect Distribution by Area: Batch Comparison</span>
+    </div>
+
+    <div class="clearfix" style="margin-bottom: 16px;">
+        <div style="float: left; width: 62%;">
+            <!-- Grouped horizontal bars -->
+            <table class="grouped-bar-table">
+            {% for area in area_compare %}
+            <tr>
+                <td class="bar-label-cell" rowspan="2">{{ area.name }}</td>
+                <td class="bar-track">
+                    <div class="bar-fill bar-b5" style="width: {{ area.b5_pct }}%;"></div>
+                    <span class="bar-count-label">{{ area.b5_count }}</span>
+                </td>
+            </tr>
+            <tr>
+                <td class="bar-track">
+                    <div class="bar-fill bar-b6" style="width: {{ area.b6_pct }}%;"></div>
+                    <span class="bar-count-label">{{ area.b6_count }}</span>
+                </td>
+            </tr>
+            <tr><td colspan="2" style="height: 4px;"></td></tr>
+            {% endfor %}
+            </table>
+        </div>
+        <div style="float: right; width: 34%;">
+            <!-- Donut: combined totals -->
+            <div class="donut-container">
+                <svg width="150" height="150" viewBox="0 0 160 160">
+                    <circle cx="80" cy="80" r="70" fill="none" stroke="#F0F0F0" stroke-width="24"/>
+                    {% for a in area_data %}
+                    <circle cx="80" cy="80" r="70" fill="none"
+                            stroke="{{ area_colours[loop.index0 % area_colours|length] }}"
+                            stroke-width="24"
+                            stroke-dasharray="{{ a.dash }} {{ 439.82 - a.dash }}"
+                            stroke-dashoffset="{{ -a.offset }}"
+                            transform="rotate(-90 80 80)"/>
+                    {% endfor %}
+                    <text x="80" y="76" text-anchor="middle" font-family="DM Sans" font-size="20" font-weight="700" fill="#0A0A0A">{{ total_defects }}</text>
+                    <text x="80" y="92" text-anchor="middle" font-family="DM Sans" font-size="9" fill="#9A9A9A">TOTAL</text>
+                </svg>
+            </div>
+            <table class="donut-label-table">
+            {% for a in area_data %}
+            <tr>
+                <td><span class="donut-swatch" style="background: {{ area_colours[loop.index0 % area_colours|length] }};"></span></td>
+                <td style="font-weight: 500;">{{ a.area }}</td>
+                <td class="text-right" style="color: #6B6B6B;">{{ a.defect_count }} ({{ a.pct }}%)</td>
+            </tr>
+            {% endfor %}
+            </table>
+        </div>
+    </div>
+
+    <!-- Legend -->
+    <table class="legend-table">
+    <tr>
+        <td><span class="legend-swatch" style="background: #C8963E;"></span><span class="legend-text">Block 5</span></td>
+        <td style="padding-left: 16px;"><span class="legend-swatch" style="background: #3D6B8E;"></span><span class="legend-text">Block 6</span></td>
+    </tr>
+    </table>
+
+    {% set max_area = area_compare[0] if area_compare else none %}
+    {% if max_area %}
+    <div class="callout callout-gold">
+        <strong>{{ max_area.name }}</strong> accounts for the highest defect concentration across both blocks. {% if max_area.b6_count > max_area.b5_count %}Block 6 shows {{ max_area.b6_count - max_area.b5_count }} more defects than Block 5 in this area.{% elif max_area.b5_count > max_area.b6_count %}Block 5 shows {{ max_area.b5_count - max_area.b6_count }} more defects than Block 6 in this area.{% else %}Both blocks show equal defect counts.{% endif %}
+    </div>
+    {% endif %}
+</div>
+
+<!-- ============ 03: TOP DEFECT TYPES - TREND ANALYSIS ============ -->
+<div class="section" style="page-break-before: always;">
+    <div class="section-header">
+        <span class="section-number">03</span>
+        <span class="section-title">Most Common Defect Types: Trend Analysis</span>
+    </div>
+
+    <table class="data-table">
+    <thead>
+    <tr>
+        <th style="width: 30px;">#</th>
+        <th>Description</th>
+        <th class="text-center" style="width: 55px;">Total</th>
+        <th class="text-center" style="width: 55px;">Block 5</th>
+        <th class="text-center" style="width: 55px;">Block 6</th>
+        <th class="text-center" style="width: 55px;">Trend</th>
+        <th style="width: 120px;">Distribution</th>
+    </tr>
+    </thead>
+    <tbody>
+    {% for d in top_defects_compare %}
+    <tr>
+        <td class="text-center">
+            {% if loop.index <= 3 %}
+            <span class="rank-circle rank-gold">{{ loop.index }}</span>
+            {% else %}
+            <span class="rank-circle rank-gray">{{ loop.index }}</span>
+            {% endif %}
+        </td>
+        <td>{{ d.description }}</td>
+        <td class="text-center font-bold">{{ d.total }}</td>
+        <td class="text-center"><span class="badge-b5">{{ d.b5_count }}</span></td>
+        <td class="text-center"><span class="badge-b6">{{ d.b6_count }}</span></td>
+        <td class="text-center">
+            {% if d.b6_count > d.b5_count %}
+            <span class="arrow-up">&#9650; higher</span>
+            {% elif d.b6_count < d.b5_count %}
+            <span class="arrow-down">&#9660; lower</span>
+            {% else %}
+            <span class="arrow-same">&#8212;</span>
+            {% endif %}
+        </td>
+        <td>
+            <div style="display: inline-block; width: {{ d.bar_pct }}%; height: 10px; background: #C8963E; border-radius: 2px; vertical-align: middle;"></div>
+        </td>
+    </tr>
+    {% endfor %}
+    </tbody>
+    </table>
+
+    {% set new_in_b6 = top_defects_compare | selectattr('b5_count', 'equalto', 0) | list %}
+    {% if new_in_b6 %}
+    <div class="callout callout-blue">
+        <strong>New patterns in Block 6:</strong> {{ new_in_b6 | length }} defect type(s) in the top 15 appear only in Block 6, suggesting new quality issues: {% for d in new_in_b6[:3] %}<em>{{ d.description }}</em>{% if not loop.last %}, {% endif %}{% endfor %}.
+    </div>
+    {% endif %}
+</div>
+
+<!-- ============ 04: DEFECT COUNT BY UNIT ============ -->
+<div class="section">
+    <div class="section-header">
+        <span class="section-number">04</span>
+        <span class="section-title">Defect Count by Unit</span>
+    </div>
+
+    <!-- Vertical bar chart via table -->
+    <div style="overflow-x: auto;">
+    <table class="unit-bar-table" style="height: 180px;">
+    <tr>
+    {% for u in unit_defects %}
+        <td style="height: 160px; vertical-align: bottom;">
+            {% set bar_height = (u.defect_count / max_defects * 140) | int if max_defects > 0 else 2 %}
+            {% if u.defect_count > 30 %}
+                {% set bar_colour = '#C44D3F' %}
+            {% elif u.defect_count > 20 %}
+                {% set bar_colour = '#C8963E' %}
+            {% else %}
+                {% set bar_colour = '#4A7C59' %}
+            {% endif %}
+            <div class="unit-bar" style="height: {{ bar_height }}px; background: {{ bar_colour }};">
+                <span class="unit-bar-label">{{ u.defect_count }}</span>
+            </div>
+        </td>
+    {% endfor %}
+    </tr>
+    <tr style="border-top: 1px solid #E5E5E5;">
+    {% for u in unit_defects %}
+        <td style="padding-top: 4px;">
+            <span class="unit-name-label">{{ u.unit_number }}</span>
+        </td>
+    {% endfor %}
+    </tr>
+    <tr>
+    {% for u in unit_defects %}
+        <td style="padding-top: 0;">
+            {% if u.block == 'Block 5' %}
+            <span style="display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: #C8963E;"></span>
+            {% else %}
+            <span style="display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: #3D6B8E;"></span>
+            {% endif %}
+        </td>
+    {% endfor %}
+    </tr>
+    </table>
+    </div>
+
+    <!-- Legend + average line note -->
+    <table class="legend-table">
+    <tr>
+        <td><span class="legend-swatch" style="background: #C8963E; border-radius: 50%;"></span><span class="legend-text">Block 5</span></td>
+        <td style="padding-left: 16px;"><span class="legend-swatch" style="background: #3D6B8E; border-radius: 50%;"></span><span class="legend-text">Block 6</span></td>
+        <td style="padding-left: 16px;"><span class="legend-swatch" style="background: #4A7C59;"></span><span class="legend-text">&le;20 defects</span></td>
+        <td style="padding-left: 10px;"><span class="legend-swatch" style="background: #C8963E;"></span><span class="legend-text">21-30</span></td>
+        <td style="padding-left: 10px;"><span class="legend-swatch" style="background: #C44D3F;"></span><span class="legend-text">&gt;30</span></td>
+    </tr>
+    </table>
+
+    <div class="callout callout-gold">
+        <strong>Project average: {{ avg_defects }} defects per unit.</strong> {{ high_defect_units }} of {{ total_units }} units ({{ high_defect_pct }}%) exceed 30 defects. The worst-performing unit is {{ worst_unit.unit_number }} with {{ worst_unit.defect_count }} defects.
+    </div>
+</div>
+
+<!-- ============ 05: UNIT SUMMARY TABLE ============ -->
+<div class="section" style="page-break-before: always;">
+    <div class="section-header">
+        <span class="section-number">05</span>
+        <span class="section-title">Unit Summary Table</span>
+    </div>
+
+    <table class="data-table">
+    <thead>
+    <tr>
+        <th>Unit</th>
+        <th>Block</th>
+        <th>Inspector</th>
+        <th class="text-center">Defects</th>
+        <th class="text-center">Rate</th>
+        <th class="text-center">Variance</th>
+        <th>Status</th>
+    </tr>
+    </thead>
+    <tbody>
+    {% for u in unit_table %}
+    <tr>
+        <td class="font-bold">{{ u.unit_number }}</td>
+        <td>
+            {% if u.block == 'Block 5' %}
+            <span class="badge-b5">B5</span>
+            {% else %}
+            <span class="badge-b6">B6</span>
+            {% endif %}
+        </td>
+        <td>{{ u.inspector_name }}</td>
+        <td class="text-center font-bold" style="{% if u.defect_count > 30 %}color: #C44D3F;{% elif u.defect_count <= 20 %}color: #4A7C59;{% else %}color: #C8963E;{% endif %}">{{ u.defect_count }}</td>
+        <td class="text-center">{{ u.defect_rate }}%</td>
+        <td class="text-center" style="{% if u.variance > 0 %}color: #C44D3F;{% elif u.variance < 0 %}color: #4A7C59;{% endif %}">
+            {% if u.variance > 0 %}+{% endif %}{{ u.variance }}
+        </td>
+        <td style="font-size: 9px; text-transform: capitalize;">{{ u.insp_status | replace('_', ' ') }}</td>
+    </tr>
+    {% endfor %}
+    </tbody>
+    </table>
+</div>
+
+<!-- ============ SIGNATURE BLOCK ============ -->
+<div class="section" style="margin-top: 40px;">
+    <table class="sig-table">
+    <tr>
+        <td class="sig-cell">
+            <div style="margin-bottom: 4px; font-size: 10px; color: #9A9A9A; text-transform: uppercase; letter-spacing: 1px;">Prepared by</div>
+            {% if sig_b64 %}
+            <img src="data:image/png;base64,{{ sig_b64 }}" alt="Signature" class="sig-image">
+            {% endif %}
+            <div class="sig-line">
+                <div class="sig-name">Kevin Coetzee</div>
+                <div class="sig-company">Monograph Architects</div>
+                <div class="sig-title">PrArch, MD</div>
+                <div class="sig-date">{{ report_date }}</div>
+            </div>
+        </td>
+        <td class="sig-cell">
+            <div style="margin-bottom: 4px; font-size: 10px; color: #9A9A9A; text-transform: uppercase; letter-spacing: 1px;">Acknowledged by</div>
+            <div class="sig-line" style="margin-top: 90px;">
+                <div class="sig-name">________________________</div>
+                <div class="sig-company">Raubex Building</div>
+                <div class="sig-date">Date: _______________</div>
+            </div>
+        </td>
+    </tr>
+    </table>
+</div>
+
+<!-- ============ FOOTER ============ -->
+<div class="report-footer clearfix">
+    <div class="footer-left">
+        {% if logo_b64 %}
+        <img src="data:image/jpeg;base64,{{ logo_b64 }}" class="footer-logo" alt="Monograph">
+        {% endif %}
+        Power Park Student Housing - Phase 3 | Combined Report | {{ report_date }}
+    </div>
+    <div class="footer-right">
+        inspections.archpractice.co.za
+    </div>
+</div>
+
+</div><!-- /.page -->
+</body>
+</html>

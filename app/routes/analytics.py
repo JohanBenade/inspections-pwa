@@ -3,7 +3,7 @@ Analytics routes - Defect pattern dashboard for managers.
 Provides data-driven view of defect patterns across all units in a cycle.
 Access: Manager + Admin only.
 """
-from flask import Blueprint, render_template, session, request
+from flask import Blueprint, render_template, session, request, make_response
 from app.auth import require_manager
 from app.services.db import query_db
 
@@ -478,6 +478,37 @@ def reports():
 
 
 
+@analytics_bp.route('/report/combined')
+@require_manager
+def combined_report_view(tenant_id=None):
+    """Render combined bi-weekly report as HTML with toolbar."""
+    data = _build_combined_report_data()
+    if not data:
+        flash('Not enough data for combined report (need 2+ blocks)', 'error')
+        return redirect(url_for('analytics.reports'))
+    data['is_pdf'] = False
+    return render_template('analytics/report_combined.html', **data)
+
+
+@analytics_bp.route('/report/combined/pdf')
+@require_manager
+def combined_report_pdf(tenant_id=None):
+    """Generate combined bi-weekly report as PDF download."""
+    from weasyprint import HTML
+    data = _build_combined_report_data()
+    if not data:
+        flash('Not enough data for combined report', 'error')
+        return redirect(url_for('analytics.reports'))
+    data['is_pdf'] = True
+    html_str = render_template('analytics/report_combined.html', **data)
+    pdf_bytes = HTML(string=html_str, base_url=request.host_url).write_pdf()
+    resp = make_response(pdf_bytes)
+    resp.headers['Content-Type'] = 'application/pdf'
+    resp.headers['Content-Disposition'] = 'attachment; filename=Combined_Inspection_Report_{}.pdf'.format(
+        __import__('datetime').datetime.utcnow().strftime('%Y%m%d'))
+    return resp
+
+
 def _to_dicts(rows):
     """Convert sqlite3.Row results to plain dicts."""
     return [dict(r) for r in rows]
@@ -525,6 +556,270 @@ def report_pdf(cycle_id):
         mimetype='application/pdf',
         headers={'Content-Disposition': 'attachment; filename={}'.format(fname)}
     )
+
+
+def _build_combined_report_data():
+    """Gather data for combined bi-weekly report (all blocks/cycles).
+    Returns dict with all template variables, or None if no data.
+    All query results converted to plain dicts immediately.
+    """
+    import base64, os
+    from flask import current_app
+
+    tenant_id = session['tenant_id']
+
+    # --- Get all cycles ---
+    cycles = [dict(r) for r in query_db("""
+        SELECT id, cycle_number, block, floor, unit_start, unit_end, status, created_at
+        FROM inspection_cycle WHERE tenant_id = ? ORDER BY block
+    """, [tenant_id])]
+
+    if len(cycles) < 2:
+        return None
+
+    # --- Per-block data ---
+    blocks = {}
+    for cyc in cycles:
+        cid = cyc['id']
+        block_name = cyc.get('block') or 'Unknown'
+
+        units = [dict(r) for r in query_db("""
+            SELECT u.id, u.unit_number, u.block, u.floor, u.status as unit_status,
+                   i.id as insp_id, i.status as insp_status, i.inspector_name,
+                   i.inspection_date
+            FROM unit u
+            JOIN inspection i ON i.unit_id = u.id AND i.cycle_id = ?
+            WHERE u.tenant_id = ?
+            ORDER BY u.unit_number
+        """, [cid, tenant_id])]
+
+        unit_defects = [dict(r) for r in query_db("""
+            SELECT u.unit_number, u.id as unit_id, u.block, COUNT(d.id) as defect_count
+            FROM unit u
+            JOIN inspection i ON i.unit_id = u.id AND i.cycle_id = ?
+            LEFT JOIN defect d ON d.unit_id = u.id AND d.raised_cycle_id = ? AND d.status = 'open'
+            WHERE u.tenant_id = ?
+            GROUP BY u.id ORDER BY u.unit_number
+        """, [cid, cid, tenant_id])]
+
+        total_units = len(units)
+        total_defects = sum(u['defect_count'] for u in unit_defects)
+        avg_defects = round(total_defects / total_units, 1) if total_units > 0 else 0
+
+        # Items per unit (same for all cycles)
+        total_templates = query_db(
+            "SELECT COUNT(*) FROM item_template WHERE tenant_id = ?",
+            [tenant_id], one=True)[0]
+        excluded_count = query_db("""
+            SELECT COUNT(DISTINCT ii.item_template_id)
+            FROM inspection_item ii JOIN inspection i ON ii.inspection_id = i.id
+            WHERE i.cycle_id = ? AND i.tenant_id = ? AND ii.status = 'skipped'
+        """, [cid, tenant_id], one=True)[0]
+        items_per_unit = total_templates - excluded_count if excluded_count > 0 else 438
+        total_items = items_per_unit * total_units
+        defect_rate = round((total_defects / total_items) * 100, 1) if total_items > 0 else 0
+
+        insp_dates = [u['inspection_date'] for u in units if u.get('inspection_date')]
+        insp_date_display = min(insp_dates)[:10] if insp_dates else None
+
+        blocks[block_name] = {
+            'block': block_name,
+            'cycle_id': cid,
+            'total_units': total_units,
+            'total_defects': total_defects,
+            'avg_defects': avg_defects,
+            'items_per_unit': items_per_unit,
+            'defect_rate': defect_rate,
+            'unit_range': '{}-{}'.format(cyc.get('unit_start', ''), cyc.get('unit_end', '')),
+            'inspection_date': insp_date_display,
+            'units': units,
+            'unit_defects': unit_defects,
+        }
+
+    # Identify B5 and B6
+    block_names = sorted(blocks.keys())
+    b5 = blocks.get(block_names[0], {})
+    b6 = blocks.get(block_names[1], {})
+
+    # --- Combined totals ---
+    total_units = b5['total_units'] + b6['total_units']
+    total_defects = b5['total_defects'] + b6['total_defects']
+    avg_defects = round(total_defects / total_units, 1) if total_units > 0 else 0
+    items_per_unit = b5['items_per_unit']
+    total_items = items_per_unit * total_units
+    defect_rate = round((total_defects / total_items) * 100, 1) if total_items > 0 else 0
+    certified_count = sum(
+        1 for bl in blocks.values()
+        for u in bl['units'] if u.get('unit_status') == 'certified'
+    )
+
+    # --- Trend calculations ---
+    avg_change = round(((b6['avg_defects'] - b5['avg_defects']) / b5['avg_defects']) * 100, 1) if b5['avg_defects'] > 0 else 0
+    defect_change = round(((b6['total_defects'] - b5['total_defects']) / b5['total_defects']) * 100, 1) if b5['total_defects'] > 0 else 0
+    rate_change = round(b6['defect_rate'] - b5['defect_rate'], 1)
+    trend = {
+        'avg_change': avg_change,
+        'defect_change': defect_change,
+        'rate_change': rate_change,
+    }
+
+    # --- Combined unit defects (sorted by unit number) ---
+    all_unit_defects = []
+    for bl in blocks.values():
+        all_unit_defects.extend(bl['unit_defects'])
+    all_unit_defects.sort(key=lambda x: x['unit_number'])
+    max_defects = max((u['defect_count'] for u in all_unit_defects), default=1)
+
+    # Worst unit
+    worst_unit = max(all_unit_defects, key=lambda x: x['defect_count']) if all_unit_defects else {'unit_number': '-', 'defect_count': 0}
+    high_defect_units = sum(1 for u in all_unit_defects if u['defect_count'] > 30)
+    high_defect_pct = round((high_defect_units / total_units) * 100) if total_units > 0 else 0
+
+    # --- Area data (combined + per-block) ---
+    area_data_raw = [dict(r) for r in query_db("""
+        SELECT at2.area_name as area, COUNT(d.id) as defect_count
+        FROM defect d
+        JOIN item_template it ON d.item_template_id = it.id
+        JOIN category_template ct ON it.category_id = ct.id
+        JOIN area_template at2 ON ct.area_id = at2.id
+        WHERE d.tenant_id = ? AND d.status = 'open'
+        GROUP BY at2.area_name ORDER BY defect_count DESC
+    """, [tenant_id])]
+
+    # Compute donut SVG data
+    circumference = 439.82
+    offset = 0
+    for a in area_data_raw:
+        pct = a['defect_count'] / total_defects if total_defects > 0 else 0
+        a['pct'] = round(pct * 100, 1)
+        a['dash'] = round(pct * circumference, 2)
+        a['offset'] = round(offset, 2)
+        offset += a['dash']
+
+    # Area comparison (per block)
+    area_by_block_raw = [dict(r) for r in query_db("""
+        SELECT at2.area_name as area, ic.block, COUNT(*) as cnt
+        FROM defect d
+        JOIN item_template it ON d.item_template_id = it.id
+        JOIN category_template ct ON it.category_id = ct.id
+        JOIN area_template at2 ON ct.area_id = at2.id
+        JOIN inspection_cycle ic ON d.raised_cycle_id = ic.id
+        WHERE d.tenant_id = ? AND d.status = 'open'
+        GROUP BY at2.area_name, ic.block ORDER BY cnt DESC
+    """, [tenant_id])]
+
+    area_block_map = {}
+    for r in area_by_block_raw:
+        if r['area'] not in area_block_map:
+            area_block_map[r['area']] = {}
+        area_block_map[r['area']][r['block']] = r['cnt']
+
+    # Find max for bar scaling
+    all_area_counts = []
+    for area_counts in area_block_map.values():
+        all_area_counts.extend(area_counts.values())
+    max_area_count = max(all_area_counts) if all_area_counts else 1
+
+    area_compare = []
+    for a in area_data_raw:
+        area_name = a['area']
+        b5_count = area_block_map.get(area_name, {}).get(block_names[0], 0)
+        b6_count = area_block_map.get(area_name, {}).get(block_names[1], 0)
+        area_compare.append({
+            'name': area_name,
+            'b5_count': b5_count,
+            'b6_count': b6_count,
+            'b5_pct': round((b5_count / max_area_count) * 100, 1) if max_area_count > 0 else 0,
+            'b6_pct': round((b6_count / max_area_count) * 100, 1) if max_area_count > 0 else 0,
+        })
+
+    # --- Top defect types comparison ---
+    defect_by_block_raw = [dict(r) for r in query_db("""
+        SELECT d.original_comment as description, ic.block, COUNT(*) as cnt
+        FROM defect d
+        JOIN inspection_cycle ic ON d.raised_cycle_id = ic.id
+        WHERE d.tenant_id = ? AND d.status = 'open'
+        GROUP BY d.original_comment, ic.block ORDER BY cnt DESC
+    """, [tenant_id])]
+
+    defect_map = {}
+    for r in defect_by_block_raw:
+        desc = r['description']
+        if desc not in defect_map:
+            defect_map[desc] = {'description': desc, 'total': 0, 'blocks': {}}
+        defect_map[desc]['total'] += r['cnt']
+        defect_map[desc]['blocks'][r['block']] = r['cnt']
+
+    top_defects_compare = sorted(defect_map.values(), key=lambda x: x['total'], reverse=True)[:15]
+    max_defect_total = top_defects_compare[0]['total'] if top_defects_compare else 1
+    for d in top_defects_compare:
+        d['b5_count'] = d['blocks'].get(block_names[0], 0)
+        d['b6_count'] = d['blocks'].get(block_names[1], 0)
+        d['bar_pct'] = round((d['total'] / max_defect_total) * 100, 1)
+
+    # --- Unit summary table ---
+    unit_table = []
+    all_unit_map = {}
+    for bl in blocks.values():
+        for u in bl['units']:
+            all_unit_map[u['unit_number']] = u
+
+    for ud in all_unit_defects:
+        info = all_unit_map.get(ud['unit_number'], {})
+        variance = round(ud['defect_count'] - avg_defects, 1)
+        unit_rate = round((ud['defect_count'] / items_per_unit) * 100, 1) if items_per_unit > 0 else 0
+        unit_table.append({
+            'unit_number': ud['unit_number'],
+            'block': ud.get('block', info.get('block', '')),
+            'inspector_name': info.get('inspector_name', ''),
+            'defect_count': ud['defect_count'],
+            'defect_rate': unit_rate,
+            'variance': variance,
+            'insp_status': info.get('insp_status', 'not_started'),
+        })
+
+    # --- Load images as base64 ---
+    logo_b64 = ''
+    sig_b64 = ''
+    try:
+        img_dir = os.path.join(current_app.static_folder, 'images')
+        logo_path = os.path.join(img_dir, 'monograph_logo.jpg')
+        sig_path = os.path.join(img_dir, 'kc_signature.png')
+        if os.path.exists(logo_path):
+            with open(logo_path, 'rb') as fimg:
+                logo_b64 = base64.b64encode(fimg.read()).decode()
+        if os.path.exists(sig_path):
+            with open(sig_path, 'rb') as fimg:
+                sig_b64 = base64.b64encode(fimg.read()).decode()
+    except Exception:
+        pass
+
+    area_colours = ['#C8963E', '#3D6B8E', '#4A7C59', '#C44D3F', '#7B6B8D', '#5A8A7A', '#B07D4B']
+
+    return {
+        'total_units': total_units,
+        'total_defects': total_defects,
+        'avg_defects': avg_defects,
+        'items_per_unit': items_per_unit,
+        'defect_rate': defect_rate,
+        'certified_count': certified_count,
+        'b5': b5,
+        'b6': b6,
+        'trend': trend,
+        'area_data': area_data_raw,
+        'area_compare': area_compare,
+        'area_colours': area_colours,
+        'top_defects_compare': top_defects_compare,
+        'unit_defects': all_unit_defects,
+        'max_defects': max_defects,
+        'worst_unit': worst_unit,
+        'high_defect_units': high_defect_units,
+        'high_defect_pct': high_defect_pct,
+        'unit_table': unit_table,
+        'logo_b64': logo_b64,
+        'sig_b64': sig_b64,
+        'report_date': __import__('datetime').datetime.utcnow().strftime('%d %B %Y'),
+    }
 
 
 def _build_report_data(cycle_id):
