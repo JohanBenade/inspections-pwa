@@ -17,6 +17,7 @@
             <label for="cycle" class="text-sm text-gray-600 whitespace-nowrap">Cycle:</label>
             <select name="cycle" id="cycle" onchange="this.form.submit()"
                     class="block rounded-lg border-gray-300 shadow-sm text-sm px-3 py-2 bg-white border focus:ring-2 focus:ring-primary focus:border-primary">
+                <option value="all" {% if selected_cycle_id == 'all' %}selected{% endif %}>All (Project Overview)</option>
                 {% for c in cycles %}
                 <option value="{{ c.id }}" {% if c.id == selected_cycle_id %}selected{% endif %}>
                     Cycle {{ c.cycle_number }} ({{ c.unit_start }}-{{ c.unit_end }}) {% if c.status == 'active' %} - Active{% endif %}
@@ -26,6 +27,9 @@
         </form>
         {% endif %}
     </div>
+    {% if context_header %}
+    <div class="text-sm text-gray-500 -mt-2 mb-4">{{ context_header }}</div>
+    {% endif %}
 
     {% if not has_data %}
     <div class="bg-white rounded-lg shadow p-8 text-center text-gray-500">
@@ -52,6 +56,30 @@
             <div class="text-sm text-gray-500 mt-1">worst unit ({{ summary.worst_count }} defects)</div>
         </div>
     </div>
+
+    {% if is_all_view and block_comparison %}
+    <div class="grid grid-cols-1 lg:grid-cols-{{ block_comparison|length }} gap-4 mb-6">
+        {% for b in block_comparison %}
+        <div class="bg-white rounded-lg shadow p-5 border-l-4 {% if loop.index == 1 %}border-amber-500{% else %}border-blue-500{% endif %}">
+            <h3 class="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-3">{{ b.block }}</h3>
+            <div class="grid grid-cols-3 gap-4">
+                <div>
+                    <div class="text-2xl font-bold text-gray-900">{{ b.units }}</div>
+                    <div class="text-xs text-gray-500">units</div>
+                </div>
+                <div>
+                    <div class="text-2xl font-bold {% if b.defects > 400 %}text-red-600{% else %}text-amber-600{% endif %}">{{ b.defects }}</div>
+                    <div class="text-xs text-gray-500">defects</div>
+                </div>
+                <div>
+                    <div class="text-2xl font-bold text-gray-900">{{ b.avg_per_unit }}</div>
+                    <div class="text-xs text-gray-500">avg/unit</div>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
 
     <!-- Charts Row: Area Donut + Category Bars -->
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
