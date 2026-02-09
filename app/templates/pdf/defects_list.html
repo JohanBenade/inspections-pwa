@@ -426,7 +426,7 @@
 </div>
 {% endif %}
 
-
+{% if not is_pdf|default(true) %}<div class="html-view-wrapper">{% endif %}
 
     <div class="letterhead">
         <table class="letterhead-table">
