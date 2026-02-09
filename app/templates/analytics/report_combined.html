@@ -400,9 +400,9 @@ body {
     <a href="{{ url_for('analytics.reports') }}">&#8592; Back to Reports</a>
     <select onchange="if(this.value) window.location.href=this.value" style="margin-left: 12px; padding: 4px 8px; font-size: 12px; border: 1px solid #ddd; border-radius: 4px; font-family: 'DM Sans', sans-serif;">
         {% for opt in cycle_options %}
-        <option value="{{ url_for('analytics.report', cycle_id=opt.id) }}">{{ opt.label }}</option>
+        <option value="{{ url_for('analytics.report_view', cycle_id=opt.id) }}">{{ opt.label }}</option>
         {% endfor %}
-        <option value="{{ url_for('analytics.combined_report') }}" selected>All (Project Overview)</option>
+        <option value="{{ url_for('analytics.combined_report_view') }}" selected>All (Project Overview)</option>
     </select>
     <a href="#" onclick="window.print(); return false;" style="margin-left: 12px;">&#128424; Print</a>
     <a href="{{ url_for('analytics.combined_report_pdf') }}" class="btn-gold" style="float: right;">&#11015; Download PDF</a>

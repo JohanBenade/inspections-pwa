@@ -423,9 +423,9 @@ body {
     <a href="{{ url_for('analytics.reports') }}" class="btn-back">Back</a>
     <select onchange="if(this.value) window.location.href=this.value" style="margin-left: 8px; padding: 4px 8px; font-size: 12px; border: 1px solid #ddd; border-radius: 4px; font-family: 'DM Sans', sans-serif;">
         {% for opt in cycle_options %}
-        <option value="{{ url_for('analytics.report', cycle_id=opt.id) }}" {% if opt.id == cycle.id %}selected{% endif %}>{{ opt.label }}</option>
+        <option value="{{ url_for('analytics.report_view', cycle_id=opt.id) }}" {% if opt.id == cycle.id %}selected{% endif %}>{{ opt.label }}</option>
         {% endfor %}
-        <option value="{{ url_for('analytics.combined_report') }}">All (Project Overview)</option>
+        <option value="{{ url_for('analytics.combined_report_view') }}">All (Project Overview)</option>
     </select>
     <button onclick="window.print()" class="btn-print">Print</button>
     <a href="{{ url_for('analytics.report_pdf', cycle_id=cycle.id) }}" class="btn-pdf">Download PDF</a>
