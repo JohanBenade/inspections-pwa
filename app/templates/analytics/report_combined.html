@@ -617,10 +617,54 @@ body {
     {% endif %}
 </div>
 
-<!-- ============ 03: TOP DEFECT TYPES - TREND ANALYSIS ============ -->
-<div class="section" style="page-break-before: always;">
+<!-- ============ 03: DEFECTS BY CATEGORY (TRADE) ============ -->
+<div class="section">
     <div class="section-header">
         <span class="section-number">03</span>
+        <span class="section-title">Defects by Category (Trade): Batch Comparison</span>
+    </div>
+
+    <div class="clearfix">
+        <div style="float: left; width: 100%;">
+            <table class="grouped-bar-table">
+            {% for trade in trade_compare %}
+            <tr>
+                <td class="bar-label-cell" rowspan="2">{{ trade.name }}</td>
+                <td class="bar-track">
+                    <div class="bar-fill bar-b5" style="width: {{ trade.b5_pct }}%;"></div>
+                    <span class="bar-count-label">{{ trade.b5_count }}</span>
+                </td>
+            </tr>
+            <tr>
+                <td class="bar-track">
+                    <div class="bar-fill bar-b6" style="width: {{ trade.b6_pct }}%;"></div>
+                    <span class="bar-count-label">{{ trade.b6_count }}</span>
+                </td>
+            </tr>
+            <tr><td colspan="2" style="height: 10px;"></td></tr>
+            {% endfor %}
+            </table>
+        </div>
+    </div>
+
+    <table class="legend-table">
+    <tr>
+        <td><span class="legend-swatch" style="background: #C8963E;"></span><span class="legend-text">Block 5</span></td>
+        <td style="padding-left: 16px;"><span class="legend-swatch" style="background: #3D6B8E;"></span><span class="legend-text">Block 6</span></td>
+    </tr>
+    </table>
+
+    {% if trade_compare %}
+    <div class="callout callout-gold">
+        <strong>{{ trade_compare[0].name }}</strong> accounts for the highest trade concentration with {{ trade_compare[0].total }} defects across both blocks.
+    </div>
+    {% endif %}
+</div>
+
+<!-- ============ 04: TOP DEFECT TYPES - TREND ANALYSIS ============ -->
+<div class="section" style="page-break-before: always;">
+    <div class="section-header">
+        <span class="section-number">04</span>
         <span class="section-title">Most Common Defect Types: Trend Analysis</span>
     </div>
 
@@ -675,10 +719,10 @@ body {
     {% endif %}
 </div>
 
-<!-- ============ 04: DEFECT COUNT BY UNIT ============ -->
+<!-- ============ 05: DEFECT COUNT BY UNIT ============ -->
 <div class="section">
     <div class="section-header">
-        <span class="section-number">04</span>
+        <span class="section-number">05</span>
         <span class="section-title">Defect Count by Unit</span>
     </div>
 
@@ -739,10 +783,10 @@ body {
     </div>
 </div>
 
-<!-- ============ 05: UNIT SUMMARY TABLE ============ -->
+<!-- ============ 06: UNIT SUMMARY TABLE ============ -->
 <div class="section" style="page-break-before: always;">
     <div class="section-header">
-        <span class="section-number">05</span>
+        <span class="section-number">06</span>
         <span class="section-title">Unit Summary Table</span>
     </div>
 

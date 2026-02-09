@@ -731,6 +731,40 @@ def _build_combined_report_data():
             'b6_pct': round((b6_count / max_area_count) * 100, 1) if max_area_count > 0 else 0,
         })
 
+    # --- Trade comparison (per block) ---
+    trade_by_block_raw = [dict(r) for r in query_db("""
+        SELECT ct.category_name as trade, ic.block, COUNT(*) as cnt
+        FROM defect d
+        JOIN item_template it ON d.item_template_id = it.id
+        JOIN category_template ct ON it.category_id = ct.id
+        JOIN inspection_cycle ic ON d.raised_cycle_id = ic.id
+        WHERE d.tenant_id = ? AND d.status = 'open'
+        GROUP BY ct.category_name, ic.block ORDER BY cnt DESC
+    """, [tenant_id])]
+
+    trade_block_map = {}
+    for r in trade_by_block_raw:
+        name = r['trade'].upper()
+        if name not in trade_block_map:
+            trade_block_map[name] = {}
+        trade_block_map[name][r['block']] = r['cnt']
+
+    trade_totals = sorted(trade_block_map.items(), key=lambda x: sum(x[1].values()), reverse=True)
+    max_trade_count = max((v for counts in trade_block_map.values() for v in counts.values()), default=1)
+
+    trade_compare = []
+    for name, counts in trade_totals:
+        b5c = counts.get(block_names[0], 0)
+        b6c = counts.get(block_names[1], 0)
+        trade_compare.append({
+            'name': name,
+            'total': b5c + b6c,
+            'b5_count': b5c,
+            'b6_count': b6c,
+            'b5_pct': round((b5c / max_trade_count) * 100, 1) if max_trade_count > 0 else 0,
+            'b6_pct': round((b6c / max_trade_count) * 100, 1) if max_trade_count > 0 else 0,
+        })
+
     # --- Top defect types comparison ---
     defect_by_block_raw = [dict(r) for r in query_db("""
         SELECT d.original_comment as description, ic.block, COUNT(*) as cnt
@@ -833,6 +867,7 @@ def _build_combined_report_data():
         'trend': trend,
         'area_data': area_data_raw,
         'area_compare': area_compare,
+        'trade_compare': trade_compare,
         'area_colours': area_colours,
         'top_defects_compare': top_defects_compare,
         'unit_defects': all_unit_defects,
@@ -975,6 +1010,21 @@ def _build_report_data(cycle_id):
         a['offset'] = round(offset, 2)
         offset += a['dash']
 
+    # --- Defects by category (trade) ---
+    trade_data = _to_dicts(query_db("""
+        SELECT ct.category_name as trade, COUNT(d.id) as defect_count
+        FROM defect d
+        JOIN item_template it ON d.item_template_id = it.id
+        JOIN category_template ct ON it.category_id = ct.id
+        WHERE d.raised_cycle_id = ? AND d.tenant_id = ? AND d.status = 'open'
+        GROUP BY ct.category_name
+        ORDER BY defect_count DESC
+    """, [cycle_id, tenant_id]))
+
+    for td in trade_data:
+        td['trade'] = td['trade'].upper()
+        td['pct'] = round((td['defect_count'] / total_defects) * 100, 1) if total_defects > 0 else 0
+
     # --- Top defect types ---
     top_defects = _to_dicts(query_db("""
         SELECT original_comment as description, COUNT(*) as count
@@ -1055,6 +1105,7 @@ def _build_report_data(cycle_id):
         'pipeline': pipeline,
         'pipeline_dates': pipeline_dates,
         'area_data': area_data,
+        'trade_data': trade_data,
         'top_defects': top_defects,
         'unit_table': unit_table,
         'max_defects': max_defects,

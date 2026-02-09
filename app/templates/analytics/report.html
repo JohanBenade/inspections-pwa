@@ -614,10 +614,39 @@ body {
     {% endif %}
 </div>
 
-<!-- 03 TOP DEFECT TYPES -->
+<!-- 03 DEFECTS BY CATEGORY (TRADE) -->
 <div class="section">
     <div class="section-header">
         <span class="section-num">03</span>
+        <span class="section-title">Defects by Category (Trade)</span>
+    </div>
+    <div class="section-divider"></div>
+    <div style="width: 65%;">
+        {% for t in trade_data %}
+        <div class="bar-label-row clearfix">
+            <span class="bar-label">{{ t.trade }}</span>
+            <span class="bar-value">{{ t.defect_count }}<span class="bar-pct"> ({{ t.pct }}%)</span></span>
+        </div>
+        <div class="bar-track">
+            <div class="bar-fill" style="width: {{ (t.defect_count / trade_data[0].defect_count * 100) if trade_data[0].defect_count > 0 else 0 }}%; background: {{ area_colours[loop.index0 % area_colours|length] }};"></div>
+        </div>
+        {% if not loop.last %}<div style="height: 6px;"></div>{% endif %}
+        {% endfor %}
+    </div>
+
+    {% if trade_data|length >= 2 %}
+    {% set top_two_trades = trade_data[:2] %}
+    {% set combined_trade_pct = top_two_trades[0].pct + top_two_trades[1].pct %}
+    <div class="callout callout-gold" style="margin-top: 16px;">
+        <strong>Key finding:</strong> {{ trade_data[0].trade }} and {{ trade_data[1].trade }} account for {{ combined_trade_pct }}% of all defects by trade.
+    </div>
+    {% endif %}
+</div>
+
+<!-- 04 TOP DEFECT TYPES -->
+<div class="section">
+    <div class="section-header">
+        <span class="section-num">04</span>
         <span class="section-title">Most Common Defect Types</span>
     </div>
     <div class="section-divider"></div>
@@ -654,10 +683,10 @@ body {
     {% endif %}
 </div>
 
-<!-- 04 DEFECT COUNT BY UNIT -->
+<!-- 05 DEFECT COUNT BY UNIT -->
 <div class="section">
     <div class="section-header">
-        <span class="section-num">04</span>
+        <span class="section-num">05</span>
         <span class="section-title">Defect Count by Unit</span>
     </div>
     <div class="section-divider"></div>
@@ -698,10 +727,10 @@ body {
     </div>
 </div>
 
-<!-- 05 UNIT SUMMARY TABLE -->
+<!-- 06 UNIT SUMMARY TABLE -->
 <div class="section" style="page-break-before: auto;">
     <div class="section-header">
-        <span class="section-num">05</span>
+        <span class="section-num">06</span>
         <span class="section-title">Unit Summary Table</span>
     </div>
     <div class="section-divider"></div>
