@@ -409,6 +409,11 @@
         .btn-back { background: #F5F3EE; color: #1A1A1A; border: 1px solid #E8E6E1; }
         .btn-back:hover { background: #E8E6E1; }
         @media print { .toolbar { display: none !important; } }
+        .html-view-wrapper {
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 40px 20px;
+        }
     
     </style>
 </head>
@@ -634,5 +639,6 @@
             <p class="signatory-title">PrArch; MD</p>
         </div>
     </div>
+{% if not is_pdf|default(true) %}</div>{% endif %}
 </body>
 </html>
