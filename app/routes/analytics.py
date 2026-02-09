@@ -773,8 +773,35 @@ def _build_combined_report_data():
             'defect_count': ud['defect_count'],
             'defect_rate': unit_rate,
             'variance': variance,
+            'floor': info.get('floor', None),
             'insp_status': info.get('insp_status', 'not_started'),
         })
+
+    # --- Compute median ---
+    defect_counts_sorted = sorted([u['defect_count'] for u in unit_table])
+    n_uts = len(defect_counts_sorted)
+    if n_uts == 0:
+        median_defects = 0
+    elif n_uts % 2 == 0:
+        median_defects = (defect_counts_sorted[n_uts // 2 - 1] + defect_counts_sorted[n_uts // 2]) / 2
+    else:
+        median_defects = defect_counts_sorted[n_uts // 2]
+    median_defects = round(median_defects, 1)
+
+    total_items = items_per_unit * total_units
+    floor_map = {0: 'Ground', 1: '1st', 2: '2nd', 3: '3rd'}
+
+    # --- Cycle options for report selector ---
+    cycle_opts_rows = query_db(
+        "SELECT id, cycle_number, block, unit_start, unit_end FROM inspection_cycle WHERE tenant_id=? ORDER BY block",
+        [tenant], one=False
+    )
+    cycle_options = []
+    if cycle_opts_rows:
+        for cr in cycle_opts_rows:
+            cr = dict(cr)
+            label = "Cycle %s (%s - %s)" % (cr['cycle_number'], cr['unit_start'], cr['unit_end'])
+            cycle_options.append({'id': cr['id'], 'label': label})
 
     # --- Load images as base64 ---
     logo_b64 = ''
@@ -814,6 +841,10 @@ def _build_combined_report_data():
         'high_defect_units': high_defect_units,
         'high_defect_pct': high_defect_pct,
         'unit_table': unit_table,
+        'median_defects': median_defects,
+        'total_items': total_items,
+        'floor_map': floor_map,
+        'cycle_options': cycle_options,
         'logo_b64': logo_b64,
         'sig_b64': sig_b64,
         'report_date': __import__('datetime').datetime.utcnow().strftime('%d %B %Y'),
@@ -980,6 +1011,18 @@ def _build_report_data(cycle_id):
     # Floor display mapping
     floor_map = {0: 'Ground', 1: '1st', 2: '2nd', 3: '3rd'}
 
+    # --- Cycle options for report selector ---
+    cycle_opts_rows = query_db(
+        "SELECT id, cycle_number, block, unit_start, unit_end FROM inspection_cycle WHERE tenant_id=? ORDER BY block",
+        [tenant], one=False
+    )
+    cycle_options = []
+    if cycle_opts_rows:
+        for cr in cycle_opts_rows:
+            cr = dict(cr)
+            label = "Cycle %s (%s - %s)" % (cr['cycle_number'], cr['unit_start'], cr['unit_end'])
+            cycle_options.append({'id': cr['id'], 'label': label})
+
     # --- Load images as base64 ---
     logo_b64 = ''
     sig_b64 = ''
@@ -1016,6 +1059,7 @@ def _build_report_data(cycle_id):
         'unit_table': unit_table,
         'max_defects': max_defects,
         'floor_map': floor_map,
+        'cycle_options': cycle_options,
         'logo_b64': logo_b64,
         'sig_b64': sig_b64,
         'area_colours': report_area_colours,

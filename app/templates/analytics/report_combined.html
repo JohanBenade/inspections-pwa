@@ -117,21 +117,21 @@ body {
 
 /* -- SECTION HEADERS -- */
 .section { margin-bottom: 28px; page-break-inside: avoid; }
-.section-header { margin-bottom: 14px; border-bottom: 1px solid #E5E5E5; padding-bottom: 8px; }
+.section-header { margin-bottom: 14px; border-bottom: 1px solid #C8963E; padding-bottom: 8px; }
 .section-number {
     font-family: 'DM Sans', sans-serif;
     font-size: 11px;
-    font-weight: 700;
+    font-weight: 600;
+    letter-spacing: 3px;
     color: #C8963E;
-    letter-spacing: 2px;
     text-transform: uppercase;
-    display: block;
-    margin-bottom: 2px;
+    margin-right: 10px;
 }
 .section-title {
     font-family: 'Cormorant Garamond', Georgia, serif;
-    font-size: 20px;
-    font-weight: 400;
+    font-size: 22px;
+    font-weight: 300;
+    letter-spacing: 0.5px;
     color: #0A0A0A;
 }
 
@@ -145,14 +145,19 @@ body {
     width: 16.66%;
 }
 .kpi-value {
-    font-family: 'DM Sans', sans-serif;
-    font-size: 22px;
-    font-weight: 700;
+    font-family: 'Cormorant Garamond', Georgia, serif;
+    font-size: 28px;
+    font-weight: 300;
     color: #0A0A0A;
-    line-height: 1.2;
+    line-height: 1;
 }
 .kpi-value-red { color: #C44D3F; }
 .kpi-value-green { color: #4A7C59; }
+.kpi-sub {
+    font-size: 9px;
+    color: #9A9A9A;
+    margin-top: 3px;
+}
 .kpi-label {
     font-size: 9px;
     color: #6B6B6B;
@@ -280,8 +285,8 @@ body {
 .unit-bar-table td { vertical-align: bottom; text-align: center; padding: 0 2px; }
 .unit-bar {
     display: inline-block;
-    width: 22px;
-    border-radius: 2px 2px 0 0;
+    width: 36px;
+    border-radius: 3px 3px 0 0;
     min-height: 2px;
 }
 .unit-bar-label {
@@ -393,6 +398,12 @@ body {
 {% if not is_pdf %}
 <div class="toolbar">
     <a href="{{ url_for('analytics.reports') }}">&#8592; Back to Reports</a>
+    <select onchange="if(this.value) window.location.href=this.value" style="margin-left: 12px; padding: 4px 8px; font-size: 12px; border: 1px solid #ddd; border-radius: 4px; font-family: 'DM Sans', sans-serif;">
+        {% for opt in cycle_options %}
+        <option value="{{ url_for('analytics.report', cycle_id=opt.id) }}">{{ opt.label }}</option>
+        {% endfor %}
+        <option value="{{ url_for('analytics.combined_report') }}" selected>All (Project Overview)</option>
+    </select>
     <a href="#" onclick="window.print(); return false;" style="margin-left: 12px;">&#128424; Print</a>
     <a href="{{ url_for('analytics.combined_report_pdf') }}" class="btn-gold" style="float: right;">&#11015; Download PDF</a>
 </div>
@@ -421,45 +432,41 @@ body {
 </div>
 
 <!-- ============ KPI CARDS ============ -->
-<table class="kpi-table">
-<tr>
+<table class="kpi-table"><tr>
     <td class="kpi-cell">
-        <div class="kpi-value">{{ total_units }}</div>
         <div class="kpi-label">Units Inspected</div>
-        <div class="kpi-trend trend-neutral">{{ b5.total_units }} + {{ b6.total_units }}</div>
+        <div class="kpi-value">{{ total_units }}</div>
+        <div class="kpi-sub">B5: {{ b5.total_units }} + B6: {{ b6.total_units }}</div>
     </td>
     <td class="kpi-cell">
+        <div class="kpi-label">Total Defects</div>
         <div class="kpi-value kpi-value-red">{{ total_defects }}</div>
-        <div class="kpi-label">Open Defects</div>
-        <div class="kpi-trend {% if trend.defect_change > 0 %}trend-up{% else %}trend-down{% endif %}">
-            {% if trend.defect_change > 0 %}&#9650;{% else %}&#9660;{% endif %} {{ trend.defect_change }}% B5&#8594;B6
-        </div>
+        <div class="kpi-sub">across all areas</div>
+        <div class="kpi-trend {% if trend.defect_change > 0 %}trend-up{% else %}trend-down{% endif %}">{% if trend.defect_change > 0 %}&#9650;{% else %}&#9660;{% endif %} {{ trend.defect_change }}% B5&#8594;B6</div>
     </td>
     <td class="kpi-cell">
-        <div class="kpi-value">{{ avg_defects }}</div>
         <div class="kpi-label">Avg Defects / Unit</div>
-        <div class="kpi-trend {% if trend.avg_change > 0 %}trend-up{% else %}trend-down{% endif %}">
-            {% if trend.avg_change > 0 %}&#9650;{% else %}&#9660;{% endif %} {{ trend.avg_change }}% B5&#8594;B6
-        </div>
+        <div class="kpi-value">{{ avg_defects }}</div>
+        <div class="kpi-sub">median: {{ median_defects }}</div>
+        <div class="kpi-trend {% if trend.avg_change > 0 %}trend-up{% else %}trend-down{% endif %}">{% if trend.avg_change > 0 %}&#9650;{% else %}&#9660;{% endif %} {{ trend.avg_change }}% B5&#8594;B6</div>
     </td>
     <td class="kpi-cell">
-        <div class="kpi-value">{{ items_per_unit }}</div>
-        <div class="kpi-label">Items / Unit</div>
+        <div class="kpi-label">Items Inspected</div>
+        <div class="kpi-value">{{ '{:,}'.format(total_items) }}</div>
+        <div class="kpi-sub">{{ items_per_unit }} per unit x {{ total_units }}</div>
     </td>
     <td class="kpi-cell">
-        <div class="kpi-value">{{ defect_rate }}%</div>
         <div class="kpi-label">Defect Rate</div>
-        <div class="kpi-trend {% if trend.rate_change > 0 %}trend-up{% else %}trend-down{% endif %}">
-            {% if trend.rate_change > 0 %}&#9650;{% else %}&#9660;{% endif %} {{ trend.rate_change }}pp B5&#8594;B6
-        </div>
+        <div class="kpi-value">{{ defect_rate }}%</div>
+        <div class="kpi-sub">items flagged</div>
+        <div class="kpi-trend {% if trend.rate_change > 0 %}trend-up{% else %}trend-down{% endif %}">{% if trend.rate_change > 0 %}&#9650;{% else %}&#9660;{% endif %} {{ trend.rate_change }}pp B5&#8594;B6</div>
     </td>
     <td class="kpi-cell">
-        <div class="kpi-value">{{ certified_count }}</div>
         <div class="kpi-label">Certified</div>
-        <div class="kpi-trend trend-neutral">{{ total_units }} total</div>
+        <div class="kpi-value">{{ certified_count }}</div>
+        <div class="kpi-sub">of {{ total_units }} total</div>
     </td>
-</tr>
-</table>
+</tr></table>
 
 <!-- ============ 01: BATCH COMPARISON ============ -->
 <div class="section">
@@ -725,10 +732,11 @@ body {
     <tr>
         <th>Unit</th>
         <th>Block</th>
-        <th class="text-center">Defects</th>
-        <th class="text-center">Rate</th>
-        <th class="text-center">Variance</th>
-        <th>Status</th>
+        <th>Floor</th>
+        <th class="text-right">Defects</th>
+        <th class="text-right">Rate</th>
+        <th class="text-right">Variance</th>
+        <th class="text-center">Status</th>
     </tr>
     </thead>
     <tbody>
@@ -742,15 +750,39 @@ body {
             <span class="badge-b6">B6</span>
             {% endif %}
         </td>
-        <td class="text-center font-bold" style="{% if u.defect_count > 30 %}color: #C44D3F;{% elif u.defect_count <= 20 %}color: #4A7C59;{% else %}color: #C8963E;{% endif %}">{{ u.defect_count }}</td>
-        <td class="text-center">{{ u.defect_rate }}%</td>
-        <td class="text-center" style="{% if u.variance > 0 %}color: #C44D3F;{% elif u.variance < 0 %}color: #4A7C59;{% endif %}">
+        <td>{{ floor_map.get(u.floor, u.floor) if u.floor is not none else '' }}</td>
+        <td class="text-right font-bold" style="{% if u.defect_count > 30 %}color: #C44D3F;{% elif u.defect_count <= 20 %}color: #4A7C59;{% else %}color: #C8963E;{% endif %}">{{ u.defect_count }}</td>
+        <td class="text-right">{{ u.defect_rate }}%</td>
+        <td class="text-right" style="{% if u.variance > 0 %}color: #C44D3F;{% elif u.variance < 0 %}color: #4A7C59;{% endif %}">
             {% if u.variance > 0 %}+{% endif %}{{ u.variance }}
         </td>
-        <td style="font-size: 9px; text-transform: capitalize;">{{ u.insp_status | replace('_', ' ') }}</td>
+        <td class="text-center">
+            {% if u.insp_status == 'reviewed' %}
+            <span class="status-badge badge-reviewed">Reviewed</span>
+            {% elif u.insp_status == 'approved' %}
+            <span class="status-badge badge-approved">Approved</span>
+            {% elif u.insp_status in ['certified', 'pending_followup'] %}
+            <span class="status-badge badge-approved">{{ u.insp_status|replace('_', ' ')|title }}</span>
+            {% elif u.insp_status == 'submitted' %}
+            <span class="status-badge badge-submitted">Submitted</span>
+            {% else %}
+            <span class="status-badge" style="background: #F5F3EE; color: #6B6B6B;">{{ (u.insp_status or 'Not Started')|replace('_', ' ')|title }}</span>
+            {% endif %}
+        </td>
     </tr>
     {% endfor %}
     </tbody>
+    <tfoot>
+    <tr>
+        <td colspan="3" class="font-bold">TOTAL / AVERAGE</td>
+        <td class="text-right font-bold">{{ total_defects }}</td>
+        <td class="text-right font-bold">{{ defect_rate }}%</td>
+        <td class="text-right" style="color: #9A9A9A;">-</td>
+        <td class="text-center">
+            <span class="status-badge" style="background: rgba(61,107,142,0.12); color: #3D6B8E;">{{ total_units }} units</span>
+        </td>
+    </tr>
+    </tfoot>
     </table>
 </div>
 
