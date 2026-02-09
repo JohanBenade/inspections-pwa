@@ -47,6 +47,129 @@ def dashboard():
                                cycles=[], selected_cycle_id=None,
                                has_data=False)
 
+    # --- ALL MODE: Project-wide aggregate view ---
+    if selected_cycle_id == 'all':
+        total_units = query_db(
+            "SELECT COUNT(DISTINCT u.id) FROM unit u JOIN inspection i ON i.unit_id = u.id WHERE i.tenant_id = ?",
+            [tenant_id], one=True)[0]
+        total_defects = query_db(
+            "SELECT COUNT(*) FROM defect WHERE tenant_id = ? AND status = 'open'",
+            [tenant_id], one=True)[0]
+        avg_defects = round(total_defects / total_units, 1) if total_units > 0 else 0
+
+        unit_defect_counts = query_db(
+            "SELECT u.unit_number, COUNT(*) as cnt FROM defect d JOIN unit u ON d.unit_id = u.id "
+            "WHERE d.tenant_id = ? AND d.status = 'open' GROUP BY d.unit_id ORDER BY cnt DESC",
+            [tenant_id])
+        worst_unit = unit_defect_counts[0] if unit_defect_counts else None
+        best_unit = unit_defect_counts[-1] if unit_defect_counts else None
+
+        summary = {
+            'total_units': total_units,
+            'total_defects': total_defects,
+            'avg_defects': avg_defects,
+            'min_defects': best_unit['cnt'] if best_unit else 0,
+            'max_defects': worst_unit['cnt'] if worst_unit else 0,
+            'worst_unit': worst_unit['unit_number'] if worst_unit else '-',
+            'worst_count': worst_unit['cnt'] if worst_unit else 0,
+        }
+
+        # Block comparison
+        block_comparison = [dict(r) for r in query_db(
+            "SELECT ic.block, COUNT(DISTINCT i.unit_id) as units, "
+            "COUNT(d.id) as defects, "
+            "ROUND(COUNT(d.id) * 1.0 / COUNT(DISTINCT i.unit_id), 1) as avg_per_unit "
+            "FROM inspection_cycle ic "
+            "JOIN inspection i ON i.cycle_id = ic.id "
+            "LEFT JOIN defect d ON d.raised_cycle_id = ic.id AND d.status = 'open' "
+            "WHERE ic.tenant_id = ? GROUP BY ic.block ORDER BY ic.block",
+            [tenant_id])]
+
+        # Area data
+        by_area = query_db(
+            "SELECT at.area_name, COUNT(*) as cnt "
+            "FROM defect d JOIN item_template it ON d.item_template_id = it.id "
+            "JOIN category_template ct ON it.category_id = ct.id "
+            "JOIN area_template at ON ct.area_id = at.id "
+            "WHERE d.tenant_id = ? AND d.status = 'open' "
+            "GROUP BY at.area_name ORDER BY cnt DESC", [tenant_id])
+        area_data = {
+            'labels': [r['area_name'] for r in by_area],
+            'counts': [r['cnt'] for r in by_area],
+            'colours': [AREA_COLOURS.get(r['area_name'], '#9ca3af') for r in by_area],
+        }
+
+        # Category data
+        by_category = query_db(
+            "SELECT ct.category_name, COUNT(*) as cnt "
+            "FROM defect d JOIN item_template it ON d.item_template_id = it.id "
+            "JOIN category_template ct ON it.category_id = ct.id "
+            "WHERE d.tenant_id = ? AND d.status = 'open' "
+            "GROUP BY ct.category_name ORDER BY cnt DESC", [tenant_id])
+        category_data = {
+            'labels': [r['category_name'].upper() for r in by_category],
+            'counts': [r['cnt'] for r in by_category],
+        }
+
+        # Unit ranking
+        unit_ranking = query_db(
+            "SELECT u.unit_number, u.id as unit_id, i.inspector_name, COUNT(d.id) as cnt "
+            "FROM defect d JOIN unit u ON d.unit_id = u.id "
+            "JOIN inspection i ON i.unit_id = u.id AND i.cycle_id = d.raised_cycle_id "
+            "WHERE d.tenant_id = ? AND d.status = 'open' "
+            "GROUP BY u.unit_number, i.inspector_name ORDER BY cnt DESC", [tenant_id])
+
+        # Heatmap
+        heatmap_raw = query_db(
+            "SELECT u.unit_number, at.area_name, COUNT(*) as cnt "
+            "FROM defect d JOIN unit u ON d.unit_id = u.id "
+            "JOIN item_template it ON d.item_template_id = it.id "
+            "JOIN category_template ct ON it.category_id = ct.id "
+            "JOIN area_template at ON ct.area_id = at.id "
+            "WHERE d.tenant_id = ? AND d.status = 'open' "
+            "GROUP BY u.unit_number, at.area_name", [tenant_id])
+        all_units_sorted = sorted(set(r['unit_number'] for r in heatmap_raw))
+        all_areas = area_data['labels'] if area_data['labels'] else []
+        heatmap = {}
+        for r in heatmap_raw:
+            if r['unit_number'] not in heatmap:
+                heatmap[r['unit_number']] = {}
+            heatmap[r['unit_number']][r['area_name']] = r['cnt']
+        area_totals = {area: sum(heatmap.get(u, {}).get(area, 0) for u in all_units_sorted) for area in all_areas}
+        unit_totals = {u: sum(heatmap.get(u, {}).values()) for u in all_units_sorted}
+
+        # Recurring defects
+        recurring = query_db(
+            "SELECT d.original_comment, COUNT(*) as cnt, ct.category_name, "
+            "GROUP_CONCAT(DISTINCT u.unit_number) as affected_units "
+            "FROM defect d JOIN unit u ON d.unit_id = u.id "
+            "JOIN item_template it ON d.item_template_id = it.id "
+            "JOIN category_template ct ON it.category_id = ct.id "
+            "WHERE d.tenant_id = ? AND d.status = 'open' "
+            "GROUP BY d.original_comment HAVING COUNT(DISTINCT u.id) >= 3 "
+            "ORDER BY cnt DESC", [tenant_id])
+
+        # Inspector stats
+        inspector_stats = query_db(
+            "SELECT i.inspector_name, COUNT(DISTINCT i.unit_id) as units_inspected, "
+            "COUNT(d.id) as total_defects, "
+            "ROUND(CAST(COUNT(d.id) AS FLOAT) / COUNT(DISTINCT i.unit_id), 1) as avg_per_unit "
+            "FROM inspection i LEFT JOIN defect d ON d.unit_id = i.unit_id "
+            "AND d.raised_cycle_id = i.cycle_id AND d.status = 'open' "
+            "WHERE i.tenant_id = ? GROUP BY i.inspector_name ORDER BY avg_per_unit DESC",
+            [tenant_id])
+
+        return render_template('analytics/dashboard.html',
+            cycles=cycles, selected_cycle_id='all', selected_cycle=None,
+            is_all_view=True, has_data=total_units > 0,
+            context_header='Power Park Student Housing - Phase 3 | All Blocks | {} Units'.format(total_units),
+            block_comparison=block_comparison,
+            summary=summary, area_data=area_data, category_data=category_data,
+            unit_ranking=unit_ranking, all_units_sorted=all_units_sorted,
+            all_areas=all_areas, heatmap=heatmap, area_totals=area_totals,
+            unit_totals=unit_totals, recurring=recurring,
+            inspector_stats=inspector_stats, area_colours=AREA_COLOURS)
+
     # --- 1. SUMMARY STATS ---
     total_units = query_db("""
         SELECT COUNT(DISTINCT u.id)
@@ -197,10 +320,19 @@ def dashboard():
             selected_cycle = c
             break
 
+    # Build context header for per-cycle view
+    ctx_block = selected_cycle['block'] if selected_cycle else ''
+    ctx_units = '{}-{}'.format(selected_cycle['unit_start'], selected_cycle['unit_end']) if selected_cycle else ''
+    context_header = 'Power Park Student Housing - Phase 3 | Cycle {} - {} | Units {}'.format(
+        selected_cycle['cycle_number'] if selected_cycle else '?', ctx_block, ctx_units)
+
     return render_template('analytics/dashboard.html',
                            cycles=cycles,
                            selected_cycle_id=selected_cycle_id,
                            selected_cycle=selected_cycle,
+                           is_all_view=False,
+                           context_header=context_header,
+                           block_comparison=None,
                            has_data=total_units > 0,
                            summary=summary,
                            area_data=area_data,
