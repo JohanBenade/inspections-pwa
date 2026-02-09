@@ -338,27 +338,41 @@ body {
 .legend-text { font-size: 10px; color: #6B6B6B; vertical-align: middle; }
 
 /* -- SIGNATURE -- */
-.sig-table { width: 100%; border-collapse: collapse; margin-top: 40px; }
-.sig-cell { width: 50%; vertical-align: top; padding: 0; }
-.sig-line { border-top: 1px solid #0A0A0A; padding-top: 6px; margin-top: 40px; width: 85%; }
-.sig-name { font-weight: 600; font-size: 12px; color: #0A0A0A; }
-.sig-company { font-size: 10px; color: #6B6B6B; margin-top: 1px; }
-.sig-title { font-size: 10px; color: #9A9A9A; margin-top: 1px; }
-.sig-date { font-size: 10px; color: #9A9A9A; margin-top: 6px; }
-.sig-image { height: 50px; width: auto; margin-bottom: -10px; }
+.signature-block {
+    margin-top: 40px;
+    page-break-inside: avoid;
+}
+.sig-label {
+    font-size: 10px;
+    color: #9A9A9A;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-bottom: 8px;
+}
+.sig-line { border-bottom: 1px solid #1A1A1A; padding-bottom: 3px; margin-bottom: 3px; }
+.sig-name { font-size: 12px; font-weight: 500; color: #0A0A0A; }
+.sig-company { font-size: 10px; color: #6B6B6B; }
+.sig-date { font-size: 10px; color: #9A9A9A; }
 
 /* -- FOOTER -- */
 .report-footer {
-    margin-top: 30px;
-    padding-top: 12px;
-    border-top: 1px solid #E5E5E5;
-    font-size: 9px;
-    color: #9A9A9A;
+    margin-top: 28px;
+    padding-top: 14px;
+    border-top: 3px solid #0A0A0A;
+    page-break-inside: avoid;
 }
 .report-footer::after { content: ""; display: table; clear: both; }
 .footer-left { float: left; }
-.footer-right { float: right; text-align: right; }
-.footer-logo { height: 16px; width: auto; vertical-align: middle; margin-right: 6px; }
+.footer-right { float: right; text-align: right; font-size: 9px; color: #9A9A9A; line-height: 1.7; }
+.footer-disclaimer {
+    margin-top: 14px;
+    padding: 8px 12px;
+    background: #F5F3EE;
+    font-size: 9px;
+    color: #9A9A9A;
+    text-align: center;
+    letter-spacing: 0.3px;
+}
 
 /* -- DONUT (SVG) -- */
 .donut-container { text-align: center; margin: 10px 0; }
@@ -711,7 +725,6 @@ body {
     <tr>
         <th>Unit</th>
         <th>Block</th>
-        <th>Inspector</th>
         <th class="text-center">Defects</th>
         <th class="text-center">Rate</th>
         <th class="text-center">Variance</th>
@@ -729,7 +742,6 @@ body {
             <span class="badge-b6">B6</span>
             {% endif %}
         </td>
-        <td>{{ u.inspector_name }}</td>
         <td class="text-center font-bold" style="{% if u.defect_count > 30 %}color: #C44D3F;{% elif u.defect_count <= 20 %}color: #4A7C59;{% else %}color: #C8963E;{% endif %}">{{ u.defect_count }}</td>
         <td class="text-center">{{ u.defect_rate }}%</td>
         <td class="text-center" style="{% if u.variance > 0 %}color: #C44D3F;{% elif u.variance < 0 %}color: #4A7C59;{% endif %}">
@@ -743,44 +755,35 @@ body {
 </div>
 
 <!-- ============ SIGNATURE BLOCK ============ -->
-<div class="section" style="margin-top: 40px;">
-    <table class="sig-table">
-    <tr>
-        <td class="sig-cell">
-            <div style="margin-bottom: 4px; font-size: 10px; color: #9A9A9A; text-transform: uppercase; letter-spacing: 1px;">Prepared by</div>
-            {% if sig_b64 %}
-            <img src="data:image/png;base64,{{ sig_b64 }}" alt="Signature" class="sig-image">
-            {% endif %}
-            <div class="sig-line">
-                <div class="sig-name">Kevin Coetzee</div>
-                <div class="sig-company">Monograph Architects</div>
-                <div class="sig-title">PrArch, MD</div>
-                <div class="sig-date">{{ report_date }}</div>
-            </div>
-        </td>
-        <td class="sig-cell">
-            <div style="margin-bottom: 4px; font-size: 10px; color: #9A9A9A; text-transform: uppercase; letter-spacing: 1px;">Acknowledged by</div>
-            <div class="sig-line" style="margin-top: 90px;">
-                <div class="sig-name">________________________</div>
-                <div class="sig-company">Raubex Building</div>
-                <div class="sig-date">Date: _______________</div>
-            </div>
-        </td>
-    </tr>
-    </table>
+<div class="signature-block">
+    <div class="sig-label">Prepared by</div>
+    <div class="sig-line">
+        <span class="sig-name">Kevin Coetzee</span>
+    </div>
+    <div class="sig-company">PrArch, MD</div>
+    <div class="sig-company">Monograph Architects</div>
+    <div class="sig-date">{{ report_date }}</div>
 </div>
 
 <!-- ============ FOOTER ============ -->
 <div class="report-footer clearfix">
     <div class="footer-left">
         {% if logo_b64 %}
-        <img src="data:image/jpeg;base64,{{ logo_b64 }}" class="footer-logo" alt="Monograph">
+        <img src="data:image/jpeg;base64,{{ logo_b64 }}" alt="Monograph" style="height: 24px; width: auto;">
+        {% else %}
+        <span class="logo-fallback" style="font-size: 16px;">MONOGRAPH</span>
         {% endif %}
-        Power Park Student Housing - Phase 3 | Combined Report | {{ report_date }}
+        <div style="font-size: 9px; color: #9A9A9A; margin-top: 4px;">
+            Power Park Student Housing - Phase 3 &middot; Combined Report
+        </div>
     </div>
     <div class="footer-right">
-        inspections.archpractice.co.za
+        Generated {{ report_date }}
     </div>
+</div>
+<div class="footer-disclaimer">
+    This report is generated from live inspection data. All figures are as recorded at time of generation.
+    For queries, contact Monograph Architects.
 </div>
 
 </div><!-- /.page -->
