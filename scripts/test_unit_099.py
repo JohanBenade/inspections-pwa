@@ -7,6 +7,7 @@ TENANT = 'MONOGRAPH'
 UNIT_ID = 'unit-test-099'
 INSP_ID = 'insp-test-099'
 CYCLE_ID = 'test-c1-099'
+PHASE_ID = 'phase-003'
 
 def create():
     conn = sqlite3.connect(DB)
@@ -15,21 +16,31 @@ def create():
 
     cur.execute('SELECT id FROM inspection_cycle WHERE id=?', (CYCLE_ID,))
     if not cur.fetchone():
-        cur.execute('INSERT INTO inspection_cycle (id,tenant_id,cycle_number,block,status,created_at,updated_at) VALUES (?,?,1,"Test","active",?,?)', (CYCLE_ID,TENANT,now,now))
+        cur.execute('''INSERT INTO inspection_cycle
+            (id, tenant_id, phase_id, cycle_number, block, status, created_by, created_at)
+            VALUES (?, ?, ?, 1, 'Test', 'active', 'insp-002', ?)''',
+            (CYCLE_ID, TENANT, PHASE_ID, now))
         print('Created test cycle')
     else:
         print('Test cycle exists')
 
     cur.execute('SELECT id FROM unit WHERE id=?', (UNIT_ID,))
     if not cur.fetchone():
-        cur.execute('INSERT INTO unit (id,tenant_id,unit_number,block,floor,status,created_at,updated_at) VALUES (?,?,"099","Test","1","not_started",?,?)', (UNIT_ID,TENANT,now,now))
+        cur.execute('''INSERT INTO unit
+            (id, tenant_id, phase_id, unit_number, unit_type, block, floor, status)
+            VALUES (?, ?, ?, '099', 'standard', 'Test', 1, 'not_started')''',
+            (UNIT_ID, TENANT, PHASE_ID))
         print('Created unit 099')
     else:
         print('Unit 099 exists')
 
     cur.execute('SELECT id FROM inspection WHERE id=?', (INSP_ID,))
     if not cur.fetchone():
-        cur.execute('INSERT INTO inspection (id,tenant_id,unit_id,cycle_id,status,created_at,updated_at) VALUES (?,?,?,?,"not_started",?,?)', (INSP_ID,TENANT,UNIT_ID,CYCLE_ID,now,now))
+        cur.execute('''INSERT INTO inspection
+            (id, tenant_id, unit_id, cycle_id, inspection_date, inspector_id,
+             inspector_name, status, created_at, updated_at)
+            VALUES (?, ?, ?, ?, ?, 'insp-002', 'Kevin Coetzee', 'not_started', ?, ?)''',
+            (INSP_ID, TENANT, UNIT_ID, CYCLE_ID, now[:10], now, now))
         print('Created inspection')
     else:
         print('Inspection exists')
@@ -40,7 +51,10 @@ def create():
     else:
         cur.execute('SELECT id FROM item_template WHERE tenant_id=?', (TENANT,))
         for t in cur.fetchall():
-            cur.execute('INSERT INTO inspection_item (id,tenant_id,inspection_id,item_template_id,status,marked_at) VALUES (?,?,?,?,"pending",NULL)', (uuid.uuid4().hex[:8],TENANT,INSP_ID,t[0]))
+            cur.execute('''INSERT INTO inspection_item
+                (id, tenant_id, inspection_id, item_template_id, status, marked_at)
+                VALUES (?, ?, ?, ?, 'pending', NULL)''',
+                (uuid.uuid4().hex[:8], TENANT, INSP_ID, t[0]))
         print('Created 523 inspection items (no exclusions)')
 
     print('\n=== VERIFY ===')
@@ -74,7 +88,7 @@ def remove():
     conn.close()
 
 if __name__ == '__main__':
-    if len(sys.argv) < 2 or sys.argv[1] not in ('create','remove'):
+    if len(sys.argv) < 2 or sys.argv[1] not in ('create', 'remove'):
         print('Usage: python3 scripts/test_unit_099.py create|remove')
         sys.exit(1)
     if sys.argv[1] == 'create':
