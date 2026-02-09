@@ -81,7 +81,7 @@ def dashboard():
             "ROUND(COUNT(d.id) * 1.0 / COUNT(DISTINCT i.unit_id), 1) as avg_per_unit "
             "FROM inspection_cycle ic "
             "JOIN inspection i ON i.cycle_id = ic.id "
-            "LEFT JOIN defect d ON d.raised_cycle_id = ic.id AND d.status = 'open' "
+            "LEFT JOIN defect d ON d.raised_cycle_id = ic.id AND d.unit_id = i.unit_id AND d.status = 'open' "
             "WHERE ic.tenant_id = ? GROUP BY ic.block ORDER BY ic.block",
             [tenant_id])]
 
