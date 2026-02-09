@@ -364,7 +364,7 @@
                                                 {% endif %}
                                                 
                                                 {% if status_key == 'awaiting_review' %}
-                                                    <a href="{{ url_for('pdf.preview_defects_pdf', unit_id=unit.id) }}"
+                                                    <a href="{{ url_for('pdf.view_defects_html', unit_id=unit.id) }}"
                                                        class="px-3 py-1.5 text-xs font-medium text-white bg-blue-600 rounded hover:bg-blue-700">
                                                         PDF
                                                     </a>
@@ -386,7 +386,7 @@
                                                     {% endif %}
                                                 
                                                 {% elif status_key == 'under_review' %}
-                                                    <a href="{{ url_for('pdf.preview_defects_pdf', unit_id=unit.id) }}"
+                                                    <a href="{{ url_for('pdf.view_defects_html', unit_id=unit.id) }}"
                                                        class="px-3 py-1.5 text-xs font-medium text-white bg-blue-600 rounded hover:bg-blue-700">
                                                         PDF
                                                     </a>
@@ -409,7 +409,7 @@
                                                 
                                                 {% elif status_key == 'awaiting_approval' %}
                                                     {% if user_role in ['manager', 'admin'] %}
-                                                    <a href="{{ url_for('pdf.preview_defects_pdf', unit_id=unit.id) }}"
+                                                    <a href="{{ url_for('pdf.view_defects_html', unit_id=unit.id) }}"
                                                        class="px-3 py-1.5 text-xs font-medium text-white bg-blue-600 rounded hover:bg-blue-700">
                                                         PDF
                                                     </a>
@@ -424,7 +424,7 @@
                                                     {% endif %}
                                                 
                                                 {% elif status_key == 'approved' %}
-                                                    <a href="{{ url_for('pdf.preview_defects_pdf', unit_id=unit.id) }}"
+                                                    <a href="{{ url_for('pdf.view_defects_html', unit_id=unit.id) }}"
                                                        class="px-3 py-1.5 text-xs font-medium text-white bg-blue-600 rounded hover:bg-blue-700">
                                                         PDF
                                                     </a>
@@ -457,7 +457,7 @@
                                                     {% endif %}
                                                 
                                                 {% elif status_key == 'pending_followup' %}
-                                                    <a href="{{ url_for('pdf.preview_defects_pdf', unit_id=unit.id) }}"
+                                                    <a href="{{ url_for('pdf.view_defects_html', unit_id=unit.id) }}"
                                                        class="px-3 py-1.5 text-xs font-medium text-white bg-blue-600 rounded hover:bg-blue-700">
                                                         PDF
                                                     </a>
