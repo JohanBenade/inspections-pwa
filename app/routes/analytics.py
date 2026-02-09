@@ -26,7 +26,7 @@ AREA_COLOURS = {
 @require_manager
 def dashboard():
     """Analytics Dashboard - defect patterns across all units in a cycle."""
-    tenant_id = session['tenant_id']
+    tenant_id = session.get('tenant_id', 'MONOGRAPH')
 
     # Get available cycles for selector
     cycles = query_db("""
@@ -460,7 +460,7 @@ def dashboard():
 @require_manager
 def reports():
     """Reports listing - select a cycle to view/download report."""
-    tenant_id = session['tenant_id']
+    tenant_id = session.get('tenant_id', 'MONOGRAPH')
     cycles = query_db("""
         SELECT ic.id, ic.cycle_number, ic.block, ic.floor, ic.unit_start, ic.unit_end,
                ic.status, ic.request_received_date, ic.started_at,
@@ -564,7 +564,7 @@ def _build_combined_report_data():
     import base64, os
     from flask import current_app
 
-    tenant_id = session['tenant_id']
+    tenant_id = session.get('tenant_id', 'MONOGRAPH')
 
     # --- Get all cycles ---
     cycles = [dict(r) for r in query_db("""
@@ -828,7 +828,7 @@ def _build_report_data(cycle_id):
     import base64, os
     from flask import current_app
 
-    tenant_id = session['tenant_id']
+    tenant_id = session.get('tenant_id', 'MONOGRAPH')
 
     # --- Cycle info ---
     cycle = _to_dict(query_db("""
