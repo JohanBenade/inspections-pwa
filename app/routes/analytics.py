@@ -85,6 +85,77 @@ def dashboard():
             "WHERE ic.tenant_id = ? GROUP BY ic.block ORDER BY ic.block",
             [tenant_id])]
 
+
+        # Trend data (Block 5 vs Block 6 comparison)
+        trend_data = {}
+        if len(block_comparison) >= 2:
+            b5 = block_comparison[0]
+            b6 = block_comparison[1]
+            avg_change = round(((b6["avg_per_unit"] - b5["avg_per_unit"]) / b5["avg_per_unit"]) * 100, 1) if b5["avg_per_unit"] > 0 else 0
+            defect_change = round(((b6["defects"] - b5["defects"]) / b5["defects"]) * 100, 1) if b5["defects"] > 0 else 0
+            trend_data = {
+                "b5_avg": b5["avg_per_unit"], "b6_avg": b6["avg_per_unit"],
+                "avg_change": avg_change,
+                "b5_defects": b5["defects"], "b6_defects": b6["defects"],
+                "defect_change": defect_change,
+                "b5_units": b5["units"], "b6_units": b6["units"],
+                "b5_label": b5["block"], "b6_label": b6["block"],
+            }
+
+        # Area breakdown by block (for grouped comparison chart)
+        area_by_block_raw = query_db(
+            "SELECT at2.area_name, ic.block, COUNT(*) as cnt "
+            "FROM defect d "
+            "JOIN item_template it ON d.item_template_id = it.id "
+            "JOIN category_template ct ON it.category_id = ct.id "
+            "JOIN area_template at2 ON ct.area_id = at2.id "
+            "JOIN inspection_cycle ic ON d.raised_cycle_id = ic.id "
+            "WHERE d.tenant_id = ? AND d.status = 'open' "
+            "GROUP BY at2.area_name, ic.block ORDER BY at2.area_name",
+            [tenant_id])
+        # Build {area: {block: count}} structure
+        area_by_block = {}
+        block_labels = sorted(set(r["block"] for r in area_by_block_raw)) if area_by_block_raw else []
+        for r in area_by_block_raw:
+            if r["area_name"] not in area_by_block:
+                area_by_block[r["area_name"]] = {}
+            area_by_block[r["area_name"]][r["block"]] = r["cnt"]
+        # Order areas by total descending
+        area_compare_labels = sorted(area_by_block.keys(),
+            key=lambda a: sum(area_by_block[a].values()), reverse=True)
+        area_compare_data = {
+            "labels": area_compare_labels,
+            "block_labels": block_labels,
+            "datasets": []
+        }
+        block_colours = {"Block 5": "#C8963E", "Block 6": "#3D6B8E"}
+        for bl in block_labels:
+            area_compare_data["datasets"].append({
+                "label": bl,
+                "colour": block_colours.get(bl, "#9ca3af"),
+                "data": [area_by_block.get(a, {}).get(bl, 0) for a in area_compare_labels]
+            })
+
+        # Top defect types by block (for comparison table)
+        defect_by_block_raw = query_db(
+            "SELECT d.original_comment, ic.block, COUNT(*) as cnt "
+            "FROM defect d "
+            "JOIN inspection_cycle ic ON d.raised_cycle_id = ic.id "
+            "WHERE d.tenant_id = ? AND d.status = 'open' "
+            "GROUP BY d.original_comment, ic.block ORDER BY cnt DESC",
+            [tenant_id])
+        # Aggregate: {desc: {total, block5, block6}}
+        defect_compare_map = {}
+        for r in defect_by_block_raw:
+            desc = r["original_comment"]
+            if desc not in defect_compare_map:
+                defect_compare_map[desc] = {"description": desc, "total": 0, "blocks": {}}
+            defect_compare_map[desc]["total"] += r["cnt"]
+            defect_compare_map[desc]["blocks"][r["block"]] = r["cnt"]
+        defect_compare = sorted(defect_compare_map.values(), key=lambda x: x["total"], reverse=True)[:15]
+        for d in defect_compare:
+            d["block_labels"] = block_labels
+
         # Area data
         by_area = query_db(
             "SELECT at.area_name, COUNT(*) as cnt "
@@ -168,7 +239,9 @@ def dashboard():
             unit_ranking=unit_ranking, all_units_sorted=all_units_sorted,
             all_areas=all_areas, heatmap=heatmap, area_totals=area_totals,
             unit_totals=unit_totals, recurring=recurring,
-            inspector_stats=inspector_stats, area_colours=AREA_COLOURS)
+            inspector_stats=inspector_stats, area_colours=AREA_COLOURS,
+            trend_data=trend_data, area_compare_data=area_compare_data,
+            defect_compare=defect_compare)
 
     # --- 1. SUMMARY STATS ---
     total_units = query_db("""
