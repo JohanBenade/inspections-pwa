@@ -112,3 +112,44 @@ def preview_defects_pdf(unit_id):
             'Content-Disposition': f'inline; filename="{filename}"'
         }
     )
+
+
+@pdf_bp.route('/defects/<unit_id>/view')
+@require_team_lead
+def view_defects_html(unit_id):
+    """View defects list as HTML with print/download toolbar."""
+    tenant_id = session['tenant_id']
+    from flask import request as req, render_template, url_for
+    from app.services.pdf_generator import get_defects_data
+
+    unit = query_db(
+        "SELECT * FROM unit WHERE id = ? AND tenant_id = ?",
+        [unit_id, tenant_id], one=True
+    )
+    if not unit:
+        abort(404)
+
+    cycle_id = req.args.get('cycle')
+    if not cycle_id:
+        latest = query_db(
+            "SELECT ic.* FROM inspection i"
+            " JOIN inspection_cycle ic ON i.cycle_id = ic.id"
+            " WHERE i.unit_id = ?"
+            " ORDER BY ic.cycle_number DESC LIMIT 1",
+            [unit_id], one=True
+        )
+        if latest:
+            cycle_id = latest['id']
+
+    data = get_defects_data(tenant_id, unit_id, cycle_id)
+    if not data:
+        abort(404)
+
+    return render_template(
+        'pdf/defects_list.html',
+        **data,
+        is_pdf=False,
+        logo_path=url_for('static', filename='monograph_logo.jpg'),
+        signature_path=url_for('static', filename='kevin_signature.png'),
+        download_url=url_for('pdf.download_defects_pdf', unit_id=unit_id, cycle=cycle_id)
+    )
