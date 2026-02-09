@@ -30,7 +30,7 @@ def dashboard():
 
     # Get available cycles for selector
     cycles = query_db("""
-        SELECT id, cycle_number, unit_start, unit_end, status
+        SELECT id, cycle_number, unit_start, unit_end, status, block, floor
         FROM inspection_cycle
         WHERE tenant_id = ?
         ORDER BY cycle_number DESC
