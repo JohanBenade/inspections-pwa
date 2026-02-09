@@ -35,29 +35,32 @@ body {
 
 /* -- TOOLBAR (HTML view only) -- */
 .toolbar {
-    background: #1A1A1A;
-    padding: 12px 20px;
-    position: sticky;
-    top: 0;
+    position: fixed;
+    top: 16px;
+    right: 16px;
+    display: flex;
+    gap: 8px;
     z-index: 100;
 }
-.toolbar::after { content: ""; display: table; clear: both; }
-.toolbar a {
-    color: #FAFAF8;
+.toolbar a, .toolbar button, .toolbar select {
+    padding: 8px 16px;
+    font-family: 'DM Sans', Helvetica, Arial, sans-serif;
+    font-size: 12px;
+    font-weight: 600;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
     text-decoration: none;
-    font-size: 13px;
-    font-weight: 500;
-    padding: 6px 14px;
-    border-radius: 6px;
     display: inline-block;
 }
-.toolbar a:hover { background: rgba(255,255,255,0.1); }
-.toolbar .btn-gold {
-    background: #C8963E;
-    color: #fff;
-}
-.toolbar .btn-gold:hover { background: #b8862e; }
-@media print { .toolbar { display: none; } }
+.btn-pdf { background: #C8963E; color: white; }
+.btn-pdf:hover { background: #D4A94F; }
+.btn-print { background: #F5F3EE; color: #1A1A1A; border: 1px solid #E8E6E1; }
+.btn-print:hover { background: #E8E6E1; }
+.btn-back { background: #F5F3EE; color: #1A1A1A; border: 1px solid #E8E6E1; }
+.btn-back:hover { background: #E8E6E1; }
+.btn-select { background: #FAFAF8; color: #1A1A1A; border: 1px solid #E8E6E1; font-size: 12px; }
+@media print { .toolbar { display: none !important; } }
 
 /* -- HEADER -- */
 .report-header {
@@ -197,9 +200,11 @@ body {
 .batch-stats-table { width: 100%; border-collapse: collapse; }
 .batch-stats-table td { padding: 2px 0; }
 .batch-stat-value {
-    font-size: 20px;
-    font-weight: 700;
+    font-family: 'Cormorant Garamond', Georgia, serif;
+    font-size: 24px;
+    font-weight: 300;
     color: #0A0A0A;
+    line-height: 1.1;
 }
 .batch-stat-label {
     font-size: 9px;
@@ -222,12 +227,12 @@ body {
 
 /* -- GROUPED BAR CHART (CSS) -- */
 .grouped-bar-table { width: 100%; border-collapse: collapse; }
-.grouped-bar-table td { padding: 3px 0; vertical-align: middle; }
-.bar-label-cell { width: 100px; text-align: right; padding-right: 10px; font-size: 10px; font-weight: 600; color: #1A1A1A; }
-.bar-track { width: auto; padding: 0; }
+.grouped-bar-table td { padding: 2px 0; vertical-align: middle; }
+.bar-label-cell { width: 110px; text-align: right; padding-right: 12px; font-size: 10px; font-weight: 600; color: #1A1A1A; white-space: nowrap; }
+.bar-track { padding: 0; white-space: nowrap; }
 .bar-fill {
     display: inline-block;
-    height: 14px;
+    height: 16px;
     border-radius: 2px;
     vertical-align: middle;
 }
@@ -397,15 +402,15 @@ body {
 
 {% if not is_pdf %}
 <div class="toolbar">
-    <a href="{{ url_for('analytics.reports') }}">&#8592; Back to Reports</a>
-    <select onchange="if(this.value) window.location.href=this.value" style="margin-left: 12px; padding: 4px 8px; font-size: 12px; border: 1px solid #ddd; border-radius: 4px; font-family: 'DM Sans', sans-serif;">
+    <a href="{{ url_for('analytics.reports') }}" class="btn-back">Back</a>
+    <select onchange="if(this.value) window.location.href=this.value" class="btn-select">
         {% for opt in cycle_options %}
         <option value="{{ url_for('analytics.report_view', cycle_id=opt.id) }}">{{ opt.label }}</option>
         {% endfor %}
         <option value="{{ url_for('analytics.combined_report_view') }}" selected>All (Project Overview)</option>
     </select>
-    <a href="#" onclick="window.print(); return false;" style="margin-left: 12px;">&#128424; Print</a>
-    <a href="{{ url_for('analytics.combined_report_pdf') }}" class="btn-gold" style="float: right;">&#11015; Download PDF</a>
+    <button onclick="window.print()" class="btn-print">Print</button>
+    <a href="{{ url_for('analytics.combined_report_pdf') }}" class="btn-pdf">Download PDF</a>
 </div>
 {% endif %}
 
