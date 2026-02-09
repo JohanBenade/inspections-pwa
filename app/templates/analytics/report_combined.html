@@ -228,11 +228,11 @@ body {
 /* -- GROUPED BAR CHART (CSS) -- */
 .grouped-bar-table { width: 100%; border-collapse: collapse; }
 .grouped-bar-table td { padding: 2px 0; vertical-align: middle; }
-.bar-label-cell { width: 110px; text-align: left; padding-right: 12px; font-size: 10px; font-weight: 600; color: #1A1A1A; white-space: nowrap; }
+.bar-label-cell { width: 110px; text-align: left; padding-right: 12px; font-size: 11px; color: #1A1A1A; white-space: nowrap; }
 .bar-track { padding: 0; white-space: nowrap; }
 .bar-fill {
     display: inline-block;
-    height: 18px;
+    height: 10px;
     border-radius: 2px;
     vertical-align: middle;
 }
@@ -386,6 +386,16 @@ body {
 
 /* -- DONUT (SVG) -- */
 .donut-container { text-align: center; margin: 10px 0; }
+.donut-legend { margin-top: 10px; font-size: 9px; text-align: center; line-height: 2; }
+.legend-dot {
+    display: inline-block;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    margin-right: 3px;
+    vertical-align: middle;
+}
+.legend-item { margin-right: 8px; white-space: nowrap; }
 .donut-label-table { width: 100%; border-collapse: collapse; margin-top: 8px; }
 .donut-label-table td { padding: 2px 6px; font-size: 10px; }
 .donut-swatch {
@@ -545,45 +555,43 @@ body {
                 <td class="bar-label-cell" rowspan="2">{{ area.name }}</td>
                 <td class="bar-track">
                     <div class="bar-fill bar-b5" style="width: {{ area.b5_pct }}%;"></div>
-                    <span class="bar-count-label">{{ area.b5_count }} B5</span>
+                    <span class="bar-count-label">{{ area.b5_count }}</span>
                 </td>
             </tr>
             <tr>
                 <td class="bar-track">
                     <div class="bar-fill bar-b6" style="width: {{ area.b6_pct }}%;"></div>
-                    <span class="bar-count-label">{{ area.b6_count }} B6</span>
+                    <span class="bar-count-label">{{ area.b6_count }}</span>
                 </td>
             </tr>
-            <tr><td colspan="2" style="height: 4px;"></td></tr>
+            <tr><td colspan="2" style="height: 10px;"></td></tr>
             {% endfor %}
             </table>
         </div>
         <div style="float: right; width: 34%;">
             <!-- Donut: combined totals -->
             <div class="donut-container">
-                <svg width="160" height="160" viewBox="0 0 160 160">
-                    <circle cx="80" cy="80" r="70" fill="none" stroke="#F0F0F0" stroke-width="24"/>
+                <svg viewBox="0 0 200 200" width="160" height="160">
                     {% for a in area_data %}
-                    <circle cx="80" cy="80" r="70" fill="none"
+                    <circle cx="100" cy="100" r="70" fill="none"
                             stroke="{{ area_colours[loop.index0 % area_colours|length] }}"
-                            stroke-width="24"
+                            stroke-width="30"
                             stroke-dasharray="{{ a.dash }} {{ 439.82 - a.dash }}"
                             stroke-dashoffset="{{ -a.offset }}"
-                            transform="rotate(-90 80 80)"/>
+                            transform="rotate(-90 100 100)"/>
                     {% endfor %}
-                    <text x="80" y="76" text-anchor="middle" font-family="DM Sans" font-size="20" font-weight="700" fill="#0A0A0A">{{ total_defects }}</text>
-                    <text x="80" y="92" text-anchor="middle" font-family="DM Sans" font-size="9" fill="#9A9A9A">TOTAL</text>
+                    <circle cx="100" cy="100" r="52" fill="#FAFAF8" />
+                    <text x="100" y="95" text-anchor="middle" font-family="'Cormorant Garamond', Georgia, serif" font-size="26" font-weight="300" fill="#0A0A0A">{{ total_defects }}</text>
+                    <text x="100" y="112" text-anchor="middle" font-family="'DM Sans', Helvetica, sans-serif" font-size="9" fill="#9A9A9A">defects</text>
                 </svg>
             </div>
-            <table class="donut-label-table">
-            {% for a in area_data %}
-            <tr>
-                <td><span class="donut-swatch" style="background: {{ area_colours[loop.index0 % area_colours|length] }};"></span></td>
-                <td style="font-weight: 500;">{{ a.area }}</td>
-                <td class="text-right" style="color: #6B6B6B;">{{ a.defect_count }} ({{ a.pct }}%)</td>
-            </tr>
-            {% endfor %}
-            </table>
+            <div class="donut-legend">
+                {% for a in area_data %}
+                <span class="legend-item">
+                    <span class="legend-dot" style="background: {{ area_colours[loop.index0 % area_colours|length] }};"></span>{{ a.area }}
+                </span>
+                {% endfor %}
+            </div>
         </div>
     </div>
 
