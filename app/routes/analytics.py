@@ -794,7 +794,7 @@ def _build_combined_report_data():
     # --- Cycle options for report selector ---
     cycle_opts_rows = query_db(
         "SELECT id, cycle_number, block, unit_start, unit_end FROM inspection_cycle WHERE tenant_id=? ORDER BY block",
-        [tenant], one=False
+        [tenant_id], one=False
     )
     cycle_options = []
     if cycle_opts_rows:
@@ -1014,7 +1014,7 @@ def _build_report_data(cycle_id):
     # --- Cycle options for report selector ---
     cycle_opts_rows = query_db(
         "SELECT id, cycle_number, block, unit_start, unit_end FROM inspection_cycle WHERE tenant_id=? ORDER BY block",
-        [tenant], one=False
+        [tenant_id], one=False
     )
     cycle_options = []
     if cycle_opts_rows:
