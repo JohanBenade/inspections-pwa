@@ -32,7 +32,7 @@ def dashboard():
     cycles = query_db("""
         SELECT id, cycle_number, unit_start, unit_end, status, block, floor
         FROM inspection_cycle
-        WHERE tenant_id = ?
+        WHERE tenant_id = ? AND id NOT LIKE 'test-%'
         ORDER BY cycle_number DESC
     """, [tenant_id])
 
@@ -50,16 +50,16 @@ def dashboard():
     # --- ALL MODE: Project-wide aggregate view ---
     if selected_cycle_id == 'all':
         total_units = query_db(
-            "SELECT COUNT(DISTINCT u.id) FROM unit u JOIN inspection i ON i.unit_id = u.id WHERE i.tenant_id = ?",
+            "SELECT COUNT(DISTINCT u.id) FROM unit u JOIN inspection i ON i.unit_id = u.id WHERE i.tenant_id = ? AND i.cycle_id NOT LIKE 'test-%'",
             [tenant_id], one=True)[0]
         total_defects = query_db(
-            "SELECT COUNT(*) FROM defect WHERE tenant_id = ? AND status = 'open'",
+            "SELECT COUNT(*) FROM defect WHERE tenant_id = ? AND status = 'open' AND raised_cycle_id NOT LIKE 'test-%'",
             [tenant_id], one=True)[0]
         avg_defects = round(total_defects / total_units, 1) if total_units > 0 else 0
 
         unit_defect_counts = query_db(
             "SELECT u.unit_number, COUNT(*) as cnt FROM defect d JOIN unit u ON d.unit_id = u.id "
-            "WHERE d.tenant_id = ? AND d.status = 'open' GROUP BY d.unit_id ORDER BY cnt DESC",
+            "WHERE d.tenant_id = ? AND d.status = 'open' AND d.raised_cycle_id NOT LIKE 'test-%' GROUP BY d.unit_id ORDER BY cnt DESC",
             [tenant_id])
         worst_unit = unit_defect_counts[0] if unit_defect_counts else None
         best_unit = unit_defect_counts[-1] if unit_defect_counts else None
@@ -82,7 +82,7 @@ def dashboard():
             "FROM inspection_cycle ic "
             "JOIN inspection i ON i.cycle_id = ic.id "
             "LEFT JOIN defect d ON d.raised_cycle_id = ic.id AND d.unit_id = i.unit_id AND d.status = 'open' "
-            "WHERE ic.tenant_id = ? GROUP BY ic.block ORDER BY ic.block",
+            "WHERE ic.tenant_id = ? AND ic.id NOT LIKE 'test-%' GROUP BY ic.block ORDER BY ic.block",
             [tenant_id])]
 
 
@@ -110,7 +110,7 @@ def dashboard():
             "JOIN category_template ct ON it.category_id = ct.id "
             "JOIN area_template at2 ON ct.area_id = at2.id "
             "JOIN inspection_cycle ic ON d.raised_cycle_id = ic.id "
-            "WHERE d.tenant_id = ? AND d.status = 'open' "
+            "WHERE d.tenant_id = ? AND d.status = 'open' AND ic.id NOT LIKE 'test-%' "
             "GROUP BY at2.area_name, ic.block ORDER BY at2.area_name",
             [tenant_id])
         # Build {area: {block: count}} structure
@@ -141,7 +141,7 @@ def dashboard():
             "SELECT d.original_comment, ic.block, COUNT(*) as cnt "
             "FROM defect d "
             "JOIN inspection_cycle ic ON d.raised_cycle_id = ic.id "
-            "WHERE d.tenant_id = ? AND d.status = 'open' "
+            "WHERE d.tenant_id = ? AND d.status = 'open' AND ic.id NOT LIKE 'test-%' "
             "GROUP BY d.original_comment, ic.block ORDER BY cnt DESC",
             [tenant_id])
         # Aggregate: {desc: {total, block5, block6}}
@@ -163,7 +163,7 @@ def dashboard():
             "JOIN item_template it ON d.item_template_id = it.id "
             "JOIN category_template ct ON it.category_id = ct.id "
             "JOIN inspection_cycle ic ON d.raised_cycle_id = ic.id "
-            "WHERE d.tenant_id = ? AND d.status = 'open' "
+            "WHERE d.tenant_id = ? AND d.status = 'open' AND ic.id NOT LIKE 'test-%' "
             "GROUP BY ct.category_name, ic.block ORDER BY cnt DESC",
             [tenant_id])
         cat_by_block = {}
@@ -192,7 +192,7 @@ def dashboard():
             "FROM defect d JOIN item_template it ON d.item_template_id = it.id "
             "JOIN category_template ct ON it.category_id = ct.id "
             "JOIN area_template at ON ct.area_id = at.id "
-            "WHERE d.tenant_id = ? AND d.status = 'open' "
+            "WHERE d.tenant_id = ? AND d.status = 'open' AND d.raised_cycle_id NOT LIKE 'test-%' "
             "GROUP BY at.area_name ORDER BY cnt DESC", [tenant_id])
         area_data = {
             'labels': [r['area_name'] for r in by_area],
@@ -205,7 +205,7 @@ def dashboard():
             "SELECT ct.category_name, COUNT(*) as cnt "
             "FROM defect d JOIN item_template it ON d.item_template_id = it.id "
             "JOIN category_template ct ON it.category_id = ct.id "
-            "WHERE d.tenant_id = ? AND d.status = 'open' "
+            "WHERE d.tenant_id = ? AND d.status = 'open' AND d.raised_cycle_id NOT LIKE 'test-%' "
             "GROUP BY ct.category_name ORDER BY cnt DESC", [tenant_id])
         category_data = {
             'labels': [r['category_name'].upper() for r in by_category],
@@ -217,7 +217,7 @@ def dashboard():
             "SELECT u.unit_number, u.id as unit_id, u.block, i.inspector_name, COUNT(d.id) as cnt "
             "FROM defect d JOIN unit u ON d.unit_id = u.id "
             "JOIN inspection i ON i.unit_id = u.id AND i.cycle_id = d.raised_cycle_id "
-            "WHERE d.tenant_id = ? AND d.status = 'open' "
+            "WHERE d.tenant_id = ? AND d.status = 'open' AND d.raised_cycle_id NOT LIKE 'test-%' "
             "GROUP BY u.unit_number, i.inspector_name ORDER BY cnt DESC", [tenant_id])
 
         # Heatmap
@@ -227,7 +227,7 @@ def dashboard():
             "JOIN item_template it ON d.item_template_id = it.id "
             "JOIN category_template ct ON it.category_id = ct.id "
             "JOIN area_template at ON ct.area_id = at.id "
-            "WHERE d.tenant_id = ? AND d.status = 'open' "
+            "WHERE d.tenant_id = ? AND d.status = 'open' AND d.raised_cycle_id NOT LIKE 'test-%' "
             "GROUP BY u.unit_number, at.area_name", [tenant_id])
         all_units_sorted = sorted(set(r['unit_number'] for r in heatmap_raw))
         all_areas = area_data['labels'] if area_data['labels'] else []
@@ -246,7 +246,7 @@ def dashboard():
             "FROM defect d JOIN unit u ON d.unit_id = u.id "
             "JOIN item_template it ON d.item_template_id = it.id "
             "JOIN category_template ct ON it.category_id = ct.id "
-            "WHERE d.tenant_id = ? AND d.status = 'open' "
+            "WHERE d.tenant_id = ? AND d.status = 'open' AND d.raised_cycle_id NOT LIKE 'test-%' "
             "GROUP BY d.original_comment HAVING COUNT(DISTINCT u.id) >= 3 "
             "ORDER BY cnt DESC", [tenant_id])
 
@@ -257,7 +257,7 @@ def dashboard():
             "ROUND(CAST(COUNT(d.id) AS FLOAT) / COUNT(DISTINCT i.unit_id), 1) as avg_per_unit "
             "FROM inspection i LEFT JOIN defect d ON d.unit_id = i.unit_id "
             "AND d.raised_cycle_id = i.cycle_id AND d.status = 'open' "
-            "WHERE i.tenant_id = ? GROUP BY i.inspector_name ORDER BY avg_per_unit DESC",
+            "WHERE i.tenant_id = ? AND i.cycle_id NOT LIKE 'test-%' GROUP BY i.inspector_name ORDER BY avg_per_unit DESC",
             [tenant_id])
 
         return render_template('analytics/dashboard.html',
@@ -569,7 +569,7 @@ def _build_combined_report_data():
     # --- Get all cycles ---
     cycles = [dict(r) for r in query_db("""
         SELECT id, cycle_number, block, floor, unit_start, unit_end, status, created_at
-        FROM inspection_cycle WHERE tenant_id = ? ORDER BY block
+        FROM inspection_cycle WHERE tenant_id = ? AND id NOT LIKE 'test-%' ORDER BY block
     """, [tenant_id])]
 
     if len(cycles) < 2:
