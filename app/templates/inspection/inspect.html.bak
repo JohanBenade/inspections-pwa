@@ -32,10 +32,8 @@
         </div>
     </div>
 
-    <!-- Open Defects from Previous Cycles (Cycle 1 only) -->
-    {% if is_initial %}
+    <!-- Open Defects from Previous Cycles -->
     {% include 'inspection/_open_defects.html' %}
-    {% endif %}
 
     <!-- Area Tabs -->
     <div class="bg-white rounded-lg shadow mb-4">

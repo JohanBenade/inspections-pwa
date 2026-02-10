@@ -1,0 +1,34 @@
+{% set insp_status = inspection_status if inspection_status is defined else (inspection.status if inspection is defined else '') %}
+<div class="flex justify-between text-sm mb-2">
+    <span class="font-medium text-gray-700">Progress</span>
+    <span class="text-gray-500">
+        {{ progress.completed }}/{{ progress.active }} items
+        {% if progress.skipped %}
+        <span class="text-orange-500">({{ progress.skipped }} excluded)</span>
+        {% endif %}
+    </span>
+</div>
+{% set pct = ((progress.completed / progress.active) * 100)|round|int if progress.active > 0 else 0 %}
+<div class="w-full bg-gray-200 rounded-full h-2.5">
+    <div class="bg-blue-600 rounded-full h-2.5 transition-all" style="width: {{ pct }}%"></div>
+</div>
+<div class="flex justify-between items-center text-xs mt-1">
+    {% if progress.defects > 0 %}
+    <span class="text-red-600">{{ progress.defects }} defect{% if progress.defects != 1 %}s{% endif %}</span>
+    {% else %}
+    <span></span>
+    {% endif %}
+    <span></span>
+</div>
+{% if pct >= 100 and insp_status == 'in_progress' %}
+<div class="mt-3 bg-green-50 border border-green-200 rounded-lg p-3 flex justify-between items-center">
+    <span class="text-green-700 font-medium text-sm">All items marked</span>
+    <a href="javascript:void(0)"
+       ontouchend="document.getElementById('submit-modal').classList.remove('hidden')"
+       onclick="document.getElementById('submit-modal').classList.remove('hidden')"
+       class="px-4 py-2 bg-green-600 text-white text-sm font-medium rounded-lg hover:bg-green-700 transition-colors cursor-pointer"
+       role="button">
+        Submit Inspection
+    </a>
+</div>
+{% endif %}

@@ -1,4 +1,46 @@
 {% set insp_status = inspection_status if inspection_status is defined else (inspection.status if inspection is defined else '') %}
+{% set is_followup = progress.is_followup if progress.is_followup is defined else false %}
+
+{% if is_followup %}
+{# Followup cycle: show defect review progress #}
+{% set fu_total = progress.followup_total if progress.followup_total is defined else 0 %}
+{% set fu_done = progress.followup_actioned if progress.followup_actioned is defined else 0 %}
+{% set fu_remaining = fu_total - fu_done %}
+<div class="flex justify-between text-sm mb-2">
+    <span class="font-medium text-gray-700">Defect Review</span>
+    <span class="text-gray-500">
+        {{ fu_done }}/{{ fu_total }} defects reviewed
+    </span>
+</div>
+{% set pct = ((fu_done / fu_total) * 100)|round|int if fu_total > 0 else 0 %}
+<div class="w-full bg-gray-200 rounded-full h-2.5">
+    <div class="bg-blue-600 rounded-full h-2.5 transition-all" style="width: {{ pct }}%"></div>
+</div>
+<div class="flex justify-between items-center text-xs mt-1">
+    {% if fu_remaining > 0 %}
+    <span class="text-orange-600">{{ fu_remaining }} remaining</span>
+    {% else %}
+    <span class="text-green-600">All defects reviewed</span>
+    {% endif %}
+    {% if progress.defects > 0 %}
+    <span class="text-red-600">{{ progress.defects }} still defective</span>
+    {% endif %}
+</div>
+{% if pct >= 100 and insp_status == 'in_progress' %}
+<div class="mt-3 bg-green-50 border border-green-200 rounded-lg p-3 flex justify-between items-center">
+    <span class="text-green-700 font-medium text-sm">All defects reviewed</span>
+    <a href="javascript:void(0)"
+       ontouchend="document.getElementById('submit-modal').classList.remove('hidden')"
+       onclick="document.getElementById('submit-modal').classList.remove('hidden')"
+       class="px-4 py-2 bg-green-600 text-white text-sm font-medium rounded-lg hover:bg-green-700 transition-colors cursor-pointer"
+       role="button">
+        Submit Inspection
+    </a>
+</div>
+{% endif %}
+
+{% else %}
+{# Initial cycle: show standard item progress #}
 <div class="flex justify-between text-sm mb-2">
     <span class="font-medium text-gray-700">Progress</span>
     <span class="text-gray-500">
@@ -31,4 +73,5 @@
         Submit Inspection
     </a>
 </div>
+{% endif %}
 {% endif %}
