@@ -514,26 +514,11 @@ body {
             ('Inspected', pipeline_dates.get('inspected', ''), pipeline.in_progress + pipeline.submitted + pipeline.under_review + pipeline.reviewed + pipeline.approved + pipeline.certified + pipeline.pending_followup > 0),
             ('Issued to Site', pipeline_dates.get('issued_to_site', ''), pipeline.approved + pipeline.certified + pipeline.pending_followup > 0)
         ] %}
-        <!-- Connector line row -->
-        <table class="pipeline-table">
-        <tr class="pipeline-connector-row">
-            {% for label, date, done in stages %}
-            <td>
-                {% if not loop.first %}
-                {% set prev_done = stages[loop.index0 - 1][2] %}
-                <div style="height: 2px; background: {% if prev_done and done %}#C8963E{% elif prev_done %}#C8963E{% else %}#E8E6E1{% endif %}; margin-top: 14px;"></div>
-                {% else %}
-                <div style="height: 2px; margin-top: 14px;"></div>
-                {% endif %}
-            </td>
-            {% endfor %}
-        </tr>
-        </table>
-        <!-- Dots row overlaid via negative margin -->
-        <table class="pipeline-table" style="margin-top: -18px;">
+        <!-- Pipeline: table with dot cells and connector cells -->
+        <table style="width: 80%; margin: 0 auto; border-collapse: collapse;">
         <tr>
             {% for label, date, done in stages %}
-            <td>
+            <td style="text-align: center; vertical-align: top; width: 80px; padding: 0;">
                 {% if done %}
                 <div class="pipeline-dot-done">&#10003;</div>
                 {% else %}
@@ -544,6 +529,12 @@ body {
                 <div class="pipeline-date">{{ date }}</div>
                 {% endif %}
             </td>
+            {% if not loop.last %}
+            {% set next_done = stages[loop.index0 + 1][2] %}
+            <td style="vertical-align: top; padding: 0;">
+                <div style="height: 2px; margin-top: 14px; background: {% if done and next_done %}#C8963E{% elif done %}#C8963E{% else %}#E8E6E1{% endif %};"></div>
+            </td>
+            {% endif %}
             {% endfor %}
         </tr>
         </table>
