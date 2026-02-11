@@ -624,7 +624,7 @@ body {
 <div class="section">
     <div class="section-header">
         <span class="section-number">03</span>
-        <span class="section-title">Area Deep Dive: Block Comparison</span>
+        <span class="section-title">Area Deep Dive</span>
     </div>
     <div class="clearfix">
         {% for area_info in combined_area_dive %}
@@ -634,7 +634,7 @@ body {
                 <div style="font-size: 8px; font-weight: 600; letter-spacing: 2px; text-transform: uppercase; color: #6B6B6B; margin-bottom: 2px;">{{ area_info.area }}</div>
                 <div style="margin-bottom: 10px;">
                     <span style="font-family: 'Cormorant Garamond', Georgia, serif; font-size: 24px; font-weight: 300; color: #0A0A0A;">{{ area_info.total }}</span>
-                    <span style="font-size: 10px; color: #9A9A9A; margin-left: 4px;">defects ({{ area_info.pct }}%)</span>
+                    <span style="font-size: 10px; color: #9A9A9A; margin-left: 4px;">of {{ total_defects }} defects ({{ area_info.pct }}%)</span>
                 </div>
                 <table style="width: 100%; border-collapse: collapse;">
                     {% for d in area_info.defects %}
