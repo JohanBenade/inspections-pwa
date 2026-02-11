@@ -1,213 +1,267 @@
 """
-Patch: Combined Report v2
-- Remove Inspector column from Unit Summary Table
-- Replace signature block to match Phase 1 report (single Prepared by, no Raubex)
-- Replace footer to match Phase 1 report (thick border, Generated date, disclaimer)
-- Update CSS to match Phase 1 visual style
+Combined report: donut labels, area deep dive, 2-status
 """
-import os
+import os, ast
 
-FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)),
-                    'app', 'templates', 'analytics', 'report_combined.html')
+REPO = os.path.expanduser('~/Documents/GitHub/inspections-pwa')
+PY = os.path.join(REPO, 'app/routes/analytics.py')
+HTML = os.path.join(REPO, 'app/templates/analytics/report_combined.html')
 
-with open(FILE, 'r') as f:
-    content = f.read()
+with open(PY, 'r') as f:
+    py = f.read()
+with open(HTML, 'r') as f:
+    html = f.read()
 
-original = content  # keep backup for verification
+changes = 0
 
-# ============================================================
-# 1. REMOVE INSPECTOR COLUMN - HEADER
-# ============================================================
-old_th = '        <th>Inspector</th>\n'
-if old_th in content:
-    content = content.replace(old_th, '', 1)
-    print('[OK] Removed Inspector <th>')
+# === 1. DONUT MIDPOINTS (backend) ===
+old_donut = """    # Compute donut SVG data
+    circumference = 439.82
+    offset = 0
+    for a in area_data_raw:
+        pct = a['defect_count'] / total_defects if total_defects > 0 else 0
+        a['pct'] = round(pct * 100, 1)
+        a['dash'] = round(pct * circumference, 2)
+        a['offset'] = round(offset, 2)
+        offset += a['dash']"""
+
+new_donut = """    # Compute donut SVG data
+    circumference = 439.82
+    offset = 0
+    for a in area_data_raw:
+        pct = a['defect_count'] / total_defects if total_defects > 0 else 0
+        a['pct'] = round(pct * 100, 1)
+        a['dash'] = round(pct * circumference, 2)
+        a['offset'] = round(offset, 2)
+        offset += a['dash']
+    for a in area_data_raw:
+        mid_frac = (a['offset'] + a['dash'] / 2) / circumference
+        angle = mid_frac * 2 * math.pi - math.pi / 2
+        a['pct_x'] = round(100 + 70 * math.cos(angle), 1)
+        a['pct_y'] = round(100 + 70 * math.sin(angle), 1)"""
+
+if old_donut in py:
+    py = py.replace(old_donut, new_donut, 1)
+    print('[1] Backend: donut midpoints added')
+    changes += 1
 else:
-    print('[WARN] Inspector <th> not found')
+    print('[SKIP/FAIL] donut block not found')
 
-# ============================================================
-# 2. REMOVE INSPECTOR COLUMN - DATA ROW
-# ============================================================
-old_td = '        <td>{{ u.inspector_name }}</td>\n'
-if old_td in content:
-    content = content.replace(old_td, '', 1)
-    print('[OK] Removed Inspector <td>')
+# === 2. AREA DEEP DIVE QUERY (backend) ===
+anchor = "    area_colours = ['#C8963E', '#3D6B8E', '#4A7C59', '#C44D3F', '#7B6B8D', '#5A8A7A', '#B07D4B']\n\n    return {"
+
+if 'combined_area_dive' not in py:
+    new_query = '''    # --- Combined area deep dive: top 3 defects for top 2 areas with B5/B6 ---
+    combined_area_dive = []
+    top_2_areas = [a['area'] for a in area_data_raw[:2]]
+    for area_name in top_2_areas:
+        top_types = _to_dicts(query_db("""
+            SELECT d.original_comment as description, COUNT(*) as total
+            FROM defect d
+            JOIN item_template it ON d.item_template_id = it.id
+            JOIN category_template ct ON it.category_id = ct.id
+            JOIN area_template at2 ON ct.area_id = at2.id
+            WHERE d.tenant_id = ? AND d.status = 'open' AND at2.area_name = ?
+            GROUP BY d.original_comment ORDER BY total DESC LIMIT 3
+        """, [tenant_id, area_name]))
+        for dt in top_types:
+            for blk in [b5, b6]:
+                cid = blk.get('cycle_id', '')
+                row = query_db("""
+                    SELECT COUNT(*) as cnt FROM defect d
+                    JOIN item_template it ON d.item_template_id = it.id
+                    JOIN category_template ct ON it.category_id = ct.id
+                    JOIN area_template at2 ON ct.area_id = at2.id
+                    WHERE d.tenant_id = ? AND d.status = 'open'
+                    AND at2.area_name = ? AND d.original_comment = ?
+                    AND d.raised_cycle_id = ?
+                """, [tenant_id, area_name, dt['description'], cid], one=True)
+                label = 'b5' if blk is b5 else 'b6'
+                dt[label] = dict(row)['cnt'] if row else 0
+        area_total = next((a['defect_count'] for a in area_data_raw if a['area'] == area_name), 0)
+        area_pct = next((a['pct'] for a in area_data_raw if a['area'] == area_name), 0)
+        max_count = top_types[0]['total'] if top_types else 1
+        for dt in top_types:
+            dt['bar_pct'] = round((dt['total'] / max_count) * 100, 1)
+        combined_area_dive.append({
+            'area': area_name,
+            'total': area_total,
+            'pct': area_pct,
+            'defects': top_types,
+        })
+
+''' + "    area_colours = ['#C8963E', '#3D6B8E', '#4A7C59', '#C44D3F', '#7B6B8D', '#5A8A7A', '#B07D4B']\n\n    return {"
+
+    if anchor in py:
+        py = py.replace(anchor, new_query, 1)
+        print('[2] Backend: combined_area_dive query added')
+        changes += 1
+    else:
+        print('[FAIL] return anchor not found')
+
+    old_ret = "        'area_colours': area_colours,"
+    new_ret = "        'combined_area_dive': combined_area_dive,\n        'area_colours': area_colours,"
+    py = py.replace(old_ret, new_ret, 1)
+    print('[3] Backend: combined_area_dive in return dict')
+    changes += 1
 else:
-    print('[WARN] Inspector <td> not found')
+    print('[SKIP] combined_area_dive already exists')
 
-# ============================================================
-# 3. REPLACE SIGNATURE BLOCK (table -> simple div, matching Phase 1)
-# ============================================================
-old_sig = """    <table class="sig-table">
-    <tr>
-        <td class="sig-cell">
-            <div style="margin-bottom: 4px; font-size: 10px; color: #9A9A9A; text-transform: uppercase; letter-spacing: 1px;">Prepared by</div>
-            {% if sig_b64 %}
-            <img src="data:image/png;base64,{{ sig_b64 }}" alt="Signature" class="sig-image">
-            {% endif %}
-            <div class="sig-line">
-                <div class="sig-name">Kevin Coetzee</div>
-                <div class="sig-company">Monograph Architects</div>
-                <div class="sig-title">PrArch, MD</div>
-                <div class="sig-date">{{ report_date }}</div>
-            </div>
-        </td>
-        <td class="sig-cell">
-            <div style="margin-bottom: 4px; font-size: 10px; color: #9A9A9A; text-transform: uppercase; letter-spacing: 1px;">Acknowledged by</div>
-            <div class="sig-line" style="margin-top: 90px;">
-                <div class="sig-name">________________________</div>
-                <div class="sig-company">Raubex Building</div>
-                <div class="sig-date">Date: _______________</div>
-            </div>
-        </td>
-    </tr>
-    </table>"""
+# Write backend
+with open(PY, 'w') as f:
+    f.write(py)
+try:
+    ast.parse(py)
+    print('[4] Syntax: OK')
+except SyntaxError as e:
+    print(f'[FAIL] Syntax: {e}')
+    exit(1)
 
-new_sig = """<div class="signature-block">
-    <div class="sig-label">Prepared by</div>
-    <div class="sig-line">
-        <span class="sig-name">Kevin Coetzee</span>
-    </div>
-    <div class="sig-company">PrArch, MD</div>
-    <div class="sig-company">Monograph Architects</div>
-    <div class="sig-date">{{ report_date }}</div>
-</div>"""
+# === 5. DONUT PERCENTAGE LABELS (template) ===
+old_svg = """                    {% endfor %}
+                    <circle cx="100" cy="100" r="52" fill="#FAFAF8" />"""
 
-if old_sig in content:
-    content = content.replace(old_sig, new_sig, 1)
-    print('[OK] Replaced signature block (Phase 1 pattern)')
+new_svg = """                    {% endfor %}
+                    {% for a in area_data %}
+                    {% if a.pct >= 5 %}
+                    <text x="{{ a.pct_x }}" y="{{ a.pct_y + 3 }}" text-anchor="middle"
+                          font-family="'DM Sans', Helvetica, sans-serif" font-size="8" font-weight="600"
+                          fill="white">{{ a.pct }}%</text>
+                    {% endif %}
+                    {% endfor %}
+                    <circle cx="100" cy="100" r="52" fill="#FAFAF8" />"""
+
+if 'a.pct_x' not in html:
+    html = html.replace(old_svg, new_svg, 1)
+    print('[5] Template: donut percentage labels')
+    changes += 1
 else:
-    print('[WARN] Signature block not found - check whitespace')
+    print('[SKIP] donut labels already present')
 
-# ============================================================
-# 4. REPLACE FOOTER (match Phase 1 exactly)
-# ============================================================
-old_footer = """<div class="report-footer clearfix">
-    <div class="footer-left">
-        {% if logo_b64 %}
-        <img src="data:image/jpeg;base64,{{ logo_b64 }}" class="footer-logo" alt="Monograph">
-        {% endif %}
-        Power Park Student Housing - Phase 3 | Combined Report | {{ report_date }}
-    </div>
-    <div class="footer-right">
-        inspections.archpractice.co.za
-    </div>
+# === 6. AREA DEEP DIVE SECTION (template) ===
+s02_end = """    {% endif %}
 </div>
-</div><!-- /.page -->
-</body>
-</html>"""
 
-new_footer = """<div class="report-footer clearfix">
-    <div class="footer-left">
-        {% if logo_b64 %}
-        <img src="data:image/jpeg;base64,{{ logo_b64 }}" alt="Monograph" style="height: 24px; width: auto;">
-        {% else %}
-        <span class="logo-fallback" style="font-size: 16px;">MONOGRAPH</span>
-        {% endif %}
-        <div style="font-size: 9px; color: #9A9A9A; margin-top: 4px;">
-            Power Park Student Housing - Phase 3 &middot; Combined Report
+<!-- ============ 03: DEFECTS BY CATEGORY (TRADE) ============ -->"""
+
+deep_dive_html = """    {% endif %}
+</div>
+
+<!-- ============ 03: AREA DEEP DIVE ============ -->
+<div class="section">
+    <div class="section-header">
+        <span class="section-number">03</span>
+        <span class="section-title">Area Deep Dive: Block Comparison</span>
+    </div>
+    <div class="clearfix">
+        {% for area_info in combined_area_dive %}
+        {% set outer_first = loop.first %}
+        <div style="float: {% if loop.first %}left{% else %}right{% endif %}; width: 48%;">
+            <div style="background: #F5F3EE; border-left: 3px solid {% if outer_first %}#C8963E{% else %}#3D6B8E{% endif %}; padding: 14px 16px;">
+                <div style="font-size: 8px; font-weight: 600; letter-spacing: 2px; text-transform: uppercase; color: #6B6B6B; margin-bottom: 2px;">{{ area_info.area }}</div>
+                <div style="margin-bottom: 10px;">
+                    <span style="font-family: 'Cormorant Garamond', Georgia, serif; font-size: 24px; font-weight: 300; color: #0A0A0A;">{{ area_info.total }}</span>
+                    <span style="font-size: 10px; color: #9A9A9A; margin-left: 4px;">defects ({{ area_info.pct }}%)</span>
+                </div>
+                <table style="width: 100%; border-collapse: collapse;">
+                    {% for d in area_info.defects %}
+                    <tr>
+                        <td style="width: 18px; vertical-align: top; padding: 4px 0;">
+                            <div style="width: 18px; height: 18px; border-radius: 50%; background: {% if loop.first %}{% if outer_first %}#C8963E{% else %}#3D6B8E{% endif %}{% else %}#F5F3EE; border: 1px solid #E8E6E1{% endif %}; color: {% if loop.first %}white{% else %}#6B6B6B{% endif %}; text-align: center; line-height: 18px; font-size: 8px; font-weight: 600;">{{ loop.index }}</div>
+                        </td>
+                        <td style="padding: 4px 8px; vertical-align: top;">
+                            <div style="font-size: 10px; color: #1A1A1A; margin-bottom: 3px;">{{ d.description }}</div>
+                            <div style="height: 3px; background: #E8E6E1; border-radius: 2px; overflow: hidden;">
+                                <div style="height: 3px; border-radius: 2px; width: {{ d.bar_pct }}%; background: {% if outer_first %}#C8963E{% else %}#3D6B8E{% endif %};"></div>
+                            </div>
+                        </td>
+                        <td style="width: 70px; text-align: right; vertical-align: top; padding: 4px 0;">
+                            <div style="font-size: 10px; font-weight: 600; color: #0A0A0A;">{{ d.total }}</div>
+                            <div style="font-size: 8px; color: #9A9A9A;">
+                                <span style="color: #C8963E;">B5: {{ d.b5 }}</span>
+                                <span style="color: #3D6B8E; margin-left: 3px;">B6: {{ d.b6 }}</span>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </table>
+            </div>
         </div>
+        {% endfor %}
     </div>
-    <div class="footer-right">
-        Generated {{ report_date }}
+    <div class="callout callout-gold" style="margin-top: 12px;">
+        <strong>Key finding:</strong>
+        {% if combined_area_dive|length >= 2 and combined_area_dive[0].defects and combined_area_dive[1].defects %}
+        The most frequent defect in {{ combined_area_dive[0].area }} is {{ combined_area_dive[0].defects[0].description|lower }} ({{ combined_area_dive[0].defects[0].total }}: B5 {{ combined_area_dive[0].defects[0].b5 }}, B6 {{ combined_area_dive[0].defects[0].b6 }}).
+        In {{ combined_area_dive[1].area }}, {{ combined_area_dive[1].defects[0].description|lower }} leads with {{ combined_area_dive[1].defects[0].total }}.
+        {% endif %}
     </div>
 </div>
-<div class="footer-disclaimer">
-    This report is generated from live inspection data. All figures are as recorded at time of generation.
-    For queries, contact Monograph Architects.
-</div>
-</div><!-- /.page -->
-</body>
-</html>"""
 
-if old_footer in content:
-    content = content.replace(old_footer, new_footer, 1)
-    print('[OK] Replaced footer (Phase 1 pattern + disclaimer)')
+<!-- ============ 04: DEFECTS BY CATEGORY (TRADE) ============ -->"""
+
+if 'Area Deep Dive' not in html:
+    if s02_end in html:
+        html = html.replace(s02_end, deep_dive_html, 1)
+        print('[6] Template: Area Deep Dive section added')
+        changes += 1
+
+        # Renumber 03->04, 04->05, 05->06, 06->07
+        for old_n, new_n, label in [
+            ('03', '04', 'Trade'),
+            ('04', '05', 'Top Defects'),
+            ('05', '06', 'Unit Chart'),
+            ('06', '07', 'Unit Summary'),
+        ]:
+            html = html.replace(
+                f'<span class="section-number">{old_n}</span>\n        <span class="section-title">Defects by Category (Trade)',
+                f'<span class="section-number">{new_n}</span>\n        <span class="section-title">Defects by Category (Trade)') if old_n == '03' else html
+            if old_n == '04':
+                html = html.replace(
+                    f'<span class="section-number">{old_n}</span>\n        <span class="section-title">Most Common',
+                    f'<span class="section-number">{new_n}</span>\n        <span class="section-title">Most Common')
+            elif old_n == '05':
+                html = html.replace(
+                    f'<span class="section-number">{old_n}</span>\n        <span class="section-title">Defect Count',
+                    f'<span class="section-number">{new_n}</span>\n        <span class="section-title">Defect Count')
+            elif old_n == '06':
+                html = html.replace(
+                    f'<span class="section-number">{old_n}</span>\n        <span class="section-title">Unit Summary',
+                    f'<span class="section-number">{new_n}</span>\n        <span class="section-title">Unit Summary')
+        print('[7] Template: sections renumbered 04-07')
+        changes += 1
+    else:
+        print('[FAIL] S02 end marker not found')
 else:
-    print('[WARN] Footer block not found - check whitespace')
+    print('[SKIP] Area Deep Dive already present')
 
-# ============================================================
-# 5. UPDATE CSS - Replace sig CSS + footer CSS to match Phase 1
-# ============================================================
+# === 8. UNIT SUMMARY 2-STATUS (template) ===
+old_status = """            {% if u.insp_status == 'reviewed' %}
+            <span class="status-badge badge-reviewed">Reviewed</span>
+            {% elif u.insp_status == 'approved' %}
+            <span class="status-badge badge-approved">Approved</span>
+            {% elif u.insp_status in ['certified', 'pending_followup'] %}
+            <span class="status-badge badge-approved">{{ u.insp_status|replace('_', ' ')|title }}</span>
+            {% elif u.insp_status == 'submitted' %}
+            <span class="status-badge badge-submitted">Submitted</span>
+            {% else %}
+            <span class="status-badge" style="background: #F5F3EE; color: #6B6B6B;">{{ (u.insp_status or 'Not Started')|replace('_', ' ')|title }}</span>
+            {% endif %}"""
 
-# 5a. Replace sig CSS
-old_sig_css = """.sig-table { width: 100%; border-collapse: collapse; margin-top: 40px; }
-.sig-cell { width: 50%; vertical-align: top; padding: 0; }
-.sig-line { border-top: 1px solid #0A0A0A; padding-top: 6px; margin-top: 40px; width: 85%; }
-.sig-name { font-weight: 600; font-size: 12px; color: #0A0A0A; }
-.sig-company { font-size: 10px; color: #6B6B6B; margin-top: 1px; }
-.sig-title { font-size: 10px; color: #9A9A9A; margin-top: 1px; }
-.sig-date { font-size: 10px; color: #9A9A9A; margin-top: 6px; }
-.sig-image { height: 50px; width: auto; margin-bottom: -10px; }"""
+new_status = """            {% if u.insp_status in ['approved', 'certified', 'pending_followup'] %}
+            <span class="status-badge badge-approved">Issued to Site</span>
+            {% else %}
+            <span class="status-badge badge-reviewed">Inspected</span>
+            {% endif %}"""
 
-new_sig_css = """.signature-block {
-    margin-top: 40px;
-    page-break-inside: avoid;
-}
-.sig-label {
-    font-size: 10px;
-    color: #9A9A9A;
-    text-transform: uppercase;
-    letter-spacing: 1px;
-    margin-bottom: 8px;
-}
-.sig-line { border-bottom: 1px solid #1A1A1A; padding-bottom: 3px; margin-bottom: 3px; }
-.sig-name { font-size: 12px; font-weight: 500; color: #0A0A0A; }
-.sig-company { font-size: 10px; color: #6B6B6B; }
-.sig-date { font-size: 10px; color: #9A9A9A; }"""
-
-if old_sig_css in content:
-    content = content.replace(old_sig_css, new_sig_css, 1)
-    print('[OK] Replaced signature CSS (Phase 1 pattern)')
+if 'Issued to Site' not in html:
+    html = html.replace(old_status, new_status, 1)
+    print('[8] Template: 2-status simplification')
+    changes += 1
 else:
-    print('[WARN] Signature CSS not found')
+    print('[SKIP] 2-status already applied')
 
-# 5b. Replace footer CSS
-old_footer_css = """.report-footer {
-    margin-top: 30px;
-    padding-top: 12px;
-    border-top: 1px solid #E5E5E5;
-    font-size: 9px;
-    color: #9A9A9A;
-}
-.report-footer::after { content: ""; display: table; clear: both; }
-.footer-left { float: left; }
-.footer-right { float: right; text-align: right; }
-.footer-logo { height: 16px; width: auto; vertical-align: middle; margin-right: 6px; }"""
-
-new_footer_css = """.report-footer {
-    margin-top: 28px;
-    padding-top: 14px;
-    border-top: 3px solid #0A0A0A;
-    page-break-inside: avoid;
-}
-.report-footer::after { content: ""; display: table; clear: both; }
-.footer-left { float: left; }
-.footer-right { float: right; text-align: right; font-size: 9px; color: #9A9A9A; line-height: 1.7; }
-.footer-disclaimer {
-    margin-top: 14px;
-    padding: 8px 12px;
-    background: #F5F3EE;
-    font-size: 9px;
-    color: #9A9A9A;
-    text-align: center;
-    letter-spacing: 0.3px;
-}"""
-
-if old_footer_css in content:
-    content = content.replace(old_footer_css, new_footer_css, 1)
-    print('[OK] Replaced footer CSS (Phase 1 pattern + disclaimer)')
-else:
-    print('[WARN] Footer CSS not found')
-
-# ============================================================
-# WRITE
-# ============================================================
-if content != original:
-    with open(FILE, 'w') as f:
-        f.write(content)
-    print(f'\n[DONE] File updated: {FILE}')
-    print(f'  Original: {len(original)} chars')
-    print(f'  Updated:  {len(content)} chars')
-else:
-    print('\n[ERROR] No changes made - all patterns failed to match')
+with open(HTML, 'w') as f:
+    f.write(html)
+print(f'Lines: {len(html.splitlines())}')
+print(f'Total changes: {changes}')

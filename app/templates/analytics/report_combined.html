@@ -582,6 +582,13 @@ body {
                             stroke-dashoffset="{{ -a.offset }}"
                             transform="rotate(-90 100 100)"/>
                     {% endfor %}
+                    {% for a in area_data %}
+                    {% if a.pct >= 5 %}
+                    <text x="{{ a.pct_x }}" y="{{ a.pct_y + 3 }}" text-anchor="middle"
+                          font-family="'DM Sans', Helvetica, sans-serif" font-size="8" font-weight="600"
+                          fill="white">{{ a.pct }}%</text>
+                    {% endif %}
+                    {% endfor %}
                     <circle cx="100" cy="100" r="52" fill="#FAFAF8" />
                     <text x="100" y="95" text-anchor="middle" font-family="'Cormorant Garamond', Georgia, serif" font-size="26" font-weight="300" fill="#0A0A0A">{{ total_defects }}</text>
                     <text x="100" y="112" text-anchor="middle" font-family="'DM Sans', Helvetica, sans-serif" font-size="9" fill="#9A9A9A">defects</text>
@@ -613,10 +620,61 @@ body {
     {% endif %}
 </div>
 
-<!-- ============ 03: DEFECTS BY CATEGORY (TRADE) ============ -->
+<!-- ============ 03: AREA DEEP DIVE ============ -->
 <div class="section">
     <div class="section-header">
         <span class="section-number">03</span>
+        <span class="section-title">Area Deep Dive: Block Comparison</span>
+    </div>
+    <div class="clearfix">
+        {% for area_info in combined_area_dive %}
+        {% set outer_first = loop.first %}
+        <div style="float: {% if loop.first %}left{% else %}right{% endif %}; width: 48%;">
+            <div style="background: #F5F3EE; border-left: 3px solid {% if outer_first %}#C8963E{% else %}#3D6B8E{% endif %}; padding: 14px 16px;">
+                <div style="font-size: 8px; font-weight: 600; letter-spacing: 2px; text-transform: uppercase; color: #6B6B6B; margin-bottom: 2px;">{{ area_info.area }}</div>
+                <div style="margin-bottom: 10px;">
+                    <span style="font-family: 'Cormorant Garamond', Georgia, serif; font-size: 24px; font-weight: 300; color: #0A0A0A;">{{ area_info.total }}</span>
+                    <span style="font-size: 10px; color: #9A9A9A; margin-left: 4px;">defects ({{ area_info.pct }}%)</span>
+                </div>
+                <table style="width: 100%; border-collapse: collapse;">
+                    {% for d in area_info.defects %}
+                    <tr>
+                        <td style="width: 18px; vertical-align: top; padding: 4px 0;">
+                            <div style="width: 18px; height: 18px; border-radius: 50%; background: {% if loop.first %}{% if outer_first %}#C8963E{% else %}#3D6B8E{% endif %}{% else %}#F5F3EE; border: 1px solid #E8E6E1{% endif %}; color: {% if loop.first %}white{% else %}#6B6B6B{% endif %}; text-align: center; line-height: 18px; font-size: 8px; font-weight: 600;">{{ loop.index }}</div>
+                        </td>
+                        <td style="padding: 4px 8px; vertical-align: top;">
+                            <div style="font-size: 10px; color: #1A1A1A; margin-bottom: 3px;">{{ d.description }}</div>
+                            <div style="height: 3px; background: #E8E6E1; border-radius: 2px; overflow: hidden;">
+                                <div style="height: 3px; border-radius: 2px; width: {{ d.bar_pct }}%; background: {% if outer_first %}#C8963E{% else %}#3D6B8E{% endif %};"></div>
+                            </div>
+                        </td>
+                        <td style="width: 70px; text-align: right; vertical-align: top; padding: 4px 0;">
+                            <div style="font-size: 10px; font-weight: 600; color: #0A0A0A;">{{ d.total }}</div>
+                            <div style="font-size: 8px; color: #9A9A9A;">
+                                <span style="color: #C8963E;">B5: {{ d.b5 }}</span>
+                                <span style="color: #3D6B8E; margin-left: 3px;">B6: {{ d.b6 }}</span>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </table>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    <div class="callout callout-gold" style="margin-top: 12px;">
+        <strong>Key finding:</strong>
+        {% if combined_area_dive|length >= 2 and combined_area_dive[0].defects and combined_area_dive[1].defects %}
+        The most frequent defect in {{ combined_area_dive[0].area }} is {{ combined_area_dive[0].defects[0].description|lower }} ({{ combined_area_dive[0].defects[0].total }}: B5 {{ combined_area_dive[0].defects[0].b5 }}, B6 {{ combined_area_dive[0].defects[0].b6 }}).
+        In {{ combined_area_dive[1].area }}, {{ combined_area_dive[1].defects[0].description|lower }} leads with {{ combined_area_dive[1].defects[0].total }}.
+        {% endif %}
+    </div>
+</div>
+
+<!-- ============ 04: DEFECTS BY CATEGORY (TRADE) ============ -->
+<div class="section">
+    <div class="section-header">
+        <span class="section-number">04</span>
         <span class="section-title">Defects by Category (Trade): Batch Comparison</span>
     </div>
 
@@ -660,7 +718,7 @@ body {
 <!-- ============ 04: TOP DEFECT TYPES - TREND ANALYSIS ============ -->
 <div class="section" style="page-break-before: always;">
     <div class="section-header">
-        <span class="section-number">04</span>
+        <span class="section-number">05</span>
         <span class="section-title">Most Common Defect Types: Trend Analysis</span>
     </div>
 
@@ -718,7 +776,7 @@ body {
 <!-- ============ 05: DEFECT COUNT BY UNIT ============ -->
 <div class="section">
     <div class="section-header">
-        <span class="section-number">05</span>
+        <span class="section-number">06</span>
         <span class="section-title">Defect Count by Unit</span>
     </div>
 
@@ -805,7 +863,7 @@ body {
 <!-- ============ 06: UNIT SUMMARY TABLE ============ -->
 <div class="section" style="page-break-before: always;">
     <div class="section-header">
-        <span class="section-number">06</span>
+        <span class="section-number">07</span>
         <span class="section-title">Unit Summary Table</span>
     </div>
 
@@ -835,16 +893,10 @@ body {
         <td class="text-right font-bold">{{ u.defect_count }}</td>
         <td class="text-right">{{ u.defect_rate }}%</td>
         <td class="text-center">
-            {% if u.insp_status == 'reviewed' %}
-            <span class="status-badge badge-reviewed">Reviewed</span>
-            {% elif u.insp_status == 'approved' %}
-            <span class="status-badge badge-approved">Approved</span>
-            {% elif u.insp_status in ['certified', 'pending_followup'] %}
-            <span class="status-badge badge-approved">{{ u.insp_status|replace('_', ' ')|title }}</span>
-            {% elif u.insp_status == 'submitted' %}
-            <span class="status-badge badge-submitted">Submitted</span>
+            {% if u.insp_status in ['approved', 'certified', 'pending_followup'] %}
+            <span class="status-badge badge-approved">Issued to Site</span>
             {% else %}
-            <span class="status-badge" style="background: #F5F3EE; color: #6B6B6B;">{{ (u.insp_status or 'Not Started')|replace('_', ' ')|title }}</span>
+            <span class="status-badge badge-reviewed">Inspected</span>
             {% endif %}
         </td>
     </tr>

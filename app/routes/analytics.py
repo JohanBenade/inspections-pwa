@@ -702,6 +702,11 @@ def _build_combined_report_data():
         a['dash'] = round(pct * circumference, 2)
         a['offset'] = round(offset, 2)
         offset += a['dash']
+    for a in area_data_raw:
+        mid_frac = (a['offset'] + a['dash'] / 2) / circumference
+        angle = mid_frac * 2 * math.pi - math.pi / 2
+        a['pct_x'] = round(100 + 70 * math.cos(angle), 1)
+        a['pct_y'] = round(100 + 70 * math.sin(angle), 1)
 
     # Area comparison (per block)
     area_by_block_raw = [dict(r) for r in query_db("""
@@ -862,6 +867,45 @@ def _build_combined_report_data():
     except Exception:
         pass
 
+    # --- Combined area deep dive: top 3 defects for top 2 areas with B5/B6 ---
+    combined_area_dive = []
+    top_2_areas = [a['area'] for a in area_data_raw[:2]]
+    for area_name in top_2_areas:
+        top_types = _to_dicts(query_db("""
+            SELECT d.original_comment as description, COUNT(*) as total
+            FROM defect d
+            JOIN item_template it ON d.item_template_id = it.id
+            JOIN category_template ct ON it.category_id = ct.id
+            JOIN area_template at2 ON ct.area_id = at2.id
+            WHERE d.tenant_id = ? AND d.status = 'open' AND at2.area_name = ?
+            GROUP BY d.original_comment ORDER BY total DESC LIMIT 3
+        """, [tenant_id, area_name]))
+        for dt in top_types:
+            for blk in [b5, b6]:
+                cid = blk.get('cycle_id', '')
+                row = query_db("""
+                    SELECT COUNT(*) as cnt FROM defect d
+                    JOIN item_template it ON d.item_template_id = it.id
+                    JOIN category_template ct ON it.category_id = ct.id
+                    JOIN area_template at2 ON ct.area_id = at2.id
+                    WHERE d.tenant_id = ? AND d.status = 'open'
+                    AND at2.area_name = ? AND d.original_comment = ?
+                    AND d.raised_cycle_id = ?
+                """, [tenant_id, area_name, dt['description'], cid], one=True)
+                label = 'b5' if blk is b5 else 'b6'
+                dt[label] = dict(row)['cnt'] if row else 0
+        area_total = next((a['defect_count'] for a in area_data_raw if a['area'] == area_name), 0)
+        area_pct = next((a['pct'] for a in area_data_raw if a['area'] == area_name), 0)
+        max_count = top_types[0]['total'] if top_types else 1
+        for dt in top_types:
+            dt['bar_pct'] = round((dt['total'] / max_count) * 100, 1)
+        combined_area_dive.append({
+            'area': area_name,
+            'total': area_total,
+            'pct': area_pct,
+            'defects': top_types,
+        })
+
     area_colours = ['#C8963E', '#3D6B8E', '#4A7C59', '#C44D3F', '#7B6B8D', '#5A8A7A', '#B07D4B']
 
     return {
@@ -877,6 +921,7 @@ def _build_combined_report_data():
         'area_data': area_data_raw,
         'area_compare': area_compare,
         'trade_compare': trade_compare,
+        'combined_area_dive': combined_area_dive,
         'area_colours': area_colours,
         'top_defects_compare': top_defects_compare,
         'unit_defects': all_unit_defects,
