@@ -654,9 +654,9 @@ body {
     </div>
     <div class="callout callout-gold" style="margin-top: 12px;">
         <strong>Key finding:</strong>
-        {% if area_deep_dive|length >= 2 %}
-        {{ area_deep_dive[0].area }} and {{ area_deep_dive[1].area }} combined account for {{ area_deep_dive[0].pct + area_deep_dive[1].pct }}% of all defects.
+        {% if area_deep_dive|length >= 2 and area_deep_dive[0].defects and area_deep_dive[1].defects %}
         The most frequent defect in {{ area_deep_dive[0].area }} is {{ area_deep_dive[0].defects[0].description|lower }} ({{ area_deep_dive[0].defects[0].count }} occurrences).
+        In {{ area_deep_dive[1].area }}, {{ area_deep_dive[1].defects[0].description|lower }} leads with {{ area_deep_dive[1].defects[0].count }} occurrences.
         {% endif %}
     </div>
 </div>
