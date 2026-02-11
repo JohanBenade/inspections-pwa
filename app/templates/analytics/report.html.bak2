@@ -75,16 +75,6 @@ body {
     color: #1A1A1A;
     margin-top: 2px;
 }
-.header-meta .cycle-num {
-    font-family: 'Cormorant Garamond', Georgia, serif;
-    font-size: 26px;
-    font-weight: 400;
-    color: #0A0A0A;
-    letter-spacing: 0;
-    text-transform: none;
-    margin-top: 8px;
-    line-height: 1.1;
-}
 .report-title {
     font-family: 'Cormorant Garamond', Georgia, serif;
     font-size: 32px;
@@ -107,7 +97,7 @@ body {
     background: #F5F3EE;
     border-left: 3px solid #C8963E;
     vertical-align: top;
-    width: 20%;
+    width: 16.66%;
 }
 .kpi-label {
     font-size: 8px;
@@ -458,7 +448,6 @@ body {
         <div class="header-meta">
             Inspection Report
             <div class="date">{{ report_date }}</div>
-            <div class="cycle-num">Cycle {{ cycle.cycle_number }}</div>
         </div>
     </div>
     <div class="report-title">Defect Inspection Report</div>
@@ -490,6 +479,11 @@ body {
         <div class="kpi-sub">median: {{ median_defects }}</div>
     </td>
     <td class="kpi-cell">
+        <div class="kpi-label">Items Inspected</div>
+        <div class="kpi-value">{{ '{:,}'.format(total_items) }}</div>
+        <div class="kpi-sub">{{ items_per_unit }} per unit x {{ total_units }}</div>
+    </td>
+    <td class="kpi-cell">
         <div class="kpi-label">Defect Rate</div>
         <div class="kpi-value">{{ defect_rate }}%</div>
         <div class="kpi-sub">items flagged</div>
@@ -512,7 +506,9 @@ body {
         {% set stages = [
             ('Requested', pipeline_dates.get('requested', ''), true),
             ('Inspected', pipeline_dates.get('inspected', ''), pipeline.in_progress + pipeline.submitted + pipeline.under_review + pipeline.reviewed + pipeline.approved + pipeline.certified + pipeline.pending_followup > 0),
-            ('Issued to Site', pipeline_dates.get('issued_to_site', ''), pipeline.approved + pipeline.certified + pipeline.pending_followup > 0)
+            ('Reviewed', pipeline_dates.get('reviewed', ''), pipeline.reviewed + pipeline.approved + pipeline.certified + pipeline.pending_followup > 0),
+            ('Approved', pipeline_dates.get('approved', ''), pipeline.approved + pipeline.certified + pipeline.pending_followup > 0),
+            ('Certified', '', pipeline.certified > 0)
         ] %}
         <!-- Connector line row -->
         <table class="pipeline-table">
@@ -548,10 +544,13 @@ body {
         </tr>
         </table>
 
-        {% set issued_count = pipeline.approved + pipeline.certified + pipeline.pending_followup %}
+        {% set reviewed_count = pipeline.reviewed + pipeline.approved + pipeline.certified + pipeline.pending_followup %}
+        {% set approved_count = pipeline.approved + pipeline.certified + pipeline.pending_followup %}
         <div class="callout callout-gold" style="margin-top: 14px;">
             <strong>Current status:</strong>
-            {{ total_units }} units inspected{% if issued_count > 0 %}, {{ issued_count }} issued to site{% endif %}.
+            {{ total_units }} units inspected,
+            {{ reviewed_count }} reviewed{% if approved_count > 0 %}, {{ approved_count }} approved{% endif %}.
+            {% if certified_count > 0 %}{{ certified_count }} certified.{% endif %}
         </div>
     </div>
 </div>
@@ -587,13 +586,6 @@ body {
                         stroke-dasharray="{{ area.dash }} {{ 439.82 - area.dash }}"
                         stroke-dashoffset="{{ -area.offset }}"
                         transform="rotate(-90 100 100)" />
-                {% endfor %}
-                {% for area in area_data %}
-                <text x="{{ area.pct_x }}" y="{{ area.pct_y }}"
-                      text-anchor="middle" dominant-baseline="central"
-                      font-family="'DM Sans', Helvetica, sans-serif"
-                      font-size="{% if area.pct >= 10 %}8{% else %}7{% endif %}" font-weight="600" fill="white"
-                      >{{ area.pct }}%</text>
                 {% endfor %}
                 <circle cx="100" cy="100" r="52" fill="#FAFAF8" />
                 <text x="100" y="95" text-anchor="middle"
@@ -763,10 +755,16 @@ body {
                 <td class="text-right">{{ u.defect_rate }}%</td>
 
                 <td class="text-center">
-                    {% if u.insp_status in ['approved', 'certified', 'pending_followup'] %}
-                    <span class="status-badge badge-approved">Issued to Site</span>
+                    {% if u.insp_status == 'reviewed' %}
+                    <span class="status-badge badge-reviewed">Reviewed</span>
+                    {% elif u.insp_status == 'approved' %}
+                    <span class="status-badge badge-approved">Approved</span>
+                    {% elif u.insp_status in ['certified', 'pending_followup'] %}
+                    <span class="status-badge badge-approved">{{ u.insp_status|replace('_', ' ')|title }}</span>
+                    {% elif u.insp_status == 'submitted' %}
+                    <span class="status-badge badge-submitted">Submitted</span>
                     {% else %}
-                    <span class="status-badge badge-reviewed">Inspected</span>
+                    <span class="status-badge" style="background: #F5F3EE; color: #6B6B6B;">{{ (u.insp_status or 'Not Started')|replace('_', ' ')|title }}</span>
                     {% endif %}
                 </td>
             </tr>

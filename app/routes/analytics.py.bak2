@@ -5,7 +5,6 @@ Access: Manager + Admin only.
 """
 from flask import Blueprint, render_template, session, request, make_response
 from app.auth import require_manager
-import math
 from app.services.db import query_db
 
 analytics_bp = Blueprint('analytics', __name__, url_prefix='/analytics')
@@ -988,7 +987,6 @@ def _build_report_data(cycle_id):
     approved_dates = [u['approved_at'] for u in units if u.get('approved_at')]
     if approved_dates:
         pipeline_dates['approved'] = max(approved_dates)[:10]
-        pipeline_dates['issued_to_site'] = max(approved_dates)[:10]
 
     # --- Defects by area ---
     area_data = _to_dicts(query_db("""
@@ -1010,10 +1008,6 @@ def _build_report_data(cycle_id):
         a['pct'] = round(pct * 100, 1)
         a['dash'] = round(pct * circumference, 2)
         a['offset'] = round(offset, 2)
-        mid_frac = (a['offset'] + a['dash'] / 2) / circumference
-        angle = mid_frac * 2 * math.pi - math.pi / 2
-        a['pct_x'] = round(100 + 70 * math.cos(angle), 1)
-        a['pct_y'] = round(100 + 70 * math.sin(angle), 1)
         offset += a['dash']
 
     # --- Defects by category (trade) ---
