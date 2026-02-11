@@ -621,7 +621,7 @@ body {
     </div>
     <div class="section-divider"></div>
     <div class="clearfix">
-        {% for area_info in area_deep_dive %}
+        {% for area_info in area_deep_dive %}{% set outer_first = loop.first %}
         <div style="float: {% if loop.first %}left{% else %}right{% endif %}; width: 48%;">
             <div style="background: #F5F3EE; border-left: 3px solid {% if loop.first %}#C8963E{% else %}#3D6B8E{% endif %}; padding: 14px 16px;">
                 <div style="font-size: 8px; font-weight: 600; letter-spacing: 2px; text-transform: uppercase; color: #6B6B6B; margin-bottom: 2px;">{{ area_info.area }}</div>
@@ -633,12 +633,12 @@ body {
                     {% for d in area_info.defects %}
                     <tr>
                         <td style="width: 18px; vertical-align: top; padding: 4px 0;">
-                            <div style="width: 18px; height: 18px; border-radius: 50%; background: {% if loop.first %}{% if loop.parentloop.first %}#C8963E{% else %}#3D6B8E{% endif %}{% else %}#F5F3EE; border: 1px solid #E8E6E1{% endif %}; color: {% if loop.first %}white{% else %}#6B6B6B{% endif %}; text-align: center; line-height: 18px; font-size: 8px; font-weight: 600;">{{ loop.index }}</div>
+                            <div style="width: 18px; height: 18px; border-radius: 50%; background: {% if loop.first %}{% if outer_first %}#C8963E{% else %}#3D6B8E{% endif %}{% else %}#F5F3EE; border: 1px solid #E8E6E1{% endif %}; color: {% if loop.first %}white{% else %}#6B6B6B{% endif %}; text-align: center; line-height: 18px; font-size: 8px; font-weight: 600;">{{ loop.index }}</div>
                         </td>
                         <td style="padding: 4px 8px; vertical-align: top;">
                             <div style="font-size: 10px; color: #1A1A1A; margin-bottom: 3px;">{{ d.description }}</div>
                             <div style="height: 3px; background: #E8E6E1; border-radius: 2px; overflow: hidden;">
-                                <div style="height: 3px; border-radius: 2px; width: {{ d.bar_pct }}%; background: {% if loop.parentloop.first %}#C8963E{% else %}#3D6B8E{% endif %};"></div>
+                                <div style="height: 3px; border-radius: 2px; width: {{ d.bar_pct }}%; background: {% if outer_first %}#C8963E{% else %}#3D6B8E{% endif %};"></div>
                             </div>
                         </td>
                         <td style="width: 50px; text-align: right; vertical-align: top; padding: 4px 0;">
