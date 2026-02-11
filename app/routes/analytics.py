@@ -1016,7 +1016,36 @@ def _build_report_data(cycle_id):
         a['pct_y'] = round(100 + 70 * math.sin(angle), 1)
         offset += a['dash']
 
-    # --- Defects by category (trade) ---
+    # --- Area deep dive: top 3 defect types for top 2 areas ---
+    area_deep_dive = []
+    top_area_names = [a['area'] for a in area_data[:2]]
+    for area_name in top_area_names:
+        area_defects = _to_dicts(query_db("""
+            SELECT d.original_comment as description, COUNT(*) as count
+            FROM defect d
+            JOIN item_template it ON d.item_template_id = it.id
+            JOIN category_template ct ON it.category_id = ct.id
+            JOIN area_template at2 ON ct.area_id = at2.id
+            WHERE d.raised_cycle_id = ? AND d.tenant_id = ? AND d.status = 'open'
+            AND at2.area_name = ?
+            GROUP BY d.original_comment
+            ORDER BY count DESC
+            LIMIT 3
+        """, [cycle_id, tenant_id, area_name]))
+        area_total = next((a['defect_count'] for a in area_data if a['area'] == area_name), 0)
+        area_pct = next((a['pct'] for a in area_data if a['area'] == area_name), 0)
+        max_count = area_defects[0]['count'] if area_defects else 1
+        for d in area_defects:
+            d['bar_pct'] = round((d['count'] / max_count) * 100, 1)
+            d['item_pct'] = round((d['count'] / area_total) * 100, 1) if area_total > 0 else 0
+        area_deep_dive.append({
+            'area': area_name,
+            'total': area_total,
+            'pct': area_pct,
+            'defects': area_defects,
+        })
+
+        # --- Defects by category (trade) ---
     trade_data = _to_dicts(query_db("""
         SELECT ct.category_name as trade, COUNT(d.id) as defect_count
         FROM defect d
@@ -1119,6 +1148,7 @@ def _build_report_data(cycle_id):
         'cycle_options': cycle_options,
         'logo_b64': logo_b64,
         'sig_b64': sig_b64,
+        'area_deep_dive': area_deep_dive,
         'area_colours': report_area_colours,
         'report_date': __import__('datetime').datetime.utcnow().strftime('%d %B %Y'),
     }

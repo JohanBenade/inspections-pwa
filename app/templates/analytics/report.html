@@ -613,10 +613,58 @@ body {
     {% endif %}
 </div>
 
-<!-- 03 DEFECTS BY CATEGORY (TRADE) -->
+<!-- 03 AREA DEEP DIVE -->
 <div class="section">
     <div class="section-header">
         <span class="section-num">03</span>
+        <span class="section-title">Area Deep Dive</span>
+    </div>
+    <div class="section-divider"></div>
+    <div class="clearfix">
+        {% for area_info in area_deep_dive %}
+        <div style="float: {% if loop.first %}left{% else %}right{% endif %}; width: 48%;">
+            <div style="background: #F5F3EE; border-left: 3px solid {% if loop.first %}#C8963E{% else %}#3D6B8E{% endif %}; padding: 14px 16px;">
+                <div style="font-size: 8px; font-weight: 600; letter-spacing: 2px; text-transform: uppercase; color: #6B6B6B; margin-bottom: 2px;">{{ area_info.area }}</div>
+                <div style="margin-bottom: 10px;">
+                    <span style="font-family: 'Cormorant Garamond', Georgia, serif; font-size: 24px; font-weight: 300; color: #0A0A0A;">{{ area_info.total }}</span>
+                    <span style="font-size: 10px; color: #9A9A9A; margin-left: 4px;">defects ({{ area_info.pct }}%)</span>
+                </div>
+                <table style="width: 100%; border-collapse: collapse;">
+                    {% for d in area_info.defects %}
+                    <tr>
+                        <td style="width: 18px; vertical-align: top; padding: 4px 0;">
+                            <div style="width: 18px; height: 18px; border-radius: 50%; background: {% if loop.first %}{% if loop.parentloop.first %}#C8963E{% else %}#3D6B8E{% endif %}{% else %}#F5F3EE; border: 1px solid #E8E6E1{% endif %}; color: {% if loop.first %}white{% else %}#6B6B6B{% endif %}; text-align: center; line-height: 18px; font-size: 8px; font-weight: 600;">{{ loop.index }}</div>
+                        </td>
+                        <td style="padding: 4px 8px; vertical-align: top;">
+                            <div style="font-size: 10px; color: #1A1A1A; margin-bottom: 3px;">{{ d.description }}</div>
+                            <div style="height: 3px; background: #E8E6E1; border-radius: 2px; overflow: hidden;">
+                                <div style="height: 3px; border-radius: 2px; width: {{ d.bar_pct }}%; background: {% if loop.parentloop.first %}#C8963E{% else %}#3D6B8E{% endif %};"></div>
+                            </div>
+                        </td>
+                        <td style="width: 50px; text-align: right; vertical-align: top; padding: 4px 0;">
+                            <div style="font-size: 10px; font-weight: 600; color: #0A0A0A;">{{ d.count }}</div>
+                            <div style="font-size: 8px; color: #9A9A9A;">{{ d.item_pct }}%</div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </table>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    <div class="callout callout-gold" style="margin-top: 12px;">
+        <strong>Key finding:</strong>
+        {% if area_deep_dive|length >= 2 %}
+        {{ area_deep_dive[0].area }} and {{ area_deep_dive[1].area }} combined account for {{ area_deep_dive[0].pct + area_deep_dive[1].pct }}% of all defects.
+        The most frequent defect in {{ area_deep_dive[0].area }} is {{ area_deep_dive[0].defects[0].description|lower }} ({{ area_deep_dive[0].defects[0].count }} occurrences).
+        {% endif %}
+    </div>
+</div>
+
+<!-- 04 DEFECTS BY CATEGORY (TRADE) -->
+<div class="section">
+    <div class="section-header">
+        <span class="section-num">04</span>
         <span class="section-title">Defects by Category (Trade)</span>
     </div>
     <div class="section-divider"></div>
@@ -642,10 +690,10 @@ body {
     {% endif %}
 </div>
 
-<!-- 04 TOP DEFECT TYPES -->
+<!-- 05 TOP DEFECT TYPES -->
 <div class="section">
     <div class="section-header">
-        <span class="section-num">04</span>
+        <span class="section-num">05</span>
         <span class="section-title">Most Common Defect Types</span>
     </div>
     <div class="section-divider"></div>
@@ -682,10 +730,10 @@ body {
     {% endif %}
 </div>
 
-<!-- 05 DEFECT COUNT BY UNIT -->
+<!-- 06 DEFECT COUNT BY UNIT -->
 <div class="section">
     <div class="section-header">
-        <span class="section-num">05</span>
+        <span class="section-num">06</span>
         <span class="section-title">Defect Count by Unit</span>
     </div>
     <div class="section-divider"></div>
@@ -726,10 +774,10 @@ body {
     </div>
 </div>
 
-<!-- 06 UNIT SUMMARY TABLE -->
+<!-- 07 UNIT SUMMARY TABLE -->
 <div class="section" style="page-break-before: auto;">
     <div class="section-header">
-        <span class="section-num">06</span>
+        <span class="section-num">07</span>
         <span class="section-title">Unit Summary Table</span>
     </div>
     <div class="section-divider"></div>
