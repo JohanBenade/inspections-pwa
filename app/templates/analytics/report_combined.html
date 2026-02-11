@@ -727,7 +727,7 @@ body {
 
     <!-- BLOCK 5 -->
     <div style="margin-bottom: 6px;">
-        <div style="font-size: 9px; font-weight: 600; letter-spacing: 2px; text-transform: uppercase; color: #C8963E; margin-bottom: 6px;">Block 5 &mdash; Units {{ b5_units[0].unit_number }}-{{ b5_units[-1].unit_number }} &bull; Avg {{ b5.avg_defects }} defects/unit</div>
+        <div style="font-size: 12px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; color: #C8963E; margin-bottom: 8px;">Block 5 &mdash; Units {{ b5_units[0].unit_number }}&ndash;{{ b5_units[-1].unit_number }}</div>
         <div style="position: relative; overflow-x: auto;">
             <!-- Average line -->
             {% set avg_line_b5 = (b5.avg_defects / max_defects * 140) | int if max_defects > 0 else 0 %}
@@ -758,7 +758,7 @@ body {
 
     <!-- BLOCK 6 -->
     <div style="margin-bottom: 6px;">
-        <div style="font-size: 9px; font-weight: 600; letter-spacing: 2px; text-transform: uppercase; color: #3D6B8E; margin-bottom: 6px;">Block 6 &mdash; Units {{ b6_units[0].unit_number }}-{{ b6_units[-1].unit_number }} &bull; Avg {{ b6.avg_defects }} defects/unit</div>
+        <div style="font-size: 12px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; color: #3D6B8E; margin-bottom: 8px;">Block 6 &mdash; Units {{ b6_units[0].unit_number }}&ndash;{{ b6_units[-1].unit_number }}</div>
         <div style="position: relative; overflow-x: auto;">
             <!-- Average line -->
             {% set avg_line_b6 = (b6.avg_defects / max_defects * 140) | int if max_defects > 0 else 0 %}
