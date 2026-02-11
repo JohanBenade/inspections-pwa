@@ -749,6 +749,11 @@ body {
             </tr>
             </table>
         </div>
+        <div class="callout callout-gold" style="margin-top: 6px; margin-bottom: 14px;">
+            <strong>Block 5 average: {{ b5.avg_defects }} defects/unit.</strong>
+            {{ b5_high }} of {{ b5.total_units }} units exceed 30 defects.
+            {% if b5_worst_unit.defect_count > 0 %}Worst: {{ b5_worst_unit.unit_number }} with {{ b5_worst_unit.defect_count }}.{% endif %}
+        </div>
     </div>
 
     <!-- BLOCK 6 -->
@@ -775,6 +780,11 @@ body {
             </tr>
             </table>
         </div>
+        <div class="callout callout-blue" style="margin-top: 6px; margin-bottom: 14px;">
+            <strong>Block 6 average: {{ b6.avg_defects }} defects/unit.</strong>
+            {{ b6_high }} of {{ b6.total_units }} units exceed 30 defects.
+            {% if b6_worst_unit.defect_count > 0 %}Worst: {{ b6_worst_unit.unit_number }} with {{ b6_worst_unit.defect_count }}.{% endif %}
+        </div>
     </div>
 
     <!-- Legend -->
@@ -788,10 +798,7 @@ body {
     </table>
 
     <div class="callout callout-gold">
-        <strong>Project average: {{ avg_defects }} defects per unit.</strong>
-        Block 5 averages {{ b5.avg_defects }} defects/unit; Block 6 averages {{ b6.avg_defects }} defects/unit.
-        {{ high_defect_units }} of {{ total_units }} units ({{ high_defect_pct }}%) exceed 30 defects.
-        The worst-performing unit is {{ worst_unit.unit_number }} with {{ worst_unit.defect_count }} defects.
+        <strong>Project average: {{ avg_defects }} defects per unit</strong> across {{ total_units }} units. {{ high_defect_units }} ({{ high_defect_pct }}%) exceed 30 defects.
     </div>
 </div>
 

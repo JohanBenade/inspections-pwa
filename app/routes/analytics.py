@@ -674,6 +674,14 @@ def _build_combined_report_data():
     high_defect_units = sum(1 for u in all_unit_defects if u['defect_count'] > 30)
     high_defect_pct = round((high_defect_units / total_units) * 100) if total_units > 0 else 0
 
+    # Per-block worst unit + high defect counts
+    b5_ud = [u for u in all_unit_defects if u['block'] == 'Block 5']
+    b6_ud = [u for u in all_unit_defects if u['block'] == 'Block 6']
+    b5_worst_unit = max(b5_ud, key=lambda x: x['defect_count']) if b5_ud else {'unit_number': '-', 'defect_count': 0}
+    b6_worst_unit = max(b6_ud, key=lambda x: x['defect_count']) if b6_ud else {'unit_number': '-', 'defect_count': 0}
+    b5_high = sum(1 for u in b5_ud if u['defect_count'] > 30)
+    b6_high = sum(1 for u in b6_ud if u['defect_count'] > 30)
+
     # --- Area data (combined + per-block) ---
     area_data_raw = [dict(r) for r in query_db("""
         SELECT at2.area_name as area, COUNT(d.id) as defect_count
@@ -876,6 +884,10 @@ def _build_combined_report_data():
         'worst_unit': worst_unit,
         'high_defect_units': high_defect_units,
         'high_defect_pct': high_defect_pct,
+        'b5_worst_unit': b5_worst_unit,
+        'b6_worst_unit': b6_worst_unit,
+        'b5_high': b5_high,
+        'b6_high': b6_high,
         'unit_table': unit_table,
         'median_defects': median_defects,
         'total_items': total_items,
