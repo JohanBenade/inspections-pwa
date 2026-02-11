@@ -749,7 +749,7 @@ body {
             </tr>
             </table>
         </div>
-        <div class="callout callout-gold" style="margin-top: 6px; margin-bottom: 14px;">
+        <div class="callout callout-gold" style="margin-top: 8px; margin-bottom: 30px;">
             <strong>Block 5 average: {{ b5.avg_defects }} defects/unit.</strong>
             {{ b5_high }} of {{ b5.total_units }} units exceed 30 defects.
             {% if b5_worst_unit.defect_count > 0 %}Worst: {{ b5_worst_unit.unit_number }} with {{ b5_worst_unit.defect_count }}.{% endif %}
@@ -757,7 +757,7 @@ body {
     </div>
 
     <!-- BLOCK 6 -->
-    <div style="margin-bottom: 6px;">
+    <div style="margin-top: 20px; margin-bottom: 6px;">
         <div style="font-size: 12px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; color: #3D6B8E; margin-bottom: 8px;">Block 6 &mdash; Units {{ b6_units[0].unit_number }}&ndash;{{ b6_units[-1].unit_number }}</div>
         <div style="position: relative; overflow-x: auto;">
             <!-- Average line -->
