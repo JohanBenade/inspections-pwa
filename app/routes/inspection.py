@@ -6,6 +6,7 @@ from datetime import date, datetime, timezone
 from flask import Blueprint, render_template, session, redirect, url_for, abort, request, jsonify
 from app.auth import require_auth
 from app.utils import generate_id
+from app.utils.wash import wash_description
 from app.utils.audit import log_audit
 from app.services.db import get_db, query_db
 from app.services.template_loader import get_inspection_template
@@ -696,18 +697,19 @@ def submit_inspection(inspection_id):
                   item['comment'] or 'Not rectified'])
         else:
             defect_id = generate_id()
+            washed_comment = wash_description(db, tenant_id, item['template_id'], item['comment'])
             db.execute("""
                 INSERT INTO defect (id, tenant_id, unit_id, item_template_id,
-                                   raised_cycle_id, defect_type, status, original_comment)
-                VALUES (?, ?, ?, ?, ?, ?, 'open', ?)
+                                   raised_cycle_id, defect_type, status, original_comment, raw_comment)
+                VALUES (?, ?, ?, ?, ?, ?, 'open', ?, ?)
             """, [defect_id, tenant_id, inspection['unit_id'], item['template_id'],
-                  inspection['cycle_id'], item['status'], item['comment']])
+                  inspection['cycle_id'], item['status'], washed_comment, item['comment']])
             
             history_id = generate_id()
             db.execute("""
                 INSERT INTO defect_history (id, tenant_id, defect_id, cycle_id, comment, status)
                 VALUES (?, ?, ?, ?, ?, 'open')
-            """, [history_id, tenant_id, defect_id, inspection['cycle_id'], item['comment']])
+            """, [history_id, tenant_id, defect_id, inspection['cycle_id'], washed_comment])
     
     ok_items = query_db("""
         SELECT ii.item_template_id
