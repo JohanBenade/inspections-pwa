@@ -261,6 +261,58 @@ def dashboard():
             "WHERE i.tenant_id = ? AND i.cycle_id NOT LIKE 'test-%' GROUP BY i.inspector_name ORDER BY avg_per_unit DESC",
             [tenant_id])
 
+        # Area Deep Dive: top 3 defect types for top 2 areas (with block breakdown)
+        deep_dive_raw = query_db(
+            "SELECT at2.area_name, d.original_comment, ic.block, COUNT(*) as cnt "
+            "FROM defect d "
+            "JOIN item_template it ON d.item_template_id = it.id "
+            "JOIN category_template ct ON it.category_id = ct.id "
+            "JOIN area_template at2 ON ct.area_id = at2.id "
+            "JOIN inspection_cycle ic ON d.raised_cycle_id = ic.id "
+            "WHERE d.tenant_id = ? AND d.status = 'open' AND ic.id NOT LIKE 'test-%' "
+            "GROUP BY at2.area_name, d.original_comment, ic.block "
+            "ORDER BY at2.area_name, cnt DESC",
+            [tenant_id])
+        # Build {area: {desc: {total, blocks}}}
+        dd_map = {}
+        dd_area_totals = {}
+        for r in deep_dive_raw:
+            area = r['area_name']
+            desc = r['original_comment']
+            if area not in dd_map:
+                dd_map[area] = {}
+                dd_area_totals[area] = 0
+            if desc not in dd_map[area]:
+                dd_map[area][desc] = {'total': 0, 'blocks': {}}
+            dd_map[area][desc]['total'] += r['cnt']
+            dd_map[area][desc]['blocks'][r['block']] = r['cnt']
+            dd_area_totals[area] += r['cnt']
+        # Top 2 areas by total
+        top_areas = sorted(dd_area_totals.keys(), key=lambda a: dd_area_totals[a], reverse=True)[:2]
+        dd_colours = ['#C8963E', '#3D6B8E']
+        area_deep_dive = []
+        for idx, area in enumerate(top_areas):
+            descs = dd_map[area]
+            top_descs = sorted(descs.items(), key=lambda x: x[1]['total'], reverse=True)[:3]
+            max_count = top_descs[0][1]['total'] if top_descs else 1
+            defect_list = []
+            for desc, info in top_descs:
+                defect_list.append({
+                    'description': desc,
+                    'count': info['total'],
+                    'pct': round(info['total'] / dd_area_totals[area] * 100, 1),
+                    'bar_pct': round(info['total'] / max_count * 100),
+                    'b5': info['blocks'].get('Block 5', 0),
+                    'b6': info['blocks'].get('Block 6', 0),
+                })
+            area_deep_dive.append({
+                'area': area,
+                'total': dd_area_totals[area],
+                'pct_of_total': round(dd_area_totals[area] / total_defects * 100, 1) if total_defects > 0 else 0,
+                'colour': dd_colours[idx],
+                'defects': defect_list,
+            })
+
         return render_template('analytics/dashboard.html',
             cycles=cycles, selected_cycle_id='all', selected_cycle=None,
             is_all_view=True, has_data=total_units > 0,
@@ -272,7 +324,8 @@ def dashboard():
             unit_totals=unit_totals, recurring=recurring,
             inspector_stats=inspector_stats, area_colours=AREA_COLOURS,
             trend_data=trend_data, area_compare_data=area_compare_data,
-            defect_compare=defect_compare, cat_compare_data=cat_compare_data)
+            defect_compare=defect_compare, cat_compare_data=cat_compare_data,
+            area_deep_dive=area_deep_dive)
 
     # --- 1. SUMMARY STATS ---
     total_units = query_db("""
@@ -430,6 +483,52 @@ def dashboard():
     context_header = 'Power Park Student Housing - Phase 3 | Cycle {} - {} | Units {}'.format(
         selected_cycle['cycle_number'] if selected_cycle else '?', ctx_block, ctx_units)
 
+    # Area Deep Dive: top 3 defect types for top 2 areas (per-cycle)
+    deep_dive_raw = query_db("""
+        SELECT at2.area_name, d.original_comment, COUNT(*) as cnt
+        FROM defect d
+        JOIN item_template it ON d.item_template_id = it.id
+        JOIN category_template ct ON it.category_id = ct.id
+        JOIN area_template at2 ON ct.area_id = at2.id
+        WHERE d.raised_cycle_id = ? AND d.tenant_id = ? AND d.status = 'open'
+        GROUP BY at2.area_name, d.original_comment
+        ORDER BY at2.area_name, cnt DESC
+    """, [selected_cycle_id, tenant_id])
+    dd_map = {}
+    dd_area_totals = {}
+    for r in deep_dive_raw:
+        area = r['area_name']
+        desc = r['original_comment']
+        if area not in dd_map:
+            dd_map[area] = {}
+            dd_area_totals[area] = 0
+        if desc not in dd_map[area]:
+            dd_map[area][desc] = {'total': 0}
+        dd_map[area][desc]['total'] += r['cnt']
+        dd_area_totals[area] += r['cnt']
+    top_areas = sorted(dd_area_totals.keys(), key=lambda a: dd_area_totals[a], reverse=True)[:2]
+    dd_colours = ['#C8963E', '#3D6B8E']
+    area_deep_dive = []
+    for idx, area in enumerate(top_areas):
+        descs = dd_map[area]
+        top_descs = sorted(descs.items(), key=lambda x: x[1]['total'], reverse=True)[:3]
+        max_count = top_descs[0][1]['total'] if top_descs else 1
+        defect_list = []
+        for desc, info in top_descs:
+            defect_list.append({
+                'description': desc,
+                'count': info['total'],
+                'pct': round(info['total'] / dd_area_totals[area] * 100, 1),
+                'bar_pct': round(info['total'] / max_count * 100),
+            })
+        area_deep_dive.append({
+            'area': area,
+            'total': dd_area_totals[area],
+            'pct_of_total': round(dd_area_totals[area] / total_defects * 100, 1) if total_defects > 0 else 0,
+            'colour': dd_colours[idx],
+            'defects': defect_list,
+        })
+
     return render_template('analytics/dashboard.html',
                            cycles=cycles,
                            selected_cycle_id=selected_cycle_id,
@@ -449,7 +548,8 @@ def dashboard():
                            unit_totals=unit_totals,
                            recurring=recurring,
                            inspector_stats=inspector_stats,
-                           area_colours=AREA_COLOURS)
+                           area_colours=AREA_COLOURS,
+                           area_deep_dive=area_deep_dive)
 
 # ============================================================
 # BI-WEEKLY REPORT ROUTES (v64g)

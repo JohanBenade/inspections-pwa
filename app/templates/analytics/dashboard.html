@@ -164,6 +164,46 @@
         </div>
     </div>
 
+    <!-- AREA DEEP DIVE -->
+    {% if area_deep_dive %}
+    <div class="bg-white rounded-lg shadow p-4">
+        <h2 class="text-lg font-semibold text-gray-900 mb-1">Area Deep Dive</h2>
+        <p class="text-sm text-gray-500 mb-4">Top 3 defect types in the highest-defect areas. {% if is_all_view %}Block breakdown shown per defect.{% endif %}</p>
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            {% for area in area_deep_dive %}
+            <div class="border rounded-lg p-4" style="border-left: 4px solid {{ area.colour }};">
+                <div class="flex items-center justify-between mb-3">
+                    <h3 class="font-semibold text-gray-900">{{ area.area }}</h3>
+                    <span class="text-sm text-gray-500">{{ area.total }} defects ({{ area.pct_of_total }}%)</span>
+                </div>
+                <div class="space-y-3">
+                    {% for d in area.defects %}
+                    <div>
+                        <div class="flex items-center justify-between mb-1">
+                            <div class="flex items-center gap-2">
+                                <span class="inline-flex items-center justify-center w-5 h-5 rounded-full text-xs font-bold text-white" style="background: {{ area.colour }};">{{ loop.index }}</span>
+                                <span class="text-sm text-gray-800">{{ d.description }}</span>
+                            </div>
+                            <span class="text-sm font-semibold text-gray-700">{{ d.count }}</span>
+                        </div>
+                        <div class="w-full bg-gray-100 rounded-full h-2">
+                            <div class="h-2 rounded-full" style="width: {{ d.bar_pct }}%; background: {{ area.colour }}; opacity: 0.7;"></div>
+                        </div>
+                        {% if is_all_view and d.b5 is defined %}
+                        <div class="flex gap-3 mt-1">
+                            <span class="text-xs text-amber-600 font-medium">B5: {{ d.b5 }}</span>
+                            <span class="text-xs text-blue-600 font-medium">B6: {{ d.b6 }}</span>
+                        </div>
+                        {% endif %}
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+
     <!-- 4. UNIT RANKING -->
     <div class="bg-white rounded-lg shadow p-4">
         <h2 class="text-lg font-semibold text-gray-900 mb-4">Unit Ranking (worst first)</h2>
