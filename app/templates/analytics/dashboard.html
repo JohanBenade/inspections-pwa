@@ -238,16 +238,17 @@
     {% if category_list %}
     <div class="bg-white rounded-lg shadow p-4">
         <h2 class="text-lg font-semibold text-gray-900 mb-1">Defects by Category (Trade){% if is_all_view %}: Block Comparison{% endif %}</h2>
-        <p class="text-sm text-gray-500 mb-4">Breakdown of defects by construction trade.</p>
+        <p class="text-sm text-gray-500 mb-3">Breakdown of defects by construction trade. <span class="text-gray-400">Median: {{ cat_median }}</span></p>
         <div class="space-y-3">
             {% for c in category_list %}
             <div>
-                <div class="flex items-center justify-between mb-1">
-                    <span class="text-sm text-gray-800">{{ c.category }}</span>
-                    <span class="text-sm font-semibold text-gray-900">{{ c.count }} <span class="text-gray-400 font-normal">({{ c.pct }}%)</span></span>
+                <div class="flex items-center gap-2 mb-1">
+                    <span class="text-sm text-gray-800 flex-1">{{ c.category }}</span>
+                    <span class="text-sm font-semibold tabular-nums {% if c.count > cat_median %}text-red-600{% elif c.count == cat_median %}text-amber-600{% else %}text-emerald-600{% endif %}">{{ c.count }}</span>
+                    <span class="text-xs tabular-nums text-gray-400 w-12 text-right">{{ c.pct }}%</span>
                 </div>
                 <div class="w-full bg-gray-100 rounded-full h-2">
-                    <div class="h-2 rounded-full bg-red-400" style="width: {{ c.bar_pct }}%;"></div>
+                    <div class="h-2 rounded-full {% if c.count > cat_median %}bg-red-400{% elif c.count == cat_median %}bg-amber-400{% else %}bg-emerald-400{% endif %}" style="width: {{ c.bar_pct }}%;"></div>
                 </div>
                 {% if is_all_view and c.b5 is defined %}
                 <div class="flex gap-3 mt-1">
@@ -314,35 +315,21 @@
     {% if not is_all_view and top_defects %}
     <div class="bg-white rounded-lg shadow p-4">
         <h2 class="text-lg font-semibold text-gray-900 mb-1">Most Common Defect Types</h2>
-        <p class="text-sm text-gray-500 mb-4">Top 10 defect descriptions by frequency.</p>
-        <div class="overflow-x-auto">
-            <table class="w-full text-sm">
-                <thead>
-                    <tr class="border-b border-gray-200">
-                        <th class="text-left py-2 px-3 text-gray-600 font-medium">#</th>
-                        <th class="text-left py-2 px-3 text-gray-600 font-medium">Defect Description</th>
-                        <th class="text-right py-2 px-3 text-gray-600 font-medium">Count</th>
-                        <th class="text-right py-2 px-3 text-gray-600 font-medium">%</th>
-                        <th class="text-left py-2 px-3 text-gray-600 font-medium w-1/4">Distribution</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for d in top_defects %}
-                    <tr class="border-b border-gray-100 hover:bg-gray-50">
-                        <td class="py-2 px-3 text-gray-400 text-xs">{{ loop.index }}</td>
-                        <td class="py-2 px-3">{{ d.description }}</td>
-                        <td class="py-2 px-3 text-right font-semibold">{{ d.cnt }}</td>
-                        <td class="py-2 px-3 text-right text-gray-500">{{ (d.cnt / summary.total_defects * 100)|round(1) }}%</td>
-                        <td class="py-2 px-3">
-                            <div class="w-full bg-gray-100 rounded-full h-2">
-                                {% set max_cnt = top_defects[0].cnt if top_defects else 1 %}
-                                <div class="h-2 rounded-full bg-red-400" style="width: {{ (d.cnt / max_cnt * 100)|round }}%;"></div>
-                            </div>
-                        </td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
+        <p class="text-sm text-gray-500 mb-3">Top 10 defect descriptions by frequency. <span class="text-gray-400">Median: {{ td_median }}</span></p>
+        {% set max_cnt = top_defects[0].cnt if top_defects else 1 %}
+        <div class="space-y-3">
+            {% for d in top_defects %}
+            <div>
+                <div class="flex items-center gap-2 mb-1">
+                    <span class="text-sm text-gray-800 flex-1">{{ d.description }}</span>
+                    <span class="text-sm font-semibold tabular-nums {% if d.cnt > td_median %}text-red-600{% elif d.cnt == td_median %}text-amber-600{% else %}text-emerald-600{% endif %}">{{ d.cnt }}</span>
+                    <span class="text-xs tabular-nums text-gray-400 w-12 text-right">{{ (d.cnt / summary.total_defects * 100)|round(1) }}%</span>
+                </div>
+                <div class="w-full bg-gray-100 rounded-full h-2">
+                    <div class="h-2 rounded-full {% if d.cnt > td_median %}bg-red-400{% elif d.cnt == td_median %}bg-amber-400{% else %}bg-emerald-400{% endif %}" style="width: {{ (d.cnt / max_cnt * 100)|round }}%;"></div>
+                </div>
+            </div>
+            {% endfor %}
         </div>
     </div>
     {% endif %}
@@ -351,7 +338,7 @@
     {% if unit_summary %}
     <div class="bg-white rounded-lg shadow p-4">
         <h2 class="text-lg font-semibold text-gray-900 mb-1">Unit Summary</h2>
-        <p class="text-sm text-gray-500 mb-4">All units ranked by defect count (worst first) with status and defect rate.</p>
+        <p class="text-sm text-gray-500 mb-3">All units ranked by defect count (worst first) with status and defect rate. <span class="text-gray-400">Median: {{ summary.median_defects }}</span></p>
         <div class="overflow-x-auto">
             <table class="w-full text-sm">
                 <thead>
@@ -378,9 +365,9 @@
                         </td>
                         <td class="py-2 px-3">
                             <div class="flex items-center gap-2">
-                                <span class="text-sm font-semibold tabular-nums w-8 text-right {% if u.defect_count > 30 %}text-red-600{% elif u.defect_count > 20 %}text-amber-600{% else %}text-emerald-600{% endif %}">{{ u.defect_count }}</span>
+                                <span class="text-sm font-semibold tabular-nums w-8 text-right {% if u.defect_count > summary.median_defects %}text-red-600{% elif u.defect_count == summary.median_defects %}text-amber-600{% else %}text-emerald-600{% endif %}">{{ u.defect_count }}</span>
                                 <div class="flex-1 bg-gray-100 rounded-full h-2">
-                                    <div class="h-2 rounded-full {% if u.defect_count > 30 %}bg-red-400{% elif u.defect_count > 20 %}bg-amber-400{% else %}bg-emerald-400{% endif %}" style="width: {{ (u.defect_count / max_defects * 100)|round }}%;"></div>
+                                    <div class="h-2 rounded-full {% if u.defect_count > summary.median_defects %}bg-red-400{% elif u.defect_count == summary.median_defects %}bg-amber-400{% else %}bg-emerald-400{% endif %}" style="width: {{ (u.defect_count / max_defects * 100)|round }}%;"></div>
                                 </div>
                                 <span class="text-xs tabular-nums text-gray-400 w-12 text-right">{{ u.defect_rate }}%</span>
                             </div>
