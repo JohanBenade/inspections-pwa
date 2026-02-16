@@ -213,6 +213,16 @@ def dashboard():
             'counts': [r['cnt'] for r in by_area],
             'colours': [AREA_COLOURS.get(r['area_name'], '#9ca3af') for r in by_area],
         }
+        max_area_count = by_area[0]['cnt'] if by_area else 1
+        area_list = []
+        for r in by_area:
+            area_list.append({
+                'area': r['area_name'],
+                'count': r['cnt'],
+                'pct': round(r['cnt'] / total_defects * 100, 1) if total_defects > 0 else 0,
+                'bar_pct': round(r['cnt'] / max_area_count * 100),
+                'colour': AREA_COLOURS.get(r['area_name'], '#9ca3af'),
+            })
 
         # Category data
         by_category = query_db(
@@ -399,7 +409,7 @@ def dashboard():
             is_all_view=True, has_data=total_units > 0,
             context_header='Power Park Student Housing - Phase 3 | All Blocks | {} Units'.format(total_units),
             block_comparison=block_comparison,
-            summary=summary, area_data=area_data, category_data=category_data,
+            summary=summary, area_data=area_data, area_list=area_list, category_data=category_data,
             unit_ranking=unit_ranking, all_units_sorted=all_units_sorted,
             all_areas=all_areas, heatmap=heatmap, area_totals=area_totals,
             unit_totals=unit_totals, recurring=recurring,
@@ -467,6 +477,16 @@ def dashboard():
         'counts': [r['cnt'] for r in by_area],
         'colours': [AREA_COLOURS.get(r['area_name'], '#9ca3af') for r in by_area],
     }
+    max_area_count = by_area[0]['cnt'] if by_area else 1
+    area_list = []
+    for r in by_area:
+        area_list.append({
+            'area': r['area_name'],
+            'count': r['cnt'],
+            'pct': round(r['cnt'] / total_defects * 100, 1) if total_defects > 0 else 0,
+            'bar_pct': round(r['cnt'] / max_area_count * 100),
+            'colour': AREA_COLOURS.get(r['area_name'], '#9ca3af'),
+        })
 
     # --- 3. DEFECTS BY CATEGORY ---
     by_category = query_db("""
@@ -691,7 +711,7 @@ def dashboard():
                            block_comparison=None,
                            has_data=total_units > 0,
                            summary=summary,
-                           area_data=area_data,
+                           area_data=area_data, area_list=area_list,
                            category_data=category_data,
                            unit_ranking=unit_ranking,
                            all_units_sorted=all_units_sorted,

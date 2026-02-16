@@ -139,24 +139,37 @@
     </div>
     {% endif %}
 
-    <!-- Charts Row: Area Donut + Category Bars -->
-    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-
-        <!-- 2. DEFECTS BY AREA (Donut) -->
-        <div class="bg-white rounded-lg shadow p-4">
-            <h2 class="text-lg font-semibold text-gray-900 mb-4">Defects by Area</h2>
-            <div class="relative" style="height: 300px;">
-                <canvas id="areaChart"></canvas>
+    <!-- DEFECT DISTRIBUTION BY AREA -->
+    <div class="bg-white rounded-lg shadow p-4">
+        <h2 class="text-lg font-semibold text-gray-900 mb-1">Defect Distribution by Area</h2>
+        <p class="text-sm text-gray-500 mb-4">Breakdown of defects by physical area.</p>
+        <div class="grid grid-cols-1 lg:grid-cols-5 gap-6">
+            <!-- Bars (left 3 cols) -->
+            <div class="lg:col-span-3 space-y-3">
+                {% for a in area_list %}
+                <div>
+                    <div class="flex items-center justify-between mb-1">
+                        <span class="text-sm text-gray-800">{{ a.area }}</span>
+                        <span class="text-sm font-semibold text-gray-900">{{ a.count }} <span class="text-gray-400 font-normal">({{ a.pct }}%)</span></span>
+                    </div>
+                    <div class="w-full bg-gray-100 rounded-full h-2">
+                        <div class="h-2 rounded-full" style="width: {{ a.bar_pct }}%; background: {{ a.colour }};"></div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            <!-- Donut (right 2 cols) -->
+            <div class="lg:col-span-2">
+                <div class="relative" style="height: 260px;">
+                    <canvas id="areaChart"></canvas>
+                </div>
             </div>
         </div>
-
-        <!-- 3. DEFECTS BY CATEGORY (Horizontal Bar) -->
-        <div class="bg-white rounded-lg shadow p-4">
-            <h2 class="text-lg font-semibold text-gray-900 mb-4">Defects by Category (Trade){% if is_all_view %}: Block Comparison{% endif %}</h2>
-            <div class="relative" style="height: 300px;">
-                <canvas id="categoryChart"></canvas>
-            </div>
+        {% if area_list|length >= 2 %}
+        <div class="mt-4 p-3 bg-amber-50 border-l-3 border-amber-500 rounded text-sm text-gray-700" style="border-left: 3px solid #d97706;">
+            <span class="font-semibold">Key finding:</span> {{ area_list[0].area }} and {{ area_list[1].area }} account for {{ area_list[0].pct + area_list[1].pct }}% of all defects.
         </div>
+        {% endif %}
     </div>
 
     <!-- AREA DEEP DIVE -->
@@ -198,6 +211,14 @@
         </div>
     </div>
     {% endif %}
+
+    <!-- DEFECTS BY CATEGORY (Horizontal Bar) -->
+    <div class="bg-white rounded-lg shadow p-4">
+        <h2 class="text-lg font-semibold text-gray-900 mb-4">Defects by Category (Trade){% if is_all_view %}: Block Comparison{% endif %}</h2>
+        <div class="relative" style="height: 300px;">
+            <canvas id="categoryChart"></canvas>
+        </div>
+    </div>
 
     <!-- TOP DEFECT TYPES: Block Comparison (all-view) -->
     {% if is_all_view and defect_compare %}
