@@ -86,6 +86,19 @@ def dashboard():
             "WHERE ic.tenant_id = ? AND ic.id NOT LIKE 'test-%' GROUP BY ic.block ORDER BY ic.block",
             [tenant_id])]
 
+        # Enrich block_comparison with defect_rate, unit_range, inspection_date
+        for b in block_comparison:
+            b['defect_rate'] = round(b['defects'] / (438 * b['units']) * 100, 1) if b['units'] > 0 else 0
+            cycle_info = query_db(
+                "SELECT unit_start, unit_end, created_at FROM inspection_cycle WHERE block = ? AND tenant_id = ? AND id NOT LIKE 'test-%' LIMIT 1",
+                [b['block'], tenant_id], one=True)
+            if cycle_info:
+                b['unit_range'] = '{}-{}'.format(cycle_info['unit_start'], cycle_info['unit_end'])
+                b['inspection_date'] = cycle_info['created_at'][:10] if cycle_info['created_at'] else '-'
+            else:
+                b['unit_range'] = '-'
+                b['inspection_date'] = '-'
+
 
         # Trend data (Block 5 vs Block 6 comparison)
         trend_data = {}

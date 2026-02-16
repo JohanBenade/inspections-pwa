@@ -85,6 +85,18 @@
                     <div class="text-2xl font-bold text-gray-900">{{ b.avg_per_unit }}</div>
                     <div class="text-xs text-gray-500">avg/unit</div>
                 </div>
+                <div>
+                    <div class="text-lg font-bold text-gray-900">{{ b.defect_rate }}%</div>
+                    <div class="text-xs text-gray-500">defect rate</div>
+                </div>
+                <div>
+                    <div class="text-lg font-bold text-gray-900">{{ b.unit_range }}</div>
+                    <div class="text-xs text-gray-500">unit range</div>
+                </div>
+                <div>
+                    <div class="text-lg font-bold text-gray-900">{{ b.inspection_date }}</div>
+                    <div class="text-xs text-gray-500">inspected</div>
+                </div>
             </div>
         </div>
         {% endfor %}
