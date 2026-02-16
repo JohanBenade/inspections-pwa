@@ -360,8 +360,7 @@
                         {% if is_all_view %}<th class="text-center py-2 px-3 text-gray-600 font-medium">Block</th>{% endif %}
                         <th class="text-center py-2 px-3 text-gray-600 font-medium">Floor</th>
                         <th class="text-center py-2 px-3 text-gray-600 font-medium">Status</th>
-                        <th class="text-left py-2 px-3 text-gray-600 font-medium">Defects</th>
-                        <th class="text-right py-2 px-3 text-gray-600 font-medium">Rate</th>
+                        <th class="text-left py-2 px-3 text-gray-600 font-medium" colspan="1">Defects</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -379,18 +378,11 @@
                         </td>
                         <td class="py-2 px-3">
                             <div class="flex items-center gap-2">
-                                <span class="text-sm font-semibold tabular-nums w-8 {% if u.defect_count > 30 %}text-red-600{% elif u.defect_count > 20 %}text-amber-600{% else %}text-emerald-600{% endif %}">{{ u.defect_count }}</span>
+                                <span class="text-sm font-semibold tabular-nums w-8 text-right {% if u.defect_count > 30 %}text-red-600{% elif u.defect_count > 20 %}text-amber-600{% else %}text-emerald-600{% endif %}">{{ u.defect_count }}</span>
                                 <div class="flex-1 bg-gray-100 rounded-full h-2">
                                     <div class="h-2 rounded-full {% if u.defect_count > 30 %}bg-red-400{% elif u.defect_count > 20 %}bg-amber-400{% else %}bg-emerald-400{% endif %}" style="width: {{ (u.defect_count / max_defects * 100)|round }}%;"></div>
                                 </div>
-                            </div>
-                        </td>
-                        <td class="py-2 px-3">
-                            <div class="flex items-center justify-end gap-2">
-                                <div class="w-12 bg-gray-100 rounded-full h-1.5">
-                                    <div class="h-1.5 rounded-full {% if u.defect_rate > 7 %}bg-red-400{% elif u.defect_rate > 4 %}bg-amber-400{% else %}bg-emerald-400{% endif %}" style="width: {{ [u.defect_rate * 10, 100]|min }}%;"></div>
-                                </div>
-                                <span class="text-xs tabular-nums {% if u.defect_rate > 7 %}text-red-600{% elif u.defect_rate > 4 %}text-amber-600{% else %}text-emerald-600{% endif %}">{{ u.defect_rate }}%</span>
+                                <span class="text-xs tabular-nums text-gray-400 w-12 text-right">{{ u.defect_rate }}%</span>
                             </div>
                         </td>
                     </tr>
