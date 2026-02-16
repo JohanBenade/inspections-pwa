@@ -13,13 +13,13 @@ analytics_bp = Blueprint('analytics', __name__, url_prefix='/analytics')
 
 # Area colour mapping (consistent across all charts)
 AREA_COLOURS = {
-    'KITCHEN': '#3b82f6',
-    'BATHROOM': '#14b8a6',
-    'BEDROOM A': '#a855f7',
-    'BEDROOM B': '#6366f1',
-    'BEDROOM C': '#ec4899',
-    'BEDROOM D': '#f97316',
-    'LOUNGE': '#22c55e',
+    'KITCHEN': '#C8963E',
+    'BATHROOM': '#3D6B8E',
+    'BEDROOM A': '#4A7C59',
+    'BEDROOM D': '#C44D3F',
+    'BEDROOM C': '#7B6B8D',
+    'BEDROOM B': '#5A8A7A',
+    'LOUNGE': '#B07D4B',
 }
 
 
@@ -323,6 +323,9 @@ def dashboard():
             {'label': 'Issued to Site', 'count': sum(pipe_counts.get(s, 0) for s in ['approved', 'certified', 'pending_followup']),
              'pct': round(sum(pipe_counts.get(s, 0) for s in ['approved', 'certified', 'pending_followup']) / pipeline_total * 100)},
         ]
+        # All-view: no specific dates
+        for step in pipeline_data:
+            step['date'] = ''
 
         # Top defect types (all-view)
         top_defects = query_db(
@@ -404,6 +407,19 @@ def dashboard():
                 'defects': defect_list,
             })
 
+        # Deep dive callout
+        dd_callout = ''
+        if len(area_deep_dive) >= 1 and area_deep_dive[0]['defects']:
+            a1 = area_deep_dive[0]
+            d1 = a1['defects'][0]
+            dd_callout = 'The most frequent defect in {} is {} ({} occurrences).'.format(
+                a1['area'], d1['description'].lower(), d1['count'])
+            if len(area_deep_dive) >= 2 and area_deep_dive[1]['defects']:
+                a2 = area_deep_dive[1]
+                d2 = a2['defects'][0]
+                dd_callout += ' In {}, {} leads with {} occurrences.'.format(
+                    a2['area'], d2['description'].lower(), d2['count'])
+
         return render_template('analytics/dashboard.html',
             cycles=cycles, selected_cycle_id='all', selected_cycle=None,
             is_all_view=True, has_data=total_units > 0,
@@ -416,7 +432,7 @@ def dashboard():
             inspector_stats=inspector_stats, area_colours=AREA_COLOURS,
             trend_data=trend_data, area_compare_data=area_compare_data,
             defect_compare=defect_compare, cat_compare_data=cat_compare_data,
-            area_deep_dive=area_deep_dive,
+            area_deep_dive=area_deep_dive, dd_callout=dd_callout,
             pipeline_data=pipeline_data, top_defects=top_defects,
             unit_summary=unit_summary, floor_map=floor_map)
 
@@ -627,6 +643,27 @@ def dashboard():
          'pct': round(sum(pipe_counts.get(s, 0) for s in ['approved', 'certified', 'pending_followup']) / pipeline_total * 100)},
     ]
 
+    # Pipeline dates
+    pipeline_dates = {}
+    cycle_dates = query_db(
+        "SELECT request_received_date, created_at FROM inspection_cycle WHERE id = ? AND tenant_id = ?",
+        [selected_cycle_id, tenant_id], one=True)
+    if cycle_dates:
+        pipeline_dates['requested'] = cycle_dates['request_received_date'] or cycle_dates['created_at'][:10] if cycle_dates['created_at'] else ''
+    insp_dates_raw = query_db(
+        "SELECT MIN(inspection_date) as earliest FROM inspection WHERE cycle_id = ? AND tenant_id = ? AND inspection_date IS NOT NULL",
+        [selected_cycle_id, tenant_id], one=True)
+    if insp_dates_raw and insp_dates_raw['earliest']:
+        pipeline_dates['inspected'] = insp_dates_raw['earliest'][:10]
+    approved_dates_raw = query_db(
+        "SELECT MAX(approved_at) as latest FROM inspection WHERE cycle_id = ? AND tenant_id = ? AND approved_at IS NOT NULL",
+        [selected_cycle_id, tenant_id], one=True)
+    if approved_dates_raw and approved_dates_raw['latest']:
+        pipeline_dates['issued_to_site'] = approved_dates_raw['latest'][:10]
+    for step in pipeline_data:
+        key = step['label'].lower().replace(' ', '_')
+        step['date'] = pipeline_dates.get(key, '')
+
     # Top defect types (per-cycle)
     top_defects = query_db("""
         SELECT d.original_comment as description, COUNT(*) as cnt
@@ -702,6 +739,19 @@ def dashboard():
             'defects': defect_list,
         })
 
+    # Deep dive callout
+    dd_callout = ''
+    if len(area_deep_dive) >= 1 and area_deep_dive[0]['defects']:
+        a1 = area_deep_dive[0]
+        d1 = a1['defects'][0]
+        dd_callout = 'The most frequent defect in {} is {} ({} occurrences).'.format(
+            a1['area'], d1['description'].lower(), d1['count'])
+        if len(area_deep_dive) >= 2 and area_deep_dive[1]['defects']:
+            a2 = area_deep_dive[1]
+            d2 = a2['defects'][0]
+            dd_callout += ' In {}, {} leads with {} occurrences.'.format(
+                a2['area'], d2['description'].lower(), d2['count'])
+
     return render_template('analytics/dashboard.html',
                            cycles=cycles,
                            selected_cycle_id=selected_cycle_id,
@@ -722,7 +772,7 @@ def dashboard():
                            recurring=recurring,
                            inspector_stats=inspector_stats,
                            area_colours=AREA_COLOURS,
-                           area_deep_dive=area_deep_dive,
+                           area_deep_dive=area_deep_dive, dd_callout=dd_callout,
                            pipeline_data=pipeline_data, top_defects=top_defects,
                            unit_summary=unit_summary, floor_map=floor_map)
 
