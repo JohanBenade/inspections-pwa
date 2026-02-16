@@ -110,20 +110,6 @@
         <h2 class="text-lg font-semibold text-gray-900 mb-1">Inspection Pipeline</h2>
         <p class="text-sm text-gray-500 mb-4">Unit progression through inspection stages.</p>
         <div class="flex items-center justify-between max-w-2xl mx-auto">
-            {% set ns = namespace(cumulative=0) %}
-            {% for step in pipeline_data %}
-            {% set ns.cumulative = ns.cumulative + step.count %}
-            {% endfor %}
-            {% set running_total = namespace(val=0) %}
-            {% for step in pipeline_data reversed %}
-            {% set running_total.val = running_total.val + step.count %}
-            {% endfor %}
-            {% set reached = namespace(steps=[]) %}
-            {% set acc = namespace(val=0) %}
-            {% for step in pipeline_data %}
-            {% set acc.val = acc.val + step.count %}
-            {% endfor %}
-            {# Compute which steps have been reached: a step is "reached" if any later step has units #}
             {% set total_units_pipeline = pipeline_data[0].count + pipeline_data[1].count + pipeline_data[2].count %}
             {% set step2_plus = pipeline_data[1].count + pipeline_data[2].count %}
             {% set step3_only = pipeline_data[2].count %}
@@ -144,11 +130,10 @@
                 </div>
                 <div class="text-sm font-medium {% if step_reached %}text-gray-700{% else %}text-gray-400{% endif %}">{{ step.label }}</div>
                 {% if step.date %}<div class="text-xs text-gray-400">{{ step.date }}</div>{% endif %}
-                <div class="text-xs text-gray-400">{{ step.pct }}%</div>
+                <div class="text-xs text-gray-400">{{ step.count }} units ({{ step.pct }}%)</div>
             </div>
             {% if not loop.last %}
-            {% set next_idx = loop.index %}
-            {% if next_idx == 1 %}
+            {% if loop.index == 1 %}
                 {% set next_reached = step2_plus > 0 %}
             {% else %}
                 {% set next_reached = step3_only > 0 %}
