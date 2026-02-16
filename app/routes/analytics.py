@@ -267,6 +267,24 @@ def dashboard():
         summary['defect_rate'] = defect_rate
         summary['items_inspected'] = items_inspected
 
+        # Certified count
+        certified_count = query_db(
+            "SELECT COUNT(*) FROM inspection WHERE tenant_id = ? AND status = 'certified' AND cycle_id NOT LIKE 'test-%'",
+            [tenant_id], one=True)[0]
+        summary['certified_count'] = certified_count
+
+        # Median defects per unit
+        counts_list = sorted([r['cnt'] for r in unit_defect_counts]) if unit_defect_counts else []
+        if not counts_list:
+            median_defects = 0
+        elif len(counts_list) % 2 == 0:
+            median_defects = round((counts_list[len(counts_list)//2-1] + counts_list[len(counts_list)//2]) / 2, 1)
+        else:
+            median_defects = counts_list[len(counts_list)//2]
+        summary['median_defects'] = median_defects
+
+        floor_map = {0: 'Ground', 1: '1st', 2: '2nd', 3: '3rd'}
+
         # Pipeline: count inspections by mapped status
         pipeline_raw = query_db(
             "SELECT i.status, COUNT(*) as cnt FROM inspection i "
@@ -292,13 +310,13 @@ def dashboard():
 
         # Unit summary with 2-status
         unit_summary_raw = query_db(
-            "SELECT u.unit_number, u.block, i.status as insp_status, "
+            "SELECT u.unit_number, u.block, u.floor, i.status as insp_status, "
             "COUNT(d.id) as defect_count "
             "FROM inspection i JOIN unit u ON i.unit_id = u.id "
             "LEFT JOIN defect d ON d.unit_id = u.id AND d.status = 'open' "
             "AND d.raised_cycle_id = i.cycle_id "
             "WHERE i.tenant_id = ? AND i.cycle_id NOT LIKE 'test-%' "
-            "GROUP BY u.unit_number, u.block, i.status ORDER BY u.unit_number",
+            "GROUP BY u.unit_number, u.block, u.floor, i.status ORDER BY u.unit_number",
             [tenant_id])
         unit_summary = []
         for r in unit_summary_raw:
@@ -306,7 +324,9 @@ def dashboard():
             display_status = 'Issued to Site' if s in ('approved', 'certified', 'pending_followup') else 'Inspected'
             unit_summary.append({
                 'unit_number': r['unit_number'], 'block': r['block'],
+                'floor': r['floor'],
                 'status': display_status, 'defect_count': r['defect_count'],
+                'defect_rate': round(r['defect_count'] / 438 * 100, 1),
             })
 
         # Area Deep Dive: top 3 defect types for top 2 areas (with block breakdown)
@@ -375,7 +395,7 @@ def dashboard():
             defect_compare=defect_compare, cat_compare_data=cat_compare_data,
             area_deep_dive=area_deep_dive,
             pipeline_data=pipeline_data, top_defects=top_defects,
-            unit_summary=unit_summary)
+            unit_summary=unit_summary, floor_map=floor_map)
 
     # --- 1. SUMMARY STATS ---
     total_units = query_db("""
@@ -539,6 +559,24 @@ def dashboard():
     summary['defect_rate'] = defect_rate
     summary['items_inspected'] = items_inspected
 
+    # Certified count
+    certified_count = query_db(
+        "SELECT COUNT(*) FROM inspection WHERE cycle_id = ? AND tenant_id = ? AND status = 'certified'",
+        [selected_cycle_id, tenant_id], one=True)[0]
+    summary['certified_count'] = certified_count
+
+    # Median defects per unit
+    counts_list = sorted([r['cnt'] for r in unit_defect_counts]) if unit_defect_counts else []
+    if not counts_list:
+        median_defects = 0
+    elif len(counts_list) % 2 == 0:
+        median_defects = round((counts_list[len(counts_list)//2-1] + counts_list[len(counts_list)//2]) / 2, 1)
+    else:
+        median_defects = counts_list[len(counts_list)//2]
+    summary['median_defects'] = median_defects
+
+    floor_map = {0: 'Ground', 1: '1st', 2: '2nd', 3: '3rd'}
+
     # Pipeline: count inspections by mapped status
     pipeline_raw = query_db("""
         SELECT i.status, COUNT(*) as cnt FROM inspection i
@@ -566,13 +604,13 @@ def dashboard():
 
     # Unit summary with 2-status
     unit_summary_raw = query_db("""
-        SELECT u.unit_number, u.block, i.status as insp_status,
+        SELECT u.unit_number, u.block, u.floor, i.status as insp_status,
                COUNT(d.id) as defect_count
         FROM inspection i JOIN unit u ON i.unit_id = u.id
         LEFT JOIN defect d ON d.unit_id = u.id AND d.status = 'open'
             AND d.raised_cycle_id = i.cycle_id
         WHERE i.cycle_id = ? AND i.tenant_id = ?
-        GROUP BY u.unit_number, u.block, i.status ORDER BY u.unit_number
+        GROUP BY u.unit_number, u.block, u.floor, i.status ORDER BY u.unit_number
     """, [selected_cycle_id, tenant_id])
     unit_summary = []
     for r in unit_summary_raw:
@@ -580,7 +618,9 @@ def dashboard():
         display_status = 'Issued to Site' if s in ('approved', 'certified', 'pending_followup') else 'Inspected'
         unit_summary.append({
             'unit_number': r['unit_number'], 'block': r['block'],
+            'floor': r['floor'],
             'status': display_status, 'defect_count': r['defect_count'],
+            'defect_rate': round(r['defect_count'] / 438 * 100, 1),
         })
 
     # Area Deep Dive: top 3 defect types for top 2 areas (per-cycle)
@@ -651,7 +691,7 @@ def dashboard():
                            area_colours=AREA_COLOURS,
                            area_deep_dive=area_deep_dive,
                            pipeline_data=pipeline_data, top_defects=top_defects,
-                           unit_summary=unit_summary)
+                           unit_summary=unit_summary, floor_map=floor_map)
 
 # ============================================================
 # BI-WEEKLY REPORT ROUTES (v64g)
