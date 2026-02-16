@@ -88,7 +88,7 @@ def dashboard():
 
         # Enrich block_comparison with defect_rate, unit_range, inspection_date
         for b in block_comparison:
-            b['defect_rate'] = round(b['defects'] / (438 * b['units']) * 100, 1) if b['units'] > 0 else 0
+            b['defect_rate'] = round(b['defects'] / (437 * b['units']) * 100, 1) if b['units'] > 0 else 0
             cycle_info = query_db(
                 "SELECT unit_start, unit_end, created_at FROM inspection_cycle WHERE block = ? AND tenant_id = ? AND id NOT LIKE 'test-%' LIMIT 1",
                 [b['block'], tenant_id], one=True)
@@ -303,7 +303,7 @@ def dashboard():
             [tenant_id])
 
         # Defect rate
-        items_inspected = 438 * total_units
+        items_inspected = 437 * total_units
         defect_rate = round(total_defects / items_inspected * 100, 1) if items_inspected > 0 else 0
         summary['defect_rate'] = defect_rate
         summary['items_inspected'] = items_inspected
@@ -377,7 +377,7 @@ def dashboard():
                 'unit_number': r['unit_number'], 'block': r['block'],
                 'floor': r['floor'],
                 'status': display_status, 'defect_count': r['defect_count'],
-                'defect_rate': round(r['defect_count'] / 438 * 100, 1),
+                'defect_rate': round(r['defect_count'] / 437 * 100, 1),
             })
         unit_summary.sort(key=lambda x: x['defect_count'], reverse=True)
 
@@ -644,7 +644,7 @@ def dashboard():
         selected_cycle['cycle_number'] if selected_cycle else '?', ctx_block, ctx_units)
 
     # Defect rate
-    items_inspected = 438 * total_units
+    items_inspected = 437 * total_units
     defect_rate = round(total_defects / items_inspected * 100, 1) if items_inspected > 0 else 0
     summary['defect_rate'] = defect_rate
     summary['items_inspected'] = items_inspected
@@ -738,7 +738,7 @@ def dashboard():
             'unit_number': r['unit_number'], 'block': r['block'],
             'floor': r['floor'],
             'status': display_status, 'defect_count': r['defect_count'],
-            'defect_rate': round(r['defect_count'] / 438 * 100, 1),
+            'defect_rate': round(r['defect_count'] / 437 * 100, 1),
         })
     unit_summary.sort(key=lambda x: x['defect_count'], reverse=True)
 
@@ -988,7 +988,7 @@ def _build_combined_report_data():
             FROM inspection_item ii JOIN inspection i ON ii.inspection_id = i.id
             WHERE i.cycle_id = ? AND i.tenant_id = ? AND ii.status = 'skipped'
         """, [cid, tenant_id], one=True)[0]
-        items_per_unit = total_templates - excluded_count if excluded_count > 0 else 438
+        items_per_unit = total_templates - excluded_count if excluded_count > 0 else 437
         total_items = items_per_unit * total_units
         defect_rate = round((total_defects / total_items) * 100, 1) if total_items > 0 else 0
 
@@ -1350,7 +1350,7 @@ def _build_report_data(cycle_id):
         JOIN inspection i ON ii.inspection_id = i.id
         WHERE i.cycle_id = ? AND i.tenant_id = ? AND ii.status = 'skipped'
     """, [cycle_id, tenant_id], one=True)[0]
-    items_per_unit = total_templates - excluded_count if excluded_count > 0 else 438
+    items_per_unit = total_templates - excluded_count if excluded_count > 0 else 437
 
     # --- Units with inspections in this cycle ---
     units = _to_dicts(query_db("""
