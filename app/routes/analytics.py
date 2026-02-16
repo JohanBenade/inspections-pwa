@@ -235,8 +235,18 @@ def dashboard():
             'labels': [r['category_name'].upper() for r in by_category],
             'counts': [r['cnt'] for r in by_category],
         }
-
-        # Unit ranking
+        max_cat_count = by_category[0]['cnt'] if by_category else 1
+        category_list = []
+        for r in by_category:
+            name = r['category_name'].upper()
+            category_list.append({
+                'category': name,
+                'count': r['cnt'],
+                'pct': round(r['cnt'] / total_defects * 100, 1) if total_defects > 0 else 0,
+                'bar_pct': round(r['cnt'] / max_cat_count * 100),
+                'b5': cat_by_block.get(name, {}).get('Block 5', 0),
+                'b6': cat_by_block.get(name, {}).get('Block 6', 0),
+            })
         unit_ranking = query_db(
             "SELECT u.unit_number, u.id as unit_id, u.block, i.inspector_name, COUNT(d.id) as cnt "
             "FROM defect d JOIN unit u ON d.unit_id = u.id "
@@ -354,6 +364,7 @@ def dashboard():
                 'status': display_status, 'defect_count': r['defect_count'],
                 'defect_rate': round(r['defect_count'] / 438 * 100, 1),
             })
+        unit_summary.sort(key=lambda x: x['defect_count'], reverse=True)
 
         # Area Deep Dive: top 3 defect types for top 2 areas (with block breakdown)
         deep_dive_raw = query_db(
@@ -425,7 +436,7 @@ def dashboard():
             is_all_view=True, has_data=total_units > 0,
             context_header='Power Park Student Housing - Phase 3 | All Blocks | {} Units'.format(total_units),
             block_comparison=block_comparison,
-            summary=summary, area_data=area_data, area_list=area_list, category_data=category_data,
+            summary=summary, area_data=area_data, area_list=area_list, category_data=category_data, category_list=category_list,
             unit_ranking=unit_ranking, all_units_sorted=all_units_sorted,
             all_areas=all_areas, heatmap=heatmap, area_totals=area_totals,
             unit_totals=unit_totals, recurring=recurring,
@@ -519,8 +530,15 @@ def dashboard():
         'labels': [r['category_name'].upper() for r in by_category],
         'counts': [r['cnt'] for r in by_category],
     }
-
-    # --- 4. UNIT RANKING ---
+    max_cat_count = by_category[0]['cnt'] if by_category else 1
+    category_list = []
+    for r in by_category:
+        category_list.append({
+            'category': r['category_name'].upper(),
+            'count': r['cnt'],
+            'pct': round(r['cnt'] / total_defects * 100, 1) if total_defects > 0 else 0,
+            'bar_pct': round(r['cnt'] / max_cat_count * 100),
+        })
     unit_ranking = query_db("""
         SELECT u.unit_number, u.id as unit_id, i.inspector_name, COUNT(d.id) as cnt
         FROM defect d
@@ -692,6 +710,7 @@ def dashboard():
             'status': display_status, 'defect_count': r['defect_count'],
             'defect_rate': round(r['defect_count'] / 438 * 100, 1),
         })
+    unit_summary.sort(key=lambda x: x['defect_count'], reverse=True)
 
     # Area Deep Dive: top 3 defect types for top 2 areas (per-cycle)
     deep_dive_raw = query_db("""
@@ -762,7 +781,7 @@ def dashboard():
                            has_data=total_units > 0,
                            summary=summary,
                            area_data=area_data, area_list=area_list,
-                           category_data=category_data,
+                           category_data=category_data, category_list=category_list,
                            unit_ranking=unit_ranking,
                            all_units_sorted=all_units_sorted,
                            all_areas=all_areas,
