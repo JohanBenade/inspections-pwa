@@ -247,6 +247,14 @@ def dashboard():
                 'b5': cat_by_block.get(name, {}).get('Block 5', 0),
                 'b6': cat_by_block.get(name, {}).get('Block 6', 0),
             })
+        cat_counts_sorted = sorted([c['count'] for c in category_list])
+        if not cat_counts_sorted:
+            cat_median = 0
+        elif len(cat_counts_sorted) % 2 == 0:
+            cat_median = round((cat_counts_sorted[len(cat_counts_sorted)//2-1] + cat_counts_sorted[len(cat_counts_sorted)//2]) / 2, 1)
+        else:
+            cat_median = cat_counts_sorted[len(cat_counts_sorted)//2]
+
         unit_ranking = query_db(
             "SELECT u.unit_number, u.id as unit_id, u.block, i.inspector_name, COUNT(d.id) as cnt "
             "FROM defect d JOIN unit u ON d.unit_id = u.id "
@@ -343,6 +351,13 @@ def dashboard():
             "FROM defect d WHERE d.tenant_id = ? AND d.status = 'open' "
             "AND d.raised_cycle_id NOT LIKE 'test-%' "
             "GROUP BY d.original_comment ORDER BY cnt DESC LIMIT 10", [tenant_id])
+        td_counts = sorted([r['cnt'] for r in top_defects]) if top_defects else []
+        if not td_counts:
+            td_median = 0
+        elif len(td_counts) % 2 == 0:
+            td_median = round((td_counts[len(td_counts)//2-1] + td_counts[len(td_counts)//2]) / 2, 1)
+        else:
+            td_median = td_counts[len(td_counts)//2]
 
         # Unit summary with 2-status
         unit_summary_raw = query_db(
@@ -436,7 +451,7 @@ def dashboard():
             is_all_view=True, has_data=total_units > 0,
             context_header='Power Park Student Housing - Phase 3 | All Blocks | {} Units'.format(total_units),
             block_comparison=block_comparison,
-            summary=summary, area_data=area_data, area_list=area_list, category_data=category_data, category_list=category_list,
+            summary=summary, area_data=area_data, area_list=area_list, category_data=category_data, category_list=category_list, cat_median=cat_median,
             unit_ranking=unit_ranking, all_units_sorted=all_units_sorted,
             all_areas=all_areas, heatmap=heatmap, area_totals=area_totals,
             unit_totals=unit_totals, recurring=recurring,
@@ -444,7 +459,7 @@ def dashboard():
             trend_data=trend_data, area_compare_data=area_compare_data,
             defect_compare=defect_compare, cat_compare_data=cat_compare_data,
             area_deep_dive=area_deep_dive, dd_callout=dd_callout,
-            pipeline_data=pipeline_data, top_defects=top_defects,
+            pipeline_data=pipeline_data, top_defects=top_defects, td_median=td_median,
             unit_summary=unit_summary, floor_map=floor_map)
 
     # --- 1. SUMMARY STATS ---
@@ -539,6 +554,14 @@ def dashboard():
             'pct': round(r['cnt'] / total_defects * 100, 1) if total_defects > 0 else 0,
             'bar_pct': round(r['cnt'] / max_cat_count * 100),
         })
+    cat_counts_sorted = sorted([c['count'] for c in category_list])
+    if not cat_counts_sorted:
+        cat_median = 0
+    elif len(cat_counts_sorted) % 2 == 0:
+        cat_median = round((cat_counts_sorted[len(cat_counts_sorted)//2-1] + cat_counts_sorted[len(cat_counts_sorted)//2]) / 2, 1)
+    else:
+        cat_median = cat_counts_sorted[len(cat_counts_sorted)//2]
+
     unit_ranking = query_db("""
         SELECT u.unit_number, u.id as unit_id, i.inspector_name, COUNT(d.id) as cnt
         FROM defect d
@@ -689,6 +712,13 @@ def dashboard():
         WHERE d.raised_cycle_id = ? AND d.tenant_id = ? AND d.status = 'open'
         GROUP BY d.original_comment ORDER BY cnt DESC LIMIT 10
     """, [selected_cycle_id, tenant_id])
+    td_counts = sorted([r['cnt'] for r in top_defects]) if top_defects else []
+    if not td_counts:
+        td_median = 0
+    elif len(td_counts) % 2 == 0:
+        td_median = round((td_counts[len(td_counts)//2-1] + td_counts[len(td_counts)//2]) / 2, 1)
+    else:
+        td_median = td_counts[len(td_counts)//2]
 
     # Unit summary with 2-status
     unit_summary_raw = query_db("""
@@ -781,7 +811,7 @@ def dashboard():
                            has_data=total_units > 0,
                            summary=summary,
                            area_data=area_data, area_list=area_list,
-                           category_data=category_data, category_list=category_list,
+                           category_data=category_data, category_list=category_list, cat_median=cat_median,
                            unit_ranking=unit_ranking,
                            all_units_sorted=all_units_sorted,
                            all_areas=all_areas,
@@ -792,7 +822,7 @@ def dashboard():
                            inspector_stats=inspector_stats,
                            area_colours=AREA_COLOURS,
                            area_deep_dive=area_deep_dive, dd_callout=dd_callout,
-                           pipeline_data=pipeline_data, top_defects=top_defects,
+                           pipeline_data=pipeline_data, top_defects=top_defects, td_median=td_median,
                            unit_summary=unit_summary, floor_map=floor_map)
 
 # ============================================================
