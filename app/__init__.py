@@ -33,6 +33,10 @@ def create_app():
     # Analytics blueprint (manager + admin only)
     from app.routes.analytics import analytics_bp
     app.register_blueprint(analytics_bp)
+
+    # Data Quality blueprint (admin only)
+    from app.routes.data_quality import data_quality_bp
+    app.register_blueprint(data_quality_bp)
     
     # PDF blueprint (optional - requires weasyprint + system libs)
     try:

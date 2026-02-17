@@ -86,6 +86,9 @@
                         {% if current_user.role in ['manager', 'admin'] %}
                         <a href="{{ url_for('analytics.dashboard') }}" class="text-sm text-gray-300 hover:text-white">Analytics</a>
                         <a href="{{ url_for('analytics.reports') }}" class="text-sm text-gray-300 hover:text-white">Reports</a>
+                        {% if current_user.role == 'admin' %}
+                        <a href="{{ url_for('data_quality.descriptions') }}" class="text-sm text-gray-300 hover:text-white">Data Quality</a>
+                        {% endif %}
                         {% endif %}
                         {% endif %}
                     </div>
