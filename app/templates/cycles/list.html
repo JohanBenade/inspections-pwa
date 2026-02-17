@@ -79,10 +79,13 @@
                             <svg class="w-3.5 h-3.5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
                             Signed off by {{ cycle.approved_by }} &middot; {{ cycle.approved_at[:10] }}
                         </span>
-                        <button onclick="alert('Make webhook integration coming soon')"
-                                class="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700">
-                            Push PDFs to Raubex
-                        </button>
+                        <form method="POST" action="{{ url_for('cycles.push_pdfs', cycle_id=cycle.id) }}"
+                              onsubmit="return confirm('Push {{ cycle.inspected_count }} PDFs to Raubex SharePoint for {{ cycle.block or \'this cycle\' }}?\n\nThis will generate and deliver defect list PDFs for all units.')">
+                            <button type="submit"
+                                    class="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700">
+                                Push PDFs to Raubex
+                            </button>
+                        </form>
                     </div>
 
                     {% else %}

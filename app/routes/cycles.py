@@ -678,6 +678,133 @@ def approve_cycle(cycle_id):
     return redirect(url_for('cycles.list_cycles'))
 
 
+@cycles_bp.route('/<cycle_id>/push-pdfs', methods=['POST'])
+@require_manager
+def push_pdfs(cycle_id):
+    """Generate PDFs for all units in a cycle and push to SharePoint via Make webhook."""
+    import os
+    import base64
+    import json
+    import urllib.request
+    import urllib.error
+    from app.services.pdf_generator import generate_defects_pdf, generate_pdf_filename
+
+    tenant_id = session['tenant_id']
+    db = get_db()
+    now = datetime.now(timezone.utc).isoformat()
+
+    cycle = query_db(
+        "SELECT * FROM inspection_cycle WHERE id = ? AND tenant_id = ?",
+        [cycle_id, tenant_id], one=True
+    )
+
+    if not cycle:
+        abort(404)
+
+    if not cycle['approved_at']:
+        flash('Cycle must be signed off before pushing PDFs.', 'error')
+        return redirect(url_for('cycles.list_cycles'))
+
+    if cycle['pdfs_pushed_at']:
+        flash('PDFs have already been pushed for this cycle.', 'error')
+        return redirect(url_for('cycles.list_cycles'))
+
+    webhook_url = os.environ.get('MAKE_WEBHOOK_URL', '')
+    if not webhook_url:
+        flash('Make webhook URL not configured. Set MAKE_WEBHOOK_URL environment variable in Render.', 'error')
+        return redirect(url_for('cycles.list_cycles'))
+
+    # Get all units in this cycle
+    units = [dict(r) for r in query_db("""
+        SELECT u.id, u.unit_number, u.block, u.floor,
+               i.inspection_date, i.id AS inspection_id
+        FROM inspection i
+        JOIN unit u ON i.unit_id = u.id
+        WHERE i.cycle_id = ? AND i.tenant_id = ?
+        ORDER BY u.unit_number
+    """, [cycle_id, tenant_id])]
+
+    if not units:
+        flash('No units found in this cycle.', 'error')
+        return redirect(url_for('cycles.list_cycles'))
+
+    floor_names = {0: 'Ground Floor', 1: '1st Floor', 2: '2nd Floor', 3: '3rd Floor'}
+    success_count = 0
+    fail_count = 0
+    errors = []
+
+    for unit in units:
+        try:
+            # Generate PDF
+            pdf_bytes = generate_defects_pdf(tenant_id, unit['id'], cycle_id)
+            if not pdf_bytes:
+                errors.append(f"Unit {unit['unit_number']}: PDF generation failed")
+                fail_count += 1
+                continue
+
+            # Generate filename
+            filename = generate_pdf_filename(
+                unit, cycle,
+                inspection_date=unit.get('inspection_date')
+            )
+
+            # Build payload for Make
+            payload = json.dumps({
+                'filename': filename,
+                'unit_number': unit['unit_number'],
+                'block': unit.get('block', ''),
+                'floor': floor_names.get(unit.get('floor'), ''),
+                'cycle_number': cycle['cycle_number'],
+                'cycle_id': cycle_id,
+                'pdf_base64': base64.b64encode(pdf_bytes).decode('ascii')
+            }).encode('utf-8')
+
+            # POST to Make webhook
+            req = urllib.request.Request(
+                webhook_url,
+                data=payload,
+                headers={'Content-Type': 'application/json'}
+            )
+            with urllib.request.urlopen(req, timeout=30) as resp:
+                if resp.status in (200, 201, 202):
+                    success_count += 1
+                else:
+                    errors.append(f"Unit {unit['unit_number']}: HTTP {resp.status}")
+                    fail_count += 1
+
+        except urllib.error.URLError as e:
+            errors.append(f"Unit {unit['unit_number']}: {str(e)[:100]}")
+            fail_count += 1
+        except Exception as e:
+            errors.append(f"Unit {unit['unit_number']}: {str(e)[:100]}")
+            fail_count += 1
+
+    # Update cycle status
+    if success_count > 0:
+        push_status = 'complete' if fail_count == 0 else 'partial'
+        db.execute("""
+            UPDATE inspection_cycle
+            SET pdfs_pushed_at = ?, pdfs_push_status = ?
+            WHERE id = ?
+        """, [now, push_status, cycle_id])
+
+        log_audit(db, tenant_id, 'cycle', cycle_id, 'pdfs_pushed',
+                  new_value=f'{success_count}/{success_count + fail_count} PDFs pushed',
+                  user_id=session['user_id'], user_name=session['user_name'])
+
+        db.commit()
+
+    block = cycle['block'] or 'Cycle'
+    if fail_count == 0:
+        flash(f'{success_count} PDFs pushed to SharePoint for {block}.', 'success')
+    elif success_count > 0:
+        flash(f'{success_count} PDFs pushed, {fail_count} failed for {block}. Errors: {"; ".join(errors[:3])}', 'error')
+    else:
+        flash(f'All {fail_count} PDFs failed for {block}. First error: {errors[0] if errors else "Unknown"}', 'error')
+
+    return redirect(url_for('cycles.list_cycles'))
+
+
 @cycles_bp.route('/<cycle_id>/close', methods=['POST'])
 @require_manager
 def close_cycle(cycle_id):
