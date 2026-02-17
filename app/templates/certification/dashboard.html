@@ -43,6 +43,38 @@
     </div>
     {% endif %}
 
+    <!-- Spot Check Progress Cards (manager only) -->
+    {% if review_progress and user_role in ['manager', 'admin'] %}
+    <div class="mb-6">
+        <h2 class="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-3">Spot Check Progress</h2>
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            {% set batch_colors = ['#C8963E', '#3D6B8E', '#4A7C59', '#7B6B8D', '#C44D3F'] %}
+            {% for batch in review_progress %}
+            {% set color = batch_colors[loop.index0 % 5] %}
+            {% set pct = ((batch.reviewed_count / batch.total_units) * 100) | int if batch.total_units > 0 else 0 %}
+            <div class="bg-white rounded-lg border border-gray-200 p-4" style="border-left: 4px solid {{ color }};">
+                <div class="flex justify-between items-start mb-2">
+                    <div>
+                        <p class="font-semibold text-gray-800 text-sm">{{ batch.block or 'Block' }}</p>
+                        <p class="text-xs text-gray-500">{{ {0: 'Ground Floor', 1: '1st Floor', 2: '2nd Floor', 3: '3rd Floor'}.get(batch.floor, 'Floor ' ~ batch.floor) if batch.floor is not none else '' }} &middot; Cycle {{ batch.cycle_number }}</p>
+                    </div>
+                    <div class="text-right">
+                        <span class="text-lg font-bold" style="color: {{ color }};">{{ batch.reviewed_count }}</span>
+                        <span class="text-sm text-gray-400">/{{ batch.total_units }}</span>
+                    </div>
+                </div>
+                <div class="w-full bg-gray-100 rounded-full h-2 mt-1">
+                    <div class="h-2 rounded-full" style="width: {{ pct }}%; background-color: {{ color }};"></div>
+                </div>
+                <p class="text-xs text-gray-400 mt-1">
+                    {% if pct == 100 %}All reviewed{% elif batch.reviewed_count == 0 %}Not started{% else %}{{ batch.total_units - batch.reviewed_count }} remaining{% endif %}
+                </p>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+
     <!-- Status Groups -->
     {% set display_order = ['awaiting_review', 'under_review', 'awaiting_approval', 'approved', 'in_progress', 'not_started', 'certified', 'pending_followup'] %}
     

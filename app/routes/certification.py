@@ -262,13 +262,32 @@ def dashboard():
         'closed_count': closed_count
     }
     
+    # Review progress per cycle (for manager spot-check cards)
+    review_progress = []
+    if user_role in ('manager', 'admin'):
+        review_progress = [dict(r) for r in query_db("""
+            SELECT
+                ic.id AS cycle_id,
+                ic.block,
+                ic.floor,
+                ic.cycle_number,
+                COUNT(DISTINCT i.id) AS total_units,
+                COUNT(DISTINCT CASE WHEN i.manager_reviewed_at IS NOT NULL THEN i.id END) AS reviewed_count
+            FROM inspection_cycle ic
+            JOIN inspection i ON i.cycle_id = ic.id AND i.tenant_id = ic.tenant_id
+            WHERE ic.tenant_id = ? AND ic.status = 'active'
+            GROUP BY ic.id
+            ORDER BY ic.block, ic.floor
+        """, [tenant_id])]
+
     return render_template('certification/dashboard.html',
                           grouped=grouped, 
                           status_info=STATUS_INFO, 
                           summary=summary,
                           active_cycles=active_cycles, 
                           cycle_filter=cycle_filter,
-                          user_role=user_role)
+                          user_role=user_role,
+                          review_progress=review_progress)
 
 
 @certification_bp.route('/unit/<unit_id>')
