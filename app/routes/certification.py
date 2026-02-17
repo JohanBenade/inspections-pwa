@@ -280,6 +280,26 @@ def dashboard():
             ORDER BY ic.block, ic.floor
         """, [tenant_id])]
 
+    # Team lead review pipeline per cycle
+    tl_pipeline = []
+    if user_role == 'team_lead':
+        tl_pipeline = [dict(r) for r in query_db("""
+            SELECT
+                ic.id AS cycle_id,
+                ic.block,
+                ic.floor,
+                ic.cycle_number,
+                COUNT(DISTINCT i.id) AS total_units,
+                COUNT(DISTINCT CASE WHEN i.status = 'submitted' THEN i.id END) AS awaiting_review,
+                COUNT(DISTINCT CASE WHEN i.status = 'under_review' THEN i.id END) AS under_review,
+                COUNT(DISTINCT CASE WHEN i.status IN ('reviewed', 'approved', 'pending_followup', 'certified') THEN i.id END) AS sent_to_manager
+            FROM inspection_cycle ic
+            JOIN inspection i ON i.cycle_id = ic.id AND i.tenant_id = ic.tenant_id
+            WHERE ic.tenant_id = ? AND ic.status = 'active'
+            GROUP BY ic.id
+            ORDER BY ic.block, ic.floor
+        """, [tenant_id])]
+
     return render_template('certification/dashboard.html',
                           grouped=grouped, 
                           status_info=STATUS_INFO, 
@@ -287,7 +307,8 @@ def dashboard():
                           active_cycles=active_cycles, 
                           cycle_filter=cycle_filter,
                           user_role=user_role,
-                          review_progress=review_progress)
+                          review_progress=review_progress,
+                          tl_pipeline=tl_pipeline)
 
 
 @certification_bp.route('/unit/<unit_id>')
