@@ -8,6 +8,7 @@ Access: Admin only (Johan).
 from flask import Blueprint, render_template, session, request
 from app.auth import require_admin
 from app.services.db import query_db, get_db
+from difflib import SequenceMatcher
 
 data_quality_bp = Blueprint('data_quality', __name__, url_prefix='/data-quality')
 
@@ -23,6 +24,103 @@ VAGUE_PATTERNS = [
 
 # Character threshold for "long" descriptions
 LONG_THRESHOLD = 50
+
+# Similarity threshold for clustering
+CLUSTER_THRESHOLD = 0.6
+
+
+def _compute_clusters(descriptions):
+    """
+    Group similar descriptions into clusters using category-scoped pairwise matching.
+    Uses union-find for efficient cluster merging.
+
+    Input: list of dicts with original_comment, usage, category_name
+    Output: list of cluster dicts sorted by total_usage desc, each containing:
+        - category: str
+        - members: list of {description, usage}
+        - total_usage: int
+        - suggested_canonical: str (highest usage member)
+    """
+    # Group by category to limit comparison scope
+    by_category = {}
+    for d in descriptions:
+        cat = d['category_name']
+        if cat not in by_category:
+            by_category[cat] = []
+        by_category[cat].append(d)
+
+    # Union-find structure
+    parent = {}
+
+    def find(x):
+        while parent[x] != x:
+            parent[x] = parent[parent[x]]
+            x = parent[x]
+        return x
+
+    def union(a, b):
+        ra, rb = find(a), find(b)
+        if ra != rb:
+            parent[ra] = rb
+
+    # Build lookup: description -> {usage, category}
+    desc_info = {}
+    for d in descriptions:
+        key = d['original_comment']
+        if key not in desc_info:
+            desc_info[key] = {'usage': d['usage'], 'category': d['category_name']}
+            parent[key] = key
+        else:
+            # Same description in multiple categories - sum usage
+            desc_info[key]['usage'] += d['usage']
+
+    # Pairwise comparison within each category
+    for cat, members in by_category.items():
+        descs_in_cat = [m['original_comment'] for m in members]
+        n = len(descs_in_cat)
+        for i in range(n):
+            for j in range(i + 1, n):
+                a, b = descs_in_cat[i], descs_in_cat[j]
+                if a == b:
+                    continue
+                score = SequenceMatcher(
+                    None, a.lower().strip(), b.lower().strip()
+                ).ratio()
+                if score >= CLUSTER_THRESHOLD:
+                    union(a, b)
+
+    # Collect clusters
+    cluster_map = {}
+    for desc in desc_info:
+        root = find(desc)
+        if root not in cluster_map:
+            cluster_map[root] = []
+        cluster_map[root].append(desc)
+
+    # Filter to clusters with 2+ members, build output
+    clusters = []
+    for root, members in cluster_map.items():
+        if len(members) < 2:
+            continue
+        member_list = []
+        total = 0
+        for m in members:
+            usage = desc_info[m]['usage']
+            member_list.append({'description': m, 'usage': usage})
+            total += usage
+        # Sort members by usage desc
+        member_list.sort(key=lambda x: x['usage'], reverse=True)
+        clusters.append({
+            'category': desc_info[root]['category'],
+            'members': member_list,
+            'total_usage': total,
+            'suggested_canonical': member_list[0]['description'],
+            'member_count': len(member_list),
+        })
+
+    # Sort clusters by total usage desc
+    clusters.sort(key=lambda x: x['total_usage'], reverse=True)
+    return clusters
 
 
 @data_quality_bp.route('/')
@@ -141,12 +239,31 @@ def descriptions():
     )
     merge_targets = [dict(r) for r in merge_targets_raw]
 
+    # ── Section 1D: Description Clusters ───────────────────
+    # Group similar descriptions within same category using fuzzy matching
+    cluster_raw = query_db(
+        "SELECT d.original_comment, COUNT(*) AS usage, "
+        "  ct.category_name "
+        "FROM defect d "
+        "JOIN item_template it ON d.item_template_id = it.id "
+        "JOIN category_template ct ON it.category_id = ct.id "
+        "WHERE d.status='open' AND d.tenant_id=? "
+        "AND d.original_comment IS NOT NULL "
+        "GROUP BY d.original_comment, ct.category_name "
+        "ORDER BY ct.category_name, usage DESC",
+        (tenant_id,)
+    )
+    cluster_descs = [dict(r) for r in cluster_raw]
+
+    clusters = _compute_clusters(cluster_descs)
+
     return render_template('data_quality/descriptions.html',
                            kpis=kpis,
                            singletons=singletons,
                            long_descs=long_descs,
                            vague_descs=vague_descs,
                            merge_targets=merge_targets,
+                           clusters=clusters,
                            vague_patterns=VAGUE_PATTERNS,
                            long_threshold=LONG_THRESHOLD)
 
@@ -264,3 +381,74 @@ def edit_description():
     ).format(affected, 's' if affected != 1 else '', old_desc, new_desc)
 
 
+@data_quality_bp.route('/merge-cluster', methods=['POST'])
+@require_admin
+def merge_cluster():
+    """Merge all cluster members into the canonical description."""
+    tenant_id = session.get('tenant_id', 'MONOGRAPH')
+    canonical = request.form.get('canonical', '').strip()
+    members = request.form.getlist('members')
+
+    if not canonical or len(members) < 2:
+        return ('<div class="border border-red-200 rounded-lg p-4 text-sm text-red-600">'
+                'Invalid cluster data.</div>')
+
+    # Remove canonical from merge sources
+    sources = [m.strip() for m in members if m.strip() != canonical]
+    if not sources:
+        return ('<div class="border border-amber-200 rounded-lg p-4 text-sm text-amber-600">'
+                'Nothing to merge &mdash; all members match the canonical.</div>')
+
+    db = get_db()
+    total_affected = 0
+
+    for old_desc in sources:
+        if not old_desc:
+            continue
+
+        count_row = db.execute(
+            "SELECT COUNT(*) FROM defect "
+            "WHERE original_comment=? AND status='open' AND tenant_id=?",
+            (old_desc, tenant_id)
+        ).fetchone()
+        affected = count_row[0] if count_row else 0
+
+        if affected > 0:
+            db.execute(
+                "UPDATE defect SET original_comment=?, updated_at=CURRENT_TIMESTAMP "
+                "WHERE original_comment=? AND status='open' AND tenant_id=?",
+                (canonical, old_desc, tenant_id)
+            )
+            db.execute(
+                "UPDATE defect_library SET usage_count = usage_count + ? "
+                "WHERE description=? AND tenant_id=?",
+                (affected, canonical, tenant_id)
+            )
+            db.execute(
+                "UPDATE defect_library SET usage_count = 0 "
+                "WHERE description=? AND tenant_id=?",
+                (old_desc, tenant_id)
+            )
+            total_affected += affected
+
+    db.commit()
+
+    merged_list = ', '.join(
+        '<span class="line-through text-gray-400">{}</span>'.format(s)
+        for s in sources
+    )
+
+    return (
+        '<div class="border border-green-200 bg-green-50 rounded-lg p-4 text-sm text-green-700">'
+        '<strong>Cluster merged.</strong> {} defect{} updated across {} description{}. '
+        'All now read: <strong>{}</strong><br>'
+        '<span class="text-xs text-gray-500 mt-1 block">Removed: {}</span>'
+        '</div>'
+    ).format(
+        total_affected,
+        's' if total_affected != 1 else '',
+        len(sources),
+        's' if len(sources) != 1 else '',
+        canonical,
+        merged_list
+    )

@@ -123,7 +123,7 @@
                     <tr class="bg-gray-50 text-left text-xs text-gray-500 uppercase tracking-wider">
                         <th class="px-4 py-2">Description</th>
                         <th class="px-4 py-2 w-16">Unit</th>
-                        <th class="px-4 py-2 w-24">Area</th>
+                        <th class="px-4 py-2 w-32">Area</th>
                         <th class="px-4 py-2 w-16">Chars</th>
                         <th class="px-4 py-2 w-56">Action</th>
                     </tr>
@@ -133,7 +133,7 @@
                     <tr class="hover:bg-gray-50">
                         <td class="px-4 py-2 text-gray-900">{{ s.original_comment }}</td>
                         <td class="px-4 py-2 text-gray-600">{{ s.unit_number }}</td>
-                        <td class="px-4 py-2 text-gray-600 text-xs">{{ s.area_name }}</td>
+                        <td class="px-4 py-2 text-gray-600">{{ s.area_name }}</td>
                         <td class="px-4 py-2 text-gray-400">{{ s.char_len }}</td>
                         <td class="px-4 py-2">
                             <div class="flex gap-1">
@@ -305,16 +305,77 @@
     </details>
 
     <!-- ================================================================ -->
-    <!-- Section 1D: Clusters (placeholder)                              -->
+    <!-- Section 1D: Description Clusters                              -->
     <!-- ================================================================ -->
     <details class="bg-white rounded-lg shadow mb-4 overflow-hidden">
-        <summary class="dq-section-header" style="opacity:0.5;">
+        <summary class="dq-section-header">
             1D. Description Clusters
-            <span class="text-xs font-normal text-gray-400 ml-2">Coming next &mdash; fuzzy grouping of similar descriptions</span>
+            <span class="dq-badge dq-badge-amber">{{ clusters|length }}</span>
+            <span class="text-xs font-normal text-gray-400 ml-2">Similar descriptions that could be merged ({{ '>0.6 similarity' }})</span>
         </summary>
-        <div class="p-6 text-center text-gray-400">
-            Cluster analysis will be available in the next build. This compares all {{ kpis.unique }} unique
-            descriptions pairwise to find groups that should be merged.
+        <div class="p-4">
+            {% if clusters %}
+            <div class="space-y-4">
+                {% for c in clusters %}
+                <div class="border border-gray-200 rounded-lg overflow-hidden" id="cluster-{{ loop.index }}">
+                    <!-- Cluster header -->
+                    <div class="bg-gray-50 px-4 py-3 flex items-center justify-between">
+                        <div>
+                            <span class="font-semibold text-gray-800 text-sm">{{ c.category }}</span>
+                            <span class="text-xs text-gray-400 ml-2">{{ c.member_count }} descriptions &middot; {{ c.total_usage }} total defects</span>
+                        </div>
+                        <button type="button" onclick="showClusterMerge({{ loop.index }})"
+                            class="px-3 py-1 text-xs bg-blue-600 text-white rounded hover:bg-blue-700">
+                            Merge all to&hellip;
+                        </button>
+                    </div>
+                    <!-- Members -->
+                    <table class="min-w-full text-sm">
+                        <tbody class="divide-y divide-gray-100">
+                            {% for m in c.members %}
+                            <tr class="hover:bg-gray-50">
+                                <td class="px-4 py-2 text-gray-900">
+                                    {% if loop.first %}
+                                    <span class="inline-block w-2 h-2 rounded-full bg-green-500 mr-1" title="Highest usage"></span>
+                                    {% endif %}
+                                    {{ m.description }}
+                                </td>
+                                <td class="px-4 py-2 text-gray-500 text-right w-20">{{ m.usage }}x</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                    <!-- Merge form (hidden) -->
+                    <div class="action-panel p-4 bg-blue-50 border-t border-blue-100" id="cluster-merge-{{ loop.index }}">
+                        <form hx-post="{{ url_for('data_quality.merge_cluster') }}"
+                              hx-target="#cluster-{{ loop.index }}"
+                              hx-swap="outerHTML">
+                            <p class="text-sm text-gray-600 mb-2">Merge all {{ c.member_count }} descriptions into one. Pick the canonical version:</p>
+                            <select name="canonical" class="w-full px-2 py-1 text-sm border rounded mb-2">
+                                {% for m in c.members %}
+                                <option value="{{ m.description }}">{{ m.description }} ({{ m.usage }}x)</option>
+                                {% endfor %}
+                            </select>
+                            <!-- Hidden fields: all member descriptions -->
+                            {% for m in c.members %}
+                            <input type="hidden" name="members" value="{{ m.description }}">
+                            {% endfor %}
+                            <div class="flex gap-2">
+                                <button type="submit"
+                                    class="px-3 py-1 text-xs bg-blue-600 text-white rounded hover:bg-blue-700">
+                                    Merge {{ c.member_count }} into 1
+                                </button>
+                                <button type="button" onclick="hideClusterMerge({{ loop.index }})"
+                                    class="px-3 py-1 text-xs bg-gray-200 text-gray-600 rounded">Cancel</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <div class="text-center text-gray-400 py-4">No clusters found &mdash; descriptions are already well-separated.</div>
+            {% endif %}
         </div>
     </details>
 </div>
@@ -334,6 +395,14 @@ function closePanels(btn) {
     td.querySelectorAll('.action-panel').forEach(function(p) {
         p.classList.remove('visible');
     });
+}
+
+function showClusterMerge(idx) {
+    document.getElementById('cluster-merge-' + idx).classList.add('visible');
+}
+
+function hideClusterMerge(idx) {
+    document.getElementById('cluster-merge-' + idx).classList.remove('visible');
 }
 </script>
 {% endblock %}
