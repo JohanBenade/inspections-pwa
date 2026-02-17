@@ -82,12 +82,22 @@
                             Signed off by {{ cycle.approved_by }} &middot; {{ cycle.approved_at[:10] }}
                         </span>
                         <form method="POST" action="{{ url_for('cycles.push_pdfs', cycle_id=cycle.id) }}"
-                              onsubmit="return confirm('Push {{ cycle.inspected_count }} PDFs to Raubex SharePoint for {{ cycle.block }}?\n\nThis will generate and deliver defect list PDFs for all units.')">
+                              onsubmit="return handlePushSubmit(this, {{ cycle.inspected_count }}, '{{ cycle.block }}')">
                             <button type="submit"
-                                    class="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700">
+                                    class="push-btn px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700">
                                 Push PDFs to Raubex
                             </button>
                         </form>
+                        <div class="push-status hidden w-full mt-3 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                            <div class="flex items-center gap-2">
+                                <svg class="animate-spin w-4 h-4 text-blue-600" fill="none" viewBox="0 0 24 24">
+                                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                </svg>
+                                <span class="push-status-text text-sm font-medium text-blue-700">Generating PDFs...</span>
+                            </div>
+                            <p class="text-xs text-blue-600 mt-1">Generating and delivering {{ cycle.inspected_count }} PDFs to Raubex SharePoint. This may take up to a minute. Do not close this page.</p>
+                        </div>
                     </div>
 
                     {% else %}
@@ -111,9 +121,9 @@
                     </div>
                     <div class="flex flex-wrap items-center gap-3">
                         <form method="POST" action="{{ url_for('cycles.approve_cycle', cycle_id=cycle.id) }}"
-                              onsubmit="return confirm('Sign off defect lists for {{ cycle.block or "this cycle" }}?\n\nThis confirms {{ cycle.defect_count }} defects across {{ cycle.inspected_count }} units are accurate and will unlock PDF delivery to Raubex.')">
+                              onsubmit="return handleSignoffSubmit(this, '{{ cycle.block or "this cycle" }}', {{ cycle.defect_count }}, {{ cycle.inspected_count }})">
                             <button type="submit"
-                                    class="px-4 py-2 text-sm font-medium text-white rounded-lg hover:opacity-90"
+                                    class="signoff-btn px-4 py-2 text-sm font-medium text-white rounded-lg hover:opacity-90"
                                     style="background-color: {{ color }};">
                                 Sign Off All {{ cycle.inspected_count }} Units
                             </button>
@@ -145,4 +155,36 @@
     </div>
     {% endif %}
 </div>
+
+<script>
+function handleSignoffSubmit(form, blockName, defectCount, unitCount) {
+    if (!confirm('Sign off defect lists for ' + blockName + '?\n\nThis confirms ' + defectCount + ' defects across ' + unitCount + ' units are accurate and will unlock PDF delivery to Raubex.')) {
+        return false;
+    }
+    var btn = form.querySelector('.signoff-btn');
+    btn.disabled = true;
+    btn.style.opacity = '0.6';
+    btn.innerHTML = '<span style="display:inline-flex;align-items:center;gap:6px;"><svg class="animate-spin" style="width:16px;height:16px;" fill="none" viewBox="0 0 24 24"><circle style="opacity:0.25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path style="opacity:0.75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg> Signing off...</span>';
+    return true;
+}
+
+function handlePushSubmit(form, unitCount, blockName) {
+    if (!confirm('Push ' + unitCount + ' PDFs to Raubex SharePoint for ' + blockName + '?\n\nThis will generate and deliver defect list PDFs for all units.')) {
+        return false;
+    }
+    var btn = form.querySelector('.push-btn');
+    btn.disabled = true;
+    btn.style.opacity = '0.6';
+    btn.innerHTML = '<span style="display:inline-flex;align-items:center;gap:6px;"><svg class="animate-spin" style="width:16px;height:16px;" fill="none" viewBox="0 0 24 24"><circle style="opacity:0.25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path style="opacity:0.75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg> Generating PDFs...</span>';
+    var statusDiv = form.parentElement.querySelector('.push-status');
+    if (statusDiv) {
+        statusDiv.classList.remove('hidden');
+    }
+    var card = form.closest('.bg-white');
+    if (card) {
+        card.style.opacity = '0.85';
+    }
+    return true;
+}
+</script>
 {% endblock %}
