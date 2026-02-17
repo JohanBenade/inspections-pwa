@@ -140,6 +140,7 @@ def dashboard():
                 i.inspector_name AS last_inspector,
                 i.inspection_date AS last_inspection_date,
                 i.submitted_at,
+                i.manager_reviewed_at,
                 (SELECT COUNT(*) FROM defect d 
                  JOIN inspection_cycle ic_r ON d.raised_cycle_id = ic_r.id
                  LEFT JOIN inspection_cycle ic_c ON d.cleared_cycle_id = ic_c.id
@@ -188,6 +189,7 @@ def dashboard():
                 latest.inspector_name AS last_inspector,
                 latest.inspection_date AS last_inspection_date,
                 latest.submitted_at,
+                latest.manager_reviewed_at,
                 (SELECT COUNT(*) FROM defect d WHERE d.unit_id = u.id AND d.status = 'open') AS open_defects,
                 (SELECT COUNT(*) FROM defect d WHERE d.unit_id = u.id AND d.status = 'cleared') AS cleared_defects,
                 (SELECT COUNT(*) FROM inspection_item ii 
@@ -211,6 +213,7 @@ def dashboard():
                     i.inspector_name,
                     i.inspection_date,
                     i.submitted_at,
+                    i.manager_reviewed_at,
                     ic.cycle_number,
                     ic.id AS cycle_id,
                     ROW_NUMBER() OVER (PARTITION BY i.unit_id ORDER BY ic.cycle_number DESC) as rn
@@ -387,6 +390,43 @@ def review_unit(unit_id):
     unit_num = query_db('SELECT unit_number FROM unit WHERE id = ?', [unit_id], one=True)['unit_number']
     reviewer = session.get('user_name', 'Team Lead')
     flash(f"Unit {unit_num} reviewed by {reviewer} - now awaiting Architect approval", 'success')
+    return redirect(url_for('certification.dashboard'))
+
+
+
+@certification_bp.route('/unit/<unit_id>/mark-reviewed', methods=['POST'])
+@require_manager
+def mark_reviewed(unit_id):
+    """Manager marks unit as spot-checked. Does NOT change inspection status."""
+    tenant_id = session['tenant_id']
+    db = get_db()
+
+    inspection = query_db("""
+        SELECT i.* FROM inspection i
+        JOIN inspection_cycle ic ON i.cycle_id = ic.id
+        WHERE i.unit_id = ? AND i.tenant_id = ?
+        ORDER BY ic.cycle_number DESC LIMIT 1
+    """, [unit_id, tenant_id], one=True)
+
+    if not inspection:
+        flash('No inspection found for this unit', 'error')
+        return redirect(url_for('certification.dashboard'))
+
+    now = datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S')
+    db.execute("""
+        UPDATE inspection
+        SET manager_reviewed_at = ?, manager_reviewed_by = ?, updated_at = CURRENT_TIMESTAMP
+        WHERE id = ?
+    """, [now, session['user_id'], inspection['id']])
+
+    log_audit(db, tenant_id, 'inspection', inspection['id'], 'manager_spot_check',
+              new_value='reviewed',
+              user_id=session['user_id'], user_name=session['user_name'])
+
+    db.commit()
+
+    unit_num = query_db('SELECT unit_number FROM unit WHERE id = ?', [unit_id], one=True)['unit_number']
+    flash('Unit {} marked as reviewed'.format(unit_num), 'success')
     return redirect(url_for('certification.dashboard'))
 
 
