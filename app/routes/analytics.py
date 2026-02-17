@@ -268,24 +268,40 @@ def dashboard():
             "WHERE d.tenant_id = ? AND d.status = 'open' AND d.raised_cycle_id NOT LIKE 'test-%' "
             "GROUP BY u.unit_number, i.inspector_name ORDER BY cnt DESC", [tenant_id])
 
-        # Heatmap
-        heatmap_raw = query_db(
-            "SELECT u.unit_number, at.area_name, COUNT(*) as cnt "
-            "FROM defect d JOIN unit u ON d.unit_id = u.id "
-            "JOIN item_template it ON d.item_template_id = it.id "
-            "JOIN category_template ct ON it.category_id = ct.id "
-            "JOIN area_template at ON ct.area_id = at.id "
-            "WHERE d.tenant_id = ? AND d.status = 'open' AND d.raised_cycle_id NOT LIKE 'test-%' "
-            "GROUP BY u.unit_number, at.area_name", [tenant_id])
-        all_units_sorted = sorted(set(r['unit_number'] for r in heatmap_raw))
+        # Block/Floor grid (replaces item-level heatmap in all-view)
         all_areas = area_data['labels'] if area_data['labels'] else []
+        grid_blocks = sorted(set(b['block'] for b in batch_comparison))
+        grid_floors = sorted(set(b.get('floor', 0) for b in batch_comparison))
+        block_floor_grid = {}
+        for b in batch_comparison:
+            blk = b['block']
+            flr = b.get('floor', 0)
+            if blk not in block_floor_grid:
+                block_floor_grid[blk] = {}
+            block_floor_grid[blk][flr] = {
+                'avg': b['avg_per_unit'],
+                'defects': b['defects'],
+                'units': b['units'],
+                'defect_rate': b.get('defect_rate', 0),
+                'label': b['label'],
+                'colour': b['colour'],
+            }
+        grid_avgs = []
+        for blk in block_floor_grid.values():
+            for cell in blk.values():
+                if cell['units'] > 0:
+                    grid_avgs.append(cell['avg'])
+        if grid_avgs:
+            grid_avgs_sorted = sorted(grid_avgs)
+            n = len(grid_avgs_sorted)
+            grid_median = grid_avgs_sorted[n // 2] if n % 2 == 1 else round((grid_avgs_sorted[n // 2 - 1] + grid_avgs_sorted[n // 2]) / 2, 1)
+        else:
+            grid_median = 0
+        # Empty heatmap vars (per-cycle view uses these, all-view does not)
         heatmap = {}
-        for r in heatmap_raw:
-            if r['unit_number'] not in heatmap:
-                heatmap[r['unit_number']] = {}
-            heatmap[r['unit_number']][r['area_name']] = r['cnt']
-        area_totals = {area: sum(heatmap.get(u, {}).get(area, 0) for u in all_units_sorted) for area in all_areas}
-        unit_totals = {u: sum(heatmap.get(u, {}).values()) for u in all_units_sorted}
+        all_units_sorted = []
+        area_totals = {}
+        unit_totals = {}
 
         # Recurring defects
         recurring = query_db(
@@ -467,7 +483,10 @@ def dashboard():
             area_deep_dive=area_deep_dive, dd_callout=dd_callout,
             batch_labels=batch_labels, batch_colours=batch_colours,
             pipeline_data=pipeline_data, top_defects=top_defects, td_median=td_median,
-            unit_summary=unit_summary, floor_map=floor_map)
+            unit_summary=unit_summary, floor_map=floor_map,
+            block_floor_grid=block_floor_grid, grid_blocks=grid_blocks,
+            grid_floors=grid_floors, grid_median=grid_median,
+            floor_labels=FLOOR_LABELS)
 
     # --- 1. SUMMARY STATS ---
     total_units = query_db("""
@@ -830,7 +849,9 @@ def dashboard():
                            area_colours=AREA_COLOURS,
                            area_deep_dive=area_deep_dive, dd_callout=dd_callout,
                            pipeline_data=pipeline_data, top_defects=top_defects, td_median=td_median,
-                           unit_summary=unit_summary, floor_map=floor_map)
+                           unit_summary=unit_summary, floor_map=floor_map,
+                           block_floor_grid={}, grid_blocks=[], grid_floors=[],
+                           grid_median=0, floor_labels=FLOOR_LABELS)
 
 # ============================================================
 # BI-WEEKLY REPORT ROUTES (v64g)

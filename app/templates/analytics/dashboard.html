@@ -374,7 +374,72 @@
         <p class="text-xs font-medium text-gray-400 uppercase tracking-wider mb-4">Extended Analytics</p>
     </div>
 
-    <!-- 5. HEATMAP: AREA x UNIT (sortable) -->
+    {% if is_all_view %}
+    <!-- 5. BLOCK/FLOOR GRID (all-view) -->
+    <div class="bg-white rounded-lg shadow p-4">
+        <h2 class="text-lg font-semibold text-gray-900 mb-1">Defect Density: Block &times; Floor</h2>
+        <p class="text-xs text-gray-400 mb-4">Average defects per unit. Colour indicates performance relative to median ({{ grid_median }}).</p>
+        {% if grid_blocks %}
+        <div class="overflow-x-auto">
+            <table class="w-full text-sm border-collapse">
+                <thead>
+                    <tr>
+                        <th class="text-left py-2 px-3 text-gray-500 font-medium text-xs uppercase tracking-wider" style="width: 100px;">Floor</th>
+                        {% for blk in grid_blocks %}
+                        <th class="text-center py-2 px-3 text-gray-700 font-semibold">{{ blk }}</th>
+                        {% endfor %}
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for flr in grid_floors %}
+                    <tr class="border-t border-gray-100">
+                        <td class="py-3 px-3 font-medium text-gray-600 text-sm">{{ floor_labels.get(flr, 'Floor ' ~ flr) }}</td>
+                        {% for blk in grid_blocks %}
+                        {% if block_floor_grid.get(blk, {}).get(flr) %}
+                        {% set cell = block_floor_grid[blk][flr] %}
+                        {% if cell.avg > grid_median %}
+                        <td class="text-center py-3 px-3" style="background: rgba(196,77,63,0.10);">
+                            <div class="text-xl font-bold" style="color: #C44D3F;">{{ cell.avg }}</div>
+                            <div class="text-xs text-gray-500">{{ cell.defects }} defects</div>
+                            <div class="text-xs text-gray-400">{{ cell.units }} units &middot; {{ cell.defect_rate }}%</div>
+                        </td>
+                        {% elif cell.avg == grid_median %}
+                        <td class="text-center py-3 px-3" style="background: rgba(200,150,62,0.10);">
+                            <div class="text-xl font-bold" style="color: #C8963E;">{{ cell.avg }}</div>
+                            <div class="text-xs text-gray-500">{{ cell.defects }} defects</div>
+                            <div class="text-xs text-gray-400">{{ cell.units }} units &middot; {{ cell.defect_rate }}%</div>
+                        </td>
+                        {% else %}
+                        <td class="text-center py-3 px-3" style="background: rgba(74,124,89,0.10);">
+                            <div class="text-xl font-bold" style="color: #4A7C59;">{{ cell.avg }}</div>
+                            <div class="text-xs text-gray-500">{{ cell.defects }} defects</div>
+                            <div class="text-xs text-gray-400">{{ cell.units }} units &middot; {{ cell.defect_rate }}%</div>
+                        </td>
+                        {% endif %}
+                        {% else %}
+                        <td class="text-center py-3 px-3 bg-gray-50">
+                            <div class="text-xl font-bold text-gray-300">&mdash;</div>
+                            <div class="text-xs text-gray-300">No data</div>
+                        </td>
+                        {% endif %}
+                        {% endfor %}
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        <div class="mt-3 flex items-center gap-4 text-xs text-gray-400">
+            <span class="inline-flex items-center gap-1"><span class="inline-block w-3 h-3 rounded" style="background: rgba(74,124,89,0.25);"></span> Below median</span>
+            <span class="inline-flex items-center gap-1"><span class="inline-block w-3 h-3 rounded" style="background: rgba(200,150,62,0.25);"></span> At median</span>
+            <span class="inline-flex items-center gap-1"><span class="inline-block w-3 h-3 rounded" style="background: rgba(196,77,63,0.25);"></span> Above median</span>
+        </div>
+        {% else %}
+        <p class="text-sm text-gray-400">No batch data available.</p>
+        {% endif %}
+    </div>
+
+    {% else %}
+    <!-- 5. HEATMAP: AREA x UNIT (sortable, per-cycle view only) -->
     <div class="bg-white rounded-lg shadow p-4">
         <h2 class="text-lg font-semibold text-gray-900 mb-1">Heatmap: Defects by Unit &amp; Area</h2>
         <p class="text-xs text-gray-400 mb-4">Click any column header to sort.</p>
@@ -432,6 +497,7 @@
             </table>
         </div>
     </div>
+    {% endif %}
 
     <!-- 6. SYSTEMIC / RECURRING DEFECTS -->
     <div class="bg-white rounded-lg shadow p-4">
@@ -602,7 +668,8 @@ new Chart(areaCompCtx, {
 {% endif %}
 </script>
 
-<!-- Heatmap sort logic -->
+<!-- Heatmap sort logic (per-cycle view only) -->
+{% if not is_all_view %}
 <script>
 (function() {
     var currentCol = -1;  // default: Unit column
@@ -662,5 +729,6 @@ new Chart(areaCompCtx, {
     sortHeatmap(-1);
 })();
 </script>
-{% endif %}
+{% endif %}{# not is_all_view #}
+{% endif %}{# has_data #}
 {% endblock %}
