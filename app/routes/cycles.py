@@ -58,6 +58,7 @@ def clean_notes(value):
 def list_cycles():
     """List all inspection cycles for current phase."""
     tenant_id = session['tenant_id']
+    user_role = session.get('role', 'inspector')
     
     phase = query_db("""
         SELECT ph.*, p.project_name, p.client_name
@@ -80,14 +81,17 @@ def list_cycles():
             ) as total_units,
             (SELECT COUNT(DISTINCT i.unit_id) FROM inspection i WHERE i.cycle_id = ic.id) as units_inspected,
             (SELECT COUNT(DISTINCT i.unit_id) FROM inspection i WHERE i.cycle_id = ic.id AND i.status = 'submitted') as units_submitted,
-            (SELECT COUNT(*) FROM cycle_excluded_item cei WHERE cei.cycle_id = ic.id) as excluded_count
+            (SELECT COUNT(*) FROM cycle_excluded_item cei WHERE cei.cycle_id = ic.id) as excluded_count,
+            (SELECT COUNT(*) FROM defect d WHERE d.raised_cycle_id = ic.id AND d.status = 'open' AND d.tenant_id = ic.tenant_id) as defect_count,
+            (SELECT COUNT(DISTINCT i2.id) FROM inspection i2 WHERE i2.cycle_id = ic.id AND i2.manager_reviewed_at IS NOT NULL) as spot_checked,
+            (SELECT COUNT(DISTINCT i3.id) FROM inspection i3 WHERE i3.cycle_id = ic.id) as inspected_count
         FROM inspection_cycle ic
         JOIN inspector insp ON ic.created_by = insp.id
         WHERE ic.phase_id = ?
         ORDER BY ic.cycle_number DESC
     """, [phase['id']])
     
-    return render_template('cycles/list.html', phase=phase, cycles=cycles)
+    return render_template('cycles/list.html', phase=phase, cycles=cycles, user_role=user_role)
 
 
 @cycles_bp.route('/create', methods=['GET', 'POST'])
@@ -627,6 +631,51 @@ def assign_inspector(cycle_id):
     db.commit()
     
     return '<span class="text-xs text-green-600">{}</span>'.format(inspector['name'])
+
+
+
+@cycles_bp.route('/<cycle_id>/approve', methods=['POST'])
+@require_manager
+def approve_cycle(cycle_id):
+    """Bulk sign off all units in a cycle - confirms defect lists are accurate."""
+    tenant_id = session['tenant_id']
+    db = get_db()
+    now = datetime.now(timezone.utc).isoformat()
+
+    cycle = query_db(
+        "SELECT * FROM inspection_cycle WHERE id = ? AND tenant_id = ?",
+        [cycle_id, tenant_id], one=True
+    )
+
+    if not cycle:
+        abort(404)
+
+    if cycle['approved_at']:
+        flash('This cycle has already been signed off.', 'error')
+        return redirect(url_for('cycles.list_cycles'))
+
+    # Bulk move all reviewed inspections to pending_followup
+    db.execute("""
+        UPDATE inspection SET status = 'pending_followup', updated_at = ?
+        WHERE cycle_id = ? AND tenant_id = ? AND status = 'reviewed'
+    """, [now, cycle_id, tenant_id])
+    updated = db.execute("SELECT changes()").fetchone()[0]
+
+    # Set cycle approval timestamp
+    db.execute("""
+        UPDATE inspection_cycle SET approved_at = ?, approved_by = ?
+        WHERE id = ?
+    """, [now, session['user_name'], cycle_id])
+
+    log_audit(db, tenant_id, 'cycle', cycle_id, 'approved',
+              new_value='signed_off',
+              user_id=session['user_id'], user_name=session['user_name'])
+
+    db.commit()
+
+    block = cycle['block'] or 'Cycle'
+    flash(f'Defect lists signed off for {block}. {updated} units moved to pending contractor rectification.', 'success')
+    return redirect(url_for('cycles.list_cycles'))
 
 
 @cycles_bp.route('/<cycle_id>/close', methods=['POST'])

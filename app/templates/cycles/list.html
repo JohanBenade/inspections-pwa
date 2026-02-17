@@ -3,6 +3,8 @@
 {% block title %}Inspection Cycles - {{ phase.project_name }}{% endblock %}
 
 {% block content %}
+{% set floor_names = {0: 'Ground Floor', 1: '1st Floor', 2: '2nd Floor', 3: '3rd Floor'} %}
+{% set batch_colors = {'Block 5_0': '#C8963E', 'Block 6_0': '#3D6B8E', 'Block 5_1': '#4A7C59'} %}
 <div class="max-w-4xl mx-auto">
     <div class="flex justify-between items-center mb-6">
         <div>
@@ -18,43 +20,116 @@
     {% if cycles %}
     <div class="space-y-4">
         {% for cycle in cycles %}
-        <a href="{{ url_for('cycles.view_cycle', cycle_id=cycle.id) }}"
-           class="block bg-white rounded-lg shadow p-4 border-l-4 hover:shadow-md transition-shadow
-                  {% if cycle.status == 'active' %}border-green-500{% else %}border-gray-400{% endif %}">
-            <div class="flex justify-between items-start">
-                <div>
-                    <div class="flex items-center gap-2">
-                        <h2 class="text-lg font-semibold text-gray-900">Cycle {{ cycle.cycle_number }}</h2>
-                        {% if cycle.status == 'active' %}
-                        <span class="text-xs bg-green-100 text-green-800 px-2 py-1 rounded">Active</span>
-                        {% else %}
-                        <span class="text-xs bg-gray-100 text-gray-600 px-2 py-1 rounded">Closed</span>
-                        {% endif %}
+        {% set color = batch_colors.get((cycle.block or '') ~ '_' ~ (cycle.floor|string if cycle.floor is not none else ''), '#6B6B6B') %}
+        {% set is_approved = cycle.approved_at is not none and cycle.approved_at %}
+        {% set is_issued = cycle.pdfs_pushed_at is not none and cycle.pdfs_pushed_at %}
+        <div class="bg-white rounded-lg shadow overflow-hidden" style="border-left: 4px solid {{ color }};">
+            <div class="p-4">
+                <div class="flex justify-between items-start">
+                    <div>
+                        <div class="flex items-center gap-2 flex-wrap">
+                            <h2 class="text-lg font-semibold text-gray-900">
+                                {% if cycle.block %}{{ cycle.block }}{% if cycle.floor is not none %} {{ floor_names.get(cycle.floor, 'Floor ' ~ cycle.floor) }}{% endif %}{% else %}Cycle {{ cycle.cycle_number }}{% endif %}
+                            </h2>
+                            <span class="text-xs px-2 py-0.5 rounded font-medium
+                                {% if cycle.status == 'active' %}bg-green-100 text-green-800{% else %}bg-gray-100 text-gray-600{% endif %}">
+                                Cycle {{ cycle.cycle_number }}
+                            </span>
+                        </div>
+                        <p class="text-sm text-gray-500 mt-1">
+                            {{ cycle.inspected_count }} units &middot; {{ cycle.defect_count }} defects
+                            {% if cycle.unit_start and cycle.unit_end %} &middot; Units {{ cycle.unit_start }}&ndash;{{ cycle.unit_end }}{% endif %}
+                        </p>
                     </div>
-                    {% if cycle.block %}
-                    <p class="text-sm font-medium text-gray-700 mt-1">{{ cycle.block }}{% if cycle.floor is not none %} - {{ {0: 'Ground Floor', 1: '1st Floor', 2: '2nd Floor', 3: '3rd Floor'}.get(cycle.floor, 'Floor ' ~ cycle.floor) }}{% endif %}</p>
-                    {% endif %}
-                    <p class="text-sm text-gray-500 mt-1">
-                        Created by {{ cycle.created_by_name }} on {{ cycle.created_at[:10] }}
-                    </p>
-                    {% if cycle.unit_start and cycle.unit_end %}
-                    <p class="text-xs text-blue-600 mt-1">
-                        Units {{ cycle.unit_start }} - {{ cycle.unit_end }} &middot; {{ cycle.total_units }} active
-                    </p>
+                    <a href="{{ url_for('cycles.view_cycle', cycle_id=cycle.id) }}"
+                       class="text-xs text-blue-600 hover:text-blue-800 font-medium whitespace-nowrap">
+                        View Details &rarr;
+                    </a>
+                </div>
+
+                {% if cycle.status == 'active' and user_role in ['manager', 'admin'] %}
+                <div class="mt-4 pt-3 border-t border-gray-100">
+                    {% if is_issued %}
+                    <!-- STATE 3: Defect Lists Issued to Contractor -->
+                    <div class="flex items-center gap-2 mb-2">
+                        <span class="w-2.5 h-2.5 rounded-full bg-green-500 inline-block"></span>
+                        <span class="text-sm font-semibold text-green-700">Defect Lists Issued to Contractor</span>
+                    </div>
+                    <p class="text-xs text-gray-500 mb-3">PDFs delivered to Raubex SharePoint. Contractor is responsible for rectifying defects before the next inspection cycle.</p>
+                    <div class="flex flex-wrap gap-3 text-xs text-gray-500">
+                        <span class="inline-flex items-center gap-1">
+                            <svg class="w-3.5 h-3.5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                            Signed off by {{ cycle.approved_by }} &middot; {{ cycle.approved_at[:10] }}
+                        </span>
+                        <span class="inline-flex items-center gap-1">
+                            <svg class="w-3.5 h-3.5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                            Issued {{ cycle.pdfs_pushed_at[:10] }}
+                        </span>
+                    </div>
+
+                    {% elif is_approved %}
+                    <!-- STATE 2: Defect Lists Signed Off -->
+                    <div class="flex items-center gap-2 mb-2">
+                        <span class="w-2.5 h-2.5 rounded-full bg-blue-500 inline-block"></span>
+                        <span class="text-sm font-semibold text-blue-700">Defect Lists Signed Off</span>
+                    </div>
+                    <p class="text-xs text-gray-500 mb-3">Defect lists confirmed as accurate. Generate unit PDFs and push to Raubex SharePoint for contractor rectification.</p>
+                    <div class="flex flex-wrap items-center gap-3">
+                        <span class="inline-flex items-center gap-1 text-xs text-gray-500">
+                            <svg class="w-3.5 h-3.5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                            Signed off by {{ cycle.approved_by }} &middot; {{ cycle.approved_at[:10] }}
+                        </span>
+                        <button onclick="alert('Make webhook integration coming soon')"
+                                class="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700">
+                            Push PDFs to Raubex
+                        </button>
+                    </div>
+
+                    {% else %}
+                    <!-- STATE 1: Defect Lists Awaiting Sign-off -->
+                    <div class="flex items-center gap-2 mb-2">
+                        <span class="w-2.5 h-2.5 rounded-full bg-amber-500 inline-block"></span>
+                        <span class="text-sm font-semibold text-amber-700">Defect Lists Awaiting Sign-off</span>
+                    </div>
+                    <p class="text-xs text-gray-500 mb-3">Spot check units on the Approvals page to verify defect lists are accurate. Once satisfied, sign off this cycle to unlock PDF delivery.</p>
+                    <div class="flex flex-wrap items-center gap-4 mb-3">
+                        <div class="flex items-center gap-2">
+                            <span class="text-xs text-gray-500">Spot checked:</span>
+                            <span class="text-sm font-semibold" style="color: {{ color }};">{{ cycle.spot_checked }}/{{ cycle.inspected_count }}</span>
+                        </div>
+                        <div class="flex-1 max-w-xs">
+                            {% set sc_pct = ((cycle.spot_checked / cycle.inspected_count) * 100) | int if cycle.inspected_count > 0 else 0 %}
+                            <div class="w-full bg-gray-100 rounded-full h-1.5">
+                                <div class="h-1.5 rounded-full" style="width: {{ sc_pct }}%; background-color: {{ color }};"></div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="flex flex-wrap items-center gap-3">
+                        <form method="POST" action="{{ url_for('cycles.approve_cycle', cycle_id=cycle.id) }}"
+                              onsubmit="return confirm('Sign off defect lists for {{ cycle.block or "this cycle" }}?\n\nThis confirms {{ cycle.defect_count }} defects across {{ cycle.inspected_count }} units are accurate and will unlock PDF delivery to Raubex.')">
+                            <button type="submit"
+                                    class="px-4 py-2 text-sm font-medium text-white rounded-lg hover:opacity-90"
+                                    style="background-color: {{ color }};">
+                                Sign Off All {{ cycle.inspected_count }} Units
+                            </button>
+                        </form>
+                        <button disabled
+                                class="px-4 py-2 text-sm font-medium text-gray-400 bg-gray-100 rounded-lg cursor-not-allowed">
+                            Push PDFs to Raubex
+                        </button>
+                    </div>
                     {% endif %}
                 </div>
-                <div class="text-right">
-                    <div class="text-2xl font-bold text-gray-900">
-                        {{ cycle.units_submitted }}/{{ cycle.total_units }}
-                    </div>
-                    <div class="text-xs text-gray-500">units submitted</div>
+                {% else %}
+                <!-- Non-manager or closed cycle: simple progress -->
+                <div class="mt-3 h-2 bg-gray-200 rounded-full overflow-hidden">
+                    {% set pct = (cycle.units_submitted / cycle.total_units * 100) if cycle.total_units > 0 else 0 %}
+                    <div class="h-full" style="width: {{ pct }}%; background-color: {{ color }};"></div>
                 </div>
+                <p class="text-xs text-gray-400 mt-1">{{ cycle.units_submitted }}/{{ cycle.total_units }} units submitted</p>
+                {% endif %}
             </div>
-            <div class="mt-3 h-2 bg-gray-200 rounded-full overflow-hidden">
-                {% set pct = (cycle.units_submitted / cycle.total_units * 100) if cycle.total_units > 0 else 0 %}
-                <div class="h-full bg-green-500" style="width: {{ pct }}%"></div>
-            </div>
-        </a>
+        </div>
         {% endfor %}
     </div>
     {% else %}
