@@ -346,6 +346,31 @@ def dashboard():
             median_defects = counts_list[len(counts_list)//2]
         summary['median_defects'] = median_defects
 
+        # Batch medians (for colour coding)
+        batch_defect_counts = sorted([b['defects'] for b in batch_comparison]) if batch_comparison else []
+        if not batch_defect_counts:
+            batch_defects_median = 0
+        elif len(batch_defect_counts) % 2 == 0:
+            batch_defects_median = round((batch_defect_counts[len(batch_defect_counts)//2-1] + batch_defect_counts[len(batch_defect_counts)//2]) / 2, 1)
+        else:
+            batch_defects_median = batch_defect_counts[len(batch_defect_counts)//2]
+        batch_rates = sorted([b['defect_rate'] for b in batch_comparison]) if batch_comparison else []
+        if not batch_rates:
+            batch_rate_median = 0
+        elif len(batch_rates) % 2 == 0:
+            batch_rate_median = round((batch_rates[len(batch_rates)//2-1] + batch_rates[len(batch_rates)//2]) / 2, 1)
+        else:
+            batch_rate_median = batch_rates[len(batch_rates)//2]
+
+        # Inspector median
+        insp_avgs = sorted([r['avg_per_unit'] for r in inspector_stats]) if inspector_stats else []
+        if not insp_avgs:
+            inspector_median = 0
+        elif len(insp_avgs) % 2 == 0:
+            inspector_median = round((insp_avgs[len(insp_avgs)//2-1] + insp_avgs[len(insp_avgs)//2]) / 2, 1)
+        else:
+            inspector_median = insp_avgs[len(insp_avgs)//2]
+
         floor_map = {0: 'Ground', 1: '1st', 2: '2nd', 3: '3rd'}
 
         # Pipeline: count inspections by mapped status
@@ -486,7 +511,10 @@ def dashboard():
             unit_summary=unit_summary, floor_map=floor_map,
             block_floor_grid=block_floor_grid, grid_blocks=grid_blocks,
             grid_floors=grid_floors, grid_median=grid_median,
-            floor_labels=FLOOR_LABELS)
+            floor_labels=FLOOR_LABELS,
+            batch_defects_median=batch_defects_median,
+            batch_rate_median=batch_rate_median,
+            inspector_median=inspector_median)
 
     # --- 1. SUMMARY STATS ---
     total_units = query_db("""
@@ -656,6 +684,15 @@ def dashboard():
         GROUP BY i.inspector_name
         ORDER BY avg_per_unit DESC
     """, [selected_cycle_id, tenant_id])
+
+    # Inspector median for colour coding
+    insp_avgs_pc = sorted([r['avg_per_unit'] for r in inspector_stats]) if inspector_stats else []
+    if not insp_avgs_pc:
+        inspector_median = 0
+    elif len(insp_avgs_pc) % 2 == 0:
+        inspector_median = round((insp_avgs_pc[len(insp_avgs_pc)//2-1] + insp_avgs_pc[len(insp_avgs_pc)//2]) / 2, 1)
+    else:
+        inspector_median = insp_avgs_pc[len(insp_avgs_pc)//2]
 
     selected_cycle = None
     for c in cycles:
@@ -851,7 +888,9 @@ def dashboard():
                            pipeline_data=pipeline_data, top_defects=top_defects, td_median=td_median,
                            unit_summary=unit_summary, floor_map=floor_map,
                            block_floor_grid={}, grid_blocks=[], grid_floors=[],
-                           grid_median=0, floor_labels=FLOOR_LABELS)
+                           grid_median=0, floor_labels=FLOOR_LABELS,
+                           batch_defects_median=0, batch_rate_median=0,
+                           inspector_median=inspector_median)
 
 # ============================================================
 # BI-WEEKLY REPORT ROUTES (v64g)

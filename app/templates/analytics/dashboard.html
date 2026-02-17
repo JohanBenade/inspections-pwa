@@ -56,7 +56,7 @@
             {% if is_all_view and trend_data and trend_data.batches %}<div class="text-xs mt-1">{% for b in trend_data.batches %}{% if not loop.first %} <span class="text-gray-300">|</span> {% endif %}<span class="text-gray-400">{{ b.label }}: {{ b.avg }}</span>{% endfor %}</div>{% endif %}
         </div>
         <div class="bg-white rounded-lg shadow p-4">
-            <div class="text-3xl font-bold {% if summary.defect_rate is defined and summary.defect_rate > 5 %}text-red-600{% elif summary.defect_rate is defined and summary.defect_rate > 3 %}text-amber-600{% else %}text-emerald-600{% endif %}">{{ summary.defect_rate }}%</div>
+            <div class="text-3xl font-bold {% if summary.defect_rate is defined and summary.defect_rate > batch_rate_median %}text-red-600{% elif summary.defect_rate is defined and summary.defect_rate == batch_rate_median %}text-amber-600{% else %}text-emerald-600{% endif %}">{{ summary.defect_rate }}%</div>
             <div class="text-sm text-gray-500 mt-1">defect rate ({{ summary.items_inspected }} items)</div>
         </div>
         <div class="bg-white rounded-lg shadow p-4">
@@ -65,6 +65,7 @@
         </div>
     </div>
 
+    <!-- 2. BATCH COMPARISON CARDS (all-view) -->
     {% if is_all_view and block_comparison %}
     <div class="grid grid-cols-1 lg:grid-cols-{{ block_comparison|length }} gap-4 mb-6">
         {% for b in block_comparison %}
@@ -76,7 +77,7 @@
                     <div class="text-xs text-gray-500">units</div>
                 </div>
                 <div>
-                    <div class="text-2xl font-bold {% if b.defects > 400 %}text-red-600{% else %}text-amber-600{% endif %}">{{ b.defects }}</div>
+                    <div class="text-2xl font-bold {% if b.defects > batch_defects_median %}text-red-600{% elif b.defects == batch_defects_median %}text-amber-600{% else %}text-emerald-600{% endif %}">{{ b.defects }}</div>
                     <div class="text-xs text-gray-500">defects</div>
                 </div>
                 <div>
@@ -87,7 +88,7 @@
             <div class="border-t border-gray-100 my-3"></div>
             <div class="grid grid-cols-3 gap-4">
                 <div>
-                    <div class="text-lg font-semibold {% if b.defect_rate > 7 %}text-red-600{% elif b.defect_rate > 4 %}text-amber-600{% else %}text-emerald-600{% endif %}">{{ b.defect_rate }}%</div>
+                    <div class="text-lg font-semibold {% if b.defect_rate > batch_rate_median %}text-red-600{% elif b.defect_rate == batch_rate_median %}text-amber-600{% else %}text-emerald-600{% endif %}">{{ b.defect_rate }}%</div>
                     <div class="text-xs text-gray-500">defect rate</div>
                 </div>
                 <div>
@@ -104,278 +105,8 @@
     </div>
     {% endif %}
 
-    <!-- INSPECTION PIPELINE -->
-    {% if pipeline_data %}
-    <div class="bg-white rounded-lg shadow p-4">
-        <h2 class="text-lg font-semibold text-gray-900 mb-1">Inspection Pipeline</h2>
-        <p class="text-sm text-gray-500 mb-4">Unit progression through inspection stages.</p>
-        <div class="flex items-center justify-between max-w-2xl mx-auto">
-            {% set total_units_pipeline = pipeline_data[0].count + pipeline_data[1].count + pipeline_data[2].count %}
-            {% set step2_plus = pipeline_data[1].count + pipeline_data[2].count %}
-            {% set step3_only = pipeline_data[2].count %}
-            {% for step in pipeline_data %}
-            {% if loop.index == 1 %}
-                {% set step_reached = total_units_pipeline > 0 %}
-            {% elif loop.index == 2 %}
-                {% set step_reached = step2_plus > 0 %}
-            {% else %}
-                {% set step_reached = step3_only > 0 %}
-            {% endif %}
-            <div class="flex-1 text-center">
-                <div class="inline-flex items-center justify-center w-12 h-12 rounded-full font-bold text-lg mb-2
-                    {% if step_reached %}
-                        {% if loop.index == 3 %}bg-emerald-500 text-white{% elif loop.index == 2 %}bg-blue-500 text-white{% else %}bg-gray-500 text-white{% endif %}
-                    {% else %}bg-gray-100 text-gray-300 border-2 border-dashed border-gray-300{% endif %}">
-                    {% if step_reached %}&#10003;{% else %}&mdash;{% endif %}
-                </div>
-                <div class="text-sm font-medium {% if step_reached %}text-gray-700{% else %}text-gray-400{% endif %}">{{ step.label }}</div>
-                {% if step.date %}<div class="text-xs text-gray-400">{{ step.date }}</div>{% endif %}
-                <div class="text-xs text-gray-400">{{ step.count }} units ({{ step.pct }}%)</div>
-            </div>
-            {% if not loop.last %}
-            {% if loop.index == 1 %}
-                {% set next_reached = step2_plus > 0 %}
-            {% else %}
-                {% set next_reached = step3_only > 0 %}
-            {% endif %}
-            <div class="flex-shrink-0 w-12 mt-[-2rem] {% if step_reached and next_reached %}h-0.5 bg-gray-400{% else %}border-t-2 border-dashed border-gray-300{% endif %}"></div>
-            {% endif %}
-            {% endfor %}
-        </div>
-    </div>
-    {% endif %}
-
-    <!-- PHASE 2: Area Comparison (Block vs Block) -->
-    {% if is_all_view and area_compare_data and area_compare_data.datasets %}
-    <div class="bg-white rounded-lg shadow p-4">
-        <h2 class="text-lg font-semibold text-gray-900 mb-1">Defects by Area: Block Comparison</h2>
-        <p class="text-sm text-gray-500 mb-4">Side-by-side comparison across blocks. Identifies areas where quality diverges.</p>
-        <div class="relative" style="height: 350px;">
-            <canvas id="areaCompareChart"></canvas>
-        </div>
-    </div>
-    {% endif %}
-
-    <!-- DEFECT DISTRIBUTION BY AREA -->
-    <div class="bg-white rounded-lg shadow p-4">
-        <h2 class="text-lg font-semibold text-gray-900 mb-1">Defect Distribution by Area</h2>
-        <p class="text-sm text-gray-500 mb-4">Breakdown of defects by physical area.</p>
-        <div class="grid grid-cols-1 lg:grid-cols-5 gap-6">
-            <!-- Bars (left 3 cols) -->
-            <div class="lg:col-span-3 space-y-3">
-                {% for a in area_list %}
-                <div>
-                    <div class="flex items-center justify-between mb-1">
-                        <span class="text-sm text-gray-800">{{ a.area }}</span>
-                        <span class="text-sm font-semibold text-gray-900">{{ a.count }} <span class="text-gray-400 font-normal">({{ a.pct }}%)</span></span>
-                    </div>
-                    <div class="w-full bg-gray-100 rounded-full h-2">
-                        <div class="h-2 rounded-full" style="width: {{ a.bar_pct }}%; background: {{ a.colour }};"></div>
-                    </div>
-                </div>
-                {% endfor %}
-            </div>
-            <!-- Donut (right 2 cols) -->
-            <div class="lg:col-span-2">
-                <div class="relative" style="height: 260px;">
-                    <canvas id="areaChart"></canvas>
-                </div>
-            </div>
-        </div>
-        {% if area_list|length >= 2 %}
-        <div class="mt-4 p-3 bg-amber-50 border-l-3 border-amber-500 rounded text-sm text-gray-700" style="border-left: 3px solid #d97706;">
-            <span class="font-semibold">Key finding:</span> {{ area_list[0].area }} and {{ area_list[1].area }} account for {{ area_list[0].pct + area_list[1].pct }}% of all defects.
-        </div>
-        {% endif %}
-    </div>
-
-    <!-- AREA DEEP DIVE -->
-    {% if area_deep_dive %}
-    <div class="bg-white rounded-lg shadow p-4">
-        <h2 class="text-lg font-semibold text-gray-900 mb-1">Area Deep Dive</h2>
-        <p class="text-sm text-gray-500 mb-4">Top 3 defect types in the highest-defect areas. {% if is_all_view %}Block breakdown shown per defect.{% endif %}</p>
-        <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
-            {% for area in area_deep_dive %}
-            <div class="border rounded-lg p-4" style="border-left: 4px solid {{ area.colour }};">
-                <div class="flex items-center justify-between mb-3">
-                    <h3 class="font-semibold text-gray-900">{{ area.area }}</h3>
-                    <span class="text-sm text-gray-500">{{ area.total }} defects ({{ area.pct_of_total }}%)</span>
-                </div>
-                <div class="space-y-3">
-                    {% for d in area.defects %}
-                    <div>
-                        <div class="flex items-center justify-between mb-1">
-                            <div class="flex items-center gap-2">
-                                <span class="inline-flex items-center justify-center w-5 h-5 rounded-full text-xs font-bold text-white" style="background: {{ area.colour }};">{{ loop.index }}</span>
-                                <span class="text-sm text-gray-800">{{ d.description }}</span>
-                            </div>
-                            <span class="text-sm font-semibold text-gray-700">{{ d.count }}</span>
-                        </div>
-                        <div class="w-full bg-gray-100 rounded-full h-2">
-                            <div class="h-2 rounded-full" style="width: {{ d.bar_pct }}%; background: {{ area.colour }}; opacity: 0.7;"></div>
-                        </div>
-                        {% if is_all_view and d.batch_counts is defined %}
-                        <div class="flex gap-3 mt-1">
-                            {% for bl in batch_labels %}
-                            <span class="text-xs font-medium" style="color: {{ batch_colours[bl] }};">{{ bl }}: {{ d.batch_counts[bl] }}</span>
-                            {% endfor %}
-                        </div>
-                        {% endif %}
-                    </div>
-                    {% endfor %}
-                </div>
-            </div>
-            {% endfor %}
-        </div>
-        {% if dd_callout %}
-        <div class="mt-4 p-3 bg-amber-50 border-l-3 rounded text-sm text-gray-700" style="border-left: 3px solid #d97706;">
-            <span class="font-semibold">Key finding:</span> {{ dd_callout }}
-        </div>
-        {% endif %}
-    </div>
-    {% endif %}
-
-    <!-- DEFECTS BY CATEGORY (Trade) -->
-    {% if category_list %}
-    <div class="bg-white rounded-lg shadow p-4">
-        <h2 class="text-lg font-semibold text-gray-900 mb-1">Defects by Category (Trade){% if is_all_view %}: Batch Comparison{% endif %}</h2>
-        <p class="text-sm text-gray-500 mb-3">Breakdown of defects by construction trade. <span class="text-gray-400">Median: {{ cat_median }}</span></p>
-        <div class="space-y-3">
-            {% for c in category_list %}
-            <div>
-                <div class="flex items-center gap-2 mb-1">
-                    <span class="text-sm text-gray-800 flex-1">{{ c.category }}</span>
-                    <span class="text-sm font-semibold tabular-nums {% if c.count > cat_median %}text-red-600{% elif c.count == cat_median %}text-amber-600{% else %}text-emerald-600{% endif %}">{{ c.count }}</span>
-                    <span class="text-xs tabular-nums text-gray-400 w-12 text-right">{{ c.pct }}%</span>
-                </div>
-                <div class="w-full bg-gray-100 rounded-full h-2">
-                    <div class="h-2 rounded-full {% if c.count > cat_median %}bg-red-400{% elif c.count == cat_median %}bg-amber-400{% else %}bg-emerald-400{% endif %}" style="width: {{ c.bar_pct }}%;"></div>
-                </div>
-                {% if is_all_view and c.batch_counts is defined %}
-                <div class="flex gap-3 mt-1">
-                    {% for bl in batch_labels %}
-                    <span class="text-xs font-medium" style="color: {{ batch_colours[bl] }};">{{ bl }}: {{ c.batch_counts[bl] }}</span>
-                    {% endfor %}
-                </div>
-                {% endif %}
-            </div>
-            {% endfor %}
-        </div>
-    </div>
-    {% endif %}
-
-    <!-- TOP DEFECT TYPES: Block Comparison (all-view) -->
-    {% if is_all_view and defect_compare %}
-    <div class="bg-white rounded-lg shadow p-4">
-        <h2 class="text-lg font-semibold text-gray-900 mb-1">Top 10 Defect Types: Block Comparison</h2>
-        <p class="text-sm text-gray-500 mb-4">Most common defect descriptions with per-block breakdown. Arrows show Block 6 vs Block 5 direction.</p>
-        <div class="overflow-x-auto">
-            <table class="w-full text-sm">
-                <thead>
-                    <tr class="border-b border-gray-200">
-                        <th class="text-left py-2 px-3 text-gray-600 font-medium">#</th>
-                        <th class="text-left py-2 px-3 text-gray-600 font-medium">Defect Description</th>
-                        <th class="text-center py-2 px-3 text-gray-600 font-medium">Total</th>
-                        {% for bl in defect_compare[0].batch_labels %}
-                        <th class="text-center py-2 px-3 text-gray-600 font-medium" style="color: {{ defect_compare[0].batch_colours[bl] }};">{{ bl }}</th>
-                        {% endfor %}
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for d in defect_compare %}
-                    <tr class="border-b border-gray-100 hover:bg-gray-50">
-                        <td class="py-2 px-3 text-gray-400 text-xs">{{ loop.index }}</td>
-                        <td class="py-2 px-3">{{ d.description }}</td>
-                        <td class="py-2 px-3 text-center font-semibold">{{ d.total }}</td>
-                        {% for bl in d.batch_labels %}
-                        <td class="py-2 px-3 text-center">
-                            <span class="inline-block px-2 py-1 rounded text-xs font-semibold" style="background: {{ d.batch_colours[bl] }}15; color: {{ d.batch_colours[bl] }};">{{ d.batches.get(bl, 0) }}</span>
-                        </td>
-                        {% endfor %}
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-        </div>
-    </div>
-    {% endif %}
-
-    <!-- TOP DEFECT TYPES (per-cycle) -->
-    {% if not is_all_view and top_defects %}
-    <div class="bg-white rounded-lg shadow p-4">
-        <h2 class="text-lg font-semibold text-gray-900 mb-1">Most Common Defect Types</h2>
-        <p class="text-sm text-gray-500 mb-3">Top 10 defect descriptions by frequency. <span class="text-gray-400">Median: {{ td_median }}</span></p>
-        {% set max_cnt = top_defects[0].cnt if top_defects else 1 %}
-        <div class="space-y-3">
-            {% for d in top_defects %}
-            <div>
-                <div class="flex items-center gap-2 mb-1">
-                    <span class="text-sm text-gray-800 flex-1">{{ d.description }}</span>
-                    <span class="text-sm font-semibold tabular-nums {% if d.cnt > td_median %}text-red-600{% elif d.cnt == td_median %}text-amber-600{% else %}text-emerald-600{% endif %}">{{ d.cnt }}</span>
-                    <span class="text-xs tabular-nums text-gray-400 w-12 text-right">{{ (d.cnt / summary.total_defects * 100)|round(1) }}%</span>
-                </div>
-                <div class="w-full bg-gray-100 rounded-full h-2">
-                    <div class="h-2 rounded-full {% if d.cnt > td_median %}bg-red-400{% elif d.cnt == td_median %}bg-amber-400{% else %}bg-emerald-400{% endif %}" style="width: {{ (d.cnt / max_cnt * 100)|round }}%;"></div>
-                </div>
-            </div>
-            {% endfor %}
-        </div>
-    </div>
-    {% endif %}
-
-    <!-- UNIT SUMMARY (combined ranking + details, worst first) -->
-    {% if unit_summary %}
-    <div class="bg-white rounded-lg shadow p-4">
-        <h2 class="text-lg font-semibold text-gray-900 mb-1">Unit Summary</h2>
-        <p class="text-sm text-gray-500 mb-3">All units ranked by defect count (worst first) with status and defect rate. <span class="text-gray-400">Median: {{ summary.median_defects }}</span></p>
-        <div class="overflow-x-auto">
-            <table class="w-full text-sm">
-                <thead>
-                    <tr class="border-b border-gray-200">
-                        <th class="text-left py-2 px-3 text-gray-600 font-medium">Unit</th>
-                        {% if is_all_view %}<th class="text-center py-2 px-3 text-gray-600 font-medium">Block</th>{% endif %}
-                        <th class="text-center py-2 px-3 text-gray-600 font-medium">Floor</th>
-                        <th class="text-center py-2 px-3 text-gray-600 font-medium">Status</th>
-                        <th class="text-left py-2 px-3 text-gray-600 font-medium" colspan="1">Defects</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% set max_defects = unit_summary[0].defect_count if unit_summary else 1 %}
-                    {% for u in unit_summary %}
-                    <tr class="border-b border-gray-100 hover:bg-gray-50">
-                        <td class="py-2 px-3 font-medium">{{ u.unit_number }}</td>
-                        {% if is_all_view %}<td class="py-2 px-3 text-center"><span class="inline-block px-2 py-0.5 rounded text-xs font-semibold {% if u.block == 'Block 5' %}bg-amber-100 text-amber-700{% else %}bg-blue-100 text-blue-700{% endif %}">{{ u.block|replace('Block ', 'B') }}</span></td>{% endif %}
-                        <td class="py-2 px-3 text-center text-gray-500">{{ floor_map.get(u.floor, u.floor) if u.floor is not none else '' }}</td>
-                        <td class="py-2 px-3 text-center">
-                            <span class="inline-block px-2 py-1 rounded text-xs font-semibold
-                                {% if u.status == 'Issued to Site' %}bg-emerald-100 text-emerald-700{% else %}bg-blue-100 text-blue-700{% endif %}">
-                                {{ u.status }}
-                            </span>
-                        </td>
-                        <td class="py-2 px-3">
-                            <div class="flex items-center gap-2">
-                                <span class="text-sm font-semibold tabular-nums w-8 text-right {% if u.defect_count > summary.median_defects %}text-red-600{% elif u.defect_count == summary.median_defects %}text-amber-600{% else %}text-emerald-600{% endif %}">{{ u.defect_count }}</span>
-                                <div class="flex-1 bg-gray-100 rounded-full h-2">
-                                    <div class="h-2 rounded-full {% if u.defect_count > summary.median_defects %}bg-red-400{% elif u.defect_count == summary.median_defects %}bg-amber-400{% else %}bg-emerald-400{% endif %}" style="width: {{ (u.defect_count / max_defects * 100)|round }}%;"></div>
-                                </div>
-                                <span class="text-xs tabular-nums text-gray-400 w-12 text-right">{{ u.defect_rate }}%</span>
-                            </div>
-                        </td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-        </div>
-    </div>
-    {% endif %}
-
-    <!-- EXTENDED ANALYTICS -->
-    <div class="border-t-2 border-gray-200 pt-4 mt-2">
-        <p class="text-xs font-medium text-gray-400 uppercase tracking-wider mb-4">Extended Analytics</p>
-    </div>
-
+    <!-- 3. BLOCK/FLOOR DENSITY GRID (all-view) -->
     {% if is_all_view %}
-    <!-- 5. BLOCK/FLOOR GRID (all-view) -->
     <div class="bg-white rounded-lg shadow p-4">
         <h2 class="text-lg font-semibold text-gray-900 mb-1">Defect Density: Block &times; Floor</h2>
         <p class="text-xs text-gray-400 mb-4">Average defects per unit. Colour indicates performance relative to median ({{ grid_median }}).</p>
@@ -437,9 +168,312 @@
         <p class="text-sm text-gray-400">No batch data available.</p>
         {% endif %}
     </div>
+    {% endif %}
 
-    {% else %}
-    <!-- 5. HEATMAP: AREA x UNIT (sortable, per-cycle view only) -->
+    <!-- 4. INSPECTION PIPELINE -->
+    {% if pipeline_data %}
+    <div class="bg-white rounded-lg shadow p-4">
+        <h2 class="text-lg font-semibold text-gray-900 mb-1">Inspection Pipeline</h2>
+        <p class="text-sm text-gray-500 mb-4">Unit progression through inspection stages.</p>
+        <div class="flex items-center justify-between max-w-2xl mx-auto">
+            {% set total_units_pipeline = pipeline_data[0].count + pipeline_data[1].count + pipeline_data[2].count %}
+            {% set step2_plus = pipeline_data[1].count + pipeline_data[2].count %}
+            {% set step3_only = pipeline_data[2].count %}
+            {% for step in pipeline_data %}
+            {% if loop.index == 1 %}
+                {% set step_reached = total_units_pipeline > 0 %}
+            {% elif loop.index == 2 %}
+                {% set step_reached = step2_plus > 0 %}
+            {% else %}
+                {% set step_reached = step3_only > 0 %}
+            {% endif %}
+            <div class="flex-1 text-center">
+                <div class="inline-flex items-center justify-center w-12 h-12 rounded-full font-bold text-lg mb-2
+                    {% if step_reached %}
+                        {% if loop.index == 3 %}bg-emerald-500 text-white{% elif loop.index == 2 %}bg-blue-500 text-white{% else %}bg-gray-500 text-white{% endif %}
+                    {% else %}bg-gray-100 text-gray-300 border-2 border-dashed border-gray-300{% endif %}">
+                    {% if step_reached %}&#10003;{% else %}&mdash;{% endif %}
+                </div>
+                <div class="text-sm font-medium {% if step_reached %}text-gray-700{% else %}text-gray-400{% endif %}">{{ step.label }}</div>
+                {% if step.date %}<div class="text-xs text-gray-400">{{ step.date }}</div>{% endif %}
+                <div class="text-xs text-gray-400">{{ step.count }} units ({{ step.pct }}%)</div>
+            </div>
+            {% if not loop.last %}
+            {% if loop.index == 1 %}
+                {% set next_reached = step2_plus > 0 %}
+            {% else %}
+                {% set next_reached = step3_only > 0 %}
+            {% endif %}
+            <div class="flex-shrink-0 w-12 mt-[-2rem] {% if step_reached and next_reached %}h-0.5 bg-gray-400{% else %}border-t-2 border-dashed border-gray-300{% endif %}"></div>
+            {% endif %}
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- 5. AREA: Block Comparison (all-view) -->
+    {% if is_all_view and area_compare_data and area_compare_data.datasets %}
+    <div class="bg-white rounded-lg shadow p-4">
+        <h2 class="text-lg font-semibold text-gray-900 mb-1">Defects by Area: Block Comparison</h2>
+        <p class="text-sm text-gray-500 mb-4">Side-by-side comparison across blocks. Identifies areas where quality diverges.</p>
+        <div class="relative" style="height: 350px;">
+            <canvas id="areaCompareChart"></canvas>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- 6. DEFECT DISTRIBUTION BY AREA -->
+    <div class="bg-white rounded-lg shadow p-4">
+        <h2 class="text-lg font-semibold text-gray-900 mb-1">Defect Distribution by Area</h2>
+        <p class="text-sm text-gray-500 mb-4">Breakdown of defects by physical area.</p>
+        <div class="grid grid-cols-1 lg:grid-cols-5 gap-6">
+            <!-- Bars (left 3 cols) -->
+            <div class="lg:col-span-3 space-y-3">
+                {% for a in area_list %}
+                <div>
+                    <div class="flex items-center justify-between mb-1">
+                        <span class="text-sm text-gray-800">{{ a.area }}</span>
+                        <span class="text-sm font-semibold text-gray-900">{{ a.count }} <span class="text-gray-400 font-normal">({{ a.pct }}%)</span></span>
+                    </div>
+                    <div class="w-full bg-gray-100 rounded-full h-2">
+                        <div class="h-2 rounded-full" style="width: {{ a.bar_pct }}%; background: {{ a.colour }};"></div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            <!-- Donut (right 2 cols) -->
+            <div class="lg:col-span-2">
+                <div class="relative" style="height: 260px;">
+                    <canvas id="areaChart"></canvas>
+                </div>
+            </div>
+        </div>
+        {% if area_list|length >= 2 %}
+        <div class="mt-4 p-3 bg-amber-50 border-l-3 border-amber-500 rounded text-sm text-gray-700" style="border-left: 3px solid #d97706;">
+            <span class="font-semibold">Key finding:</span> {{ area_list[0].area }} and {{ area_list[1].area }} account for {{ area_list[0].pct + area_list[1].pct }}% of all defects.
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- 7. AREA DEEP DIVE -->
+    {% if area_deep_dive %}
+    <div class="bg-white rounded-lg shadow p-4">
+        <h2 class="text-lg font-semibold text-gray-900 mb-1">Area Deep Dive</h2>
+        <p class="text-sm text-gray-500 mb-4">Top 3 defect types in the highest-defect areas. {% if is_all_view %}Block breakdown shown per defect.{% endif %}</p>
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            {% for area in area_deep_dive %}
+            <div class="border rounded-lg p-4" style="border-left: 4px solid {{ area.colour }};">
+                <div class="flex items-center justify-between mb-3">
+                    <h3 class="font-semibold text-gray-900">{{ area.area }}</h3>
+                    <span class="text-sm text-gray-500">{{ area.total }} defects ({{ area.pct_of_total }}%)</span>
+                </div>
+                <div class="space-y-3">
+                    {% for d in area.defects %}
+                    <div>
+                        <div class="flex items-center justify-between mb-1">
+                            <div class="flex items-center gap-2">
+                                <span class="inline-flex items-center justify-center w-5 h-5 rounded-full text-xs font-bold text-white" style="background: {{ area.colour }};">{{ loop.index }}</span>
+                                <span class="text-sm text-gray-800">{{ d.description }}</span>
+                            </div>
+                            <span class="text-sm font-semibold text-gray-700">{{ d.count }}</span>
+                        </div>
+                        <div class="w-full bg-gray-100 rounded-full h-2">
+                            <div class="h-2 rounded-full" style="width: {{ d.bar_pct }}%; background: {{ area.colour }}; opacity: 0.7;"></div>
+                        </div>
+                        {% if is_all_view and d.batch_counts is defined %}
+                        <div class="flex gap-3 mt-1">
+                            {% for bl in batch_labels %}
+                            <span class="text-xs font-medium" style="color: {{ batch_colours[bl] }};">{{ bl }}: {{ d.batch_counts[bl] }}</span>
+                            {% endfor %}
+                        </div>
+                        {% endif %}
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% if dd_callout %}
+        <div class="mt-4 p-3 bg-amber-50 border-l-3 rounded text-sm text-gray-700" style="border-left: 3px solid #d97706;">
+            <span class="font-semibold">Key finding:</span> {{ dd_callout }}
+        </div>
+        {% endif %}
+    </div>
+    {% endif %}
+
+    <!-- 8a. MOST COMMON DEFECT TYPES (per-cycle, before Category) -->
+    {% if not is_all_view and top_defects %}
+    <div class="bg-white rounded-lg shadow p-4">
+        <h2 class="text-lg font-semibold text-gray-900 mb-1">Most Common Defect Types</h2>
+        <p class="text-sm text-gray-500 mb-3">Top 10 defect descriptions by frequency. <span class="text-gray-400">Median: {{ td_median }}</span></p>
+        {% set max_cnt = top_defects[0].cnt if top_defects else 1 %}
+        <div class="space-y-3">
+            {% for d in top_defects %}
+            <div>
+                <div class="flex items-center gap-2 mb-1">
+                    <span class="text-sm text-gray-800 flex-1">{{ d.description }}</span>
+                    <span class="text-sm font-semibold tabular-nums {% if d.cnt > td_median %}text-red-600{% elif d.cnt == td_median %}text-amber-600{% else %}text-emerald-600{% endif %}">{{ d.cnt }}</span>
+                    <span class="text-xs tabular-nums text-gray-400 w-12 text-right">{{ (d.cnt / summary.total_defects * 100)|round(1) }}%</span>
+                </div>
+                <div class="w-full bg-gray-100 rounded-full h-2">
+                    <div class="h-2 rounded-full {% if d.cnt > td_median %}bg-red-400{% elif d.cnt == td_median %}bg-amber-400{% else %}bg-emerald-400{% endif %}" style="width: {{ (d.cnt / max_cnt * 100)|round }}%;"></div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- 8b. DEFECTS BY CATEGORY (Trade) -->
+    {% if category_list %}
+    <div class="bg-white rounded-lg shadow p-4">
+        <h2 class="text-lg font-semibold text-gray-900 mb-1">Defects by Category (Trade){% if is_all_view %}: Batch Comparison{% endif %}</h2>
+        <p class="text-sm text-gray-500 mb-3">Breakdown of defects by construction trade. <span class="text-gray-400">Median: {{ cat_median }}</span></p>
+        <div class="space-y-3">
+            {% for c in category_list %}
+            <div>
+                <div class="flex items-center gap-2 mb-1">
+                    <span class="text-sm text-gray-800 flex-1">{{ c.category }}</span>
+                    <span class="text-sm font-semibold tabular-nums {% if c.count > cat_median %}text-red-600{% elif c.count == cat_median %}text-amber-600{% else %}text-emerald-600{% endif %}">{{ c.count }}</span>
+                    <span class="text-xs tabular-nums text-gray-400 w-12 text-right">{{ c.pct }}%</span>
+                </div>
+                <div class="w-full bg-gray-100 rounded-full h-2">
+                    <div class="h-2 rounded-full {% if c.count > cat_median %}bg-red-400{% elif c.count == cat_median %}bg-amber-400{% else %}bg-emerald-400{% endif %}" style="width: {{ c.bar_pct }}%;"></div>
+                </div>
+                {% if is_all_view and c.batch_counts is defined %}
+                <div class="flex gap-3 mt-1">
+                    {% for bl in batch_labels %}
+                    <span class="text-xs font-medium" style="color: {{ batch_colours[bl] }};">{{ bl }}: {{ c.batch_counts[bl] }}</span>
+                    {% endfor %}
+                </div>
+                {% endif %}
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- 9. TOP 10 DEFECT TYPES: Block Comparison (all-view) -->
+    {% if is_all_view and defect_compare %}
+    <div class="bg-white rounded-lg shadow p-4">
+        <h2 class="text-lg font-semibold text-gray-900 mb-1">Top 10 Defect Types: Block Comparison</h2>
+        <p class="text-sm text-gray-500 mb-4">Most common defect descriptions with per-block breakdown. Arrows show Block 6 vs Block 5 direction.</p>
+        <div class="overflow-x-auto">
+            <table class="w-full text-sm">
+                <thead>
+                    <tr class="border-b border-gray-200">
+                        <th class="text-left py-2 px-3 text-gray-600 font-medium">#</th>
+                        <th class="text-left py-2 px-3 text-gray-600 font-medium">Defect Description</th>
+                        <th class="text-center py-2 px-3 text-gray-600 font-medium">Total</th>
+                        {% for bl in defect_compare[0].batch_labels %}
+                        <th class="text-center py-2 px-3 text-gray-600 font-medium" style="color: {{ defect_compare[0].batch_colours[bl] }};">{{ bl }}</th>
+                        {% endfor %}
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for d in defect_compare %}
+                    <tr class="border-b border-gray-100 hover:bg-gray-50">
+                        <td class="py-2 px-3 text-gray-400 text-xs">{{ loop.index }}</td>
+                        <td class="py-2 px-3">{{ d.description }}</td>
+                        <td class="py-2 px-3 text-center font-semibold">{{ d.total }}</td>
+                        {% for bl in d.batch_labels %}
+                        <td class="py-2 px-3 text-center">
+                            <span class="inline-block px-2 py-1 rounded text-xs font-semibold" style="background: {{ d.batch_colours[bl] }}15; color: {{ d.batch_colours[bl] }};">{{ d.batches.get(bl, 0) }}</span>
+                        </td>
+                        {% endfor %}
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- 10. UNIT SUMMARY -->
+    {% if unit_summary %}
+    <div class="bg-white rounded-lg shadow p-4">
+        <h2 class="text-lg font-semibold text-gray-900 mb-1">Unit Summary</h2>
+        <p class="text-sm text-gray-500 mb-3">All units ranked by defect count (worst first) with status and defect rate. <span class="text-gray-400">Median: {{ summary.median_defects }}</span></p>
+        <div class="overflow-x-auto">
+            <table class="w-full text-sm">
+                <thead>
+                    <tr class="border-b border-gray-200">
+                        <th class="text-left py-2 px-3 text-gray-600 font-medium">Unit</th>
+                        {% if is_all_view %}<th class="text-center py-2 px-3 text-gray-600 font-medium">Block</th>{% endif %}
+                        <th class="text-center py-2 px-3 text-gray-600 font-medium">Floor</th>
+                        <th class="text-center py-2 px-3 text-gray-600 font-medium">Status</th>
+                        <th class="text-left py-2 px-3 text-gray-600 font-medium" colspan="1">Defects</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% set max_defects = unit_summary[0].defect_count if unit_summary else 1 %}
+                    {% for u in unit_summary %}
+                    <tr class="border-b border-gray-100 hover:bg-gray-50">
+                        <td class="py-2 px-3 font-medium">{{ u.unit_number }}</td>
+                        {% if is_all_view %}<td class="py-2 px-3 text-center"><span class="inline-block px-2 py-0.5 rounded text-xs font-semibold {% if u.block == 'Block 5' %}bg-amber-100 text-amber-700{% else %}bg-blue-100 text-blue-700{% endif %}">{{ u.block|replace('Block ', 'B') }}</span></td>{% endif %}
+                        <td class="py-2 px-3 text-center text-gray-500">{{ floor_map.get(u.floor, u.floor) if u.floor is not none else '' }}</td>
+                        <td class="py-2 px-3 text-center">
+                            <span class="inline-block px-2 py-1 rounded text-xs font-semibold
+                                {% if u.status == 'Issued to Site' %}bg-emerald-100 text-emerald-700{% else %}bg-blue-100 text-blue-700{% endif %}">
+                                {{ u.status }}
+                            </span>
+                        </td>
+                        <td class="py-2 px-3">
+                            <div class="flex items-center gap-2">
+                                <span class="text-sm font-semibold tabular-nums w-8 text-right {% if u.defect_count > summary.median_defects %}text-red-600{% elif u.defect_count == summary.median_defects %}text-amber-600{% else %}text-emerald-600{% endif %}">{{ u.defect_count }}</span>
+                                <div class="flex-1 bg-gray-100 rounded-full h-2">
+                                    <div class="h-2 rounded-full {% if u.defect_count > summary.median_defects %}bg-red-400{% elif u.defect_count == summary.median_defects %}bg-amber-400{% else %}bg-emerald-400{% endif %}" style="width: {{ (u.defect_count / max_defects * 100)|round }}%;"></div>
+                                </div>
+                                <span class="text-xs tabular-nums text-gray-400 w-12 text-right">{{ u.defect_rate }}%</span>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- 11. SYSTEMIC / RECURRING DEFECTS -->
+    <div class="bg-white rounded-lg shadow p-4">
+        <h2 class="text-lg font-semibold text-gray-900 mb-2">Systemic Issues (Recurring Defects)</h2>
+        <p class="text-sm text-gray-500 mb-4">Defects appearing in 3 or more units - address these project-wide, not unit-by-unit.</p>
+        {% if recurring %}
+        <div class="overflow-x-auto">
+            <table class="w-full text-sm">
+                <thead>
+                    <tr class="border-b border-gray-200">
+                        <th class="text-left py-2 px-3 text-gray-600 font-medium">Defect Description</th>
+                        <th class="text-center py-2 px-3 text-gray-600 font-medium">Count</th>
+                        <th class="text-left py-2 px-3 text-gray-600 font-medium">Category</th>
+                        <th class="text-left py-2 px-3 text-gray-600 font-medium">Affected Units</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for r in recurring %}
+                    <tr class="border-b border-gray-100 hover:bg-gray-50">
+                        <td class="py-2 px-3">{{ r.original_comment }}</td>
+                        <td class="py-2 px-3 text-center font-semibold text-red-600">{{ r.cnt }}</td>
+                        <td class="py-2 px-3 text-gray-600">{{ r.category_name }}</td>
+                        <td class="py-2 px-3 text-gray-500 text-xs">{{ r.affected_units }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <p class="text-sm text-gray-400">No recurring defects found across 3+ units.</p>
+        {% endif %}
+    </div>
+
+    <!-- EXTENDED ANALYTICS (per-cycle only) -->
+    {% if not is_all_view %}
+    <div class="border-t-2 border-gray-200 pt-4 mt-2">
+        <p class="text-xs font-medium text-gray-400 uppercase tracking-wider mb-4">Extended Analytics</p>
+    </div>
+
+    <!-- HEATMAP: AREA x UNIT (per-cycle only) -->
     <div class="bg-white rounded-lg shadow p-4">
         <h2 class="text-lg font-semibold text-gray-900 mb-1">Heatmap: Defects by Unit &amp; Area</h2>
         <p class="text-xs text-gray-400 mb-4">Click any column header to sort.</p>
@@ -499,42 +533,10 @@
     </div>
     {% endif %}
 
-    <!-- 6. SYSTEMIC / RECURRING DEFECTS -->
-    <div class="bg-white rounded-lg shadow p-4">
-        <h2 class="text-lg font-semibold text-gray-900 mb-2">Systemic Issues (Recurring Defects)</h2>
-        <p class="text-sm text-gray-500 mb-4">Defects appearing in 3 or more units - address these project-wide, not unit-by-unit.</p>
-        {% if recurring %}
-        <div class="overflow-x-auto">
-            <table class="w-full text-sm">
-                <thead>
-                    <tr class="border-b border-gray-200">
-                        <th class="text-left py-2 px-3 text-gray-600 font-medium">Defect Description</th>
-                        <th class="text-center py-2 px-3 text-gray-600 font-medium">Count</th>
-                        <th class="text-left py-2 px-3 text-gray-600 font-medium">Category</th>
-                        <th class="text-left py-2 px-3 text-gray-600 font-medium">Affected Units</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for r in recurring %}
-                    <tr class="border-b border-gray-100 hover:bg-gray-50">
-                        <td class="py-2 px-3">{{ r.original_comment }}</td>
-                        <td class="py-2 px-3 text-center font-semibold text-red-600">{{ r.cnt }}</td>
-                        <td class="py-2 px-3 text-gray-600">{{ r.category_name }}</td>
-                        <td class="py-2 px-3 text-gray-500 text-xs">{{ r.affected_units }}</td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-        </div>
-        {% else %}
-        <p class="text-sm text-gray-400">No recurring defects found across 3+ units.</p>
-        {% endif %}
-    </div>
-
-    <!-- 7. INSPECTOR PERFORMANCE -->
+    <!-- 12. INSPECTOR PERFORMANCE -->
     <div class="bg-white rounded-lg shadow p-4">
         <h2 class="text-lg font-semibold text-gray-900 mb-2">Inspector Performance</h2>
-        <p class="text-sm text-gray-500 mb-4">Variance may reflect unit quality or inspector thoroughness.</p>
+        <p class="text-sm text-gray-500 mb-4">Variance may reflect unit quality or inspector thoroughness. <span class="text-gray-400">Median: {{ inspector_median }}</span></p>
         <div class="overflow-x-auto">
             <table class="w-full text-sm">
                 <thead>
@@ -553,8 +555,8 @@
                         <td class="py-2 px-3 text-center font-semibold">{{ s.total_defects }}</td>
                         <td class="py-2 px-3 text-center">
                             <span class="inline-block px-2 py-1 rounded text-xs font-semibold
-                                {% if s.avg_per_unit >= 25 %}bg-red-100 text-red-700
-                                {% elif s.avg_per_unit >= 20 %}bg-orange-100 text-orange-700
+                                {% if s.avg_per_unit > inspector_median %}bg-red-100 text-red-700
+                                {% elif s.avg_per_unit == inspector_median %}bg-amber-100 text-amber-700
                                 {% else %}bg-emerald-100 text-emerald-700{% endif %}">
                                 {{ s.avg_per_unit }}
                             </span>
@@ -566,7 +568,7 @@
         </div>
     </div>
 
-    {% endif %}
+    {% endif %}{# has_data #}
 </div>
 {% endblock %}
 
