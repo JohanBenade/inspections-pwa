@@ -22,6 +22,16 @@ AREA_COLOURS = {
     'LOUNGE': '#B07D4B',
 }
 
+# Batch colours (assigned by order: 1st batch = gold, 2nd = blue, 3rd = green, etc.)
+BATCH_COLOURS = ['#C8963E', '#3D6B8E', '#4A7C59', '#C44D3F', '#7B6B8D', '#5A8A7A', '#B07D4B']
+FLOOR_LABELS = {0: 'Ground', 1: '1st Floor', 2: '2nd Floor', 3: '3rd Floor'}
+
+# SQL fragment for batch label (used in GROUP BY queries)
+BATCH_LABEL_SQL = ("(ic.block || ' ' || CASE ic.floor "
+                   "WHEN 0 THEN 'Ground' WHEN 1 THEN '1st Floor' "
+                   "WHEN 2 THEN '2nd Floor' WHEN 3 THEN '3rd Floor' "
+                   "ELSE 'Floor ' || ic.floor END)")
+
 
 @analytics_bp.route('/')
 @require_manager
@@ -75,129 +85,126 @@ def dashboard():
             'worst_count': worst_unit['cnt'] if worst_unit else 0,
         }
 
-        # Block comparison
-        block_comparison = [dict(r) for r in query_db(
-            "SELECT ic.block, COUNT(DISTINCT i.unit_id) as units, "
+        # Batch comparison (per-cycle, not per-block)
+        batch_comparison = [dict(r) for r in query_db(
+            "SELECT ic.id as cycle_id, ic.block, ic.floor, "
+            "COUNT(DISTINCT i.unit_id) as units, "
             "COUNT(d.id) as defects, "
-            "ROUND(COUNT(d.id) * 1.0 / COUNT(DISTINCT i.unit_id), 1) as avg_per_unit "
+            "ROUND(COUNT(d.id) * 1.0 / COUNT(DISTINCT i.unit_id), 1) as avg_per_unit, "
+            "ic.unit_start, ic.unit_end, ic.created_at "
             "FROM inspection_cycle ic "
             "JOIN inspection i ON i.cycle_id = ic.id "
             "LEFT JOIN defect d ON d.raised_cycle_id = ic.id AND d.unit_id = i.unit_id AND d.status = 'open' "
-            "WHERE ic.tenant_id = ? AND ic.id NOT LIKE 'test-%' GROUP BY ic.block ORDER BY ic.block",
+            "WHERE ic.tenant_id = ? AND ic.id NOT LIKE 'test-%' "
+            "GROUP BY ic.id ORDER BY ic.block, ic.floor",
             [tenant_id])]
 
-        # Enrich block_comparison with defect_rate, unit_range, inspection_date
-        for b in block_comparison:
+        # Enrich batches with labels, colours, rates
+        for idx, b in enumerate(batch_comparison):
+            floor_label = FLOOR_LABELS.get(b.get('floor'), 'Floor {}'.format(b.get('floor', '?')))
+            b['label'] = '{} {}'.format(b['block'], floor_label)
+            b['colour'] = BATCH_COLOURS[idx % len(BATCH_COLOURS)]
             b['defect_rate'] = round(b['defects'] / (437 * b['units']) * 100, 1) if b['units'] > 0 else 0
-            cycle_info = query_db(
-                "SELECT unit_start, unit_end, created_at FROM inspection_cycle WHERE block = ? AND tenant_id = ? AND id NOT LIKE 'test-%' LIMIT 1",
-                [b['block'], tenant_id], one=True)
-            if cycle_info:
-                b['unit_range'] = '{}-{}'.format(cycle_info['unit_start'], cycle_info['unit_end'])
-                b['inspection_date'] = cycle_info['created_at'][:10] if cycle_info['created_at'] else '-'
-            else:
-                b['unit_range'] = '-'
-                b['inspection_date'] = '-'
+            b['unit_range'] = '{}-{}'.format(b.get('unit_start', ''), b.get('unit_end', ''))
+            b['inspection_date'] = b['created_at'][:10] if b.get('created_at') else '-'
 
+        batch_labels = [b['label'] for b in batch_comparison]
+        batch_colours = {b['label']: b['colour'] for b in batch_comparison}
+        # Keep block_comparison as alias for template compatibility
+        block_comparison = batch_comparison
 
-        # Trend data (Block 5 vs Block 6 comparison)
-        trend_data = {}
-        if len(block_comparison) >= 2:
-            b5 = block_comparison[0]
-            b6 = block_comparison[1]
-            avg_change = round(((b6["avg_per_unit"] - b5["avg_per_unit"]) / b5["avg_per_unit"]) * 100, 1) if b5["avg_per_unit"] > 0 else 0
-            defect_change = round(((b6["defects"] - b5["defects"]) / b5["defects"]) * 100, 1) if b5["defects"] > 0 else 0
-            trend_data = {
-                "b5_avg": b5["avg_per_unit"], "b6_avg": b6["avg_per_unit"],
-                "avg_change": avg_change,
-                "b5_defects": b5["defects"], "b6_defects": b6["defects"],
-                "defect_change": defect_change,
-                "b5_units": b5["units"], "b6_units": b6["units"],
-                "b5_label": b5["block"], "b6_label": b6["block"],
-            }
+        # Trend data (per-batch summaries for KPI cards)
+        trend_data = {'batches': []}
+        for b in batch_comparison:
+            trend_data['batches'].append({
+                'label': b['label'],
+                'colour': b['colour'],
+                'units': b['units'],
+                'defects': b['defects'],
+                'avg': b['avg_per_unit'],
+            })
 
-        # Area breakdown by block (for grouped comparison chart)
-        area_by_block_raw = query_db(
-            "SELECT at2.area_name, ic.block, COUNT(*) as cnt "
+        # Area breakdown by batch (for grouped comparison chart)
+        area_by_batch_raw = query_db(
+            "SELECT at2.area_name, " + BATCH_LABEL_SQL + " as batch_label, COUNT(*) as cnt "
             "FROM defect d "
             "JOIN item_template it ON d.item_template_id = it.id "
             "JOIN category_template ct ON it.category_id = ct.id "
             "JOIN area_template at2 ON ct.area_id = at2.id "
             "JOIN inspection_cycle ic ON d.raised_cycle_id = ic.id "
             "WHERE d.tenant_id = ? AND d.status = 'open' AND ic.id NOT LIKE 'test-%' "
-            "GROUP BY at2.area_name, ic.block ORDER BY at2.area_name",
+            "GROUP BY at2.area_name, batch_label ORDER BY at2.area_name",
             [tenant_id])
-        # Build {area: {block: count}} structure
-        area_by_block = {}
-        block_labels = sorted(set(r["block"] for r in area_by_block_raw)) if area_by_block_raw else []
-        for r in area_by_block_raw:
-            if r["area_name"] not in area_by_block:
-                area_by_block[r["area_name"]] = {}
-            area_by_block[r["area_name"]][r["block"]] = r["cnt"]
+        # Build {area: {batch_label: count}} structure
+        area_by_batch = {}
+        for r in area_by_batch_raw:
+            if r["area_name"] not in area_by_batch:
+                area_by_batch[r["area_name"]] = {}
+            area_by_batch[r["area_name"]][r["batch_label"]] = r["cnt"]
         # Order areas by total descending
-        area_compare_labels = sorted(area_by_block.keys(),
-            key=lambda a: sum(area_by_block[a].values()), reverse=True)
+        area_compare_labels = sorted(area_by_batch.keys(),
+            key=lambda a: sum(area_by_batch[a].values()), reverse=True)
         area_compare_data = {
             "labels": area_compare_labels,
-            "block_labels": block_labels,
+            "block_labels": batch_labels,
             "datasets": []
         }
-        block_colours = {"Block 5": "#C8963E", "Block 6": "#3D6B8E"}
-        for bl in block_labels:
+        for bl in batch_labels:
             area_compare_data["datasets"].append({
                 "label": bl,
-                "colour": block_colours.get(bl, "#9ca3af"),
-                "data": [area_by_block.get(a, {}).get(bl, 0) for a in area_compare_labels]
+                "colour": batch_colours.get(bl, "#9ca3af"),
+                "data": [area_by_batch.get(a, {}).get(bl, 0) for a in area_compare_labels]
             })
 
-        # Top defect types by block (for comparison table)
-        defect_by_block_raw = query_db(
-            "SELECT d.original_comment, ic.block, COUNT(*) as cnt "
+        # Top defect types by batch (for comparison table)
+        defect_by_batch_raw = query_db(
+            "SELECT d.original_comment, " + BATCH_LABEL_SQL + " as batch_label, COUNT(*) as cnt "
             "FROM defect d "
             "JOIN inspection_cycle ic ON d.raised_cycle_id = ic.id "
             "WHERE d.tenant_id = ? AND d.status = 'open' AND ic.id NOT LIKE 'test-%' "
-            "GROUP BY d.original_comment, ic.block ORDER BY cnt DESC",
+            "GROUP BY d.original_comment, batch_label ORDER BY cnt DESC",
             [tenant_id])
-        # Aggregate: {desc: {total, block5, block6}}
+        # Aggregate: {desc: {total, batches: {label: count}}}
         defect_compare_map = {}
-        for r in defect_by_block_raw:
+        for r in defect_by_batch_raw:
             desc = r["original_comment"]
             if desc not in defect_compare_map:
-                defect_compare_map[desc] = {"description": desc, "total": 0, "blocks": {}}
+                defect_compare_map[desc] = {"description": desc, "total": 0, "batches": {}}
             defect_compare_map[desc]["total"] += r["cnt"]
-            defect_compare_map[desc]["blocks"][r["block"]] = r["cnt"]
+            defect_compare_map[desc]["batches"][r["batch_label"]] = r["cnt"]
         defect_compare = sorted(defect_compare_map.values(), key=lambda x: x["total"], reverse=True)[:15]
         for d in defect_compare:
-            d["block_labels"] = block_labels
+            d["batch_labels"] = batch_labels
+            d["batch_colours"] = batch_colours
 
-        # Category breakdown by block (for grouped comparison chart)
-        cat_by_block_raw = query_db(
-            "SELECT ct.category_name, ic.block, COUNT(*) as cnt "
+        # Category breakdown by batch (for grouped comparison chart)
+        cat_by_batch_raw = query_db(
+            "SELECT ct.category_name, " + BATCH_LABEL_SQL + " as batch_label, COUNT(*) as cnt "
             "FROM defect d "
             "JOIN item_template it ON d.item_template_id = it.id "
             "JOIN category_template ct ON it.category_id = ct.id "
             "JOIN inspection_cycle ic ON d.raised_cycle_id = ic.id "
             "WHERE d.tenant_id = ? AND d.status = 'open' AND ic.id NOT LIKE 'test-%' "
-            "GROUP BY ct.category_name, ic.block ORDER BY cnt DESC",
+            "GROUP BY ct.category_name, batch_label ORDER BY cnt DESC",
             [tenant_id])
-        cat_by_block = {}
-        for r in cat_by_block_raw:
+        cat_by_batch = {}
+        for r in cat_by_batch_raw:
             name = r["category_name"].upper()
-            if name not in cat_by_block:
-                cat_by_block[name] = {}
-            cat_by_block[name][r["block"]] = r["cnt"]
-        cat_compare_labels = sorted(cat_by_block.keys(),
-            key=lambda c: sum(cat_by_block[c].values()), reverse=True)
+            if name not in cat_by_batch:
+                cat_by_batch[name] = {}
+            cat_by_batch[name][r["batch_label"]] = r["cnt"]
+        cat_compare_labels = sorted(cat_by_batch.keys(),
+            key=lambda c: sum(cat_by_batch[c].values()), reverse=True)
         cat_compare_data = {
             "labels": cat_compare_labels,
-            "block_labels": block_labels,
+            "block_labels": batch_labels,
             "datasets": []
         }
-        for bl in block_labels:
+        for bl in batch_labels:
             cat_compare_data["datasets"].append({
                 "label": bl,
-                "colour": block_colours.get(bl, "#9ca3af"),
-                "data": [cat_by_block.get(c, {}).get(bl, 0) for c in cat_compare_labels]
+                "colour": batch_colours.get(bl, "#9ca3af"),
+                "data": [cat_by_batch.get(c, {}).get(bl, 0) for c in cat_compare_labels]
             })
 
         # Area data
@@ -244,8 +251,7 @@ def dashboard():
                 'count': r['cnt'],
                 'pct': round(r['cnt'] / total_defects * 100, 1) if total_defects > 0 else 0,
                 'bar_pct': round(r['cnt'] / max_cat_count * 100),
-                'b5': cat_by_block.get(name, {}).get('Block 5', 0),
-                'b6': cat_by_block.get(name, {}).get('Block 6', 0),
+                'batch_counts': {bl: cat_by_batch.get(name, {}).get(bl, 0) for bl in batch_labels},
             })
         cat_counts_sorted = sorted([c['count'] for c in category_list])
         if not cat_counts_sorted:
@@ -381,19 +387,20 @@ def dashboard():
             })
         unit_summary.sort(key=lambda x: x['defect_count'], reverse=True)
 
-        # Area Deep Dive: top 3 defect types for top 2 areas (with block breakdown)
+        # Area Deep Dive: top 3 defect types for top 2 areas (with batch breakdown)
         deep_dive_raw = query_db(
-            "SELECT at2.area_name, d.original_comment, ic.block, COUNT(*) as cnt "
+            "SELECT at2.area_name, d.original_comment, "
+            "" + BATCH_LABEL_SQL + " as batch_label, COUNT(*) as cnt "
             "FROM defect d "
             "JOIN item_template it ON d.item_template_id = it.id "
             "JOIN category_template ct ON it.category_id = ct.id "
             "JOIN area_template at2 ON ct.area_id = at2.id "
             "JOIN inspection_cycle ic ON d.raised_cycle_id = ic.id "
             "WHERE d.tenant_id = ? AND d.status = 'open' AND ic.id NOT LIKE 'test-%' "
-            "GROUP BY at2.area_name, d.original_comment, ic.block "
+            "GROUP BY at2.area_name, d.original_comment, batch_label "
             "ORDER BY at2.area_name, cnt DESC",
             [tenant_id])
-        # Build {area: {desc: {total, blocks}}}
+        # Build {area: {desc: {total, batches}}}
         dd_map = {}
         dd_area_totals = {}
         for r in deep_dive_raw:
@@ -403,9 +410,9 @@ def dashboard():
                 dd_map[area] = {}
                 dd_area_totals[area] = 0
             if desc not in dd_map[area]:
-                dd_map[area][desc] = {'total': 0, 'blocks': {}}
+                dd_map[area][desc] = {'total': 0, 'batches': {}}
             dd_map[area][desc]['total'] += r['cnt']
-            dd_map[area][desc]['blocks'][r['block']] = r['cnt']
+            dd_map[area][desc]['batches'][r['batch_label']] = r['cnt']
             dd_area_totals[area] += r['cnt']
         # Top 2 areas by total
         top_areas = sorted(dd_area_totals.keys(), key=lambda a: dd_area_totals[a], reverse=True)[:2]
@@ -422,8 +429,7 @@ def dashboard():
                     'count': info['total'],
                     'pct': round(info['total'] / dd_area_totals[area] * 100, 1),
                     'bar_pct': round(info['total'] / max_count * 100),
-                    'b5': info['blocks'].get('Block 5', 0),
-                    'b6': info['blocks'].get('Block 6', 0),
+                    'batch_counts': {bl: info['batches'].get(bl, 0) for bl in batch_labels},
                 })
             area_deep_dive.append({
                 'area': area,
@@ -459,6 +465,7 @@ def dashboard():
             trend_data=trend_data, area_compare_data=area_compare_data,
             defect_compare=defect_compare, cat_compare_data=cat_compare_data,
             area_deep_dive=area_deep_dive, dd_callout=dd_callout,
+            batch_labels=batch_labels, batch_colours=batch_colours,
             pipeline_data=pipeline_data, top_defects=top_defects, td_median=td_median,
             unit_summary=unit_summary, floor_map=floor_map)
 
