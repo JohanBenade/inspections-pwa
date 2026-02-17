@@ -172,7 +172,7 @@ def dashboard():
                 defect_compare_map[desc] = {"description": desc, "total": 0, "batches": {}}
             defect_compare_map[desc]["total"] += r["cnt"]
             defect_compare_map[desc]["batches"][r["batch_label"]] = r["cnt"]
-        defect_compare = sorted(defect_compare_map.values(), key=lambda x: x["total"], reverse=True)[:15]
+        defect_compare = sorted(defect_compare_map.values(), key=lambda x: x["total"], reverse=True)[:10]
         for d in defect_compare:
             d["batch_labels"] = batch_labels
             d["batch_colours"] = batch_colours
