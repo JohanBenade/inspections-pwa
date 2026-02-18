@@ -62,10 +62,17 @@ def create_app():
         return redirect(url_for('projects.list_projects'))
     
     # Simple auth (magic link style - to be enhanced)
-    @app.route('/login')
+    @app.route('/login', methods=['GET', 'POST'])
     def login():
-        """Login via magic link parameter."""
-        user_code = request.args.get('u')
+        """Login via magic link parameter or login form."""
+        user_code = None
+        error = None
+
+        if request.method == 'POST':
+            user_code = request.form.get('code', '').strip()
+        else:
+            user_code = request.args.get('u')
+
         if user_code:
             from app.services.db import get_db
             db = get_db()
@@ -80,8 +87,10 @@ def create_app():
                 session['role'] = user['role']
                 session['tenant_id'] = user['tenant_id']
                 return redirect(url_for('home'))
-        
-        return render_template('login.html')
+            else:
+                error = 'Invalid login code. Please try again.'
+
+        return render_template('login.html', error=error)
     
     @app.route('/logout')
     def logout():
