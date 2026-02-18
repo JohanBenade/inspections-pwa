@@ -247,22 +247,26 @@ def _build_review_data(tenant_id, cycle_id):
             'inspector_name': insp['inspector_name'],
             'defect_count': len(unit_defects),
             'to_fix': to_fix,
-        'first_submitted_at': query_db(
-            "SELECT MIN(submitted_at) AS val FROM inspection WHERE cycle_id = ? AND submitted_at IS NOT NULL",
-            [cycle_id], one=True)['val'],
-        'last_reviewed_at': query_db(
-            "SELECT MAX(updated_at) AS val FROM inspection WHERE cycle_id = ? AND status IN ('reviewed', 'pending_followup', 'certified', 'closed')",
-            [cycle_id], one=True)['val'],
             'is_reviewed': is_reviewed,
             'can_review': insp['status'] in ('submitted', 'reviewed'),
             'defects_grouped': grouped,
         })
+
+    # Pipeline dates (one query each, not per-unit)
+    first_sub = query_db(
+        "SELECT MIN(submitted_at) AS val FROM inspection WHERE cycle_id = ? AND submitted_at IS NOT NULL",
+        [cycle_id], one=True)
+    last_rev = query_db(
+        "SELECT MAX(updated_at) AS val FROM inspection WHERE cycle_id = ? AND status IN ('reviewed', 'pending_followup', 'certified', 'closed')",
+        [cycle_id], one=True)
 
     stats = {
         'total': len(inspections),
         'reviewed': total_reviewed,
         'defects': len(defects),
         'to_fix': total_to_fix,
+        'first_submitted_at': first_sub['val'] if first_sub else None,
+        'last_reviewed_at': last_rev['val'] if last_rev else None,
     }
 
     return {'cycle': cycle, 'units': units, 'stats': stats}
