@@ -585,7 +585,10 @@ def reset_orphan():
 @data_quality_bp.route('/delete-defect', methods=['POST'])
 @require_admin
 def delete_defect():
-    """Delete a single defect record (for duplicate cleanup)."""
+    """Delete a single defect record (for duplicate cleanup).
+    If no other defects remain on the same unit+template, reset the
+    inspection_item back to OK to prevent orphan creation.
+    """
     tenant_id = session.get('tenant_id', 'MONOGRAPH')
     defect_id = request.form.get('defect_id', '').strip()
     if not defect_id:
@@ -593,20 +596,51 @@ def delete_defect():
                 'No defect ID provided.</td></tr>')
 
     db = get_db()
-    # Verify it exists and belongs to tenant
+    # Get defect details before deleting (need unit_id + item_template_id)
     row = db.execute(
-        "SELECT id FROM defect WHERE id=? AND tenant_id=?",
+        "SELECT id, unit_id, item_template_id, raised_cycle_id "
+        "FROM defect WHERE id=? AND tenant_id=?",
         (defect_id, tenant_id)
     ).fetchone()
     if not row:
         return ('<tr class="bg-amber-50"><td colspan="5" class="px-4 py-3 text-sm text-amber-600">'
                 'Defect not found.</td></tr>')
 
+    unit_id = row['unit_id']
+    template_id = row['item_template_id']
+    cycle_id = row['raised_cycle_id']
+
+    # Delete the defect
     db.execute("DELETE FROM defect WHERE id=?", (defect_id,))
+
+    # Check if other open defects remain on same unit+template
+    remaining = db.execute(
+        "SELECT COUNT(*) FROM defect "
+        "WHERE unit_id=? AND item_template_id=? AND status='open' AND tenant_id=?",
+        (unit_id, template_id, tenant_id)
+    ).fetchone()[0]
+
+    item_reset = False
+    if remaining == 0:
+        # No defects left on this item - reset inspection_item to OK
+        db.execute(
+            "UPDATE inspection_item SET status='ok', comment=NULL "
+            "WHERE item_template_id=? AND inspection_id IN "
+            "(SELECT id FROM inspection WHERE unit_id=? AND cycle_id=?)",
+            (template_id, unit_id, cycle_id)
+        )
+        item_reset = True
+
     db.commit()
 
+    msg = '<strong>Deleted.</strong> Defect {} removed.'.format(defect_id[:8])
+    if item_reset:
+        msg += ' Inspection item reset to OK (no remaining defects).'
+    else:
+        msg += ' {} other defect(s) remain on this item.'.format(remaining)
+
     return ('<tr class="bg-green-50"><td colspan="5" class="px-4 py-3 text-sm text-green-700">'
-            '<strong>Deleted.</strong> Defect {} removed.</td></tr>').format(defect_id[:8])
+            '{}</td></tr>').format(msg)
 
 
 @data_quality_bp.route('/sync-wash', methods=['POST'])
