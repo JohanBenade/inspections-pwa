@@ -89,16 +89,17 @@
     
     <div class="border rounded-lg overflow-hidden">
         <!-- Category Header -->
-        <a href="javascript:void(0)"
-           onclick="var c=this.nextElementSibling;var ch=this.querySelector('.cat-chevron');if(c)c.classList.toggle('hidden');if(ch)ch.classList.toggle('rotate-90');return false"
-           ontouchend="event.preventDefault();var c=this.nextElementSibling;var ch=this.querySelector('.cat-chevron');if(c)c.classList.toggle('hidden');if(ch)ch.classList.toggle('rotate-90')"
-           class="bg-gray-100 px-4 py-3 border-b flex items-center select-none block"
-           role="button"
-           style="text-decoration:none">
-            <svg class="cat-chevron w-4 h-4 text-gray-400 transform transition-transform duration-200 mr-3 flex-shrink-0"
-                 fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
-            </svg>
+        <div class="bg-gray-100 px-4 py-3 border-b flex items-center select-none">
+            <div onclick="var h=this.closest('.bg-gray-100');var c=h.nextElementSibling;var ch=this.querySelector('.cat-chevron');if(c)c.classList.toggle('hidden');if(ch)ch.classList.toggle('rotate-90')"
+                 ontouchend="event.preventDefault();this.click()"
+                 class="flex items-center justify-center flex-shrink-0 mr-1 cursor-pointer"
+                 role="button"
+                 style="width:44px;height:44px;margin:-8px 0 -8px -10px">
+                <svg class="cat-chevron w-4 h-4 text-gray-400 transform transition-transform duration-200"
+                     fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+                </svg>
+            </div>
             <h3 class="font-semibold text-gray-800 flex-1">{{ category.name }}</h3>
             {% if category.all_skipped %}
             <span class="text-xs bg-orange-100 text-orange-600 px-2 py-0.5 rounded-full font-medium ml-2">{{ category.checklist|length }} excluded</span>
@@ -114,7 +115,7 @@
                 {% endif %}
             </span>
             {% endif %}
-        </a>
+        </div>
         
         <!-- Category Content - hidden by default -->
         <div class="cat-content hidden">
