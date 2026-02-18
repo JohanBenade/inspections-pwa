@@ -51,7 +51,7 @@
                 </svg>
             </a>
             <div>
-                <h1 class="text-lg font-bold text-gray-900">{{ cycle.block or 'Cycle' }}{% if cycle.floor is not none %} &middot; Floor {{ cycle.floor }}{% endif %}</h1>
+                <h1 class="text-lg font-bold text-gray-900">{{ cycle.block or 'Cycle' }}{% if cycle.floor is not none %} &middot; {% if cycle.floor == 0 %}Ground Floor{% elif cycle.floor == 1 %}1st Floor{% elif cycle.floor == 2 %}2nd Floor{% elif cycle.floor == 3 %}3rd Floor{% else %}Floor {{ cycle.floor }}{% endif %}{% endif %}</h1>
                 <p class="text-xs text-gray-500">Cycle {{ cycle.cycle_number }} &middot; {{ cycle.unit_start }}-{{ cycle.unit_end }}</p>
             </div>
         </div>
@@ -110,6 +110,19 @@
                 class="text-xs px-2.5 py-1 rounded-full border border-gray-300 text-gray-600 hover:bg-gray-50">Clean</button>
     </div>
 </div>
+
+<!-- Explainer -->
+{% if stats.to_fix > 0 %}
+<div class="bg-amber-50 border border-amber-200 rounded-lg px-4 py-3 mb-4 text-sm text-amber-800">
+    <strong>{{ stats.to_fix }} descriptions need cleaning</strong> before PDFs go to Raubex.
+    Expand a unit, tap a blue suggestion to accept it, or tap the description to type your own.
+    Once all descriptions are clean, mark the unit as reviewed.
+</div>
+{% elif not cycle.approved_at and stats.total > 0 %}
+<div class="bg-green-50 border border-green-200 rounded-lg px-4 py-3 mb-4 text-sm text-green-800">
+    All descriptions are clean. You can sign off this cycle below.
+</div>
+{% endif %}
 
 <!-- Units Accordion -->
 <div class="space-y-2" id="units-list">
@@ -339,7 +352,7 @@
               onsubmit="return confirm('Sign off {{ cycle.block or 'this cycle' }}? This will approve all {{ stats.total }} inspections for Raubex.');">
             <button type="submit"
                     class="w-full py-3 bg-green-600 text-white font-medium rounded-lg hover:bg-green-700 transition-colors">
-                Sign Off &mdash; {{ cycle.block or 'Cycle' }}{% if cycle.floor is not none %} Floor {{ cycle.floor }}{% endif %}
+                Sign Off &mdash; {{ cycle.block or 'Cycle' }}{% if cycle.floor is not none %} {% if cycle.floor == 0 %}Ground Floor{% elif cycle.floor == 1 %}1st Floor{% elif cycle.floor == 2 %}2nd Floor{% elif cycle.floor == 3 %}3rd Floor{% else %}Floor {{ cycle.floor }}{% endif %}{% endif %}
             </button>
         </form>
         <p class="text-xs text-gray-400 text-center">This will approve all {{ stats.total }} inspections for Raubex.</p>

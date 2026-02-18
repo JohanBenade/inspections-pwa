@@ -23,7 +23,7 @@
     <div class="flex items-start justify-between mb-4">
         <div>
             <h2 class="text-lg font-semibold text-gray-900">
-                {{ c.block or 'Cycle' }}{% if c.floor is not none %} &middot; Floor {{ c.floor }}{% endif %}
+                {{ c.block or 'Cycle' }}{% if c.floor is not none %} &middot; {% if c.floor == 0 %}Ground Floor{% elif c.floor == 1 %}1st Floor{% elif c.floor == 2 %}2nd Floor{% elif c.floor == 3 %}3rd Floor{% else %}Floor {{ c.floor }}{% endif %}{% endif %}
             </h2>
             <p class="text-sm text-gray-500">
                 {{ c.total_inspections }} units &middot; {{ c.defect_count }} defects &middot; Cycle {{ c.cycle_number }}
