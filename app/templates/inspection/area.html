@@ -247,6 +247,16 @@
                             N/I
                         </button>
                         {% endif %}
+                        {% if not show_as_defect and item.status not in ['not_to_standard', 'not_installed'] %}
+                        <a href="javascript:void(0)"
+                           id="guide-btn-{{ item.id }}"
+                           onclick="var d=document.getElementById('guide-{{ item.id }}');d.classList.toggle('hidden');if(!d.dataset.loaded){htmx.trigger(d,'loadPills');d.dataset.loaded='1'}"
+                           ontouchend="event.preventDefault();this.click()"
+                           class="px-3 py-2 rounded text-xs font-medium bg-blue-50 text-blue-600 hover:bg-blue-100 inline-block"
+                           style="text-decoration:none">
+                            What to look for
+                        </a>
+                        {% endif %}
                     </div>
                     
                     {% if item.status in ['not_to_standard', 'not_installed'] %}
@@ -269,22 +279,13 @@
                     <div class="mt-2 p-2 bg-green-50 rounded border border-green-200">
                         <span class="text-sm text-green-700 font-medium">Marked as rectified</span>
                     </div>
-                    {% else %}
-                    <div class="mt-1">
-                        <a href="javascript:void(0)"
-                           onclick="var d=this.parentElement.querySelector('.guide-pills');d.classList.toggle('hidden');if(!d.dataset.loaded){htmx.trigger(d,'loadPills');d.dataset.loaded='1'}"
-                           ontouchend="event.preventDefault();this.click()"
-                           class="px-3 py-2 rounded text-xs font-medium bg-gray-100 text-gray-500 hover:bg-blue-50 hover:text-blue-600 inline-block"
-                           style="text-decoration:none">
-                            What to look for
-                        </a>
-                        <div class="hidden guide-pills mt-2"
-                             data-post-url="{{ url_for('inspection.update_item', inspection_id=inspection.id, item_id=item.id) }}"
-                             data-area-id="{{ area.id }}"
-                             hx-get="{{ url_for('inspection.get_defect_suggestions', item_template_id=item.template_id) }}?mode=guide"
-                             hx-trigger="loadPills once"
-                             hx-swap="innerHTML">
-                        </div>
+                    {% elif not show_as_defect %}
+                    <div class="hidden guide-pills mt-2" id="guide-{{ item.id }}"
+                         data-post-url="{{ url_for('inspection.update_item', inspection_id=inspection.id, item_id=item.id) }}"
+                         data-area-id="{{ area.id }}"
+                         hx-get="{{ url_for('inspection.get_defect_suggestions', item_template_id=item.template_id) }}?mode=guide"
+                         hx-trigger="loadPills once"
+                         hx-swap="innerHTML">
                     </div>
                     {% endif %}
                     {% endif %}
