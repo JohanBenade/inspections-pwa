@@ -195,11 +195,24 @@
                 });
             }
 
-            /* Per-item swap: fire nested load triggers (htmx 1.9.x misses these) */
+            /* Per-item outerHTML swap: target is detached, find new element in live DOM */
             if (target.id && target.id.indexOf('item-') === 0) {
-                target.querySelectorAll('[hx-trigger="load"]').forEach(function(el) {
-                    htmx.trigger(el, 'load');
-                });
+                var liveEl = document.getElementById(target.id);
+                if (liveEl) {
+                    liveEl.querySelectorAll('.auto-caps').forEach(function(inp) {
+                        if (!inp._acSet) {
+                            inp._acSet = true;
+                            inp.addEventListener('input', function() {
+                                if (this.value.length === 1)
+                                    this.value = this.value.charAt(0).toUpperCase();
+                            });
+                        }
+                    });
+                    liveEl.querySelectorAll('[hx-trigger="load"]').forEach(function(el) {
+                        var url = el.getAttribute('hx-get');
+                        if (url) htmx.ajax('GET', url, {target: el, swap: 'innerHTML'});
+                    });
+                }
             }
         });
     })();
