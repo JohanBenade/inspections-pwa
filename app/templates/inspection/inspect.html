@@ -1,15 +1,24 @@
 {% extends "base.html" %}
 
 {% block title %}Unit {{ inspection.unit_number }} - Cycle {{ inspection.cycle_number }}
+
 <script>
-    // Save expanded categories before HTMX swaps area content
+    // Preserve scroll position across HTMX area swaps
     document.body.addEventListener('htmx:beforeSwap', function(evt) {
         if (evt.detail.target && evt.detail.target.id === 'area-content') {
+            window._scrollY = window.scrollY;
             var expanded = [];
             document.querySelectorAll('.cat-content').forEach(function(c, i) {
                 if (!c.classList.contains('hidden')) expanded.push(i);
             });
             window._expandedCats = expanded;
+        }
+    });
+    document.body.addEventListener('htmx:afterSwap', function(evt) {
+        if (evt.detail.target && evt.detail.target.id === 'area-content') {
+            if (window._scrollY !== undefined) {
+                window.scrollTo(0, window._scrollY);
+            }
         }
     });
 </script>
@@ -161,15 +170,24 @@
 </div>
 {% endif %}
 
+
 <script>
-    // Save expanded categories before HTMX swaps area content
+    // Preserve scroll position across HTMX area swaps
     document.body.addEventListener('htmx:beforeSwap', function(evt) {
         if (evt.detail.target && evt.detail.target.id === 'area-content') {
+            window._scrollY = window.scrollY;
             var expanded = [];
             document.querySelectorAll('.cat-content').forEach(function(c, i) {
                 if (!c.classList.contains('hidden')) expanded.push(i);
             });
             window._expandedCats = expanded;
+        }
+    });
+    document.body.addEventListener('htmx:afterSwap', function(evt) {
+        if (evt.detail.target && evt.detail.target.id === 'area-content') {
+            if (window._scrollY !== undefined) {
+                window.scrollTo(0, window._scrollY);
+            }
         }
     });
 </script>
