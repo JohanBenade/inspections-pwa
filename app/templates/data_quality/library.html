@@ -221,6 +221,19 @@
         </summary>
         <div class="p-4">
             {% if merge_pairs %}
+            <!-- Bulk merge exact matches -->
+            <div class="p-3 bg-blue-50 border-b border-blue-100 rounded-lg mb-3" id="bulk-merge-container">
+                <form hx-post="{{ url_for('data_quality.bulk_merge_exact') }}"
+                      hx-target="#bulk-merge-container"
+                      hx-swap="outerHTML"
+                      hx-confirm="Merge ALL 100% identical library pairs? This updates defect descriptions and removes duplicate entries.">
+                    <button type="submit"
+                        class="px-3 py-1.5 text-xs bg-blue-600 text-white rounded hover:bg-blue-700">
+                        Bulk Merge All 100% Matches
+                    </button>
+                    <span class="text-xs text-blue-600 ml-2">Safe: only merges pairs with identical descriptions</span>
+                </form>
+            </div>
             <div class="space-y-3">
                 {% for p in merge_pairs %}
                 <div class="border border-gray-200 rounded-lg overflow-hidden" id="lib-merge-{{ loop.index }}">

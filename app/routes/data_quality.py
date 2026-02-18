@@ -979,3 +979,84 @@ def merge_library_pair():
         '&rarr; <strong>{}</strong>. '
         '{} defect{} updated. Library entry removed.</div>'
     ).format(remove_desc, keep_desc, affected, 's' if affected != 1 else '')
+
+
+@data_quality_bp.route('/bulk-merge-exact', methods=['POST'])
+@require_admin
+def bulk_merge_exact():
+    """Bulk merge all 100% similar library pairs."""
+    tenant_id = session.get('tenant_id', 'MONOGRAPH')
+
+    db = get_db()
+
+    # Rebuild the merge pairs list (same logic as page load)
+    lib_raw = query_db(
+        "SELECT id, category_name, item_template_id, description, usage_count "
+        "FROM defect_library WHERE tenant_id=? ORDER BY usage_count DESC",
+        (tenant_id,)
+    )
+    lib_entries = [dict(r) for r in lib_raw] if lib_raw else []
+    all_pairs = _compute_library_merges(lib_entries)
+
+    # Filter to only 100% matches
+    exact_pairs = [p for p in all_pairs if p['score'] == 100]
+
+    if not exact_pairs:
+        return ('<div class="bg-amber-50 border border-amber-200 rounded-lg p-4 text-sm text-amber-600">'
+                'No 100%% matches found.</div>')
+
+    merged = 0
+    defects_updated = 0
+    already_gone = set()
+
+    for p in exact_pairs:
+        # Skip if either entry was already removed by an earlier pair in this batch
+        if p['remove_id'] in already_gone or p['keep_id'] in already_gone:
+            continue
+
+        # Verify both still exist
+        keep_row = db.execute(
+            "SELECT id FROM defect_library WHERE id=?", (p['keep_id'],)
+        ).fetchone()
+        remove_row = db.execute(
+            "SELECT id FROM defect_library WHERE id=?", (p['remove_id'],)
+        ).fetchone()
+        if not keep_row or not remove_row:
+            continue
+
+        # Update defects using the removed description
+        affected = db.execute(
+            "SELECT COUNT(*) FROM defect "
+            "WHERE original_comment=? AND status='open' AND tenant_id=?",
+            (p['remove_desc'], tenant_id)
+        ).fetchone()[0]
+
+        if affected > 0:
+            db.execute(
+                "UPDATE defect SET original_comment=?, updated_at=CURRENT_TIMESTAMP "
+                "WHERE original_comment=? AND status='open' AND tenant_id=?",
+                (p['keep_desc'], p['remove_desc'], tenant_id)
+            )
+            defects_updated += affected
+
+        # Transfer usage count and delete
+        db.execute(
+            "UPDATE defect_library SET usage_count = usage_count + "
+            "(SELECT usage_count FROM defect_library WHERE id=?) "
+            "WHERE id=?",
+            (p['remove_id'], p['keep_id'])
+        )
+        db.execute("DELETE FROM defect_library WHERE id=?", (p['remove_id'],))
+
+        already_gone.add(p['remove_id'])
+        merged += 1
+
+    db.commit()
+
+    return (
+        '<div class="bg-green-50 border border-green-200 rounded-lg p-4 text-sm text-green-700">'
+        '<strong>Bulk merge complete.</strong> '
+        '{} exact-match pair{} merged. {} defect description{} updated. '
+        'Refresh the page to see updated counts.</div>'
+    ).format(merged, 's' if merged != 1 else '',
+             defects_updated, 's' if defects_updated != 1 else '')
