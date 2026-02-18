@@ -89,6 +89,7 @@ def get_defects_data(tenant_id, unit_id, cycle_id=None):
     # Get comment from defect_history at or before this cycle (not latest!)
     defect_query = """
         SELECT d.*, 
+               COALESCE(d.reviewed_comment, d.original_comment) AS display_comment,
                it.item_description,
                parent.item_description as parent_description,
                ct.category_name, ct.category_order,
@@ -238,9 +239,9 @@ def get_defects_data(tenant_id, unit_id, cycle_id=None):
         defects_by_area[area_name]['categories'][cat_name]['defects'].append({
             'id': 'DEF-{:03d}'.format(defect_counter),
             'description': description,
-            'comment': (d['defect_comment'] or d['original_comment']) 
+            'comment': (d['defect_comment'] or d['display_comment']) 
                        if (d['defect_comment'] or '').lower() not in ['rectified', 'fixed'] 
-                       else d['original_comment'],
+                       else d['display_comment'],
             'type': d['defect_type'],
             'raised_cycle': raised_cycle,
             'display_status': display_status

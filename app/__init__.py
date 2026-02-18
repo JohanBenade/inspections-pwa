@@ -30,6 +30,10 @@ def create_app():
     app.register_blueprint(certification_bp)
     app.register_blueprint(cycles_bp)
 
+    # Approvals blueprint (manager + admin)
+    from app.routes.approvals import approvals_bp
+    app.register_blueprint(approvals_bp)
+
     # Analytics blueprint (manager + admin only)
     from app.routes.analytics import analytics_bp
     app.register_blueprint(analytics_bp)

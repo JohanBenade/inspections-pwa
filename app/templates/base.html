@@ -81,9 +81,9 @@
                         {% endif %}
                         {% if current_user.role in ['team_lead', 'manager', 'admin'] %}
                         <a href="{{ url_for('cycles.list_cycles') }}" class="text-sm text-gray-300 hover:text-white">Cycles</a>
-                        <a href="{{ url_for('certification.dashboard') }}" class="text-sm text-gray-300 hover:text-white">Approvals</a>
                         <a href="{{ url_for('defects.register') }}" class="text-sm text-gray-300 hover:text-white">Defects</a>
                         {% if current_user.role in ['manager', 'admin'] %}
+                        <a href="{{ url_for('approvals.pipeline') }}" class="text-sm text-gray-300 hover:text-white">Approvals</a>
                         <a href="{{ url_for('analytics.dashboard') }}" class="text-sm text-gray-300 hover:text-white">Analytics</a>
                         <a href="{{ url_for('analytics.reports') }}" class="text-sm text-gray-300 hover:text-white">Reports</a>
                         {% if current_user.role == 'admin' %}
@@ -154,17 +154,6 @@
                 <span class="text-xs mt-1">Cycles</span>
             </a>
             
-            <!-- Certify - team_lead and above -->
-            <a href="{{ url_for('certification.dashboard') }}" 
-               class="flex flex-col items-center text-gray-600 hover:text-primary tap-target">
-                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
-                          d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"/>
-                </svg>
-            
-                <span class="text-xs mt-1">Approvals</span>
-            </a>
-            
             <!-- Defects - team_lead and above -->
             <a href="{{ url_for('defects.register') }}" 
                class="flex flex-col items-center text-gray-600 hover:text-primary tap-target">
@@ -176,6 +165,15 @@
             </a>
             
             {% if current_user.role in ['manager', 'admin'] %}
+            <!-- Approvals - manager and above -->
+            <a href="{{ url_for('approvals.pipeline') }}" 
+               class="flex flex-col items-center text-gray-600 hover:text-primary tap-target">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
+                          d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"/>
+                </svg>
+                <span class="text-xs mt-1">Approvals</span>
+            </a>
             <a href="{{ url_for('analytics.dashboard') }}" 
                class="flex flex-col items-center text-gray-600 hover:text-primary tap-target"
                ontouchend="">

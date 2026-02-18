@@ -1,0 +1,89 @@
+{% extends "base.html" %}
+{% block title %}Approvals{% endblock %}
+
+{% block content %}
+<div class="mb-6">
+    <h1 class="text-2xl font-bold text-gray-900">Approvals</h1>
+    <p class="text-sm text-gray-500 mt-1">Review defect descriptions, sign off cycles, push PDFs to Raubex.</p>
+</div>
+
+{% if not cycles %}
+<div class="bg-white rounded-lg p-8 text-center text-gray-500">
+    No cycles available. Create a cycle from the Cycles page first.
+</div>
+{% endif %}
+
+<div class="space-y-4">
+{% for c in cycles %}
+{% if c.has_inspections %}
+<a href="{{ url_for('approvals.review', cycle_id=c.id) }}"
+   class="block bg-white rounded-xl shadow-sm border border-gray-200 hover:border-primary/40 hover:shadow-md transition-all p-5">
+
+    <!-- Header -->
+    <div class="flex items-start justify-between mb-4">
+        <div>
+            <h2 class="text-lg font-semibold text-gray-900">
+                {{ c.block or 'Cycle' }}{% if c.floor is not none %} &middot; Floor {{ c.floor }}{% endif %}
+            </h2>
+            <p class="text-sm text-gray-500">
+                {{ c.total_inspections }} units &middot; {{ c.defect_count }} defects &middot; Cycle {{ c.cycle_number }}
+            </p>
+        </div>
+        <span class="text-xs font-medium px-2.5 py-1 rounded-full
+            {% if c.stage == 'pushed' %}bg-green-100 text-green-700
+            {% elif c.stage == 'signed_off' %}bg-blue-100 text-blue-700
+            {% elif c.stage == 'all_reviewed' %}bg-indigo-100 text-indigo-700
+            {% elif c.stage == 'reviewing' %}bg-purple-100 text-purple-700
+            {% elif c.stage == 'submitted' %}bg-yellow-100 text-yellow-700
+            {% else %}bg-gray-100 text-gray-600{% endif %}">
+            {{ c.stage_label }}
+        </span>
+    </div>
+
+    <!-- Pipeline dots -->
+    <div class="flex items-center gap-1 mb-4">
+        {% set stages = [
+            ('submitted', 'Submitted', c.submitted_count > 0 or c.reviewed_count > 0 or c.approved_at or c.pdfs_pushed_at),
+            ('reviewed', 'Reviewed', c.reviewed_count == c.total_inspections and c.total_inspections > 0 or c.approved_at or c.pdfs_pushed_at),
+            ('signed_off', 'Signed Off', c.approved_at is not none),
+            ('pushed', 'PDFs Pushed', c.pdfs_pushed_at is not none)
+        ] %}
+        {% for stage_id, stage_label, is_complete in stages %}
+            {% if not loop.first %}
+            <div class="flex-1 h-0.5 {% if is_complete %}bg-green-400{% else %}bg-gray-200{% endif %}"></div>
+            {% endif %}
+            <div class="flex flex-col items-center">
+                <div class="w-3 h-3 rounded-full border-2
+                    {% if is_complete %}bg-green-500 border-green-500{% else %}bg-white border-gray-300{% endif %}">
+                </div>
+                <span class="text-[10px] text-gray-400 mt-1 hidden sm:block">{{ stage_label }}</span>
+            </div>
+        {% endfor %}
+    </div>
+
+    <!-- Stats row -->
+    <div class="flex items-center gap-4 text-sm">
+        <span class="text-gray-500">
+            <span class="font-medium text-gray-700">{{ c.reviewed_count }}</span> / {{ c.total_inspections }} reviewed
+        </span>
+        {% if c.needs_attention > 0 %}
+        <span class="text-amber-600 font-medium">
+            <svg class="w-4 h-4 inline -mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z"/>
+            </svg>
+            {{ c.needs_attention }} descriptions need attention
+        </span>
+        {% elif c.stage not in ('in_progress',) %}
+        <span class="text-green-600">
+            <svg class="w-4 h-4 inline -mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+            </svg>
+            All descriptions clean
+        </span>
+        {% endif %}
+    </div>
+</a>
+{% endif %}
+{% endfor %}
+</div>
+{% endblock %}

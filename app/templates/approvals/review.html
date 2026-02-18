@@ -1,0 +1,433 @@
+{% extends "base.html" %}
+{% block title %}Review - {{ cycle.block or 'Cycle' }}{% endblock %}
+
+{% block extra_head %}
+<style>
+    /* Smooth accordion */
+    .unit-body { display: none; }
+    .unit-body.open { display: block; }
+
+    /* Pill buttons */
+    .pill-btn {
+        display: inline-block;
+        padding: 4px 10px;
+        font-size: 12px;
+        border-radius: 9999px;
+        border: 1px solid #dbeafe;
+        background: #eff6ff;
+        color: #1e40af;
+        cursor: pointer;
+        transition: all 0.15s;
+        white-space: nowrap;
+    }
+    .pill-btn:hover { background: #dbeafe; border-color: #93c5fd; }
+    .pill-btn:active { background: #bfdbfe; }
+
+    /* Edit input */
+    .edit-input {
+        width: 100%;
+        padding: 6px 10px;
+        font-size: 14px;
+        border: 1px solid #d1d5db;
+        border-radius: 6px;
+        outline: none;
+    }
+    .edit-input:focus { border-color: #3b82f6; box-shadow: 0 0 0 2px rgba(59,130,246,0.15); }
+
+    /* Sticky status bar */
+    .status-bar { position: sticky; top: 56px; z-index: 40; }
+</style>
+{% endblock %}
+
+{% block content %}
+
+<!-- Status Bar (sticky) -->
+<div class="status-bar bg-white border-b border-gray-200 -mx-4 px-4 py-3 mb-4 shadow-sm">
+    <div class="flex items-center justify-between mb-2">
+        <div class="flex items-center gap-3">
+            <a href="{{ url_for('approvals.pipeline') }}" class="text-gray-400 hover:text-gray-600">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
+                </svg>
+            </a>
+            <div>
+                <h1 class="text-lg font-bold text-gray-900">{{ cycle.block or 'Cycle' }}{% if cycle.floor is not none %} &middot; Floor {{ cycle.floor }}{% endif %}</h1>
+                <p class="text-xs text-gray-500">Cycle {{ cycle.cycle_number }} &middot; {{ cycle.unit_start }}-{{ cycle.unit_end }}</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Pipeline dots -->
+    {% set is_signed = cycle.approved_at is not none %}
+    {% set is_pushed = cycle.pdfs_pushed_at is not none %}
+    {% set all_reviewed = stats.reviewed == stats.total and stats.total > 0 %}
+    <div class="flex items-center gap-1 mb-3">
+        {% set pipeline_stages = [
+            ('Submitted', true),
+            ('Reviewed', all_reviewed or is_signed or is_pushed),
+            ('Signed Off', is_signed or is_pushed),
+            ('PDFs Pushed', is_pushed)
+        ] %}
+        {% for label, complete in pipeline_stages %}
+        {% if not loop.first %}
+        <div class="flex-1 h-0.5 {% if complete %}bg-green-400{% else %}bg-gray-200{% endif %}"></div>
+        {% endif %}
+        <div class="flex flex-col items-center">
+            <div class="w-2.5 h-2.5 rounded-full {% if complete %}bg-green-500{% else %}bg-gray-300{% endif %}"></div>
+            <span class="text-[9px] text-gray-400 mt-0.5">{{ label }}</span>
+        </div>
+        {% endfor %}
+    </div>
+
+    <!-- KPI row -->
+    <div class="grid grid-cols-4 gap-2 text-center">
+        <div class="bg-gray-50 rounded-lg py-2 px-1">
+            <div class="text-lg font-bold text-gray-900">{{ stats.total }}</div>
+            <div class="text-[10px] text-gray-500 uppercase tracking-wide">Units</div>
+        </div>
+        <div class="bg-gray-50 rounded-lg py-2 px-1">
+            <div class="text-lg font-bold text-gray-900">{{ stats.defects }}</div>
+            <div class="text-[10px] text-gray-500 uppercase tracking-wide">Defects</div>
+        </div>
+        <div class="bg-gray-50 rounded-lg py-2 px-1">
+            <div class="text-lg font-bold {% if stats.reviewed == stats.total and stats.total > 0 %}text-green-600{% else %}text-gray-900{% endif %}">{{ stats.reviewed }} / {{ stats.total }}</div>
+            <div class="text-[10px] text-gray-500 uppercase tracking-wide">Reviewed</div>
+        </div>
+        <div class="rounded-lg py-2 px-1 {% if stats.to_fix > 0 %}bg-amber-50{% else %}bg-green-50{% endif %}">
+            <div class="text-lg font-bold {% if stats.to_fix > 0 %}text-amber-600{% else %}text-green-600{% endif %}">{{ stats.to_fix }}</div>
+            <div class="text-[10px] {% if stats.to_fix > 0 %}text-amber-500{% else %}text-green-500{% endif %} uppercase tracking-wide">To Fix</div>
+        </div>
+    </div>
+
+    <!-- Filter controls -->
+    <div class="flex items-center gap-2 mt-3">
+        <span class="text-xs text-gray-400">Show:</span>
+        <button onclick="filterUnits('all')" id="filter-all"
+                class="text-xs px-2.5 py-1 rounded-full border border-gray-300 bg-gray-900 text-white">All</button>
+        <button onclick="filterUnits('attention')" id="filter-attention"
+                class="text-xs px-2.5 py-1 rounded-full border border-gray-300 text-gray-600 hover:bg-gray-50">Needs Attention</button>
+        <button onclick="filterUnits('clean')" id="filter-clean"
+                class="text-xs px-2.5 py-1 rounded-full border border-gray-300 text-gray-600 hover:bg-gray-50">Clean</button>
+    </div>
+</div>
+
+<!-- Units Accordion -->
+<div class="space-y-2" id="units-list">
+{% for unit in units %}
+<div class="bg-white rounded-xl border border-gray-200 overflow-hidden unit-card"
+     data-to-fix="{{ unit.to_fix }}"
+     data-reviewed="{{ 'true' if unit.is_reviewed else 'false' }}">
+
+    <!-- Unit header (collapsed) -->
+    <button onclick="toggleUnit('{{ unit.unit_id }}')"
+            class="w-full flex items-center justify-between px-4 py-3.5 text-left hover:bg-gray-50 transition-colors"
+            id="unit-header-{{ unit.unit_id }}">
+        <div class="flex items-center gap-3">
+            <svg class="w-4 h-4 text-gray-400 transition-transform unit-chevron" id="chevron-{{ unit.unit_id }}"
+                 fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+            </svg>
+            <div>
+                <span class="font-semibold text-gray-900">Unit {{ unit.unit_number }}</span>
+                <span class="text-sm text-gray-400 ml-2">{{ unit.defect_count }} defects</span>
+            </div>
+        </div>
+        <div class="flex items-center gap-3">
+            {% if unit.to_fix > 0 %}
+            <span class="text-xs font-medium text-amber-600 bg-amber-50 px-2 py-0.5 rounded-full">
+                {{ unit.to_fix }} to fix
+            </span>
+            {% else %}
+            <span class="text-xs font-medium text-green-600 bg-green-50 px-2 py-0.5 rounded-full">
+                All clean
+            </span>
+            {% endif %}
+
+            <div id="review-status-{{ unit.unit_id }}">
+            {% if unit.is_reviewed %}
+            <div class="flex items-center gap-1">
+                <span class="inline-block w-2 h-2 rounded-full bg-green-500"></span>
+                <span class="text-green-600 text-xs font-medium">Reviewed</span>
+            </div>
+            {% else %}
+            <span class="inline-block w-2 h-2 rounded-full bg-gray-300"></span>
+            {% endif %}
+            </div>
+        </div>
+    </button>
+
+    <!-- Unit body (expanded) -->
+    <div class="unit-body border-t border-gray-100" id="unit-body-{{ unit.unit_id }}">
+        <div class="px-4 py-3 space-y-4">
+
+            {% for area_name, categories in unit.defects_grouped.items() %}
+            {% for cat_name, defect_list in categories.items() %}
+            <!-- Area > Category header -->
+            <div class="flex items-center gap-2 text-xs text-gray-500 uppercase tracking-wider pt-2">
+                <span class="font-medium text-gray-600">{{ area_name }}</span>
+                <span class="text-gray-300">&rsaquo;</span>
+                <span>{{ cat_name }}</span>
+                <span class="text-gray-300 ml-auto">{{ defect_list|length }} item{{ 's' if defect_list|length != 1 }}</span>
+            </div>
+
+            <!-- Defect rows -->
+            <div class="space-y-1.5">
+            {% for d in defect_list %}
+            <div class="defect-row flex items-start gap-3 py-2.5 px-3 rounded-lg border
+                {% if d.is_clean %}bg-white border-green-200{% else %}bg-amber-50/50 border-amber-200{% endif %}"
+                 id="defect-{{ d.id }}">
+
+                <!-- Status icon -->
+                <div class="flex-shrink-0 mt-1">
+                    {% if d.is_clean %}
+                    <span class="inline-flex items-center justify-center w-5 h-5 rounded-full bg-green-100">
+                        <svg class="w-3 h-3 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"/>
+                        </svg>
+                    </span>
+                    {% else %}
+                    <span class="inline-flex items-center justify-center w-5 h-5 rounded-full bg-amber-100">
+                        <svg class="w-3 h-3 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01"/>
+                        </svg>
+                    </span>
+                    {% endif %}
+                </div>
+
+                <!-- Content -->
+                <div class="flex-1 min-w-0">
+                    <div class="text-xs text-gray-400">{{ d.item_path }}</div>
+
+                    {% if d.is_clean %}
+                    <!-- Clean: just show description -->
+                    <div class="text-sm text-green-700 font-medium">{{ d.display_desc }}</div>
+                    {% if d.reviewed_comment and d.reviewed_comment != d.original_comment %}
+                    <div class="text-xs text-gray-400 mt-0.5 line-through">{{ d.original_comment }}</div>
+                    {% endif %}
+
+                    {% else %}
+                    <!-- Needs attention: editable description + pills -->
+                    <div class="mt-1" id="edit-area-{{ d.id }}">
+                        <div class="text-sm text-amber-700 font-medium cursor-pointer hover:text-amber-900"
+                             onclick="showEditInput('{{ d.id }}', this.dataset.desc)"
+                             data-desc="{{ d.display_desc|e }}"
+                             id="desc-display-{{ d.id }}">
+                            {{ d.display_desc }}
+                            <span class="text-xs text-gray-400 ml-1">(tap to edit)</span>
+                        </div>
+
+                        <!-- Hidden edit input -->
+                        <div id="edit-input-{{ d.id }}" class="hidden mt-1">
+                            <form hx-post="{{ url_for('approvals.edit_defect', cycle_id=cycle.id) }}"
+                                  hx-target="#defect-{{ d.id }}"
+                                  hx-swap="outerHTML"
+                                  class="flex gap-2">
+                                <input type="hidden" name="defect_id" value="{{ d.id }}">
+                                <input type="text" name="description" class="edit-input flex-1"
+                                       id="input-{{ d.id }}" autocomplete="off">
+                                <button type="submit"
+                                        class="px-3 py-1 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700">Save</button>
+                                <button type="button" onclick="hideEditInput('{{ d.id }}')"
+                                        class="px-3 py-1 text-gray-500 text-sm rounded-lg hover:bg-gray-100">Cancel</button>
+                            </form>
+                        </div>
+
+                        <!-- Suggestion pills -->
+                        {% if d.suggestions %}
+                        <div class="flex flex-wrap gap-1.5 mt-2" id="pills-{{ d.id }}">
+                            {% for s in d.suggestions %}
+                            <form hx-post="{{ url_for('approvals.edit_defect', cycle_id=cycle.id) }}"
+                                  hx-target="#defect-{{ d.id }}"
+                                  hx-swap="outerHTML"
+                                  class="inline">
+                                <input type="hidden" name="defect_id" value="{{ d.id }}">
+                                <input type="hidden" name="description" value="{{ s.description }}">
+                                <input type="hidden" name="library_entry_id" value="{{ s.id }}">
+                                <button type="submit" class="pill-btn">{{ s.description }}</button>
+                            </form>
+                            {% endfor %}
+                        </div>
+                        {% endif %}
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+            {% endfor %}
+            </div>
+            {% endfor %}
+            {% endfor %}
+
+            <!-- Mark reviewed button (per unit) -->
+            {% if not unit.is_reviewed and unit.can_review %}
+            <div class="pt-3 border-t border-gray-100" id="review-btn-area-{{ unit.unit_id }}">
+                <form hx-post="{{ url_for('approvals.mark_reviewed', cycle_id=cycle.id) }}"
+                      hx-target="#review-status-{{ unit.unit_id }}"
+                      hx-swap="innerHTML">
+                    <input type="hidden" name="inspection_id" value="{{ unit.inspection_id }}">
+                    <button type="submit"
+                            class="w-full py-2.5 text-sm font-medium rounded-lg border-2 border-green-500 text-green-700 hover:bg-green-50 transition-colors">
+                        Mark Unit {{ unit.unit_number }} as Reviewed
+                    </button>
+                </form>
+            </div>
+            {% elif unit.is_reviewed %}
+            <div class="pt-3 border-t border-gray-100 text-center">
+                <span class="text-sm text-green-600 font-medium">Unit {{ unit.unit_number }} reviewed</span>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endfor %}
+</div>
+
+<!-- Bulk Actions Zone -->
+<div class="mt-6 bg-white rounded-xl border border-gray-200 p-5">
+
+    {% if cycle.pdfs_pushed_at %}
+    <!-- State D: Complete -->
+    <div class="text-center space-y-2">
+        <div class="flex items-center justify-center gap-2 text-green-600">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+            </svg>
+            <span class="font-medium">Signed off{% if cycle.approved_by %} by {{ cycle.approved_by }}{% endif %}</span>
+        </div>
+        <div class="flex items-center justify-center gap-2 text-green-600">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+            </svg>
+            <span class="font-medium">{{ stats.total }} PDFs pushed to SharePoint</span>
+        </div>
+        <p class="text-sm text-gray-500">Cycle complete.</p>
+    </div>
+
+    {% elif cycle.approved_at %}
+    <!-- State C: Signed off, push PDFs -->
+    <div class="text-center space-y-3">
+        <div class="flex items-center justify-center gap-2 text-green-600">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+            </svg>
+            <span class="font-medium">Signed off{% if cycle.approved_by %} by {{ cycle.approved_by }}{% endif %}</span>
+        </div>
+        <form method="POST" action="{{ url_for('approvals.push_pdfs', cycle_id=cycle.id) }}">
+            <button type="submit"
+                    class="w-full py-3 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 transition-colors"
+                    onclick="this.disabled=true;this.textContent='Pushing PDFs...';this.form.submit();">
+                Push {{ stats.total }} PDFs to Raubex SharePoint
+            </button>
+        </form>
+        <p class="text-xs text-gray-400">PDFs will include reviewed descriptions.</p>
+    </div>
+
+    {% elif stats.reviewed == stats.total and stats.total > 0 %}
+    <!-- State B: All reviewed, sign off -->
+    <div class="space-y-3">
+        <!-- Progress bar -->
+        <div class="flex items-center gap-2">
+            <svg class="w-5 h-5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+            </svg>
+            <span class="text-sm font-medium text-green-700">All {{ stats.total }} units reviewed</span>
+        </div>
+        <div class="w-full h-2 bg-gray-100 rounded-full">
+            <div class="h-2 bg-green-500 rounded-full" style="width: 100%"></div>
+        </div>
+
+        <form method="POST" action="{{ url_for('approvals.sign_off', cycle_id=cycle.id) }}"
+              onsubmit="return confirm('Sign off {{ cycle.block or 'this cycle' }}? This will approve all {{ stats.total }} inspections for Raubex.');">
+            <button type="submit"
+                    class="w-full py-3 bg-green-600 text-white font-medium rounded-lg hover:bg-green-700 transition-colors">
+                Sign Off &mdash; {{ cycle.block or 'Cycle' }}{% if cycle.floor is not none %} Floor {{ cycle.floor }}{% endif %}
+            </button>
+        </form>
+        <p class="text-xs text-gray-400 text-center">This will approve all {{ stats.total }} inspections for Raubex.</p>
+    </div>
+
+    {% else %}
+    <!-- State A: Still reviewing -->
+    <div class="space-y-3">
+        <div class="flex items-center justify-between text-sm">
+            <span class="text-gray-600">{{ stats.reviewed }} of {{ stats.total }} units reviewed</span>
+            <span class="font-medium text-gray-900">{{ ((stats.reviewed / stats.total * 100) | int) if stats.total > 0 else 0 }}%</span>
+        </div>
+        <div class="w-full h-2 bg-gray-100 rounded-full">
+            <div class="h-2 bg-green-500 rounded-full transition-all"
+                 style="width: {{ ((stats.reviewed / stats.total * 100) | int) if stats.total > 0 else 0 }}%"></div>
+        </div>
+
+        <form method="POST" action="{{ url_for('approvals.bulk_reviewed', cycle_id=cycle.id) }}">
+            <button type="submit"
+                    class="w-full py-2.5 text-sm font-medium rounded-lg border-2 border-gray-300 text-gray-700 hover:bg-gray-50 transition-colors">
+                Mark All Clean Units as Reviewed
+            </button>
+        </form>
+        <p class="text-xs text-gray-400 text-center">Only marks units where all descriptions match the library.</p>
+    </div>
+    {% endif %}
+</div>
+
+<!-- Bottom padding for mobile nav -->
+<div class="h-8"></div>
+
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+function toggleUnit(unitId) {
+    var body = document.getElementById('unit-body-' + unitId);
+    var chevron = document.getElementById('chevron-' + unitId);
+    if (body.classList.contains('open')) {
+        body.classList.remove('open');
+        chevron.style.transform = '';
+    } else {
+        body.classList.add('open');
+        chevron.style.transform = 'rotate(90deg)';
+    }
+}
+
+function showEditInput(defectId, currentDesc) {
+    document.getElementById('desc-display-' + defectId).classList.add('hidden');
+    var pills = document.getElementById('pills-' + defectId);
+    if (pills) pills.classList.add('hidden');
+    var inputArea = document.getElementById('edit-input-' + defectId);
+    inputArea.classList.remove('hidden');
+    var input = document.getElementById('input-' + defectId);
+    input.value = currentDesc;
+    input.focus();
+    input.select();
+}
+
+function hideEditInput(defectId) {
+    document.getElementById('edit-input-' + defectId).classList.add('hidden');
+    document.getElementById('desc-display-' + defectId).classList.remove('hidden');
+    var pills = document.getElementById('pills-' + defectId);
+    if (pills) pills.classList.remove('hidden');
+}
+
+function filterUnits(mode) {
+    var cards = document.querySelectorAll('.unit-card');
+    cards.forEach(function(card) {
+        var toFix = parseInt(card.dataset.toFix);
+        if (mode === 'all') {
+            card.style.display = '';
+        } else if (mode === 'attention') {
+            card.style.display = toFix > 0 ? '' : 'none';
+        } else if (mode === 'clean') {
+            card.style.display = toFix === 0 ? '' : 'none';
+        }
+    });
+
+    // Update filter button styles
+    ['all', 'attention', 'clean'].forEach(function(f) {
+        var btn = document.getElementById('filter-' + f);
+        if (f === mode) {
+            btn.className = 'text-xs px-2.5 py-1 rounded-full border border-gray-300 bg-gray-900 text-white';
+        } else {
+            btn.className = 'text-xs px-2.5 py-1 rounded-full border border-gray-300 text-gray-600 hover:bg-gray-50';
+        }
+    });
+}
+</script>
+{% endblock %}
