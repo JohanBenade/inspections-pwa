@@ -3,6 +3,7 @@ Inspections PWA - Flask Application Factory
 Multi-tenant defect inspection for student housing
 """
 import os
+from datetime import timedelta
 from flask import Flask, render_template, session, redirect, url_for, request
 
 def create_app():
@@ -11,6 +12,13 @@ def create_app():
     # Configuration
     app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'dev-secret-change-in-prod')
     app.config['DATABASE_PATH'] = os.environ.get('DATABASE_PATH', 'data/inspections.db')
+    
+    # PWA session persistence - 365 days
+    app.permanent_session_lifetime = timedelta(days=365)
+    
+    @app.before_request
+    def make_session_permanent():
+        session.permanent = True
     
     # Initialize database
     from app.services.db import init_db
@@ -56,10 +64,45 @@ def create_app():
         if 'user_id' not in session:
             return redirect(url_for('login'))
         
-        role = session.get('role', 'student')
-        if role == 'architect':
-            return redirect(url_for('cycles.list_cycles'))
-        return redirect(url_for('projects.list_projects'))
+        role = session.get('role', 'inspector')
+        
+        # Inspectors get their own home page with assigned units only
+        if role == 'inspector':
+            from app.services.db import query_db
+            tenant_id = session['tenant_id']
+            user_id = session['user_id']
+            
+            # Get inspections assigned to this inspector
+            inspections = query_db("""
+                SELECT i.id AS inspection_id, i.status AS inspection_status,
+                       i.inspection_date, i.started_at, i.submitted_at,
+                       u.unit_number, u.block, u.floor,
+                       ic.cycle_number, ic.id AS cycle_id,
+                       (SELECT COUNT(*) FROM inspection_item ii
+                        WHERE ii.inspection_id = i.id
+                        AND ii.status != 'skipped') AS total_items,
+                       (SELECT COUNT(*) FROM inspection_item ii
+                        WHERE ii.inspection_id = i.id
+                        AND ii.status NOT IN ('skipped', 'pending')) AS completed_items,
+                       (SELECT COUNT(*) FROM defect d
+                        WHERE d.unit_id = u.id
+                        AND d.raised_cycle_id = i.cycle_id
+                        AND d.status = 'open') AS defect_count
+                FROM inspection i
+                JOIN unit u ON i.unit_id = u.id
+                JOIN inspection_cycle ic ON i.cycle_id = ic.id
+                WHERE i.inspector_id = ? AND i.tenant_id = ?
+                AND i.status IN ('in_progress', 'submitted')
+                ORDER BY
+                    CASE i.status WHEN 'in_progress' THEN 0 ELSE 1 END,
+                    u.unit_number
+            """, [user_id, tenant_id])
+            
+            inspections = [dict(r) for r in inspections]
+            return render_template('inspector_home.html', inspections=inspections)
+        
+        # All other roles go to cycles
+        return redirect(url_for('cycles.list_cycles'))
     
     # Simple auth (magic link style - to be enhanced)
     @app.route('/login', methods=['GET', 'POST'])
