@@ -98,10 +98,9 @@ def create_app():
                        (SELECT COUNT(*) FROM inspection_item ii
                         WHERE ii.inspection_id = i.id
                         AND ii.status NOT IN ('skipped', 'pending')) AS completed_items,
-                       (SELECT COUNT(*) FROM defect d
-                        WHERE d.unit_id = u.id
-                        AND d.raised_cycle_id = i.cycle_id
-                        AND d.status = 'open') AS defect_count
+                       (SELECT COUNT(*) FROM inspection_item ii2
+                        WHERE ii2.inspection_id = i.id
+                        AND ii2.status IN ('not_to_standard', 'not_installed')) AS defect_count
                 FROM inspection i
                 JOIN unit u ON i.unit_id = u.id
                 JOIN inspection_cycle ic ON i.cycle_id = ic.id
