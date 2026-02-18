@@ -40,7 +40,11 @@ def _get_cycle_pipeline(tenant_id):
              AND i.status IN ('pending_followup', 'certified', 'closed')) AS signed_off_count,
             (SELECT COUNT(*) FROM defect d
              WHERE d.raised_cycle_id = ic.id AND d.status = 'open'
-             AND d.tenant_id = ic.tenant_id) AS defect_count
+             AND d.tenant_id = ic.tenant_id) AS defect_count,
+            (SELECT MIN(i.submitted_at) FROM inspection i
+             WHERE i.cycle_id = ic.id AND i.submitted_at IS NOT NULL) AS first_submitted_at,
+            (SELECT MAX(i.updated_at) FROM inspection i
+             WHERE i.cycle_id = ic.id AND i.status IN ('reviewed', 'pending_followup', 'certified', 'closed')) AS last_reviewed_at
         FROM inspection_cycle ic
         WHERE ic.tenant_id = ? AND ic.id NOT LIKE 'test-%'
         ORDER BY ic.created_at DESC
@@ -243,6 +247,12 @@ def _build_review_data(tenant_id, cycle_id):
             'inspector_name': insp['inspector_name'],
             'defect_count': len(unit_defects),
             'to_fix': to_fix,
+        'first_submitted_at': query_db(
+            "SELECT MIN(submitted_at) AS val FROM inspection WHERE cycle_id = ? AND submitted_at IS NOT NULL",
+            [cycle_id], one=True)['val'],
+        'last_reviewed_at': query_db(
+            "SELECT MAX(updated_at) AS val FROM inspection WHERE cycle_id = ? AND status IN ('reviewed', 'pending_followup', 'certified', 'closed')",
+            [cycle_id], one=True)['val'],
             'is_reviewed': is_reviewed,
             'can_review': insp['status'] in ('submitted', 'reviewed'),
             'defects_grouped': grouped,
