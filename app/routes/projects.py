@@ -2,14 +2,14 @@
 Projects routes - Project, Phase, Unit navigation for students.
 """
 from flask import Blueprint, render_template, abort
-from app.auth import require_auth
+from app.auth import require_auth, require_role
 from app.services.db import query_db
 
 projects_bp = Blueprint('projects', __name__, url_prefix='/projects')
 
 
 @projects_bp.route('/')
-@require_auth
+@require_role('team_lead')
 def list_projects():
     """List all projects for current tenant."""
     from flask import session
@@ -28,7 +28,7 @@ def list_projects():
 
 
 @projects_bp.route('/<project_id>')
-@require_auth
+@require_role('team_lead')
 def view_project(project_id):
     """View project with phases."""
     from flask import session
@@ -57,7 +57,7 @@ def view_project(project_id):
 
 
 @projects_bp.route('/phase/<phase_id>')
-@require_auth
+@require_role('team_lead')
 def view_phase(phase_id):
     """View phase with units - filtered by active cycles."""
     from flask import session, request
@@ -184,7 +184,7 @@ def view_phase(phase_id):
 
 
 @projects_bp.route('/unit/<unit_id>')
-@require_auth
+@require_role('team_lead')
 def view_unit(unit_id):
     """View unit details and inspection history."""
     from flask import session

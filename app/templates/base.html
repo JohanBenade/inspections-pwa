@@ -76,7 +76,7 @@
                     {% if current_user %}
                     <!-- Desktop nav links -->
                     <div class="hidden md:flex items-center space-x-4">
-                        {% if current_user.role in ['inspector', 'manager', 'admin'] %}
+                        {% if current_user.role in ['team_lead', 'manager', 'admin'] %}
                         <a href="{{ url_for('projects.list_projects') }}" class="text-sm text-gray-300 hover:text-white">Projects</a>
                         {% endif %}
                         {% if current_user.role in ['team_lead', 'manager', 'admin'] %}

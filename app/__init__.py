@@ -20,6 +20,13 @@ def create_app():
     def make_session_permanent():
         session.permanent = True
     
+    # PWA session persistence - 365 days
+    app.permanent_session_lifetime = timedelta(days=365)
+    
+    @app.before_request
+    def make_session_permanent():
+        session.permanent = True
+    
     # Initialize database
     from app.services.db import init_db
     with app.app_context():
