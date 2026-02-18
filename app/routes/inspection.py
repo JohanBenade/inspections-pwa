@@ -137,6 +137,18 @@ def inspect(inspection_id):
     is_followup = not is_initial
     template = get_inspection_template(tenant_id, inspection['unit_type'])
     
+    # Filter template to only show areas that have inspection items for this unit
+    active_area_ids = set(r['area_id'] for r in query_db("""
+        SELECT DISTINCT at.id AS area_id
+        FROM inspection_item ii
+        JOIN item_template it ON ii.item_template_id = it.id
+        JOIN category_template ct ON it.category_id = ct.id
+        JOIN area_template at ON ct.area_id = at.id
+        WHERE ii.inspection_id = ?
+        AND ii.status != 'skipped'
+    """, [inspection_id]))
+    template = [a for a in template if a['id'] in active_area_ids]
+    
     progress_raw = query_db("""
         SELECT 
             COUNT(*) as total,
