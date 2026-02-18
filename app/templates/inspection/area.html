@@ -330,15 +330,7 @@
     
 
     
-    // Auto-focus the last defect input (most recently interacted)
-    var defectInputs = document.querySelectorAll('.defect-input-wrapper input[type="text"]');
-    if (defectInputs.length > 0) {
-        var lastEmpty = null;
-        defectInputs.forEach(function(inp) {
-            if (!inp.value) lastEmpty = inp;
-        });
-        if (lastEmpty) lastEmpty.focus();
-    }
+
     
     // Trigger progress bar refresh
     document.body.dispatchEvent(new CustomEvent('areaUpdated'));

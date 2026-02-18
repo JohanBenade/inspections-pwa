@@ -2,8 +2,8 @@
 
 {% block title %}Unit {{ inspection.unit_number }} - Cycle {{ inspection.cycle_number }}
 
+
 <script>
-    // Preserve scroll position across HTMX area swaps
     document.body.addEventListener('htmx:beforeSwap', function(evt) {
         if (evt.detail.target && evt.detail.target.id === 'area-content') {
             window._scrollY = window.scrollY;
@@ -17,7 +17,9 @@
     document.body.addEventListener('htmx:afterSwap', function(evt) {
         if (evt.detail.target && evt.detail.target.id === 'area-content') {
             if (window._scrollY !== undefined) {
-                window.scrollTo(0, window._scrollY);
+                requestAnimationFrame(function() {
+                    window.scrollTo(0, window._scrollY);
+                });
             }
         }
     });
@@ -171,8 +173,8 @@
 {% endif %}
 
 
+
 <script>
-    // Preserve scroll position across HTMX area swaps
     document.body.addEventListener('htmx:beforeSwap', function(evt) {
         if (evt.detail.target && evt.detail.target.id === 'area-content') {
             window._scrollY = window.scrollY;
@@ -186,7 +188,9 @@
     document.body.addEventListener('htmx:afterSwap', function(evt) {
         if (evt.detail.target && evt.detail.target.id === 'area-content') {
             if (window._scrollY !== undefined) {
-                window.scrollTo(0, window._scrollY);
+                requestAnimationFrame(function() {
+                    window.scrollTo(0, window._scrollY);
+                });
             }
         }
     });
