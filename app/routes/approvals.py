@@ -79,7 +79,8 @@ def _get_cycle_pipeline(tenant_id):
 
 
 def _count_needs_attention(tenant_id, cycle_id):
-    """Count defects whose display description does not match any library entry."""
+    """Count defects whose display description does not match any library entry.
+    Two-tier check: item-specific first, then category fallback."""
     defects = query_db("""
         SELECT d.id,
                COALESCE(d.reviewed_comment, d.original_comment) AS display_desc,
@@ -91,26 +92,57 @@ def _count_needs_attention(tenant_id, cycle_id):
     if not defects:
         return 0
 
-    # Build lookup of library descriptions per item_template_id
-    library = query_db("""
+    # Tier 1: item-specific library entries
+    lib_item = query_db("""
         SELECT item_template_id, LOWER(description) AS desc_lower
-        FROM defect_library WHERE tenant_id = ?
+        FROM defect_library WHERE tenant_id = ? AND item_template_id IS NOT NULL
     """, [tenant_id])
 
     lib_by_item = {}
-    for entry in library:
+    for entry in lib_item:
         tid = entry['item_template_id']
-        if tid:
-            if tid not in lib_by_item:
-                lib_by_item[tid] = set()
-            lib_by_item[tid].add(entry['desc_lower'])
+        if tid not in lib_by_item:
+            lib_by_item[tid] = set()
+        lib_by_item[tid].add(entry['desc_lower'])
+
+    # Tier 2: category-level library entries
+    lib_cat = query_db("""
+        SELECT category_name, LOWER(description) AS desc_lower
+        FROM defect_library WHERE tenant_id = ? AND item_template_id IS NULL
+    """, [tenant_id])
+
+    lib_by_cat = {}
+    for entry in lib_cat:
+        cat = entry['category_name']
+        if cat not in lib_by_cat:
+            lib_by_cat[cat] = set()
+        lib_by_cat[cat].add(entry['desc_lower'])
+
+    # Need category for each defect's template (for tier 2 lookup)
+    template_ids = set(d['item_template_id'] for d in defects if d['item_template_id'])
+    cat_by_template = {}
+    if template_ids:
+        placeholders = ','.join('?' for _ in template_ids)
+        cats = query_db("""
+            SELECT it.id AS tid, ct.category_name
+            FROM item_template it
+            JOIN category_template ct ON it.category_id = ct.id
+            WHERE it.id IN ({})
+        """.format(placeholders), list(template_ids))
+        for c in cats:
+            cat_by_template[c['tid']] = c['category_name']
 
     count = 0
     for d in defects:
         desc_lower = (d['display_desc'] or '').lower().strip()
         tid = d['item_template_id']
+        # Tier 1: item-specific match
         if tid in lib_by_item and desc_lower in lib_by_item[tid]:
-            continue  # Clean match
+            continue
+        # Tier 2: category fallback
+        cat_name = cat_by_template.get(tid)
+        if cat_name and cat_name in lib_by_cat and desc_lower in lib_by_cat[cat_name]:
+            continue
         count += 1
 
     return count
@@ -158,24 +190,43 @@ def _build_review_data(tenant_id, cycle_id):
         ORDER BY at.area_order, ct.category_order, it.item_order
     """, [cycle_id, tenant_id])]
 
-    # Build library lookup (item-specific only for match check)
-    library = query_db("""
+    # Build library lookup: tier 1 (item-specific) + tier 2 (category fallback)
+    lib_item = query_db("""
         SELECT item_template_id, LOWER(description) AS desc_lower
         FROM defect_library WHERE tenant_id = ? AND item_template_id IS NOT NULL
     """, [tenant_id])
 
     lib_by_item = {}
-    for entry in library:
+    for entry in lib_item:
         tid = entry['item_template_id']
         if tid not in lib_by_item:
             lib_by_item[tid] = set()
         lib_by_item[tid].add(entry['desc_lower'])
 
-    # Mark each defect as clean or needs attention
+    lib_cat = query_db("""
+        SELECT category_name, LOWER(description) AS desc_lower
+        FROM defect_library WHERE tenant_id = ? AND item_template_id IS NULL
+    """, [tenant_id])
+
+    lib_by_cat = {}
+    for entry in lib_cat:
+        cat = entry['category_name']
+        if cat not in lib_by_cat:
+            lib_by_cat[cat] = set()
+        lib_by_cat[cat].add(entry['desc_lower'])
+
+    # Mark each defect as clean or needs attention (two-tier)
     for d in defects:
         desc_lower = (d['display_desc'] or '').lower().strip()
         tid = d['item_template_id']
-        d['is_clean'] = tid in lib_by_item and desc_lower in lib_by_item[tid]
+        # Tier 1: item-specific
+        if tid in lib_by_item and desc_lower in lib_by_item[tid]:
+            d['is_clean'] = True
+        # Tier 2: category fallback
+        elif d['category_name'] in lib_by_cat and desc_lower in lib_by_cat[d['category_name']]:
+            d['is_clean'] = True
+        else:
+            d['is_clean'] = False
         # Build full item path
         if d['parent_description']:
             d['item_path'] = '{} > {}'.format(
