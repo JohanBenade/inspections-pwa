@@ -184,10 +184,7 @@ body {
     background: #F5F3EE;
     padding: 16px 18px;
     vertical-align: top;
-    width: 50%;
 }
-.batch-cell-b5 { border-left: 4px solid #C8963E; }
-.batch-cell-b6 { border-left: 4px solid #3D6B8E; }
 .batch-block-label {
     font-family: 'DM Sans', sans-serif;
     font-size: 10px;
@@ -201,7 +198,7 @@ body {
 .batch-stats-table td { padding: 2px 0; }
 .batch-stat-value {
     font-family: 'Cormorant Garamond', Georgia, serif;
-    font-size: 24px;
+    font-size: 22px;
     font-weight: 300;
     color: #0A0A0A;
     line-height: 1.1;
@@ -236,8 +233,6 @@ body {
     border-radius: 2px;
     vertical-align: middle;
 }
-.bar-b5 { background: #C8963E; }
-.bar-b6 { background: #3D6B8E; }
 .bar-count-label {
     display: inline-block;
     font-size: 9px;
@@ -316,24 +311,13 @@ body {
     white-space: nowrap;
 }
 
-/* -- COLOUR BADGES -- */
-.badge-b5 {
+/* -- COLOUR BADGES (dynamic) -- */
+.batch-badge {
     display: inline-block;
     padding: 1px 6px;
     border-radius: 3px;
     font-size: 8px;
     font-weight: 600;
-    background: rgba(200,150,62,0.15);
-    color: #C8963E;
-}
-.badge-b6 {
-    display: inline-block;
-    padding: 1px 6px;
-    border-radius: 3px;
-    font-size: 8px;
-    font-weight: 600;
-    background: rgba(61,107,142,0.15);
-    color: #3D6B8E;
 }
 
 /* -- TREND ARROWS -- */
@@ -449,7 +433,7 @@ body {
         </div>
     </div>
     <div class="report-title">Power Park Student Housing - Phase 3</div>
-    <div class="report-subtitle">Combined Project Report &bull; All Blocks &bull; {{ total_units }} Units Inspected</div>
+    <div class="report-subtitle">Combined Project Report &bull; {{ batches|length }} Batches &bull; {{ total_units }} Units Inspected</div>
 </div>
 
 <!-- ============ KPI CARDS ============ -->
@@ -457,26 +441,22 @@ body {
     <td class="kpi-cell">
         <div class="kpi-label">Units Inspected</div>
         <div class="kpi-value">{{ total_units }}</div>
-        <div class="kpi-sub">B5: {{ b5.total_units }} + B6: {{ b6.total_units }}</div>
+        <div class="kpi-sub">{% for b in batches %}{{ b.short_label }}: {{ b.total_units }}{% if not loop.last %} + {% endif %}{% endfor %}</div>
     </td>
     <td class="kpi-cell">
         <div class="kpi-label">Total Defects</div>
         <div class="kpi-value kpi-value-red">{{ total_defects }}</div>
         <div class="kpi-sub">across all areas</div>
-        <div class="kpi-trend {% if trend.defect_change > 0 %}trend-up{% else %}trend-down{% endif %}">{% if trend.defect_change > 0 %}&#9650;{% else %}&#9660;{% endif %} {{ trend.defect_change }}% B5&#8594;B6</div>
     </td>
     <td class="kpi-cell">
         <div class="kpi-label">Avg Defects / Unit</div>
         <div class="kpi-value">{{ avg_defects }}</div>
         <div class="kpi-sub">median: {{ median_defects }}</div>
-        <div class="kpi-trend {% if trend.avg_change > 0 %}trend-up{% else %}trend-down{% endif %}">{% if trend.avg_change > 0 %}&#9650;{% else %}&#9660;{% endif %} {{ trend.avg_change }}% B5&#8594;B6</div>
     </td>
-
     <td class="kpi-cell">
         <div class="kpi-label">Defect Rate</div>
         <div class="kpi-value">{{ defect_rate }}%</div>
         <div class="kpi-sub">items flagged</div>
-
     </td>
     <td class="kpi-cell">
         <div class="kpi-label">Certified</div>
@@ -493,50 +473,38 @@ body {
     </div>
     <table class="batch-table">
     <tr>
-        <td class="batch-cell batch-cell-b5">
-            <div class="batch-block-label">{{ b5.block }}</div>
+        {% for batch in batches %}
+        <td class="batch-cell" style="border-left: 4px solid {{ batch.colour }}; width: {{ (100 / batches|length)|int }}%;">
+            <div class="batch-block-label">{{ batch.label }}</div>
             <table class="batch-stats-table">
             <tr>
-                <td style="width:33%"><div class="batch-stat-value">{{ b5.total_units }}</div><div class="batch-stat-label">Units</div></td>
-                <td style="width:33%"><div class="batch-stat-value" style="color:#C44D3F;">{{ b5.total_defects }}</div><div class="batch-stat-label">Defects</div></td>
-                <td style="width:33%"><div class="batch-stat-value">{{ b5.avg_defects }}</div><div class="batch-stat-label">Avg / Unit</div></td>
+                <td style="width:33%"><div class="batch-stat-value">{{ batch.total_units }}</div><div class="batch-stat-label">Units</div></td>
+                <td style="width:33%"><div class="batch-stat-value" style="color:#C44D3F;">{{ batch.total_defects }}</div><div class="batch-stat-label">Defects</div></td>
+                <td style="width:33%"><div class="batch-stat-value">{{ batch.avg_defects }}</div><div class="batch-stat-label">Avg / Unit</div></td>
             </tr>
             <tr>
-                <td><div class="batch-stat-value">{{ b5.defect_rate }}%</div><div class="batch-stat-label">Defect Rate</div></td>
-                <td><div class="batch-stat-value">{{ b5.unit_range }}</div><div class="batch-stat-label">Unit Range</div></td>
-                <td><div class="batch-stat-value">{{ b5.inspection_date or '-' }}</div><div class="batch-stat-label">Inspected</div></td>
+                <td><div class="batch-stat-value">{{ batch.defect_rate }}%</div><div class="batch-stat-label">Defect Rate</div></td>
+                <td><div class="batch-stat-value">{{ batch.unit_range }}</div><div class="batch-stat-label">Unit Range</div></td>
+                <td><div class="batch-stat-value">{{ batch.inspection_date or '-' }}</div><div class="batch-stat-label">Inspected</div></td>
             </tr>
             </table>
         </td>
-        <td class="batch-cell batch-cell-b6">
-            <div class="batch-block-label">{{ b6.block }}</div>
-            <table class="batch-stats-table">
-            <tr>
-                <td style="width:33%"><div class="batch-stat-value">{{ b6.total_units }}</div><div class="batch-stat-label">Units</div></td>
-                <td style="width:33%"><div class="batch-stat-value" style="color:#C44D3F;">{{ b6.total_defects }}</div><div class="batch-stat-label">Defects</div></td>
-                <td style="width:33%"><div class="batch-stat-value">{{ b6.avg_defects }}</div><div class="batch-stat-label">Avg / Unit</div></td>
-            </tr>
-            <tr>
-                <td><div class="batch-stat-value">{{ b6.defect_rate }}%</div><div class="batch-stat-label">Defect Rate</div></td>
-                <td><div class="batch-stat-value">{{ b6.unit_range }}</div><div class="batch-stat-label">Unit Range</div></td>
-                <td><div class="batch-stat-value">{{ b6.inspection_date or '-' }}</div><div class="batch-stat-label">Inspected</div></td>
-            </tr>
-            </table>
-        </td>
+        {% endfor %}
     </tr>
     </table>
 
-    {% if trend.avg_change > 10 %}
-    <div class="callout callout-red">
-        <strong>Note:</strong> Block 6 shows {{ trend.avg_change }}% higher average defects per unit compared to Block 5 ({{ b6.avg_defects }} vs {{ b5.avg_defects }}). This suggests increased quality issues in the later batch.
-    </div>
-    {% elif trend.avg_change < -10 %}
-    <div class="callout callout-green">
-        <strong>Note:</strong> Block 6 shows {{ trend.avg_change|abs }}% fewer average defects per unit compared to Block 5 ({{ b6.avg_defects }} vs {{ b5.avg_defects }}). Quality is trending positively.
+    {% set avg_values = batches | map(attribute='avg_defects') | list %}
+    {% set min_avg = avg_values | min %}
+    {% set max_avg = avg_values | max %}
+    {% set min_batch = batches | selectattr('avg_defects', 'equalto', min_avg) | first %}
+    {% set max_batch = batches | selectattr('avg_defects', 'equalto', max_avg) | first %}
+    {% if max_avg - min_avg > 5 %}
+    <div class="callout callout-gold">
+        <strong>Note:</strong> Average defects per unit range from {{ min_avg }} ({{ min_batch.label }}) to {{ max_avg }} ({{ max_batch.label }}), a spread of {{ (max_avg - min_avg)|round(1) }} defects.
     </div>
     {% else %}
     <div class="callout callout-gold">
-        <strong>Note:</strong> Average defects per unit are similar across both blocks ({{ b5.avg_defects }} vs {{ b6.avg_defects }}), suggesting consistent quality levels.
+        <strong>Note:</strong> Average defects per unit are consistent across batches, ranging from {{ min_avg }} to {{ max_avg }}.
     </div>
     {% endif %}
 </div>
@@ -550,22 +518,20 @@ body {
 
     <div class="clearfix" style="margin-bottom: 16px;">
         <div style="float: left; width: 62%;">
-            <!-- Grouped horizontal bars -->
+            <!-- Grouped horizontal bars (one bar per batch per area) -->
             <table class="grouped-bar-table">
             {% for area in area_compare %}
+            {% for bd in area.batches %}
             <tr>
-                <td class="bar-label-cell" rowspan="2">{{ area.name }}</td>
+                {% if loop.first %}
+                <td class="bar-label-cell" rowspan="{{ batches|length }}">{{ area.name }}</td>
+                {% endif %}
                 <td class="bar-track">
-                    <div class="bar-fill bar-b5" style="width: {{ area.b5_pct }}%;"></div>
-                    <span class="bar-count-label">{{ area.b5_count }}</span>
+                    <div class="bar-fill" style="width: {{ bd.pct }}%; background: {{ batches[loop.index0].colour }};"></div>
+                    <span class="bar-count-label">{{ bd.count }}</span>
                 </td>
             </tr>
-            <tr>
-                <td class="bar-track">
-                    <div class="bar-fill bar-b6" style="width: {{ area.b6_pct }}%;"></div>
-                    <span class="bar-count-label">{{ area.b6_count }}</span>
-                </td>
-            </tr>
+            {% endfor %}
             <tr><td colspan="2" style="height: 10px;"></td></tr>
             {% endfor %}
             </table>
@@ -604,18 +570,19 @@ body {
         </div>
     </div>
 
-    <!-- Legend -->
+    <!-- Batch legend -->
     <table class="legend-table">
     <tr>
-        <td><span class="legend-swatch" style="background: #C8963E;"></span><span class="legend-text">Block 5</span></td>
-        <td style="padding-left: 16px;"><span class="legend-swatch" style="background: #3D6B8E;"></span><span class="legend-text">Block 6</span></td>
+        {% for batch in batches %}
+        <td {% if not loop.first %}style="padding-left: 16px;"{% endif %}><span class="legend-swatch" style="background: {{ batch.colour }};"></span><span class="legend-text">{{ batch.label }}</span></td>
+        {% endfor %}
     </tr>
     </table>
 
-    {% set max_area = area_compare[0] if area_compare else none %}
-    {% if max_area %}
+    {% if area_compare %}
+    {% set max_area = area_compare[0] %}
     <div class="callout callout-gold">
-        <strong>{{ max_area.name }}</strong> accounts for the highest defect concentration across both blocks. {% if max_area.b6_count > max_area.b5_count %}Block 6 shows {{ max_area.b6_count - max_area.b5_count }} more defects than Block 5 in this area.{% elif max_area.b5_count > max_area.b6_count %}Block 5 shows {{ max_area.b5_count - max_area.b6_count }} more defects than Block 6 in this area.{% else %}Both blocks show equal defect counts.{% endif %}
+        <strong>{{ max_area.name }}</strong> accounts for the highest defect concentration across all batches ({% for bd in max_area.batches %}{{ batches[loop.index0].short_label }}: {{ bd.count }}{% if not loop.last %}, {% endif %}{% endfor %}).
     </div>
     {% endif %}
 </div>
@@ -628,9 +595,9 @@ body {
     </div>
     <div class="clearfix">
         {% for area_info in combined_area_dive %}
-        {% set outer_first = loop.first %}
+        {% set outer_idx = loop.index0 %}
         <div style="float: {% if loop.first %}left{% else %}right{% endif %}; width: 48%;">
-            <div style="background: #F5F3EE; border-left: 3px solid {% if outer_first %}#C8963E{% else %}#3D6B8E{% endif %}; padding: 14px 16px;">
+            <div style="background: #F5F3EE; border-left: 3px solid {{ area_colours[outer_idx % area_colours|length] }}; padding: 14px 16px;">
                 <div style="font-size: 8px; font-weight: 600; letter-spacing: 2px; text-transform: uppercase; color: #6B6B6B; margin-bottom: 2px;">{{ area_info.area }}</div>
                 <div style="margin-bottom: 10px;">
                     <span style="font-family: 'Cormorant Garamond', Georgia, serif; font-size: 24px; font-weight: 300; color: #0A0A0A;">{{ area_info.total }}</span>
@@ -640,19 +607,20 @@ body {
                     {% for d in area_info.defects %}
                     <tr>
                         <td style="width: 18px; vertical-align: top; padding: 4px 0;">
-                            <div style="width: 18px; height: 18px; border-radius: 50%; background: {% if loop.first %}{% if outer_first %}#C8963E{% else %}#3D6B8E{% endif %}{% else %}#F5F3EE; border: 1px solid #E8E6E1{% endif %}; color: {% if loop.first %}white{% else %}#6B6B6B{% endif %}; text-align: center; line-height: 18px; font-size: 8px; font-weight: 600;">{{ loop.index }}</div>
+                            <div style="width: 18px; height: 18px; border-radius: 50%; background: {% if loop.first %}{{ area_colours[outer_idx % area_colours|length] }}{% else %}#F5F3EE; border: 1px solid #E8E6E1{% endif %}; color: {% if loop.first %}white{% else %}#6B6B6B{% endif %}; text-align: center; line-height: 18px; font-size: 8px; font-weight: 600;">{{ loop.index }}</div>
                         </td>
                         <td style="padding: 4px 8px; vertical-align: top;">
                             <div style="font-size: 10px; color: #1A1A1A; margin-bottom: 3px;">{{ d.description }}</div>
                             <div style="height: 3px; background: #E8E6E1; border-radius: 2px; overflow: hidden;">
-                                <div style="height: 3px; border-radius: 2px; width: {{ d.bar_pct }}%; background: {% if outer_first %}#C8963E{% else %}#3D6B8E{% endif %};"></div>
+                                <div style="height: 3px; border-radius: 2px; width: {{ d.bar_pct }}%; background: {{ area_colours[outer_idx % area_colours|length] }};"></div>
                             </div>
                         </td>
-                        <td style="width: 70px; text-align: right; vertical-align: top; padding: 4px 0;">
+                        <td style="width: 90px; text-align: right; vertical-align: top; padding: 4px 0;">
                             <div style="font-size: 10px; font-weight: 600; color: #0A0A0A;">{{ d.total }}</div>
                             <div style="font-size: 8px; color: #9A9A9A;">
-                                <span style="color: #C8963E;">B5: {{ d.b5 }}</span>
-                                <span style="color: #3D6B8E; margin-left: 3px;">B6: {{ d.b6 }}</span>
+                                {% for cnt in d.batch_counts %}
+                                <span style="color: {{ batches[loop.index0].colour }};">{{ batches[loop.index0].short_label }}: {{ cnt }}</span>{% if not loop.last %} {% endif %}
+                                {% endfor %}
                             </div>
                         </td>
                     </tr>
@@ -662,13 +630,13 @@ body {
         </div>
         {% endfor %}
     </div>
+    {% if combined_area_dive|length >= 2 and combined_area_dive[0].defects and combined_area_dive[1].defects %}
     <div class="callout callout-gold" style="margin-top: 12px;">
         <strong>Key finding:</strong>
-        {% if combined_area_dive|length >= 2 and combined_area_dive[0].defects and combined_area_dive[1].defects %}
-        The most frequent defect in {{ combined_area_dive[0].area }} is {{ combined_area_dive[0].defects[0].description|lower }} ({{ combined_area_dive[0].defects[0].total }}: B5 {{ combined_area_dive[0].defects[0].b5 }}, B6 {{ combined_area_dive[0].defects[0].b6 }}).
+        The most frequent defect in {{ combined_area_dive[0].area }} is {{ combined_area_dive[0].defects[0].description|lower }} ({{ combined_area_dive[0].defects[0].total }} total).
         In {{ combined_area_dive[1].area }}, {{ combined_area_dive[1].defects[0].description|lower }} leads with {{ combined_area_dive[1].defects[0].total }}.
-        {% endif %}
     </div>
+    {% endif %}
 </div>
 
 <!-- ============ 04: DEFECTS BY CATEGORY (TRADE) ============ -->
@@ -682,19 +650,17 @@ body {
         <div style="float: left; width: 100%;">
             <table class="grouped-bar-table">
             {% for trade in trade_compare %}
+            {% for bd in trade.batches %}
             <tr>
-                <td class="bar-label-cell" rowspan="2">{{ trade.name }}</td>
+                {% if loop.first %}
+                <td class="bar-label-cell" rowspan="{{ batches|length }}">{{ trade.name }}</td>
+                {% endif %}
                 <td class="bar-track">
-                    <div class="bar-fill bar-b5" style="width: {{ trade.b5_pct }}%;"></div>
-                    <span class="bar-count-label">{{ trade.b5_count }}</span>
+                    <div class="bar-fill" style="width: {{ bd.pct }}%; background: {{ batches[loop.index0].colour }};"></div>
+                    <span class="bar-count-label">{{ bd.count }}</span>
                 </td>
             </tr>
-            <tr>
-                <td class="bar-track">
-                    <div class="bar-fill bar-b6" style="width: {{ trade.b6_pct }}%;"></div>
-                    <span class="bar-count-label">{{ trade.b6_count }}</span>
-                </td>
-            </tr>
+            {% endfor %}
             <tr><td colspan="2" style="height: 10px;"></td></tr>
             {% endfor %}
             </table>
@@ -703,23 +669,24 @@ body {
 
     <table class="legend-table">
     <tr>
-        <td><span class="legend-swatch" style="background: #C8963E;"></span><span class="legend-text">Block 5</span></td>
-        <td style="padding-left: 16px;"><span class="legend-swatch" style="background: #3D6B8E;"></span><span class="legend-text">Block 6</span></td>
+        {% for batch in batches %}
+        <td {% if not loop.first %}style="padding-left: 16px;"{% endif %}><span class="legend-swatch" style="background: {{ batch.colour }};"></span><span class="legend-text">{{ batch.label }}</span></td>
+        {% endfor %}
     </tr>
     </table>
 
     {% if trade_compare %}
     <div class="callout callout-gold">
-        <strong>{{ trade_compare[0].name }}</strong> accounts for the highest trade concentration with {{ trade_compare[0].total }} defects across both blocks.
+        <strong>{{ trade_compare[0].name }}</strong> accounts for the highest trade concentration with {{ trade_compare[0].total }} defects across all batches.
     </div>
     {% endif %}
 </div>
 
-<!-- ============ 04: TOP DEFECT TYPES - TREND ANALYSIS ============ -->
+<!-- ============ 05: TOP DEFECT TYPES - TREND ANALYSIS ============ -->
 <div class="section" style="page-break-before: always;">
     <div class="section-header">
         <span class="section-number">05</span>
-        <span class="section-title">Most Common Defect Types: Trend Analysis</span>
+        <span class="section-title">Most Common Defect Types: Batch Analysis</span>
     </div>
 
     <table class="data-table">
@@ -727,11 +694,11 @@ body {
     <tr>
         <th style="width: 30px;">#</th>
         <th>Description</th>
-        <th class="text-center" style="width: 55px;">Total</th>
-        <th class="text-center" style="width: 55px;">Block 5</th>
-        <th class="text-center" style="width: 55px;">Block 6</th>
-        <th class="text-center" style="width: 55px;">Trend</th>
-        <th style="width: 120px;">Distribution</th>
+        <th class="text-center" style="width: 50px;">Total</th>
+        {% for batch in batches %}
+        <th class="text-center" style="width: 50px;">{{ batch.short_label }}</th>
+        {% endfor %}
+        <th style="width: 100px;">Distribution</th>
     </tr>
     </thead>
     <tbody>
@@ -746,17 +713,11 @@ body {
         </td>
         <td>{{ d.description }}</td>
         <td class="text-center font-bold">{{ d.total }}</td>
-        <td class="text-center"><span class="badge-b5">{{ d.b5_count }}</span></td>
-        <td class="text-center"><span class="badge-b6">{{ d.b6_count }}</span></td>
+        {% for cnt in d.batch_counts %}
         <td class="text-center">
-            {% if d.b6_count > d.b5_count %}
-            <span class="arrow-up">&#9650; higher</span>
-            {% elif d.b6_count < d.b5_count %}
-            <span class="arrow-down">&#9660; lower</span>
-            {% else %}
-            <span class="arrow-same">&#8212;</span>
-            {% endif %}
+            <span class="batch-badge" style="background: {{ batches[loop.index0].colour_bg }}; color: {{ batches[loop.index0].colour }};">{{ cnt }}</span>
         </td>
+        {% endfor %}
         <td>
             <div style="display: inline-block; width: {{ d.bar_pct }}%; height: 10px; background: #C8963E; border-radius: 2px; vertical-align: middle;"></div>
         </td>
@@ -765,36 +726,38 @@ body {
     </tbody>
     </table>
 
-    {% set new_in_b6 = top_defects_compare | selectattr('b5_count', 'equalto', 0) | list %}
-    {% if new_in_b6 %}
+    {% set zero_in_first = [] %}
+    {% for d in top_defects_compare %}
+        {% if d.batch_counts[0] == 0 %}
+            {% if zero_in_first.append(d) %}{% endif %}
+        {% endif %}
+    {% endfor %}
+    {% if zero_in_first %}
     <div class="callout callout-blue">
-        <strong>New patterns in Block 6:</strong> {{ new_in_b6 | length }} defect type(s) in the top 15 appear only in Block 6, suggesting new quality issues: {% for d in new_in_b6[:3] %}<em>{{ d.description }}</em>{% if not loop.last %}, {% endif %}{% endfor %}.
+        <strong>New patterns:</strong> {{ zero_in_first|length }} defect type(s) in the top 15 do not appear in {{ batches[0].label }}, suggesting new quality issues in later batches: {% for d in zero_in_first[:3] %}<em>{{ d.description }}</em>{% if not loop.last %}, {% endif %}{% endfor %}.
     </div>
     {% endif %}
 </div>
 
-<!-- ============ 05: DEFECT COUNT BY UNIT ============ -->
+<!-- ============ 06: DEFECT COUNT BY UNIT ============ -->
 <div class="section">
     <div class="section-header">
         <span class="section-number">06</span>
         <span class="section-title">Defect Count by Unit</span>
     </div>
 
-    {% set b5_units = unit_defects | selectattr('block', 'equalto', 'Block 5') | list %}
-    {% set b6_units = unit_defects | selectattr('block', 'equalto', 'Block 6') | list %}
-
-    <!-- BLOCK 5 -->
-    <div style="margin-bottom: 0;">
-        <div style="font-size: 12px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; color: #C8963E; margin-bottom: 12px;">Block 5 &mdash; Units {{ b5_units[0].unit_number }}&ndash;{{ b5_units[-1].unit_number }}</div>
+    {% for batch in batches %}
+    <div style="margin-{% if loop.first %}bottom{% else %}top{% endif %}: {% if loop.first %}0{% else %}24{% endif %}px; margin-bottom: 0;">
+        <div style="font-size: 12px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; color: {{ batch.colour }}; margin-bottom: 12px;">{{ batch.label }} &mdash; Units {{ batch.unit_range }}</div>
         <div style="position: relative; overflow-x: auto;">
             <!-- Average line -->
-            {% set avg_line_b5 = (b5.avg_defects / max_defects * 140) | int if max_defects > 0 else 0 %}
-            <div style="position: absolute; left: 0; right: 40px; bottom: {{ avg_line_b5 + 38 }}px; border-top: 2px dashed #C8963E; opacity: 0.5; z-index: 1;"></div>
+            {% set avg_line_h = (batch.avg_defects / max_defects * 140)|int if max_defects > 0 else 0 %}
+            <div style="position: absolute; left: 0; right: 40px; bottom: {{ avg_line_h + 38 }}px; border-top: 2px dashed {{ batch.colour }}; opacity: 0.5; z-index: 1;"></div>
             <table class="unit-bar-table" style="height: 180px; position: relative; z-index: 2;">
             <tr>
-            {% for u in b5_units %}
+            {% for u in batch.unit_defects %}
                 <td style="height: 160px; vertical-align: bottom;">
-                    {% set bar_height = (u.defect_count / max_defects * 140) | int if max_defects > 0 else 2 %}
+                    {% set bar_height = (u.defect_count / max_defects * 140)|int if max_defects > 0 else 2 %}
                     {% if u.defect_count > 30 %}{% set bar_colour = '#C44D3F' %}{% elif u.defect_count > 20 %}{% set bar_colour = '#C8963E' %}{% else %}{% set bar_colour = '#4A7C59' %}{% endif %}
                     <div class="unit-bar" style="height: {{ bar_height }}px; background: {{ bar_colour }};">
                         <span class="unit-bar-label">{{ u.defect_count }}</span>
@@ -803,55 +766,25 @@ body {
             {% endfor %}
             </tr>
             <tr style="border-top: 1px solid #E5E5E5;">
-            {% for u in b5_units %}<td style="padding-top: 4px;"><span class="unit-name-label">{{ u.unit_number }}</span></td>{% endfor %}
+            {% for u in batch.unit_defects %}<td style="padding-top: 4px;"><span class="unit-name-label">{{ u.unit_number }}</span></td>{% endfor %}
             </tr>
             </table>
         </div>
-        <div class="callout callout-gold" style="margin-top: 8px; margin-bottom: 0;">
-            <strong>Block 5 average: {{ b5.avg_defects }} defects/unit.</strong>
-            {{ b5_high }} of {{ b5.total_units }} units exceed 30 defects.
-            {% if b5_worst_unit.defect_count > 0 %}Worst: {{ b5_worst_unit.unit_number }} with {{ b5_worst_unit.defect_count }}.{% endif %}
+        <div class="callout {% if loop.index0 == 0 %}callout-gold{% elif loop.index0 == 1 %}callout-blue{% else %}callout-gold{% endif %}" style="margin-top: 8px; margin-bottom: 0;">
+            <strong>{{ batch.label }} average: {{ batch.avg_defects }} defects/unit.</strong>
+            {{ batch.high_defect_count }} of {{ batch.total_units }} units exceed 30 defects.
+            {% if batch.worst_unit.defect_count > 0 %}Worst: {{ batch.worst_unit.unit_number }} with {{ batch.worst_unit.defect_count }}.{% endif %}
         </div>
     </div>
-
-    <!-- BLOCK 6 -->
-    <div style="margin-top: 24px; margin-bottom: 0;">
-        <div style="font-size: 12px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; color: #3D6B8E; margin-bottom: 12px;">Block 6 &mdash; Units {{ b6_units[0].unit_number }}&ndash;{{ b6_units[-1].unit_number }}</div>
-        <div style="position: relative; overflow-x: auto;">
-            <!-- Average line -->
-            {% set avg_line_b6 = (b6.avg_defects / max_defects * 140) | int if max_defects > 0 else 0 %}
-            <div style="position: absolute; left: 0; right: 40px; bottom: {{ avg_line_b6 + 38 }}px; border-top: 2px dashed #3D6B8E; opacity: 0.5; z-index: 1;"></div>
-            <table class="unit-bar-table" style="height: 180px; position: relative; z-index: 2;">
-            <tr>
-            {% for u in b6_units %}
-                <td style="height: 160px; vertical-align: bottom;">
-                    {% set bar_height = (u.defect_count / max_defects * 140) | int if max_defects > 0 else 2 %}
-                    {% if u.defect_count > 30 %}{% set bar_colour = '#C44D3F' %}{% elif u.defect_count > 20 %}{% set bar_colour = '#C8963E' %}{% else %}{% set bar_colour = '#4A7C59' %}{% endif %}
-                    <div class="unit-bar" style="height: {{ bar_height }}px; background: {{ bar_colour }};">
-                        <span class="unit-bar-label">{{ u.defect_count }}</span>
-                    </div>
-                </td>
-            {% endfor %}
-            </tr>
-            <tr style="border-top: 1px solid #E5E5E5;">
-            {% for u in b6_units %}<td style="padding-top: 4px;"><span class="unit-name-label">{{ u.unit_number }}</span></td>{% endfor %}
-            </tr>
-            </table>
-        </div>
-        <div class="callout callout-blue" style="margin-top: 6px; margin-bottom: 14px;">
-            <strong>Block 6 average: {{ b6.avg_defects }} defects/unit.</strong>
-            {{ b6_high }} of {{ b6.total_units }} units exceed 30 defects.
-            {% if b6_worst_unit.defect_count > 0 %}Worst: {{ b6_worst_unit.unit_number }} with {{ b6_worst_unit.defect_count }}.{% endif %}
-        </div>
-    </div>
+    {% endfor %}
 
     <!-- Legend -->
-    <table class="legend-table">
+    <table class="legend-table" style="margin-top: 14px;">
     <tr>
         <td><span class="legend-swatch" style="background: #4A7C59;"></span><span class="legend-text">&le;20 defects</span></td>
         <td style="padding-left: 10px;"><span class="legend-swatch" style="background: #C8963E;"></span><span class="legend-text">21-30</span></td>
         <td style="padding-left: 10px;"><span class="legend-swatch" style="background: #C44D3F;"></span><span class="legend-text">&gt;30</span></td>
-        <td style="padding-left: 16px;"><span style="display: inline-block; width: 16px; height: 0; border-top: 2px dashed #6B6B6B; vertical-align: middle;"></span><span class="legend-text" style="padding-left: 4px;">Block average</span></td>
+        <td style="padding-left: 16px;"><span style="display: inline-block; width: 16px; height: 0; border-top: 2px dashed #6B6B6B; vertical-align: middle;"></span><span class="legend-text" style="padding-left: 4px;">Batch average</span></td>
     </tr>
     </table>
 
@@ -860,7 +793,7 @@ body {
     </div>
 </div>
 
-<!-- ============ 06: UNIT SUMMARY TABLE ============ -->
+<!-- ============ 07: UNIT SUMMARY TABLE ============ -->
 <div class="section" style="page-break-before: always;">
     <div class="section-header">
         <span class="section-number">07</span>
@@ -871,7 +804,7 @@ body {
     <thead>
     <tr>
         <th>Unit</th>
-        <th>Block</th>
+        <th>Batch</th>
         <th>Floor</th>
         <th class="text-right">Defects</th>
         <th class="text-right">Defect Rate</th>
@@ -883,11 +816,7 @@ body {
     <tr>
         <td class="font-bold">{{ u.unit_number }}</td>
         <td>
-            {% if u.block == 'Block 5' %}
-            <span class="badge-b5">B5</span>
-            {% else %}
-            <span class="badge-b6">B6</span>
-            {% endif %}
+            <span class="batch-badge" style="background: {{ u.batch_colour_bg }}; color: {{ u.batch_colour }};">{{ u.batch_short }}</span>
         </td>
         <td>{{ floor_map.get(u.floor, u.floor) if u.floor is not none else '' }}</td>
         <td class="text-right font-bold">{{ u.defect_count }}</td>
@@ -908,7 +837,7 @@ body {
         <td class="text-right font-bold">{{ total_defects }}</td>
         <td class="text-right font-bold">{{ defect_rate }}%</td>
         <td class="text-center">
-            <span class="status-badge" style="background: rgba(61,107,142,0.12); color: #3D6B8E;">{{ total_units }} units</span>
+            <span class="batch-badge" style="background: rgba(61,107,142,0.12); color: #3D6B8E;">{{ total_units }} units</span>
         </td>
     </tr>
     </tfoot>
