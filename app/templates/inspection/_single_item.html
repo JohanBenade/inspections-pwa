@@ -1,6 +1,6 @@
-{# Single inspection item partial - rendered by area.html loop AND update_item endpoint #}
-{# Required context: item, inspection, area, is_followup #}
-{# Optional: swap_oob (default false) - adds hx-swap-oob for OOB cascaded items #}
+{# Single inspection item CONTENT partial - no outer wrapper div #}
+{# area.html provides: <div id="item-{{ item.id }}">{% include this %}</div> #}
+{# update_item returns this for innerHTML swap into #item-{id} #}
 
 {% set is_parent = item.parent_item_id is none and item.depth == 0 %}
 {% set has_children = item.child_count > 0 %}
@@ -12,7 +12,6 @@
 {% set show_as_defect = is_followup and has_defect %}
 
 {% if not is_skipped %}
-<div id="item-{{ item.id }}" {% if swap_oob %}hx-swap-oob="innerHTML"{% endif %}>
 <div class="p-3 {% if is_child %}pl-8 bg-gray-50{% endif %} {% if parent_not_installed %}opacity-40{% endif %} {% if show_as_defect %}bg-red-50 border-l-4 border-red-400{% endif %}">
     <div class="flex justify-between items-start mb-2">
         <div class="flex-1">
@@ -138,6 +137,5 @@
     </div>
     {% endif %}
     {% endif %}
-</div>
 </div>
 {% endif %}
