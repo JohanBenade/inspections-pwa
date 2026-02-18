@@ -194,6 +194,13 @@
                     }
                 });
             }
+
+            /* Per-item swap: fire nested load triggers (htmx 1.9.x misses these) */
+            if (target.id && target.id.indexOf('item-') === 0) {
+                target.querySelectorAll('[hx-trigger="load"]').forEach(function(el) {
+                    htmx.trigger(el, 'load');
+                });
+            }
         });
     })();
 </script>
