@@ -22,7 +22,7 @@ for unum in ['TEST-001','TEST-002','TEST-003','TEST-004','TEST-005']:
         unit_ids[unum] = row[0]
     else:
         uid = uuid.uuid4().hex[:8]
-        cur.execute("INSERT INTO unit (id, tenant_id, unit_number, block, floor, phase_id, status, created_at, updated_at) VALUES (?, ?, ?, 'Test Block', 0, 'phase-003', 'not_started', ?, ?)", (uid, T, unum, now, now))
+        cur.execute("INSERT INTO unit (id, tenant_id, unit_number, block, floor, phase_id, unit_type, status) VALUES (?, ?, ?, 'Test Block', 0, 'phase-003', 'Standard', 'not_started')", (uid, T, unum))
         unit_ids[unum] = uid
         print(f'Unit: {unum} ({uid})')
 
