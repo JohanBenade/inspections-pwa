@@ -8,7 +8,7 @@
             <button type="button"
                 hx-get="{{ url_for('inspection.inspect_area', inspection_id=inspection.id, area_id=area.id) }}?filter=defects"
                 hx-target="#area-content"
-                hx-swap="innerHTML"
+                hx-swap="morph:innerHTML"
                 class="px-3 py-1.5 rounded text-sm font-medium transition-colors
                        {% if filter_mode == 'defects' %}bg-red-500 text-white{% else %}bg-gray-100 text-gray-600 hover:bg-gray-200{% endif %}">
                 All Defects
@@ -16,7 +16,7 @@
             <button type="button"
                 hx-get="{{ url_for('inspection.inspect_area', inspection_id=inspection.id, area_id=area.id) }}?filter=to_inspect"
                 hx-target="#area-content"
-                hx-swap="innerHTML"
+                hx-swap="morph:innerHTML"
                 class="px-3 py-1.5 rounded text-sm font-medium transition-colors
                        {% if filter_mode == 'to_inspect' %}bg-orange-500 text-white{% else %}bg-gray-100 text-gray-600 hover:bg-gray-200{% endif %}">
                 To Inspect
@@ -24,7 +24,7 @@
             <button type="button"
                 hx-get="{{ url_for('inspection.inspect_area', inspection_id=inspection.id, area_id=area.id) }}?filter=inspected"
                 hx-target="#area-content"
-                hx-swap="innerHTML"
+                hx-swap="morph:innerHTML"
                 class="px-3 py-1.5 rounded text-sm font-medium transition-colors
                        {% if filter_mode == 'inspected' %}bg-green-500 text-white{% else %}bg-gray-100 text-gray-600 hover:bg-gray-200{% endif %}">
                 Inspected
@@ -33,7 +33,7 @@
             <button type="button"
                 hx-get="{{ url_for('inspection.inspect_area', inspection_id=inspection.id, area_id=area.id) }}?filter=all"
                 hx-target="#area-content"
-                hx-swap="innerHTML"
+                hx-swap="morph:innerHTML"
                 class="px-3 py-1.5 rounded text-sm font-medium transition-colors
                        {% if filter_mode == 'all' %}bg-blue-500 text-white{% else %}bg-gray-100 text-gray-600 hover:bg-gray-200{% endif %}">
                 All Items
@@ -41,7 +41,7 @@
             <button type="button"
                 hx-get="{{ url_for('inspection.inspect_area', inspection_id=inspection.id, area_id=area.id) }}?filter=defects"
                 hx-target="#area-content"
-                hx-swap="innerHTML"
+                hx-swap="morph:innerHTML"
                 class="px-3 py-1.5 rounded text-sm font-medium transition-colors
                        {% if filter_mode == 'defects' %}bg-red-500 text-white{% else %}bg-gray-100 text-gray-600 hover:bg-gray-200{% endif %}">
                 Defects Only
@@ -141,6 +141,7 @@
                            hx-vals='{"area_id": "{{ area.id }}"}'
                            hx-trigger="blur changed, keydown[key=='Enter']"
                            hx-target="#area-content"
+                           hx-swap="morph:innerHTML"
                            name="comment">
                     {% if category.comment %}
                     <span class="text-xs text-green-600">Saved</span>
@@ -192,6 +193,7 @@
                             hx-post="{{ url_for('inspection.update_item', inspection_id=inspection.id, item_id=item.id) }}"
                             hx-vals='{"status": "ok", "area_id": "{{ area.id }}"}'
                             hx-target="#area-content"
+                            hx-swap="morph:innerHTML"
                             class="px-3 py-2 rounded text-xs font-medium transition-colors
                                    {% if item.status == 'ok' %}bg-green-500 text-white{% else %}bg-gray-100 text-gray-600 hover:bg-green-100{% endif %}">
                             {% if show_as_defect %}Rectified{% else %}Installed{% endif %}
@@ -201,6 +203,7 @@
                             hx-post="{{ url_for('inspection.update_item', inspection_id=inspection.id, item_id=item.id) }}"
                             hx-vals='{"status": "not_installed", "area_id": "{{ area.id }}"}'
                             hx-target="#area-content"
+                            hx-swap="morph:innerHTML"
                             class="px-3 py-2 rounded text-xs font-medium transition-colors
                                    {% if item.status == 'not_installed' %}bg-red-500 text-white{% else %}bg-gray-100 text-gray-600 hover:bg-red-100{% endif %}">
                             {% if show_as_defect %}Still Missing{% else %}Not Installed{% endif %}
@@ -216,6 +219,7 @@
                             hx-post="{{ url_for('inspection.update_item', inspection_id=inspection.id, item_id=item.id) }}"
                             hx-vals='{"status": "ok", "area_id": "{{ area.id }}"}'
                             hx-target="#area-content"
+                            hx-swap="morph:innerHTML"
                             class="px-3 py-2 rounded text-xs font-medium transition-colors
                                    {% if item.status == 'ok' %}bg-green-500 text-white{% else %}bg-gray-100 text-gray-600 hover:bg-green-100{% endif %}">
                             {% if show_as_defect %}Rectified{% else %}OK{% endif %}
@@ -225,6 +229,7 @@
                             hx-post="{{ url_for('inspection.update_item', inspection_id=inspection.id, item_id=item.id) }}"
                             hx-vals='{"status": "not_to_standard", "area_id": "{{ area.id }}"}'
                             hx-target="#area-content"
+                            hx-swap="morph:innerHTML"
                             class="px-3 py-2 rounded text-xs font-medium transition-colors
                                    {% if item.status == 'not_to_standard' %}bg-red-500 text-white{% else %}bg-gray-100 text-gray-600 hover:bg-red-100{% endif %}">
                             {% if show_as_defect %}Still Defective{% else %}N.T.S.{% endif %}
@@ -235,6 +240,7 @@
                             hx-post="{{ url_for('inspection.update_item', inspection_id=inspection.id, item_id=item.id) }}"
                             hx-vals='{"status": "not_installed", "area_id": "{{ area.id }}"}'
                             hx-target="#area-content"
+                            hx-swap="morph:innerHTML"
                             class="px-3 py-2 rounded text-xs font-medium transition-colors
                                    {% if item.status == 'not_installed' %}bg-yellow-500 text-white{% else %}bg-gray-100 text-gray-600 hover:bg-yellow-100{% endif %}">
                             N/I
@@ -263,10 +269,11 @@
                                hx-vals='{"status": "{{ item.status }}", "area_id": "{{ area.id }}"}'
                                hx-trigger="blur changed, keydown[key=='Enter']"
                                hx-target="#area-content"
+                               hx-swap="morph:innerHTML"
                                name="comment">
                         <div hx-get="{{ url_for('inspection.get_defect_suggestions', item_template_id=item.template_id) }}"
                              hx-trigger="load"
-                             hx-swap="innerHTML"></div>
+                             hx-swap="morph:innerHTML"></div>
                     </div>
                     {% elif show_as_defect and item.status == 'ok' %}
                     <div class="mt-2 p-2 bg-green-50 rounded border border-green-200">
@@ -278,7 +285,7 @@
                          data-area-id="{{ area.id }}"
                          hx-get="{{ url_for('inspection.get_defect_suggestions', item_template_id=item.template_id) }}?mode=guide"
                          hx-trigger="loadPills once"
-                         hx-swap="innerHTML">
+                         hx-swap="morph:innerHTML">
                     </div>
                     {% endif %}
                     {% endif %}
@@ -308,30 +315,6 @@
 </div>
 
 <script>
-    // Restore expanded categories after HTMX swap
-    if (window._expandedCats && window._expandedCats.length > 0) {
-        document.querySelectorAll('.cat-content').forEach(function(c, i) {
-            if (window._expandedCats.indexOf(i) > -1) {
-                c.classList.remove('hidden');
-                var chevron = c.previousElementSibling ? c.previousElementSibling.querySelector('.cat-chevron') : null;
-                if (chevron) chevron.classList.add('rotate-90');
-            }
-        });
-    }
-
-    // Auto-capitalize first character
-    document.querySelectorAll('.auto-caps').forEach(function(input) {
-        input.addEventListener('input', function(e) {
-            if (this.value.length === 1) {
-                this.value = this.value.charAt(0).toUpperCase();
-            }
-        });
-    });
-    
-
-    
-
-    
-    // Trigger progress bar refresh
+    /* Progress + badge refresh (category restore + auto-caps handled by inspect.html listener) */
     document.body.dispatchEvent(new CustomEvent('areaUpdated'));
 </script>

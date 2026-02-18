@@ -3,7 +3,7 @@
     {% for s in suggestions %}
     {% if mode == 'guide' %}
     <button type="button"
-            onclick="var w=this.closest('.guide-pills');htmx.ajax('POST',w.dataset.postUrl,{target:'#area-content',swap:'innerHTML',values:{status:'not_to_standard',comment:this.textContent.trim(),area_id:w.dataset.areaId}})"
+            onclick="var w=this.closest('.guide-pills');htmx.ajax('POST',w.dataset.postUrl,{target:'#area-content',swap:'morph:innerHTML',values:{status:'not_to_standard',comment:this.textContent.trim(),area_id:w.dataset.areaId}})"
             ontouchend="event.preventDefault();this.click()"
             class="text-sm bg-gray-100 text-gray-500 hover:bg-red-100 hover:text-red-700 px-3 py-2 rounded border border-gray-200 truncate max-w-full">
         {{ s.description }}
