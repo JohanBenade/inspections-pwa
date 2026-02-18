@@ -464,6 +464,96 @@ def inspect_area(inspection_id, area_id):
                          area_note=area_note)
 
 
+def _build_item_for_render(inspection_id, item_id, tenant_id, unit_id=None, cycle_number=None):
+    """Build the template context dict for a single inspection item."""
+    item_raw = query_db("""
+        SELECT it.id as template_id, it.item_description, it.parent_item_id, it.item_order,
+               ii.id, ii.status, ii.comment, ii.marked_at,
+               (SELECT COUNT(*) FROM item_template WHERE parent_item_id = it.id) as child_count
+        FROM item_template it
+        JOIN inspection_item ii ON it.id = ii.item_template_id
+        WHERE ii.id = ? AND ii.inspection_id = ?
+    """, [item_id, inspection_id], one=True)
+
+    if not item_raw:
+        return None
+
+    parent_status = None
+    if item_raw['parent_item_id']:
+        parent_item = query_db("""
+            SELECT ii.status FROM inspection_item ii
+            JOIN item_template it ON ii.item_template_id = it.id
+            WHERE it.id = ? AND ii.inspection_id = ?
+        """, [item_raw['parent_item_id'], inspection_id], one=True)
+        if parent_item:
+            parent_status = parent_item['status']
+
+    has_open_defect = False
+    defect_cycle = None
+    defect_comment = None
+    if unit_id and cycle_number and cycle_number > 1:
+        defect_info = query_db("""
+            SELECT d.original_comment, ic.cycle_number as raised_cycle
+            FROM defect d
+            JOIN inspection_cycle ic ON d.raised_cycle_id = ic.id
+            WHERE d.unit_id = ? AND d.item_template_id = ? AND d.status = 'open'
+        """, [unit_id, item_raw['template_id']], one=True)
+        if defect_info:
+            has_open_defect = True
+            defect_cycle = defect_info['raised_cycle']
+            defect_comment = defect_info['original_comment']
+
+    return {
+        'id': item_raw['id'],
+        'template_id': item_raw['template_id'],
+        'item_description': item_raw['item_description'],
+        'status': item_raw['status'],
+        'comment': item_raw['comment'],
+        'parent_item_id': item_raw['parent_item_id'],
+        'depth': 0 if item_raw['parent_item_id'] is None else 1,
+        'child_count': item_raw['child_count'],
+        'parent_status': parent_status,
+        'has_open_defect': has_open_defect,
+        'defect_cycle': defect_cycle,
+        'defect_comment': defect_comment,
+    }
+
+
+def _render_single_item(inspection_id, item_id, tenant_id, area_id, swap_oob=False):
+    """Render a single item partial for HTMX per-item swap."""
+    inspection = query_db("""
+        SELECT i.*, u.unit_type, u.unit_number, u.id as unit_id,
+               ic.cycle_number, ic.id as cycle_id
+        FROM inspection i
+        JOIN unit u ON i.unit_id = u.id
+        JOIN inspection_cycle ic ON i.cycle_id = ic.id
+        WHERE i.id = ? AND i.tenant_id = ?
+    """, [inspection_id, tenant_id], one=True)
+
+    area = query_db(
+        "SELECT * FROM area_template WHERE id = ? AND tenant_id = ?",
+        [area_id, tenant_id], one=True
+    )
+
+    item = _build_item_for_render(
+        inspection_id, item_id, tenant_id,
+        unit_id=inspection['unit_id'],
+        cycle_number=inspection['cycle_number']
+    )
+
+    if not item or not inspection or not area:
+        return ''
+
+    is_followup = inspection['cycle_number'] > 1
+
+    return render_template('inspection/_single_item.html',
+                           item=item,
+                           inspection=inspection,
+                           area=area,
+                           is_followup=is_followup,
+                           swap_oob=swap_oob)
+
+
 @inspection_bp.route('/<inspection_id>/item/<item_id>', methods=['POST'])
 @require_auth
 def update_item(inspection_id, item_id):
