@@ -891,6 +891,44 @@ def get_defect_count(inspection_id):
     return ''
 
 
+@inspection_bp.route('/<inspection_id>/area-badges')
+@require_auth
+def get_area_badges(inspection_id):
+    """Return updated area defect badges for HTMX OOB swap."""
+    area_defects = query_db("""
+        SELECT at.id as area_id, at.area_name, COUNT(*) as defect_count
+        FROM inspection_item ii
+        JOIN item_template it ON ii.item_template_id = it.id
+        JOIN category_template ct ON it.category_id = ct.id
+        JOIN area_template at ON ct.area_id = at.id
+        WHERE ii.inspection_id = ?
+        AND ii.status IN ('not_to_standard', 'not_installed')
+        GROUP BY at.id
+    """, [inspection_id])
+    badges = {d['area_id']: d['defect_count'] for d in area_defects}
+    
+    # Get all areas that have items for this inspection
+    all_areas = query_db("""
+        SELECT DISTINCT at.id
+        FROM inspection_item ii
+        JOIN item_template it ON ii.item_template_id = it.id
+        JOIN category_template ct ON it.category_id = ct.id
+        JOIN area_template at ON ct.area_id = at.id
+        WHERE ii.inspection_id = ? AND ii.status != 'skipped'
+    """, [inspection_id])
+    
+    html_parts = []
+    for area in all_areas:
+        aid = area['id']
+        count = badges.get(aid, 0)
+        if count > 0:
+            html_parts.append(f'<span id="area-badge-{aid}" hx-swap-oob="true" class="bg-red-500 text-white text-xs px-1.5 py-0.5 rounded-full">{count}</span>')
+        else:
+            html_parts.append(f'<span id="area-badge-{aid}" hx-swap-oob="true"></span>')
+    
+    return '\n'.join(html_parts)
+
+
 @inspection_bp.route('/suggestions/<item_template_id>')
 @require_auth
 def get_defect_suggestions(item_template_id):

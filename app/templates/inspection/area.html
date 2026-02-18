@@ -272,13 +272,13 @@
                     {% else %}
                     <div class="mt-1">
                         <a href="javascript:void(0)"
-                           onclick="var d=this.nextElementSibling;d.classList.toggle('hidden');if(!d.dataset.loaded){htmx.trigger(d,'loadPills');d.dataset.loaded='1'}"
+                           onclick="var d=this.parentElement.querySelector('.guide-pills');d.classList.toggle('hidden');if(!d.dataset.loaded){htmx.trigger(d,'loadPills');d.dataset.loaded='1'}"
                            ontouchend="event.preventDefault();this.click()"
-                           class="text-sm text-gray-400 hover:text-blue-500 py-1 inline-block"
+                           class="px-3 py-2 rounded text-xs font-medium bg-gray-100 text-gray-500 hover:bg-blue-50 hover:text-blue-600 inline-block"
                            style="text-decoration:none">
-                            &#9432; common defects
+                            What to look for
                         </a>
-                        <div class="hidden guide-pills"
+                        <div class="hidden guide-pills mt-2"
                              data-post-url="{{ url_for('inspection.update_item', inspection_id=inspection.id, item_id=item.id) }}"
                              data-area-id="{{ area.id }}"
                              hx-get="{{ url_for('inspection.get_defect_suggestions', item_template_id=item.template_id) }}?mode=guide"

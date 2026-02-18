@@ -49,9 +49,7 @@
                         hx-swap="innerHTML"
                         onclick="document.querySelectorAll('.area-tab').forEach(t => {t.classList.remove('border-blue-500', 'text-blue-600'); t.classList.add('border-transparent', 'text-gray-500')}); this.classList.add('border-blue-500', 'text-blue-600'); this.classList.remove('border-transparent', 'text-gray-500')">
                     {{ area.name }}
-                    {% if area_defect_map.get(area.id) %}
-                    <span class="bg-red-500 text-white text-xs px-1.5 py-0.5 rounded-full">{{ area_defect_map[area.id] }}</span>
-                    {% endif %}
+                    <span id="area-badge-{{ area.id }}" {% if area_defect_map.get(area.id) %}class="bg-red-500 text-white text-xs px-1.5 py-0.5 rounded-full"{% endif %}>{{ area_defect_map[area.id] if area_defect_map.get(area.id) else '' }}</span>
                     {% if area_notes_map.get(area.id) %}
                     <span class="text-orange-500 text-xs">*</span>
                     {% endif %}
@@ -60,6 +58,10 @@
             </div>
         </div>
         
+        <div id="area-badges-refresh" style="display:none"
+             hx-get="{{ url_for('inspection.get_area_badges', inspection_id=inspection.id) }}"
+             hx-trigger="areaUpdated from:body"
+             hx-swap="none"></div>
         <div id="area-content" class="p-4"
              hx-get="{{ url_for('inspection.inspect_area', inspection_id=inspection.id, area_id=template[0].id) }}{% if is_followup %}?filter=to_inspect{% endif %}"
              hx-trigger="load">
