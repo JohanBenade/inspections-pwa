@@ -75,6 +75,11 @@
         <div class="flex flex-col items-center">
             <div class="w-2.5 h-2.5 rounded-full {% if complete %}bg-green-500{% else %}bg-gray-300{% endif %}"></div>
             <span class="text-[9px] text-gray-400 mt-0.5">{{ label }}</span>
+            {% if label == 'Signed Off' and cycle.approved_at %}
+            <span class="text-[8px] text-gray-300">{{ cycle.approved_at[:10] }}</span>
+            {% elif label == 'PDFs Pushed' and cycle.pdfs_pushed_at %}
+            <span class="text-[8px] text-gray-300">{{ cycle.pdfs_pushed_at[:10] }}</span>
+            {% endif %}
         </div>
         {% endfor %}
     </div>
@@ -120,11 +125,98 @@
 </div>
 {% elif not cycle.approved_at and stats.total > 0 %}
 <div class="bg-green-50 border border-green-200 rounded-lg px-4 py-3 mb-4 text-sm text-green-800">
-    All descriptions are clean. You can sign off this cycle below.
+    All descriptions are clean. Sign off when ready.
 </div>
 {% endif %}
 
-<!-- Units Accordion -->
+<!-- Action Zone -->
+<div class="mb-4 bg-white rounded-xl border border-gray-200 p-5">
+
+    {% if cycle.pdfs_pushed_at %}
+    <!-- State D: Complete -->
+    <div class="text-center space-y-2">
+        <div class="flex items-center justify-center gap-2 text-green-600">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+            </svg>
+            <span class="font-medium">Signed off{% if cycle.approved_by %} by {{ cycle.approved_by }}{% endif %}</span>
+        </div>
+        <div class="flex items-center justify-center gap-2 text-green-600">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+            </svg>
+            <span class="font-medium">{{ stats.total }} PDFs pushed to SharePoint</span>
+        </div>
+        <p class="text-sm text-gray-500">Cycle complete.</p>
+    </div>
+
+    {% elif cycle.approved_at %}
+    <!-- State C: Signed off, push PDFs -->
+    <div class="text-center space-y-3">
+        <div class="flex items-center justify-center gap-2 text-green-600">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+            </svg>
+            <span class="font-medium">Signed off{% if cycle.approved_by %} by {{ cycle.approved_by }}{% endif %}</span>
+        </div>
+        <form method="POST" action="{{ url_for('approvals.push_pdfs', cycle_id=cycle.id) }}">
+            <button type="submit"
+                    class="w-full py-3 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 transition-colors"
+                    onclick="this.disabled=true;this.textContent='Pushing PDFs...';this.form.submit();">
+                Push {{ stats.total }} PDFs to Raubex SharePoint
+            </button>
+        </form>
+        <p class="text-xs text-gray-400">PDFs will include reviewed descriptions.</p>
+    </div>
+
+    {% elif stats.reviewed == stats.total and stats.total > 0 %}
+    <!-- State B: All reviewed, sign off -->
+    <div class="space-y-3">
+        <!-- Progress bar -->
+        <div class="flex items-center gap-2">
+            <svg class="w-5 h-5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+            </svg>
+            <span class="text-sm font-medium text-green-700">All {{ stats.total }} units reviewed</span>
+        </div>
+        <div class="w-full h-2 bg-gray-100 rounded-full">
+            <div class="h-2 bg-green-500 rounded-full" style="width: 100%"></div>
+        </div>
+
+        <form method="POST" action="{{ url_for('approvals.sign_off', cycle_id=cycle.id) }}"
+              onsubmit="return confirm('Sign off {{ cycle.block or 'this cycle' }}? This will approve all {{ stats.total }} inspections for Raubex.');">
+            <button type="submit"
+                    class="w-full py-3 bg-green-600 text-white font-medium rounded-lg hover:bg-green-700 transition-colors">
+                Sign Off &mdash; {{ cycle.block or 'Cycle' }}{% if cycle.floor is not none %} {% if cycle.floor == 0 %}Ground Floor{% elif cycle.floor == 1 %}1st Floor{% elif cycle.floor == 2 %}2nd Floor{% elif cycle.floor == 3 %}3rd Floor{% else %}Floor {{ cycle.floor }}{% endif %}{% endif %}
+            </button>
+        </form>
+        <p class="text-xs text-gray-400 text-center">This will approve all {{ stats.total }} inspections for Raubex.</p>
+    </div>
+
+    {% else %}
+    <!-- State A: Still reviewing -->
+    <div class="space-y-3">
+        <div class="flex items-center justify-between text-sm">
+            <span class="text-gray-600">{{ stats.reviewed }} of {{ stats.total }} units reviewed</span>
+            <span class="font-medium text-gray-900">{{ ((stats.reviewed / stats.total * 100) | int) if stats.total > 0 else 0 }}%</span>
+        </div>
+        <div class="w-full h-2 bg-gray-100 rounded-full">
+            <div class="h-2 bg-green-500 rounded-full transition-all"
+                 style="width: {{ ((stats.reviewed / stats.total * 100) | int) if stats.total > 0 else 0 }}%"></div>
+        </div>
+
+        <form method="POST" action="{{ url_for('approvals.bulk_reviewed', cycle_id=cycle.id) }}">
+            <button type="submit"
+                    class="w-full py-2.5 text-sm font-medium rounded-lg border-2 border-gray-300 text-gray-700 hover:bg-gray-50 transition-colors">
+                Mark All Clean Units as Reviewed
+            </button>
+        </form>
+        <p class="text-xs text-gray-400 text-center">Only marks units where all descriptions match the library.</p>
+    </div>
+    {% endif %}
+</div>
+
+<!-- Units (expand to review details) -->
 <div class="space-y-2" id="units-list">
 {% for unit in units %}
 <div class="bg-white rounded-xl border border-gray-200 overflow-hidden unit-card"
@@ -292,93 +384,6 @@
     </div>
 </div>
 {% endfor %}
-</div>
-
-<!-- Bulk Actions Zone -->
-<div class="mt-6 bg-white rounded-xl border border-gray-200 p-5">
-
-    {% if cycle.pdfs_pushed_at %}
-    <!-- State D: Complete -->
-    <div class="text-center space-y-2">
-        <div class="flex items-center justify-center gap-2 text-green-600">
-            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
-            </svg>
-            <span class="font-medium">Signed off{% if cycle.approved_by %} by {{ cycle.approved_by }}{% endif %}</span>
-        </div>
-        <div class="flex items-center justify-center gap-2 text-green-600">
-            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
-            </svg>
-            <span class="font-medium">{{ stats.total }} PDFs pushed to SharePoint</span>
-        </div>
-        <p class="text-sm text-gray-500">Cycle complete.</p>
-    </div>
-
-    {% elif cycle.approved_at %}
-    <!-- State C: Signed off, push PDFs -->
-    <div class="text-center space-y-3">
-        <div class="flex items-center justify-center gap-2 text-green-600">
-            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
-            </svg>
-            <span class="font-medium">Signed off{% if cycle.approved_by %} by {{ cycle.approved_by }}{% endif %}</span>
-        </div>
-        <form method="POST" action="{{ url_for('approvals.push_pdfs', cycle_id=cycle.id) }}">
-            <button type="submit"
-                    class="w-full py-3 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 transition-colors"
-                    onclick="this.disabled=true;this.textContent='Pushing PDFs...';this.form.submit();">
-                Push {{ stats.total }} PDFs to Raubex SharePoint
-            </button>
-        </form>
-        <p class="text-xs text-gray-400">PDFs will include reviewed descriptions.</p>
-    </div>
-
-    {% elif stats.reviewed == stats.total and stats.total > 0 %}
-    <!-- State B: All reviewed, sign off -->
-    <div class="space-y-3">
-        <!-- Progress bar -->
-        <div class="flex items-center gap-2">
-            <svg class="w-5 h-5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
-            </svg>
-            <span class="text-sm font-medium text-green-700">All {{ stats.total }} units reviewed</span>
-        </div>
-        <div class="w-full h-2 bg-gray-100 rounded-full">
-            <div class="h-2 bg-green-500 rounded-full" style="width: 100%"></div>
-        </div>
-
-        <form method="POST" action="{{ url_for('approvals.sign_off', cycle_id=cycle.id) }}"
-              onsubmit="return confirm('Sign off {{ cycle.block or 'this cycle' }}? This will approve all {{ stats.total }} inspections for Raubex.');">
-            <button type="submit"
-                    class="w-full py-3 bg-green-600 text-white font-medium rounded-lg hover:bg-green-700 transition-colors">
-                Sign Off &mdash; {{ cycle.block or 'Cycle' }}{% if cycle.floor is not none %} {% if cycle.floor == 0 %}Ground Floor{% elif cycle.floor == 1 %}1st Floor{% elif cycle.floor == 2 %}2nd Floor{% elif cycle.floor == 3 %}3rd Floor{% else %}Floor {{ cycle.floor }}{% endif %}{% endif %}
-            </button>
-        </form>
-        <p class="text-xs text-gray-400 text-center">This will approve all {{ stats.total }} inspections for Raubex.</p>
-    </div>
-
-    {% else %}
-    <!-- State A: Still reviewing -->
-    <div class="space-y-3">
-        <div class="flex items-center justify-between text-sm">
-            <span class="text-gray-600">{{ stats.reviewed }} of {{ stats.total }} units reviewed</span>
-            <span class="font-medium text-gray-900">{{ ((stats.reviewed / stats.total * 100) | int) if stats.total > 0 else 0 }}%</span>
-        </div>
-        <div class="w-full h-2 bg-gray-100 rounded-full">
-            <div class="h-2 bg-green-500 rounded-full transition-all"
-                 style="width: {{ ((stats.reviewed / stats.total * 100) | int) if stats.total > 0 else 0 }}%"></div>
-        </div>
-
-        <form method="POST" action="{{ url_for('approvals.bulk_reviewed', cycle_id=cycle.id) }}">
-            <button type="submit"
-                    class="w-full py-2.5 text-sm font-medium rounded-lg border-2 border-gray-300 text-gray-700 hover:bg-gray-50 transition-colors">
-                Mark All Clean Units as Reviewed
-            </button>
-        </form>
-        <p class="text-xs text-gray-400 text-center">Only marks units where all descriptions match the library.</p>
-    </div>
-    {% endif %}
 </div>
 
 <!-- Bottom padding for mobile nav -->
