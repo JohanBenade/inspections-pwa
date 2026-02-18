@@ -148,22 +148,21 @@
 </div>
 {% endif %}
 
-
-
 <script>
-    /* Save expanded categories before morph swap. Morph preserves DOM nodes
-       but the server returns categories as collapsed, so morph will re-add
-       the hidden class. We restore after settle. */
     (function() {
+        /* Save expanded categories before any area-content swap */
         document.body.addEventListener('htmx:beforeRequest', function(evt) {
-            var tgt = evt.detail.elt.getAttribute('hx-target');
-            if (tgt === '#area-content') {
+            var el = evt.detail.elt;
+            var tgt = el.getAttribute('hx-target');
+            if (tgt === '#area-content' || (el.closest && el.closest('#area-content'))) {
                 window._expandedCats = [];
                 document.querySelectorAll('.cat-content').forEach(function(c, i) {
                     if (!c.classList.contains('hidden')) window._expandedCats.push(i);
                 });
             }
         });
+
+        /* After morph settles, restore categories + rebind auto-caps + refresh badges */
         document.body.addEventListener('htmx:afterSettle', function(evt) {
             if (evt.detail.target && evt.detail.target.id === 'area-content') {
                 if (window._expandedCats && window._expandedCats.length > 0) {
@@ -176,7 +175,6 @@
                         }
                     });
                 }
-                /* Auto-capitalize inputs added by the swap */
                 document.querySelectorAll('#area-content .auto-caps').forEach(function(inp) {
                     if (!inp._acSet) {
                         inp._acSet = true;
@@ -186,7 +184,6 @@
                         });
                     }
                 });
-                /* Trigger progress bar + badge refresh */
                 document.body.dispatchEvent(new CustomEvent('areaUpdated'));
             }
         });

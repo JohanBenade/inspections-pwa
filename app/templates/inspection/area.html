@@ -273,7 +273,7 @@
                                name="comment">
                         <div hx-get="{{ url_for('inspection.get_defect_suggestions', item_template_id=item.template_id) }}"
                              hx-trigger="load"
-                             hx-swap="morph:innerHTML"></div>
+                             hx-swap="innerHTML"></div>
                     </div>
                     {% elif show_as_defect and item.status == 'ok' %}
                     <div class="mt-2 p-2 bg-green-50 rounded border border-green-200">
@@ -285,7 +285,7 @@
                          data-area-id="{{ area.id }}"
                          hx-get="{{ url_for('inspection.get_defect_suggestions', item_template_id=item.template_id) }}?mode=guide"
                          hx-trigger="loadPills once"
-                         hx-swap="morph:innerHTML">
+                         hx-swap="innerHTML">
                     </div>
                     {% endif %}
                     {% endif %}
