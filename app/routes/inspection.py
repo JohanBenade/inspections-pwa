@@ -3,7 +3,7 @@ Inspection routes - Main inspection workflow.
 Inspections are conducted within a cycle created by the architect.
 """
 from datetime import date, datetime, timezone
-from flask import Blueprint, render_template, session, redirect, url_for, abort, request, jsonify
+from flask import Blueprint, render_template, session, redirect, url_for, abort, request, jsonify, make_response
 from app.auth import require_auth
 from app.utils import generate_id
 from app.utils.wash import wash_description
@@ -541,7 +541,24 @@ def update_item(inspection_id, item_id):
         db.commit()
     
     if area_id:
-        return redirect(url_for('inspection.inspect_area', inspection_id=inspection_id, area_id=area_id))
+        tenant_id_for_render = session['tenant_id']
+        html = _render_single_item(inspection_id, item_id, tenant_id_for_render, area_id)
+
+        if template and template['parent_item_id'] is None and status in ('ok', 'not_installed'):
+            children = query_db("""
+                SELECT ii.id FROM inspection_item ii
+                JOIN item_template it ON ii.item_template_id = it.id
+                WHERE it.parent_item_id = ? AND ii.inspection_id = ?
+            """, [item['item_template_id'], inspection_id])
+            for child in children:
+                child_html = _render_single_item(
+                    inspection_id, child['id'], tenant_id_for_render, area_id, swap_oob=True
+                )
+                html += child_html
+
+        response = make_response(html)
+        response.headers['HX-Trigger'] = 'areaUpdated'
+        return response
     
     return '', 204
 

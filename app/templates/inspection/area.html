@@ -8,7 +8,7 @@
             <button type="button"
                 hx-get="{{ url_for('inspection.inspect_area', inspection_id=inspection.id, area_id=area.id) }}?filter=defects"
                 hx-target="#area-content"
-                hx-swap="morph:innerHTML"
+                hx-swap="innerHTML"
                 class="px-3 py-1.5 rounded text-sm font-medium transition-colors
                        {% if filter_mode == 'defects' %}bg-red-500 text-white{% else %}bg-gray-100 text-gray-600 hover:bg-gray-200{% endif %}">
                 All Defects
@@ -16,7 +16,7 @@
             <button type="button"
                 hx-get="{{ url_for('inspection.inspect_area', inspection_id=inspection.id, area_id=area.id) }}?filter=to_inspect"
                 hx-target="#area-content"
-                hx-swap="morph:innerHTML"
+                hx-swap="innerHTML"
                 class="px-3 py-1.5 rounded text-sm font-medium transition-colors
                        {% if filter_mode == 'to_inspect' %}bg-orange-500 text-white{% else %}bg-gray-100 text-gray-600 hover:bg-gray-200{% endif %}">
                 To Inspect
@@ -24,7 +24,7 @@
             <button type="button"
                 hx-get="{{ url_for('inspection.inspect_area', inspection_id=inspection.id, area_id=area.id) }}?filter=inspected"
                 hx-target="#area-content"
-                hx-swap="morph:innerHTML"
+                hx-swap="innerHTML"
                 class="px-3 py-1.5 rounded text-sm font-medium transition-colors
                        {% if filter_mode == 'inspected' %}bg-green-500 text-white{% else %}bg-gray-100 text-gray-600 hover:bg-gray-200{% endif %}">
                 Inspected
@@ -33,7 +33,7 @@
             <button type="button"
                 hx-get="{{ url_for('inspection.inspect_area', inspection_id=inspection.id, area_id=area.id) }}?filter=all"
                 hx-target="#area-content"
-                hx-swap="morph:innerHTML"
+                hx-swap="innerHTML"
                 class="px-3 py-1.5 rounded text-sm font-medium transition-colors
                        {% if filter_mode == 'all' %}bg-blue-500 text-white{% else %}bg-gray-100 text-gray-600 hover:bg-gray-200{% endif %}">
                 All Items
@@ -41,7 +41,7 @@
             <button type="button"
                 hx-get="{{ url_for('inspection.inspect_area', inspection_id=inspection.id, area_id=area.id) }}?filter=defects"
                 hx-target="#area-content"
-                hx-swap="morph:innerHTML"
+                hx-swap="innerHTML"
                 class="px-3 py-1.5 rounded text-sm font-medium transition-colors
                        {% if filter_mode == 'defects' %}bg-red-500 text-white{% else %}bg-gray-100 text-gray-600 hover:bg-gray-200{% endif %}">
                 Defects Only
@@ -141,7 +141,7 @@
                            hx-vals='{"area_id": "{{ area.id }}"}'
                            hx-trigger="blur changed, keydown[key=='Enter']"
                            hx-target="#area-content"
-                           hx-swap="morph:innerHTML"
+                           hx-swap="innerHTML"
                            name="comment">
                     {% if category.comment %}
                     <span class="text-xs text-green-600">Saved</span>
@@ -152,145 +152,7 @@
             <!-- Items -->
             <div class="divide-y">
                 {% for item in category.checklist %}
-                {% set is_parent = item.parent_item_id is none and item.depth == 0 %}
-                {% set has_children = item.child_count > 0 %}
-                {% set is_child = item.parent_item_id is not none %}
-                {% set parent_not_installed = item.parent_status == 'not_installed' %}
-                {% set is_skipped = item.status == 'skipped' %}
-                {% set has_defect = item.has_open_defect %}
-                {% set is_defective = item.status in ['not_to_standard', 'not_installed'] %}
-                {% set show_as_defect = is_followup and has_defect %}
-                
-                {% if is_skipped %}
-                    {# Excluded items hidden - use Excluded filter to see them #}
-                {% else %}
-                <div class="p-3 {% if is_child %}pl-8 bg-gray-50{% endif %} {% if parent_not_installed %}opacity-40{% endif %} {% if show_as_defect %}bg-red-50 border-l-4 border-red-400{% endif %}">
-                    <div class="flex justify-between items-start mb-2">
-                        <div class="flex-1">
-                            {% if is_child %}
-                            <span class="text-gray-400 mr-1">-</span>
-                            {% endif %}
-                            <span class="text-sm {% if is_parent %}font-semibold{% else %}font-medium{% endif %} text-gray-800">
-                                {{ item.item_description }}
-                            </span>
-                        </div>
-                    </div>
-                    
-                    {% if show_as_defect %}
-                    <div class="mb-3 p-2 bg-red-100 rounded border border-red-200">
-                        <div class="text-xs font-medium text-red-800 mb-1">
-                            Previous defect (Cycle {{ item.defect_cycle }}):
-                        </div>
-                        <div class="text-sm text-red-700">
-                            {{ item.defect_comment or 'No comment' }}
-                        </div>
-                    </div>
-                    {% endif %}
-                    
-                    {% if is_parent and has_children %}
-                    <div class="flex flex-wrap gap-2">
-                        <button type="button"
-                            hx-post="{{ url_for('inspection.update_item', inspection_id=inspection.id, item_id=item.id) }}"
-                            hx-vals='{"status": "ok", "area_id": "{{ area.id }}"}'
-                            hx-target="#area-content"
-                            hx-swap="morph:innerHTML"
-                            class="px-3 py-2 rounded text-xs font-medium transition-colors
-                                   {% if item.status == 'ok' %}bg-green-500 text-white{% else %}bg-gray-100 text-gray-600 hover:bg-green-100{% endif %}">
-                            {% if show_as_defect %}Rectified{% else %}Installed{% endif %}
-                        </button>
-                        
-                        <button type="button"
-                            hx-post="{{ url_for('inspection.update_item', inspection_id=inspection.id, item_id=item.id) }}"
-                            hx-vals='{"status": "not_installed", "area_id": "{{ area.id }}"}'
-                            hx-target="#area-content"
-                            hx-swap="morph:innerHTML"
-                            class="px-3 py-2 rounded text-xs font-medium transition-colors
-                                   {% if item.status == 'not_installed' %}bg-red-500 text-white{% else %}bg-gray-100 text-gray-600 hover:bg-red-100{% endif %}">
-                            {% if show_as_defect %}Still Missing{% else %}Not Installed{% endif %}
-                        </button>
-                    </div>
-                    
-                    {% elif parent_not_installed %}
-                    <div class="text-xs text-gray-400 italic">Parent not installed</div>
-                    
-                    {% else %}
-                    <div class="flex flex-wrap gap-2">
-                        <button type="button"
-                            hx-post="{{ url_for('inspection.update_item', inspection_id=inspection.id, item_id=item.id) }}"
-                            hx-vals='{"status": "ok", "area_id": "{{ area.id }}"}'
-                            hx-target="#area-content"
-                            hx-swap="morph:innerHTML"
-                            class="px-3 py-2 rounded text-xs font-medium transition-colors
-                                   {% if item.status == 'ok' %}bg-green-500 text-white{% else %}bg-gray-100 text-gray-600 hover:bg-green-100{% endif %}">
-                            {% if show_as_defect %}Rectified{% else %}OK{% endif %}
-                        </button>
-                        
-                        <button type="button"
-                            hx-post="{{ url_for('inspection.update_item', inspection_id=inspection.id, item_id=item.id) }}"
-                            hx-vals='{"status": "not_to_standard", "area_id": "{{ area.id }}"}'
-                            hx-target="#area-content"
-                            hx-swap="morph:innerHTML"
-                            class="px-3 py-2 rounded text-xs font-medium transition-colors
-                                   {% if item.status == 'not_to_standard' %}bg-red-500 text-white{% else %}bg-gray-100 text-gray-600 hover:bg-red-100{% endif %}">
-                            {% if show_as_defect %}Still Defective{% else %}N.T.S.{% endif %}
-                        </button>
-                        
-                        {% if not show_as_defect %}
-                        <button type="button"
-                            hx-post="{{ url_for('inspection.update_item', inspection_id=inspection.id, item_id=item.id) }}"
-                            hx-vals='{"status": "not_installed", "area_id": "{{ area.id }}"}'
-                            hx-target="#area-content"
-                            hx-swap="morph:innerHTML"
-                            class="px-3 py-2 rounded text-xs font-medium transition-colors
-                                   {% if item.status == 'not_installed' %}bg-yellow-500 text-white{% else %}bg-gray-100 text-gray-600 hover:bg-yellow-100{% endif %}">
-                            N/I
-                        </button>
-                        {% endif %}
-                        {% if not show_as_defect and item.status not in ['not_to_standard', 'not_installed'] %}
-                        <a href="javascript:void(0)"
-                           id="guide-btn-{{ item.id }}"
-                           onclick="var d=document.getElementById('guide-{{ item.id }}');d.classList.toggle('hidden');if(!d.dataset.loaded){htmx.trigger(d,'loadPills');d.dataset.loaded='1'}"
-                           ontouchend="event.preventDefault();this.click()"
-                           class="px-3 py-2 rounded text-xs font-medium bg-blue-50 text-blue-600 hover:bg-blue-100 inline-block"
-                           style="text-decoration:none">
-                            What to look for
-                        </a>
-                        {% endif %}
-                    </div>
-                    
-                    {% if item.status in ['not_to_standard', 'not_installed'] %}
-                    <div class="mt-2 defect-input-wrapper">
-                        <input type="text" 
-                               value="{{ item.comment or '' }}"
-                               placeholder="{% if show_as_defect %}Update description or confirm as-is...{% else %}Describe the defect...{% endif %}"
-                               autocomplete="off"
-                               class="w-full px-3 py-2 border-2 border-red-300 rounded text-sm focus:ring-2 focus:ring-red-500 auto-caps"
-                               hx-post="{{ url_for('inspection.update_item', inspection_id=inspection.id, item_id=item.id) }}"
-                               hx-vals='{"status": "{{ item.status }}", "area_id": "{{ area.id }}"}'
-                               hx-trigger="blur changed, keydown[key=='Enter']"
-                               hx-target="#area-content"
-                               hx-swap="morph:innerHTML"
-                               name="comment">
-                        <div hx-get="{{ url_for('inspection.get_defect_suggestions', item_template_id=item.template_id) }}"
-                             hx-trigger="load"
-                             hx-swap="innerHTML"></div>
-                    </div>
-                    {% elif show_as_defect and item.status == 'ok' %}
-                    <div class="mt-2 p-2 bg-green-50 rounded border border-green-200">
-                        <span class="text-sm text-green-700 font-medium">Marked as rectified</span>
-                    </div>
-                    {% elif not show_as_defect %}
-                    <div class="hidden guide-pills mt-2" id="guide-{{ item.id }}"
-                         data-post-url="{{ url_for('inspection.update_item', inspection_id=inspection.id, item_id=item.id) }}"
-                         data-area-id="{{ area.id }}"
-                         hx-get="{{ url_for('inspection.get_defect_suggestions', item_template_id=item.template_id) }}?mode=guide"
-                         hx-trigger="loadPills once"
-                         hx-swap="innerHTML">
-                    </div>
-                    {% endif %}
-                    {% endif %}
-                </div>
-                {% endif %}
+                {% include 'inspection/_single_item.html' %}
                 {% endfor %}
             </div>
             {% endif %}
@@ -315,6 +177,6 @@
 </div>
 
 <script>
-    /* Progress + badge refresh (category restore + auto-caps handled by inspect.html listener) */
+    /* Progress + badge refresh on full area load */
     document.body.dispatchEvent(new CustomEvent('areaUpdated'));
 </script>

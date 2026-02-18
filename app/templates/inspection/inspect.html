@@ -3,7 +3,7 @@
 {% block title %}Unit {{ inspection.unit_number }} - Cycle {{ inspection.cycle_number }}{% endblock %}
 
 {% block content %}
-<div class="max-w-4xl mx-auto" hx-ext="morph">
+<div class="max-w-4xl mx-auto">
     <!-- Sticky Header -->
     <div class="bg-white rounded-lg shadow p-4 mb-4 sticky top-0 z-10">
         <div class="flex justify-between items-start">
@@ -46,7 +46,7 @@
                        {% if loop.first %}border-blue-500 text-blue-600{% else %}border-transparent text-gray-500 hover:text-gray-700{% endif %}"
                         hx-get="{{ url_for('inspection.inspect_area', inspection_id=inspection.id, area_id=area.id) }}"
                         hx-target="#area-content"
-                        hx-swap="morph:innerHTML"
+                        hx-swap="innerHTML"
                         onclick="document.querySelectorAll('.area-tab').forEach(t => {t.classList.remove('border-blue-500', 'text-blue-600'); t.classList.add('border-transparent', 'text-gray-500')}); this.classList.add('border-blue-500', 'text-blue-600'); this.classList.remove('border-transparent', 'text-gray-500')">
                     {{ area.name }}
                     <span id="area-badge-{{ area.id }}" {% if area_defect_map.get(area.id) %}class="bg-red-500 text-white text-xs px-1.5 py-0.5 rounded-full"{% endif %}>{{ area_defect_map[area.id] if area_defect_map.get(area.id) else '' }}</span>
@@ -150,11 +150,12 @@
 
 <script>
     (function() {
-        /* Save expanded categories before any area-content swap */
+        /* Save expanded categories before full area-content swaps (filter/tab changes) */
         document.body.addEventListener('htmx:beforeRequest', function(evt) {
             var el = evt.detail.elt;
             var tgt = el.getAttribute('hx-target');
-            if (tgt === '#area-content' || (el.closest && el.closest('#area-content'))) {
+            /* Only save for full area swaps, not per-item swaps */
+            if (tgt === '#area-content') {
                 window._expandedCats = [];
                 document.querySelectorAll('.cat-content').forEach(function(c, i) {
                     if (!c.classList.contains('hidden')) window._expandedCats.push(i);
@@ -162,9 +163,13 @@
             }
         });
 
-        /* After morph settles, restore categories + rebind auto-caps + refresh badges */
+        /* After swap settles, restore categories for full area swaps + rebind auto-caps for any swap */
         document.body.addEventListener('htmx:afterSettle', function(evt) {
-            if (evt.detail.target && evt.detail.target.id === 'area-content') {
+            var target = evt.detail.target;
+            if (!target) return;
+
+            /* Full area swap: restore collapsed categories */
+            if (target.id === 'area-content') {
                 if (window._expandedCats && window._expandedCats.length > 0) {
                     document.querySelectorAll('.cat-content').forEach(function(c, i) {
                         if (window._expandedCats.indexOf(i) > -1) {
@@ -175,7 +180,11 @@
                         }
                     });
                 }
-                document.querySelectorAll('#area-content .auto-caps').forEach(function(inp) {
+            }
+
+            /* Rebind auto-caps on any swap that might include inputs */
+            if (target.id === 'area-content' || (target.id && target.id.indexOf('item-') === 0)) {
+                target.querySelectorAll('.auto-caps').forEach(function(inp) {
                     if (!inp._acSet) {
                         inp._acSet = true;
                         inp.addEventListener('input', function() {
@@ -184,7 +193,6 @@
                         });
                     }
                 });
-                document.body.dispatchEvent(new CustomEvent('areaUpdated'));
             }
         });
     })();
