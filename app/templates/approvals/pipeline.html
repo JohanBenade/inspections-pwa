@@ -58,13 +58,13 @@
                 </div>
                 <span class="text-[10px] text-gray-400 mt-1 hidden sm:block">{{ stage_label }}</span>
                 {% if stage_id == 'submitted' and is_complete and c.first_submitted_at %}
-                <span class="text-[9px] text-gray-300 hidden sm:block">{{ c.first_submitted_at[:10] }}</span>
+                <span class="text-[10px] text-gray-500 hidden sm:block">{{ c.first_submitted_at[:10] }}</span>
                 {% elif stage_id == 'reviewed' and is_complete and c.last_reviewed_at %}
-                <span class="text-[9px] text-gray-300 hidden sm:block">{{ c.last_reviewed_at[:10] }}</span>
+                <span class="text-[10px] text-gray-500 hidden sm:block">{{ c.last_reviewed_at[:10] }}</span>
                 {% elif stage_id == 'signed_off' and c.approved_at %}
-                <span class="text-[9px] text-gray-300 hidden sm:block">{{ c.approved_at[:10] }}</span>
+                <span class="text-[10px] text-gray-500 hidden sm:block">{{ c.approved_at[:10] }}</span>
                 {% elif stage_id == 'pushed' and c.pdfs_pushed_at %}
-                <span class="text-[9px] text-gray-300 hidden sm:block">{{ c.pdfs_pushed_at[:10] }}</span>
+                <span class="text-[10px] text-gray-500 hidden sm:block">{{ c.pdfs_pushed_at[:10] }}</span>
                 {% endif %}
             </div>
         {% endfor %}

@@ -76,13 +76,13 @@
             <div class="w-2.5 h-2.5 rounded-full {% if complete %}bg-green-500{% else %}bg-gray-300{% endif %}"></div>
             <span class="text-[9px] text-gray-400 mt-0.5">{{ label }}</span>
             {% if label == 'Submitted' and stats.first_submitted_at %}
-            <span class="text-[8px] text-gray-300">{{ stats.first_submitted_at[:10] }}</span>
+            <span class="text-[10px] text-gray-500">{{ stats.first_submitted_at[:10] }}</span>
             {% elif label == 'Reviewed' and stats.last_reviewed_at %}
-            <span class="text-[8px] text-gray-300">{{ stats.last_reviewed_at[:10] }}</span>
+            <span class="text-[10px] text-gray-500">{{ stats.last_reviewed_at[:10] }}</span>
             {% elif label == 'Signed Off' and cycle.approved_at %}
-            <span class="text-[8px] text-gray-300">{{ cycle.approved_at[:10] }}</span>
+            <span class="text-[10px] text-gray-500">{{ cycle.approved_at[:10] }}</span>
             {% elif label == 'PDFs Pushed' and cycle.pdfs_pushed_at %}
-            <span class="text-[8px] text-gray-300">{{ cycle.pdfs_pushed_at[:10] }}</span>
+            <span class="text-[10px] text-gray-500">{{ cycle.pdfs_pushed_at[:10] }}</span>
             {% endif %}
         </div>
         {% endfor %}
