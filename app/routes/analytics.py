@@ -1395,6 +1395,52 @@ def _build_combined_report_data():
     except Exception:
         pass
 
+    # --- Defect Density Grid (Block x Floor) ---
+    grid_blocks = sorted(set(b['block'] for b in batches))
+    grid_floors = sorted(set(b['floor'] for b in batches))
+    block_floor_grid = {}
+    for b in batches:
+        blk = b['block']
+        flr = b['floor']
+        if blk not in block_floor_grid:
+            block_floor_grid[blk] = {}
+        block_floor_grid[blk][flr] = {
+            'avg': b['avg_defects'],
+            'defects': b['total_defects'],
+            'units': b['total_units'],
+            'defect_rate': b['defect_rate'],
+            'label': b['label'],
+            'colour': b['colour'],
+        }
+    grid_avgs = []
+    for blk_cells in block_floor_grid.values():
+        for cell in blk_cells.values():
+            if cell['units'] > 0:
+                grid_avgs.append(cell['avg'])
+    if grid_avgs:
+        grid_avgs_sorted = sorted(grid_avgs)
+        n_ga = len(grid_avgs_sorted)
+        grid_median = grid_avgs_sorted[n_ga // 2] if n_ga % 2 == 1 else round((grid_avgs_sorted[n_ga // 2 - 1] + grid_avgs_sorted[n_ga // 2]) / 2, 1)
+    else:
+        grid_median = 0
+
+    # --- Systemic Issues (Recurring Defects in 3+ units) ---
+    recurring_raw = query_db("""
+        SELECT d.original_comment, COUNT(*) as cnt, ct.category_name,
+               GROUP_CONCAT(DISTINCT u.unit_number) as affected_units,
+               COUNT(DISTINCT u.id) as unit_count
+        FROM defect d
+        JOIN unit u ON d.unit_id = u.id
+        JOIN item_template it ON d.item_template_id = it.id
+        JOIN category_template ct ON it.category_id = ct.id
+        WHERE d.tenant_id = ? AND d.status = 'open'
+            AND d.raised_cycle_id NOT LIKE 'test-%%'
+        GROUP BY d.original_comment
+        HAVING COUNT(DISTINCT u.id) >= 3
+        ORDER BY cnt DESC
+    """, [tenant_id])
+    recurring = [dict(r) for r in recurring_raw] if recurring_raw else []
+
     return {
         'batches': batches,
         'total_units': total_units,
@@ -1421,6 +1467,11 @@ def _build_combined_report_data():
         'cycle_options': cycle_options,
         'logo_b64': logo_b64,
         'sig_b64': sig_b64,
+        'grid_blocks': grid_blocks,
+        'grid_floors': grid_floors,
+        'block_floor_grid': block_floor_grid,
+        'grid_median': grid_median,
+        'recurring': recurring,
         'report_date': __import__('datetime').datetime.utcnow().strftime('%d %B %Y'),
     }
 

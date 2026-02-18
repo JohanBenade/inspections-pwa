@@ -509,10 +509,83 @@ body {
     {% endif %}
 </div>
 
-<!-- ============ 02: DEFECTS BY AREA - BATCH COMPARISON ============ -->
+<!-- ============ 02: DEFECT DENSITY GRID ============ -->
 <div class="section">
     <div class="section-header">
         <span class="section-number">02</span>
+        <span class="section-title">Defect Density: Block &times; Floor</span>
+    </div>
+
+    {% if grid_blocks %}
+    <table class="data-table" style="font-size: 11px;">
+    <thead>
+    <tr>
+        <th style="width: 100px;">Floor</th>
+        {% for blk in grid_blocks %}
+        <th class="text-center">{{ blk }}</th>
+        {% endfor %}
+    </tr>
+    </thead>
+    <tbody>
+    {% for flr in grid_floors %}
+    <tr>
+        <td style="font-weight: 600; color: #6B6B6B;">{{ floor_map.get(flr, 'Floor ' ~ flr) }}</td>
+        {% for blk in grid_blocks %}
+        {% if block_floor_grid.get(blk, {}).get(flr) %}
+        {% set cell = block_floor_grid[blk][flr] %}
+        {% if cell.avg > grid_median %}
+        <td class="text-center" style="background: rgba(196,77,63,0.10); padding: 10px 8px;">
+            <div style="font-family: 'Cormorant Garamond', Georgia, serif; font-size: 22px; font-weight: 300; color: #C44D3F;">{{ cell.avg }}</div>
+            <div style="font-size: 9px; color: #6B6B6B;">{{ cell.defects }} defects</div>
+            <div style="font-size: 9px; color: #9A9A9A;">{{ cell.units }} units &middot; {{ cell.defect_rate }}%</div>
+        </td>
+        {% elif cell.avg == grid_median %}
+        <td class="text-center" style="background: rgba(200,150,62,0.10); padding: 10px 8px;">
+            <div style="font-family: 'Cormorant Garamond', Georgia, serif; font-size: 22px; font-weight: 300; color: #C8963E;">{{ cell.avg }}</div>
+            <div style="font-size: 9px; color: #6B6B6B;">{{ cell.defects }} defects</div>
+            <div style="font-size: 9px; color: #9A9A9A;">{{ cell.units }} units &middot; {{ cell.defect_rate }}%</div>
+        </td>
+        {% else %}
+        <td class="text-center" style="background: rgba(74,124,89,0.10); padding: 10px 8px;">
+            <div style="font-family: 'Cormorant Garamond', Georgia, serif; font-size: 22px; font-weight: 300; color: #4A7C59;">{{ cell.avg }}</div>
+            <div style="font-size: 9px; color: #6B6B6B;">{{ cell.defects }} defects</div>
+            <div style="font-size: 9px; color: #9A9A9A;">{{ cell.units }} units &middot; {{ cell.defect_rate }}%</div>
+        </td>
+        {% endif %}
+        {% else %}
+        <td class="text-center" style="background: #F5F3EE; padding: 10px 8px;">
+            <div style="font-family: 'Cormorant Garamond', Georgia, serif; font-size: 22px; font-weight: 300; color: #9A9A9A;">&mdash;</div>
+            <div style="font-size: 9px; color: #9A9A9A;">No data</div>
+        </td>
+        {% endif %}
+        {% endfor %}
+    </tr>
+    {% endfor %}
+    </tbody>
+    </table>
+
+    <table class="legend-table">
+    <tr>
+        <td><span class="legend-swatch" style="background: rgba(74,124,89,0.25);"></span><span class="legend-text">Below median ({{ grid_median }})</span></td>
+        <td style="padding-left: 10px;"><span class="legend-swatch" style="background: rgba(200,150,62,0.25);"></span><span class="legend-text">At median</span></td>
+        <td style="padding-left: 10px;"><span class="legend-swatch" style="background: rgba(196,77,63,0.25);"></span><span class="legend-text">Above median</span></td>
+    </tr>
+    </table>
+
+    <div class="callout callout-gold">
+        <strong>Median average: {{ grid_median }} defects per unit.</strong> Values are coloured relative to this benchmark across all block/floor combinations.
+    </div>
+    {% else %}
+    <div class="callout callout-gold">
+        Density grid requires multiple block/floor combinations.
+    </div>
+    {% endif %}
+</div>
+
+<!-- ============ 03: DEFECTS BY AREA - BATCH COMPARISON ============ -->
+<div class="section">
+    <div class="section-header">
+        <span class="section-number">03</span>
         <span class="section-title">Defect Distribution by Area: Batch Comparison</span>
     </div>
 
@@ -587,10 +660,10 @@ body {
     {% endif %}
 </div>
 
-<!-- ============ 03: AREA DEEP DIVE ============ -->
+<!-- ============ 04: AREA DEEP DIVE ============ -->
 <div class="section">
     <div class="section-header">
-        <span class="section-number">03</span>
+        <span class="section-number">04</span>
         <span class="section-title">Area Deep Dive</span>
     </div>
     <div class="clearfix">
@@ -639,50 +712,7 @@ body {
     {% endif %}
 </div>
 
-<!-- ============ 04: DEFECTS BY CATEGORY (TRADE) ============ -->
-<div class="section">
-    <div class="section-header">
-        <span class="section-number">04</span>
-        <span class="section-title">Defects by Category (Trade): Batch Comparison</span>
-    </div>
-
-    <div class="clearfix">
-        <div style="float: left; width: 100%;">
-            <table class="grouped-bar-table">
-            {% for trade in trade_compare %}
-            {% for bd in trade.batches %}
-            <tr>
-                {% if loop.first %}
-                <td class="bar-label-cell" rowspan="{{ batches|length }}">{{ trade.name }}</td>
-                {% endif %}
-                <td class="bar-track">
-                    <div class="bar-fill" style="width: {{ bd.pct }}%; background: {{ batches[loop.index0].colour }};"></div>
-                    <span class="bar-count-label">{{ bd.count }}</span>
-                </td>
-            </tr>
-            {% endfor %}
-            <tr><td colspan="2" style="height: 10px;"></td></tr>
-            {% endfor %}
-            </table>
-        </div>
-    </div>
-
-    <table class="legend-table">
-    <tr>
-        {% for batch in batches %}
-        <td {% if not loop.first %}style="padding-left: 16px;"{% endif %}><span class="legend-swatch" style="background: {{ batch.colour }};"></span><span class="legend-text">{{ batch.label }}</span></td>
-        {% endfor %}
-    </tr>
-    </table>
-
-    {% if trade_compare %}
-    <div class="callout callout-gold">
-        <strong>{{ trade_compare[0].name }}</strong> accounts for the highest trade concentration with {{ trade_compare[0].total }} defects across all batches.
-    </div>
-    {% endif %}
-</div>
-
-<!-- ============ 05: TOP DEFECT TYPES - TREND ANALYSIS ============ -->
+<!-- ============ 05: MOST COMMON DEFECT TYPES ============ -->
 <div class="section" style="page-break-before: always;">
     <div class="section-header">
         <span class="section-number">05</span>
@@ -739,10 +769,104 @@ body {
     {% endif %}
 </div>
 
-<!-- ============ 06: DEFECT COUNT BY UNIT ============ -->
+<!-- ============ 06: DEFECTS BY CATEGORY (TRADE) ============ -->
 <div class="section">
     <div class="section-header">
         <span class="section-number">06</span>
+        <span class="section-title">Defects by Category (Trade): Batch Comparison</span>
+    </div>
+
+    <div class="clearfix">
+        <div style="float: left; width: 100%;">
+            <table class="grouped-bar-table">
+            {% for trade in trade_compare %}
+            {% for bd in trade.batches %}
+            <tr>
+                {% if loop.first %}
+                <td class="bar-label-cell" rowspan="{{ batches|length }}">{{ trade.name }}</td>
+                {% endif %}
+                <td class="bar-track">
+                    <div class="bar-fill" style="width: {{ bd.pct }}%; background: {{ batches[loop.index0].colour }};"></div>
+                    <span class="bar-count-label">{{ bd.count }}</span>
+                </td>
+            </tr>
+            {% endfor %}
+            <tr><td colspan="2" style="height: 10px;"></td></tr>
+            {% endfor %}
+            </table>
+        </div>
+    </div>
+
+    <table class="legend-table">
+    <tr>
+        {% for batch in batches %}
+        <td {% if not loop.first %}style="padding-left: 16px;"{% endif %}><span class="legend-swatch" style="background: {{ batch.colour }};"></span><span class="legend-text">{{ batch.label }}</span></td>
+        {% endfor %}
+    </tr>
+    </table>
+
+    {% if trade_compare %}
+    <div class="callout callout-gold">
+        <strong>{{ trade_compare[0].name }}</strong> accounts for the highest trade concentration with {{ trade_compare[0].total }} defects across all batches.
+    </div>
+    {% endif %}
+</div>
+
+<!-- ============ 07: SYSTEMIC ISSUES ============ -->
+<div class="section">
+    <div class="section-header">
+        <span class="section-number">07</span>
+        <span class="section-title">Systemic Issues (Recurring Defects)</span>
+    </div>
+
+    {% if recurring %}
+    <div style="font-size: 10px; color: #6B6B6B; margin-bottom: 12px;">
+        Defects appearing in 3 or more units &mdash; address these project-wide, not unit-by-unit.
+    </div>
+
+    <table class="data-table">
+    <thead>
+    <tr>
+        <th style="width: 30px;">#</th>
+        <th>Defect Description</th>
+        <th class="text-center" style="width: 50px;">Count</th>
+        <th style="width: 90px;">Category</th>
+        <th>Affected Units</th>
+    </tr>
+    </thead>
+    <tbody>
+    {% for r in recurring %}
+    <tr>
+        <td class="text-center">
+            {% if loop.index <= 3 %}
+            <span class="rank-circle rank-gold">{{ loop.index }}</span>
+            {% else %}
+            <span class="rank-circle rank-gray">{{ loop.index }}</span>
+            {% endif %}
+        </td>
+        <td>{{ r.original_comment }}</td>
+        <td class="text-center font-bold" style="color: #C44D3F;">{{ r.cnt }}</td>
+        <td style="font-size: 9px; color: #6B6B6B;">{{ r.category_name }}</td>
+        <td style="font-size: 9px; color: #9A9A9A;">{{ r.affected_units }}</td>
+    </tr>
+    {% endfor %}
+    </tbody>
+    </table>
+
+    <div class="callout callout-red">
+        <strong>{{ recurring|length }} systemic issue{{ 's' if recurring|length != 1 else '' }}</strong> identified across the project. These defects appear in 3 or more units, indicating patterns that may require trade-wide intervention rather than unit-by-unit rectification.
+    </div>
+    {% else %}
+    <div class="callout callout-green">
+        No recurring defects found across 3 or more units.
+    </div>
+    {% endif %}
+</div>
+
+<!-- ============ 08: DEFECT COUNT BY UNIT ============ -->
+<div class="section">
+    <div class="section-header">
+        <span class="section-number">08</span>
         <span class="section-title">Defect Count by Unit</span>
     </div>
 
@@ -793,10 +917,10 @@ body {
     </div>
 </div>
 
-<!-- ============ 07: UNIT SUMMARY TABLE ============ -->
+<!-- ============ 09: UNIT SUMMARY TABLE ============ -->
 <div class="section" style="page-break-before: always;">
     <div class="section-header">
-        <span class="section-number">07</span>
+        <span class="section-number">09</span>
         <span class="section-title">Unit Summary Table</span>
     </div>
 
