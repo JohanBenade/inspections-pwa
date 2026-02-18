@@ -1,6 +1,19 @@
 {% extends "base.html" %}
 
-{% block title %}Unit {{ inspection.unit_number }} - Cycle {{ inspection.cycle_number }}{% endblock %}
+{% block title %}Unit {{ inspection.unit_number }} - Cycle {{ inspection.cycle_number }}
+<script>
+    // Save expanded categories before HTMX swaps area content
+    document.body.addEventListener('htmx:beforeSwap', function(evt) {
+        if (evt.detail.target && evt.detail.target.id === 'area-content') {
+            var expanded = [];
+            document.querySelectorAll('.cat-content').forEach(function(c, i) {
+                if (!c.classList.contains('hidden')) expanded.push(i);
+            });
+            window._expandedCats = expanded;
+        }
+    });
+</script>
+{% endblock %}
 
 {% block content %}
 <div class="max-w-4xl mx-auto">
@@ -147,4 +160,17 @@
     </div>
 </div>
 {% endif %}
+
+<script>
+    // Save expanded categories before HTMX swaps area content
+    document.body.addEventListener('htmx:beforeSwap', function(evt) {
+        if (evt.detail.target && evt.detail.target.id === 'area-content') {
+            var expanded = [];
+            document.querySelectorAll('.cat-content').forEach(function(c, i) {
+                if (!c.classList.contains('hidden')) expanded.push(i);
+            });
+            window._expandedCats = expanded;
+        }
+    });
+</script>
 {% endblock %}

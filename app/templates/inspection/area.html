@@ -308,6 +308,17 @@
 </div>
 
 <script>
+    // Restore expanded categories after HTMX swap
+    if (window._expandedCats && window._expandedCats.length > 0) {
+        document.querySelectorAll('.cat-content').forEach(function(c, i) {
+            if (window._expandedCats.indexOf(i) > -1) {
+                c.classList.remove('hidden');
+                var chevron = c.previousElementSibling ? c.previousElementSibling.querySelector('.cat-chevron') : null;
+                if (chevron) chevron.classList.add('rotate-90');
+            }
+        });
+    }
+
     // Auto-capitalize first character
     document.querySelectorAll('.auto-caps').forEach(function(input) {
         input.addEventListener('input', function(e) {
