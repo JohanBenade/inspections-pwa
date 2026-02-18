@@ -964,22 +964,22 @@ def get_defect_suggestions(item_template_id):
         return ''
     
     if mode == 'guide':
-        pills_html = '<div class="flex flex-wrap gap-1.5 mt-1">'
+        pills_html = '<div class="flex flex-wrap gap-2.5 mt-2">'
         for s in suggestions:
             desc = s['description']
             pills_html += f'''<button type="button"
-                class="px-2 py-1 bg-blue-50 text-blue-700 rounded text-xs hover:bg-blue-100 transition-colors guide-pill"
+                class="px-3 py-2 bg-blue-50 text-blue-700 rounded-lg text-xs hover:bg-blue-100 transition-colors guide-pill"
                 onclick="var w=this.closest('.guide-pills');var url=w.dataset.postUrl;var aid=w.dataset.areaId;htmx.ajax('POST',url,{{values:{{status:'not_to_standard',comment:'{desc.replace(chr(39), chr(92)+chr(39))}',area_id:aid}},target:'#area-content',swap:'innerHTML'}})"
                 >{desc}</button>'''
         pills_html += '</div>'
         return pills_html
     
     # Active mode - show pills below defect input
-    pills_html = '<div class="flex flex-wrap gap-1.5 mt-1">'
+    pills_html = '<div class="flex flex-wrap gap-2.5 mt-2">'
     for s in suggestions:
         desc = s['description']
         pills_html += f'''<button type="button"
-            class="px-2 py-1 bg-blue-50 text-blue-700 rounded text-xs hover:bg-blue-100 transition-colors"
+            class="px-3 py-2 bg-blue-50 text-blue-700 rounded-lg text-xs hover:bg-blue-100 transition-colors"
             onclick="var input=this.closest('.defect-input-wrapper').querySelector('input');input.value='{desc.replace(chr(39), chr(92)+chr(39))}';input.dispatchEvent(new Event('blur'))"
             >{desc}</button>'''
     pills_html += '</div>'
