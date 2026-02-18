@@ -2,7 +2,7 @@
 Data Quality Console - Admin power tools for defect description management.
 Tab 1: Description Health (singletons, long, vague, clusters)
 Tab 2: Structural Checks (mismatches, duplicates, orphans, wash sync)
-Tab 3: Library Audit (future)
+Tab 3: Library Audit (overview, dead entries, merges, orphans)
 Access: Admin only (Johan).
 """
 from flask import Blueprint, render_template, session, request
@@ -709,3 +709,283 @@ def sync_wash_all():
         '<strong>Bulk sync complete.</strong> {} inspection item{} updated to match '
         'washed defect descriptions.</div>'
     ).format(count, 's' if count != 1 else '')
+
+
+# ===================================================================
+# TAB 3: LIBRARY AUDIT
+# ===================================================================
+
+@data_quality_bp.route('/library')
+@require_admin
+def library():
+    """Tab 3: Library Audit - overview, top entries, dead entries, merges, orphans."""
+    tenant_id = session.get('tenant_id', 'MONOGRAPH')
+
+    # -- KPI Cards --
+    total = dict(query_db(
+        "SELECT COUNT(*) AS cnt FROM defect_library WHERE tenant_id=?",
+        (tenant_id,), one=True
+    ))['cnt']
+
+    active = dict(query_db(
+        "SELECT COUNT(*) AS cnt FROM defect_library "
+        "WHERE tenant_id=? AND usage_count > 0",
+        (tenant_id,), one=True
+    ))['cnt']
+
+    dead = dict(query_db(
+        "SELECT COUNT(*) AS cnt FROM defect_library "
+        "WHERE tenant_id=? AND usage_count = 0",
+        (tenant_id,), one=True
+    ))['cnt']
+
+    item_specific = dict(query_db(
+        "SELECT COUNT(*) AS cnt FROM defect_library "
+        "WHERE tenant_id=? AND item_template_id IS NOT NULL",
+        (tenant_id,), one=True
+    ))['cnt']
+
+    category_only = dict(query_db(
+        "SELECT COUNT(*) AS cnt FROM defect_library "
+        "WHERE tenant_id=? AND item_template_id IS NULL",
+        (tenant_id,), one=True
+    ))['cnt']
+
+    kpis = {
+        'total': total,
+        'active': active,
+        'dead': dead,
+        'item_specific': item_specific,
+        'category_only': category_only,
+    }
+
+    # -- 3B: Top 20 by usage --
+    top20_raw = query_db(
+        "SELECT dl.description, dl.category_name, dl.usage_count, "
+        "  dl.item_template_id, it.item_description "
+        "FROM defect_library dl "
+        "LEFT JOIN item_template it ON dl.item_template_id = it.id "
+        "WHERE dl.tenant_id=? "
+        "ORDER BY dl.usage_count DESC "
+        "LIMIT 20",
+        (tenant_id,)
+    )
+    top20 = [dict(r) for r in top20_raw]
+
+    # -- 3C: Dead entries (zero usage) --
+    dead_raw = query_db(
+        "SELECT dl.id, dl.description, dl.category_name, "
+        "  dl.item_template_id, it.item_description "
+        "FROM defect_library dl "
+        "LEFT JOIN item_template it ON dl.item_template_id = it.id "
+        "WHERE dl.tenant_id=? AND dl.usage_count = 0 "
+        "ORDER BY dl.category_name, dl.description",
+        (tenant_id,)
+    )
+    dead_entries = [dict(r) for r in dead_raw]
+
+    # -- 3D: Potential merges (similar library entries within same category) --
+    lib_raw = query_db(
+        "SELECT dl.id, dl.description, dl.category_name, dl.usage_count "
+        "FROM defect_library dl "
+        "WHERE dl.tenant_id=? AND dl.usage_count > 0 "
+        "ORDER BY dl.category_name, dl.usage_count DESC",
+        (tenant_id,)
+    )
+    lib_entries = [dict(r) for r in lib_raw]
+    merge_pairs = _compute_library_merges(lib_entries)
+
+    # -- 3E: Orphan library entries (template_id points to nothing) --
+    orphan_raw = query_db(
+        "SELECT dl.id, dl.description, dl.item_template_id, "
+        "  dl.category_name, dl.usage_count "
+        "FROM defect_library dl "
+        "LEFT JOIN item_template it ON dl.item_template_id = it.id "
+        "WHERE dl.tenant_id=? "
+        "AND dl.item_template_id IS NOT NULL "
+        "AND it.id IS NULL",
+        (tenant_id,)
+    )
+    orphan_entries = [dict(r) for r in orphan_raw]
+
+    return render_template('data_quality/library.html',
+                           kpis=kpis,
+                           top20=top20,
+                           dead_entries=dead_entries,
+                           merge_pairs=merge_pairs,
+                           orphan_entries=orphan_entries)
+
+
+def _compute_library_merges(entries):
+    """
+    Find pairs of library entries within the same category that are
+    >0.8 similar. Returns list of dicts with both entries and score.
+    """
+    by_category = {}
+    for e in entries:
+        cat = e['category_name'] or 'UNKNOWN'
+        if cat not in by_category:
+            by_category[cat] = []
+        by_category[cat].append(e)
+
+    pairs = []
+    seen = set()
+    for cat, members in by_category.items():
+        n = len(members)
+        for i in range(n):
+            for j in range(i + 1, n):
+                a = members[i]
+                b = members[j]
+                key = (min(a['id'], b['id']), max(a['id'], b['id']))
+                if key in seen:
+                    continue
+                score = SequenceMatcher(
+                    None,
+                    a['description'].lower().strip(),
+                    b['description'].lower().strip()
+                ).ratio()
+                if score >= 0.8:
+                    seen.add(key)
+                    # Higher usage first
+                    if a['usage_count'] >= b['usage_count']:
+                        keep, remove = a, b
+                    else:
+                        keep, remove = b, a
+                    pairs.append({
+                        'category': cat,
+                        'keep_id': keep['id'],
+                        'keep_desc': keep['description'],
+                        'keep_usage': keep['usage_count'],
+                        'remove_id': remove['id'],
+                        'remove_desc': remove['description'],
+                        'remove_usage': remove['usage_count'],
+                        'score': round(score * 100),
+                    })
+
+    pairs.sort(key=lambda x: x['keep_usage'] + x['remove_usage'], reverse=True)
+    return pairs
+
+
+@data_quality_bp.route('/delete-library-entry', methods=['POST'])
+@require_admin
+def delete_library_entry():
+    """Delete a single library entry."""
+    tenant_id = session.get('tenant_id', 'MONOGRAPH')
+    entry_id = request.form.get('entry_id', '').strip()
+    if not entry_id:
+        return ('<tr class="bg-red-50"><td colspan="5" class="px-4 py-3 text-sm text-red-600">'
+                'No entry ID provided.</td></tr>')
+
+    db = get_db()
+    row = db.execute(
+        "SELECT id FROM defect_library WHERE id=? AND tenant_id=?",
+        (entry_id, tenant_id)
+    ).fetchone()
+    if not row:
+        return ('<tr class="bg-amber-50"><td colspan="5" class="px-4 py-3 text-sm text-amber-600">'
+                'Entry not found.</td></tr>')
+
+    db.execute("DELETE FROM defect_library WHERE id=?", (entry_id,))
+    db.commit()
+
+    return ('<tr class="bg-green-50"><td colspan="5" class="px-4 py-3 text-sm text-green-700">'
+            '<strong>Deleted.</strong> Library entry removed.</td></tr>')
+
+
+@data_quality_bp.route('/bulk-delete-dead', methods=['POST'])
+@require_admin
+def bulk_delete_dead():
+    """Delete all library entries with zero usage."""
+    tenant_id = session.get('tenant_id', 'MONOGRAPH')
+
+    db = get_db()
+    count_row = db.execute(
+        "SELECT COUNT(*) FROM defect_library "
+        "WHERE tenant_id=? AND usage_count = 0",
+        (tenant_id,)
+    ).fetchone()
+    count = count_row[0] if count_row else 0
+
+    db.execute(
+        "DELETE FROM defect_library WHERE tenant_id=? AND usage_count = 0",
+        (tenant_id,)
+    )
+    db.commit()
+
+    return (
+        '<div class="bg-green-50 border border-green-200 rounded-lg p-4 text-sm text-green-700">'
+        '<strong>Bulk delete complete.</strong> {} dead library entr{} removed.</div>'
+    ).format(count, 'ies' if count != 1 else 'y')
+
+
+@data_quality_bp.route('/convert-to-category', methods=['POST'])
+@require_admin
+def convert_to_category():
+    """Convert a library entry from item-specific to category-only."""
+    tenant_id = session.get('tenant_id', 'MONOGRAPH')
+    entry_id = request.form.get('entry_id', '').strip()
+    if not entry_id:
+        return ('<tr class="bg-red-50"><td colspan="4" class="px-4 py-3 text-sm text-red-600">'
+                'No entry ID provided.</td></tr>')
+
+    db = get_db()
+    db.execute(
+        "UPDATE defect_library SET item_template_id = NULL "
+        "WHERE id=? AND tenant_id=?",
+        (entry_id, tenant_id)
+    )
+    db.commit()
+
+    return ('<tr class="bg-green-50"><td colspan="4" class="px-4 py-3 text-sm text-green-700">'
+            '<strong>Converted.</strong> Entry is now category-only.</td></tr>')
+
+
+@data_quality_bp.route('/merge-library-pair', methods=['POST'])
+@require_admin
+def merge_library_pair():
+    """Merge two library entries: keep one, delete the other, update defects."""
+    tenant_id = session.get('tenant_id', 'MONOGRAPH')
+    keep_id = request.form.get('keep_id', '').strip()
+    remove_id = request.form.get('remove_id', '').strip()
+    keep_desc = request.form.get('keep_desc', '').strip()
+    remove_desc = request.form.get('remove_desc', '').strip()
+
+    if not keep_id or not remove_id:
+        return ('<div class="bg-red-50 border border-red-200 rounded-lg p-4 text-sm text-red-600">'
+                'Missing IDs.</div>')
+
+    db = get_db()
+
+    # Update any defects using the removed description
+    affected_row = db.execute(
+        "SELECT COUNT(*) FROM defect "
+        "WHERE original_comment=? AND status='open' AND tenant_id=?",
+        (remove_desc, tenant_id)
+    ).fetchone()
+    affected = affected_row[0] if affected_row else 0
+
+    if affected > 0:
+        db.execute(
+            "UPDATE defect SET original_comment=?, updated_at=CURRENT_TIMESTAMP "
+            "WHERE original_comment=? AND status='open' AND tenant_id=?",
+            (keep_desc, remove_desc, tenant_id)
+        )
+
+    # Transfer usage count and delete removed entry
+    db.execute(
+        "UPDATE defect_library SET usage_count = usage_count + "
+        "(SELECT usage_count FROM defect_library WHERE id=?) "
+        "WHERE id=?",
+        (remove_id, keep_id)
+    )
+    db.execute("DELETE FROM defect_library WHERE id=?", (remove_id,))
+
+    db.commit()
+
+    return (
+        '<div class="bg-green-50 border border-green-200 rounded-lg p-4 text-sm text-green-700">'
+        '<strong>Merged.</strong> '
+        '<span class="line-through text-gray-400">{}</span> '
+        '&rarr; <strong>{}</strong>. '
+        '{} defect{} updated. Library entry removed.</div>'
+    ).format(remove_desc, keep_desc, affected, 's' if affected != 1 else '')

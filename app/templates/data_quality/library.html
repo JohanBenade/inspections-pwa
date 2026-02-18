@@ -1,0 +1,338 @@
+{% extends "base.html" %}
+{% block title %}Data Quality - Library{% endblock %}
+
+{% block extra_head %}
+<style>
+    .dq-card {
+        background: white;
+        border-radius: 0.5rem;
+        padding: 1rem;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        text-align: center;
+    }
+    .dq-card .dq-value {
+        font-size: 1.75rem;
+        font-weight: 700;
+        color: #1e3a5f;
+    }
+    .dq-card .dq-label {
+        font-size: 0.75rem;
+        color: #6b7280;
+        margin-top: 0.25rem;
+    }
+    .dq-tab {
+        display: inline-block;
+        padding: 0.5rem 1rem;
+        font-size: 0.875rem;
+        font-weight: 500;
+        border-bottom: 2px solid transparent;
+        color: #6b7280;
+        text-decoration: none;
+    }
+    .dq-tab.active {
+        color: #1e3a5f;
+        border-bottom-color: #1e3a5f;
+    }
+    .dq-tab:hover {
+        color: #1e3a5f;
+    }
+    .dq-section-header {
+        font-size: 0.875rem;
+        font-weight: 600;
+        color: #374151;
+        padding: 0.75rem 1rem;
+        background: #f9fafb;
+        border-bottom: 1px solid #e5e7eb;
+        cursor: pointer;
+        user-select: none;
+    }
+    .dq-section-header:hover {
+        background: #f3f4f6;
+    }
+    .dq-badge {
+        display: inline-block;
+        font-size: 0.625rem;
+        font-weight: 600;
+        padding: 0.125rem 0.375rem;
+        border-radius: 9999px;
+        margin-left: 0.5rem;
+    }
+    .dq-badge-amber { background: #fef3c7; color: #92400e; }
+    .dq-badge-red { background: #fee2e2; color: #991b1b; }
+    .dq-badge-green { background: #d1fae5; color: #065f46; }
+    .dq-badge-blue { background: #dbeafe; color: #1e40af; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="max-w-6xl mx-auto">
+    <!-- Header -->
+    <div class="mb-4">
+        <h1 class="text-xl font-bold text-gray-800">Data Quality</h1>
+        <p class="text-sm text-gray-500">Defect library health and maintenance</p>
+    </div>
+
+    <!-- Tabs -->
+    <div class="border-b border-gray-200 mb-6">
+        <a href="{{ url_for('data_quality.descriptions') }}" class="dq-tab">Descriptions</a>
+        <a href="{{ url_for('data_quality.structural') }}" class="dq-tab">Structural</a>
+        <a href="{{ url_for('data_quality.library') }}" class="dq-tab active">Library</a>
+    </div>
+
+    <!-- KPI Cards -->
+    <div class="grid grid-cols-2 md:grid-cols-5 gap-3 mb-6">
+        <div class="dq-card">
+            <div class="dq-value">{{ kpis.total }}</div>
+            <div class="dq-label">Total Entries</div>
+        </div>
+        <div class="dq-card">
+            <div class="dq-value" style="color: #065f46;">{{ kpis.active }}</div>
+            <div class="dq-label">Active (usage > 0)</div>
+        </div>
+        <div class="dq-card">
+            <div class="dq-value" style="color: {% if kpis.dead > 0 %}#b45309{% else %}#065f46{% endif %};">{{ kpis.dead }}</div>
+            <div class="dq-label">Dead (usage = 0)</div>
+        </div>
+        <div class="dq-card">
+            <div class="dq-value">{{ kpis.item_specific }}</div>
+            <div class="dq-label">Item-Specific</div>
+        </div>
+        <div class="dq-card">
+            <div class="dq-value">{{ kpis.category_only }}</div>
+            <div class="dq-label">Category-Only</div>
+        </div>
+    </div>
+
+    <!-- ================================================================ -->
+    <!-- Section 3A/B: Top 20 Descriptions by Usage                      -->
+    <!-- ================================================================ -->
+    <details class="bg-white rounded-lg shadow mb-4 overflow-hidden">
+        <summary class="dq-section-header">
+            3A. Top 20 Descriptions by Usage
+            <span class="text-xs font-normal text-gray-400 ml-2">The backbone of the defect library</span>
+        </summary>
+        <div class="overflow-x-auto">
+            <table class="min-w-full text-sm">
+                <thead>
+                    <tr class="bg-gray-50 text-left text-xs text-gray-500 uppercase tracking-wider">
+                        <th class="px-4 py-2 w-10">#</th>
+                        <th class="px-4 py-2">Description</th>
+                        <th class="px-4 py-2 w-28">Category</th>
+                        <th class="px-4 py-2 w-20 text-right">Usage</th>
+                        <th class="px-4 py-2 w-20">Scope</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-100">
+                    {% for t in top20 %}
+                    <tr class="hover:bg-gray-50">
+                        <td class="px-4 py-2 text-gray-400 font-mono">{{ loop.index }}</td>
+                        <td class="px-4 py-2 text-gray-900 font-medium">{{ t.description }}</td>
+                        <td class="px-4 py-2 text-gray-600 text-xs">{{ t.category_name }}</td>
+                        <td class="px-4 py-2 text-right font-mono font-bold
+                            {% if t.usage_count >= 20 %}text-green-700
+                            {% elif t.usage_count >= 10 %}text-blue-700
+                            {% else %}text-gray-600{% endif %}">{{ t.usage_count }}</td>
+                        <td class="px-4 py-2 text-xs">
+                            {% if t.item_template_id %}
+                            <span class="px-1.5 py-0.5 rounded bg-blue-50 text-blue-600" title="{{ t.item_description }}">item</span>
+                            {% else %}
+                            <span class="px-1.5 py-0.5 rounded bg-gray-100 text-gray-500">category</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </details>
+
+    <!-- ================================================================ -->
+    <!-- Section 3C: Dead Entries                                         -->
+    <!-- ================================================================ -->
+    <details class="bg-white rounded-lg shadow mb-4 overflow-hidden">
+        <summary class="dq-section-header">
+            3B. Dead Entries (Zero Usage)
+            <span class="dq-badge {% if dead_entries|length > 50 %}dq-badge-red{% elif dead_entries|length > 0 %}dq-badge-amber{% else %}dq-badge-green{% endif %}">{{ dead_entries|length }}</span>
+            <span class="text-xs font-normal text-gray-400 ml-2">Library entries never matched by the wash</span>
+        </summary>
+        <div>
+            {% if dead_entries %}
+            <!-- Bulk delete -->
+            <div class="p-3 bg-red-50 border-b border-red-100" id="bulk-dead-container">
+                <form hx-post="{{ url_for('data_quality.bulk_delete_dead') }}"
+                      hx-target="#bulk-dead-container"
+                      hx-swap="outerHTML"
+                      hx-confirm="Delete ALL {{ dead_entries|length }} dead library entries? This cannot be undone.">
+                    <button type="submit"
+                        class="px-3 py-1.5 text-xs bg-red-600 text-white rounded hover:bg-red-700">
+                        Bulk Delete All {{ dead_entries|length }} Dead Entries
+                    </button>
+                    <span class="text-xs text-red-600 ml-2">Removes entries that have never been used</span>
+                </form>
+            </div>
+            <div class="overflow-x-auto">
+                <table class="min-w-full text-sm">
+                    <thead>
+                        <tr class="bg-gray-50 text-left text-xs text-gray-500 uppercase tracking-wider">
+                            <th class="px-4 py-2">Description</th>
+                            <th class="px-4 py-2 w-28">Category</th>
+                            <th class="px-4 py-2 w-32">Template Item</th>
+                            <th class="px-4 py-2 w-20">Action</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-gray-100">
+                        {% for d in dead_entries %}
+                        <tr class="hover:bg-gray-50">
+                            <td class="px-4 py-2 text-gray-900">{{ d.description }}</td>
+                            <td class="px-4 py-2 text-gray-600 text-xs">{{ d.category_name }}</td>
+                            <td class="px-4 py-2 text-xs text-gray-400">{{ d.item_description or 'category-only' }}</td>
+                            <td class="px-4 py-2">
+                                <form hx-post="{{ url_for('data_quality.delete_library_entry') }}"
+                                      hx-target="closest tr" hx-swap="outerHTML"
+                                      hx-confirm="Delete this library entry?">
+                                    <input type="hidden" name="entry_id" value="{{ d.id }}">
+                                    <button type="submit"
+                                        class="px-2 py-1 text-xs bg-red-50 text-red-600 rounded hover:bg-red-100">
+                                        Delete
+                                    </button>
+                                </form>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="p-6 text-center text-green-600">
+                <span class="text-lg">&#10003;</span> No dead entries. All library entries have been used at least once.
+            </div>
+            {% endif %}
+        </div>
+    </details>
+
+    <!-- ================================================================ -->
+    <!-- Section 3D: Potential Merges                                     -->
+    <!-- ================================================================ -->
+    <details class="bg-white rounded-lg shadow mb-4 overflow-hidden">
+        <summary class="dq-section-header">
+            3C. Potential Library Merges
+            <span class="dq-badge {% if merge_pairs|length > 10 %}dq-badge-amber{% elif merge_pairs|length > 0 %}dq-badge-blue{% else %}dq-badge-green{% endif %}">{{ merge_pairs|length }}</span>
+            <span class="text-xs font-normal text-gray-400 ml-2">Similar active entries that could be consolidated</span>
+        </summary>
+        <div class="p-4">
+            {% if merge_pairs %}
+            <div class="space-y-3">
+                {% for p in merge_pairs %}
+                <div class="border border-gray-200 rounded-lg overflow-hidden" id="lib-merge-{{ loop.index }}">
+                    <div class="px-4 py-3 bg-gray-50 flex items-center justify-between">
+                        <div>
+                            <span class="text-sm font-semibold text-gray-800">{{ p.category }}</span>
+                            <span class="text-xs text-gray-400 ml-2">{{ p.score }}% similar</span>
+                        </div>
+                        <form hx-post="{{ url_for('data_quality.merge_library_pair') }}"
+                              hx-target="#lib-merge-{{ loop.index }}"
+                              hx-swap="outerHTML"
+                              hx-confirm="Merge '{{ p.remove_desc }}' into '{{ p.keep_desc }}'? This will update defects and delete the merged entry.">
+                            <input type="hidden" name="keep_id" value="{{ p.keep_id }}">
+                            <input type="hidden" name="remove_id" value="{{ p.remove_id }}">
+                            <input type="hidden" name="keep_desc" value="{{ p.keep_desc }}">
+                            <input type="hidden" name="remove_desc" value="{{ p.remove_desc }}">
+                            <button type="submit"
+                                class="px-3 py-1 text-xs bg-blue-600 text-white rounded hover:bg-blue-700">
+                                Merge
+                            </button>
+                        </form>
+                    </div>
+                    <table class="min-w-full text-sm">
+                        <tbody>
+                            <tr class="border-b border-gray-100">
+                                <td class="px-4 py-2 w-16">
+                                    <span class="inline-block w-2 h-2 rounded-full bg-green-500" title="Keep"></span>
+                                </td>
+                                <td class="px-4 py-2 text-gray-900 font-medium">{{ p.keep_desc }}</td>
+                                <td class="px-4 py-2 text-right text-gray-500 w-20">{{ p.keep_usage }}x</td>
+                            </tr>
+                            <tr>
+                                <td class="px-4 py-2 w-16">
+                                    <span class="inline-block w-2 h-2 rounded-full bg-red-400" title="Remove"></span>
+                                </td>
+                                <td class="px-4 py-2 text-gray-500">{{ p.remove_desc }}</td>
+                                <td class="px-4 py-2 text-right text-gray-400 w-20">{{ p.remove_usage }}x</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <div class="text-center text-green-600 py-4">
+                <span class="text-lg">&#10003;</span> No similar library entries found. Library is clean.
+            </div>
+            {% endif %}
+        </div>
+    </details>
+
+    <!-- ================================================================ -->
+    <!-- Section 3E: Orphan Library Entries                               -->
+    <!-- ================================================================ -->
+    <details class="bg-white rounded-lg shadow mb-4 overflow-hidden">
+        <summary class="dq-section-header">
+            3D. Orphan Library Entries
+            <span class="dq-badge {% if orphan_entries|length > 0 %}dq-badge-red{% else %}dq-badge-green{% endif %}">{{ orphan_entries|length }}</span>
+            <span class="text-xs font-normal text-gray-400 ml-2">item_template_id points to non-existent template</span>
+        </summary>
+        <div class="overflow-x-auto">
+            {% if orphan_entries %}
+            <table class="min-w-full text-sm">
+                <thead>
+                    <tr class="bg-gray-50 text-left text-xs text-gray-500 uppercase tracking-wider">
+                        <th class="px-4 py-2">Description</th>
+                        <th class="px-4 py-2 w-28">Category</th>
+                        <th class="px-4 py-2 w-20 text-right">Usage</th>
+                        <th class="px-4 py-2 w-32 text-center">Action</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-100">
+                    {% for o in orphan_entries %}
+                    <tr class="hover:bg-gray-50">
+                        <td class="px-4 py-2 text-gray-900">{{ o.description }}</td>
+                        <td class="px-4 py-2 text-gray-600 text-xs">{{ o.category_name }}</td>
+                        <td class="px-4 py-2 text-right text-gray-500">{{ o.usage_count }}</td>
+                        <td class="px-4 py-2 text-center">
+                            <div class="flex gap-1 justify-center">
+                                <form hx-post="{{ url_for('data_quality.convert_to_category') }}"
+                                      hx-target="closest tr" hx-swap="outerHTML"
+                                      hx-confirm="Convert to category-only? Template link will be removed."
+                                      class="inline">
+                                    <input type="hidden" name="entry_id" value="{{ o.id }}">
+                                    <button type="submit"
+                                        class="px-2 py-1 text-xs bg-blue-50 text-blue-600 rounded hover:bg-blue-100">
+                                        To Category
+                                    </button>
+                                </form>
+                                <form hx-post="{{ url_for('data_quality.delete_library_entry') }}"
+                                      hx-target="closest tr" hx-swap="outerHTML"
+                                      hx-confirm="Delete this library entry?"
+                                      class="inline">
+                                    <input type="hidden" name="entry_id" value="{{ o.id }}">
+                                    <button type="submit"
+                                        class="px-2 py-1 text-xs bg-red-50 text-red-600 rounded hover:bg-red-100">
+                                        Delete
+                                    </button>
+                                </form>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            {% else %}
+            <div class="p-6 text-center text-green-600">
+                <span class="text-lg">&#10003;</span> No orphan entries. All template references are valid.
+            </div>
+            {% endif %}
+        </div>
+    </details>
+
+</div>
+{% endblock %}
