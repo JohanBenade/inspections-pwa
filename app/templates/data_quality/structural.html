@@ -51,22 +51,20 @@
     }
     .dq-badge {
         display: inline-block;
-        font-size: 0.625rem;
+        padding: 0.125rem 0.5rem;
+        font-size: 0.75rem;
         font-weight: 600;
-        padding: 0.125rem 0.375rem;
         border-radius: 9999px;
         margin-left: 0.5rem;
     }
+    .dq-badge-green { background: #d1fae5; color: #065f46; }
     .dq-badge-amber { background: #fef3c7; color: #92400e; }
     .dq-badge-red { background: #fee2e2; color: #991b1b; }
-    .dq-badge-blue { background: #dbeafe; color: #1e40af; }
-    .dq-badge-green { background: #d1fae5; color: #065f46; }
 </style>
 {% endblock %}
 
 {% block content %}
-<div class="max-w-6xl mx-auto">
-    <!-- Header -->
+<div class="max-w-7xl mx-auto px-4 py-6">
     <div class="mb-4">
         <h1 class="text-xl font-bold text-gray-800">Data Quality</h1>
         <p class="text-sm text-gray-500">Structural integrity checks and data fixes</p>
@@ -80,11 +78,7 @@
     </div>
 
     <!-- KPI Cards -->
-    <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
-        <div class="dq-card">
-            <div class="dq-value" style="color: {% if kpis.mismatches > 0 %}#b45309{% else %}#065f46{% endif %};">{{ kpis.mismatches }}</div>
-            <div class="dq-label">Category Mismatches</div>
-        </div>
+    <div class="grid grid-cols-3 gap-3 mb-6">
         <div class="dq-card">
             <div class="dq-value" style="color: {% if kpis.duplicates > 0 %}#b45309{% else %}#065f46{% endif %};">{{ kpis.duplicates }}</div>
             <div class="dq-label">Duplicate Defects</div>
@@ -100,54 +94,11 @@
     </div>
 
     <!-- ================================================================ -->
-    <!-- Section 2A: Category Mismatches                                 -->
+    <!-- Section 2A: Duplicate Defects                                   -->
     <!-- ================================================================ -->
     <details class="bg-white rounded-lg shadow mb-4 overflow-hidden">
         <summary class="dq-section-header">
-            2A. Description vs Category Mismatch
-            <span class="dq-badge {% if mismatches %}dq-badge-amber{% else %}dq-badge-green{% endif %}">{{ mismatches|length }}</span>
-            <span class="text-xs font-normal text-gray-400 ml-2">Description keywords suggest a different trade category</span>
-        </summary>
-        <div class="overflow-x-auto">
-            {% if mismatches %}
-            <table class="min-w-full text-sm">
-                <thead>
-                    <tr class="bg-gray-50 text-left text-xs text-gray-500 uppercase tracking-wider">
-                        <th class="px-4 py-2 w-16">Unit</th>
-                        <th class="px-4 py-2">Description</th>
-                        <th class="px-4 py-2 w-28">Logged</th>
-                        <th class="px-4 py-2 w-28">Suggested</th>
-                        <th class="px-4 py-2 w-32">Item</th>
-                    </tr>
-                </thead>
-                <tbody class="divide-y divide-gray-100">
-                    {% for m in mismatches %}
-                    <tr class="hover:bg-gray-50">
-                        <td class="px-4 py-2 text-gray-600">{{ m.unit_number }}</td>
-                        <td class="px-4 py-2 text-gray-900">{{ m.original_comment }}</td>
-                        <td class="px-4 py-2 text-gray-600">{{ m.category_name }}</td>
-                        <td class="px-4 py-2 text-amber-700 font-medium">{{ m.suggested_categories }}</td>
-                        <td class="px-4 py-2 text-gray-400 text-xs">{{ m.item_description }}</td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-            <div class="px-4 py-3 text-xs text-gray-400 border-t">
-                Review only &mdash; some may be correct (e.g. "paint" on a door frame is valid under DOORS).
-                Keyword matching is approximate.
-            </div>
-            {% else %}
-            <div class="p-6 text-center text-gray-400">No category mismatches detected.</div>
-            {% endif %}
-        </div>
-    </details>
-
-    <!-- ================================================================ -->
-    <!-- Section 2B: Duplicate Defects                                   -->
-    <!-- ================================================================ -->
-    <details class="bg-white rounded-lg shadow mb-4 overflow-hidden">
-        <summary class="dq-section-header">
-            2B. Duplicate Defects (Same Unit + Template)
+            2A. Duplicate Defects (Same Unit + Template)
             <span class="dq-badge {% if duplicates %}dq-badge-amber{% else %}dq-badge-green{% endif %}">{{ duplicates|length }}</span>
             <span class="text-xs font-normal text-gray-400 ml-2">Multiple defect records on the same item in the same unit</span>
         </summary>
@@ -161,7 +112,6 @@
                         <th class="px-4 py-2 w-24">Category</th>
                         <th class="px-4 py-2 w-16">Count</th>
                         <th class="px-4 py-2">Descriptions</th>
-                        <th class="px-4 py-2 w-24">Action</th>
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-gray-100">
@@ -190,11 +140,15 @@
                             </div>
                             {% endfor %}
                         </td>
-                        <td class="px-4 py-2 text-xs text-gray-400">First kept</td>
                     </tr>
                     {% endfor %}
                 </tbody>
             </table>
+            <div class="px-4 py-3 text-xs text-gray-500 border-t bg-gray-50">
+                <strong>Note:</strong> Multiple defects on the same item are often legitimate &mdash;
+                e.g. a door with both paint damage and a loose hinge. Only delete if descriptions
+                are identical or clearly duplicated from import errors.
+            </div>
             {% else %}
             <div class="p-6 text-center text-gray-400">No duplicate defects found.</div>
             {% endif %}
@@ -202,11 +156,11 @@
     </details>
 
     <!-- ================================================================ -->
-    <!-- Section 2C: Orphan Inspection Items                             -->
+    <!-- Section 2B: Orphan Inspection Items                             -->
     <!-- ================================================================ -->
     <details class="bg-white rounded-lg shadow mb-4 overflow-hidden">
         <summary class="dq-section-header">
-            2C. Orphan Inspection Items
+            2B. Orphan Inspection Items
             <span class="dq-badge {% if orphans %}dq-badge-red{% else %}dq-badge-green{% endif %}">{{ orphans|length }}</span>
             <span class="text-xs font-normal text-gray-400 ml-2">Marked NTS/NI but no matching defect record</span>
         </summary>
@@ -259,11 +213,11 @@
     </details>
 
     <!-- ================================================================ -->
-    <!-- Section 2D: Wash Mismatches                                     -->
+    <!-- Section 2C: Wash Mismatches                                     -->
     <!-- ================================================================ -->
     <details class="bg-white rounded-lg shadow mb-4 overflow-hidden">
         <summary class="dq-section-header">
-            2D. Wash Mismatches
+            2C. Wash Mismatches
             <span class="dq-badge {% if wash_mismatches %}dq-badge-amber{% else %}dq-badge-green{% endif %}">{{ wash_mismatches|length }}</span>
             <span class="text-xs font-normal text-gray-400 ml-2">Inspection item comment differs from washed defect description</span>
         </summary>

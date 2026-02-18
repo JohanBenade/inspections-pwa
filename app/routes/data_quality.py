@@ -471,29 +471,6 @@ def merge_cluster():
 # TAB 2: STRUCTURAL CHECKS
 # ═══════════════════════════════════════════════════════════════════
 
-# Keyword -> area mapping for mismatch detection
-AREA_KEYWORDS = {
-    'PLUMBING': ['tap', 'pipe', 'drain', 'shower', 'basin', 'valve', 'geyser', 'water'],
-    'DOORS': ['door', 'handle', 'lock', 'hinge', 'closer', 'stop', 'frame'],
-    'WINDOWS': ['window', 'glass', 'burglar', 'seal'],
-    'FLOOR': ['tile', 'grout', 'skirting', 'floor'],
-    'WALLS': ['plaster', 'paint', 'wall', 'crack', 'damp'],
-    'JOINERY': ['bic', 'cupboard', 'drawer', 'shelf', 'counter', 'desk'],
-    'ELECTRICAL': ['switch', 'plug', 'light', 'isolator', 'db board'],
-}
-
-
-def _detect_area_from_description(desc):
-    """Return set of area names suggested by keywords in the description."""
-    desc_lower = desc.lower() if desc else ''
-    suggested = set()
-    for area, keywords in AREA_KEYWORDS.items():
-        for kw in keywords:
-            if kw in desc_lower:
-                suggested.add(area)
-                break
-    return suggested
-
 
 @data_quality_bp.route('/structural')
 @require_admin
@@ -503,31 +480,7 @@ def structural():
 
     # ── KPI Cards ──────────────────────────────────────────
 
-    # 2A: Area mismatches - computed in Python after query
-    mismatch_raw = query_db(
-        "SELECT d.id AS defect_id, d.original_comment, "
-        "  u.unit_number, at2.area_name, ct.category_name, "
-        "  it.item_description "
-        "FROM defect d "
-        "JOIN unit u ON d.unit_id = u.id "
-        "JOIN item_template it ON d.item_template_id = it.id "
-        "JOIN category_template ct ON it.category_id = ct.id "
-        "JOIN area_template at2 ON ct.area_id = at2.id "
-        "WHERE d.status='open' AND d.tenant_id=? "
-        "AND d.original_comment IS NOT NULL",
-        (tenant_id,)
-    )
-    mismatches = []
-    for r in mismatch_raw:
-        row = dict(r)
-        suggested = _detect_area_from_description(row['original_comment'])
-        actual_cat = row['category_name'].upper() if row['category_name'] else ''
-        # Flag if description suggests a DIFFERENT category and does NOT match actual
-        if suggested and actual_cat not in suggested:
-            row['suggested_categories'] = ', '.join(sorted(suggested))
-            mismatches.append(row)
-
-    # 2B: Duplicates
+    # 2A: Duplicates
     dup_raw = query_db(
         "SELECT d.unit_id, u.unit_number, d.item_template_id, "
         "  it.item_description, ct.category_name, "
@@ -573,6 +526,7 @@ def structural():
     orphans = [dict(r) for r in orphan_raw]
 
     # 2D: Wash mismatches (defect.original_comment != inspection_item.comment)
+    # Exclude rows where unit+template has duplicate defects (those can never match)
     wash_raw = query_db(
         "SELECT u.unit_number, it.item_description, "
         "  d.original_comment AS washed, "
@@ -586,13 +540,16 @@ def structural():
         "  AND ii.item_template_id = d.item_template_id "
         "WHERE d.tenant_id=? AND d.status='open' "
         "AND ii.comment IS NOT NULL AND ii.comment != '' "
-        "AND ii.comment != d.original_comment",
+        "AND ii.comment != d.original_comment "
+        "AND (SELECT COUNT(*) FROM defect d2 "
+        "     WHERE d2.unit_id = d.unit_id "
+        "     AND d2.item_template_id = d.item_template_id "
+        "     AND d2.status = 'open') = 1",
         (tenant_id,)
     )
     wash_mismatches = [dict(r) for r in wash_raw]
 
     kpis = {
-        'mismatches': len(mismatches),
         'duplicates': len(duplicates),
         'orphans': len(orphans),
         'wash_mismatches': len(wash_mismatches),
@@ -600,7 +557,6 @@ def structural():
 
     return render_template('data_quality/structural.html',
                            kpis=kpis,
-                           mismatches=mismatches,
                            duplicates=duplicates,
                            orphans=orphans,
                            wash_mismatches=wash_mismatches)
