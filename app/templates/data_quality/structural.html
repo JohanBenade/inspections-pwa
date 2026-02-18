@@ -1,0 +1,325 @@
+{% extends "base.html" %}
+{% block title %}Data Quality - Structural{% endblock %}
+
+{% block extra_head %}
+<style>
+    .dq-card {
+        background: white;
+        border-radius: 0.5rem;
+        padding: 1rem;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        text-align: center;
+    }
+    .dq-card .dq-value {
+        font-size: 1.75rem;
+        font-weight: 700;
+        color: #1e3a5f;
+    }
+    .dq-card .dq-label {
+        font-size: 0.75rem;
+        color: #6b7280;
+        margin-top: 0.25rem;
+    }
+    .dq-tab {
+        display: inline-block;
+        padding: 0.5rem 1rem;
+        font-size: 0.875rem;
+        font-weight: 500;
+        border-bottom: 2px solid transparent;
+        color: #6b7280;
+        text-decoration: none;
+    }
+    .dq-tab.active {
+        color: #1e3a5f;
+        border-bottom-color: #1e3a5f;
+    }
+    .dq-tab:hover {
+        color: #1e3a5f;
+    }
+    .dq-section-header {
+        font-size: 0.875rem;
+        font-weight: 600;
+        color: #374151;
+        padding: 0.75rem 1rem;
+        background: #f9fafb;
+        border-bottom: 1px solid #e5e7eb;
+        cursor: pointer;
+        user-select: none;
+    }
+    .dq-section-header:hover {
+        background: #f3f4f6;
+    }
+    .dq-badge {
+        display: inline-block;
+        font-size: 0.625rem;
+        font-weight: 600;
+        padding: 0.125rem 0.375rem;
+        border-radius: 9999px;
+        margin-left: 0.5rem;
+    }
+    .dq-badge-amber { background: #fef3c7; color: #92400e; }
+    .dq-badge-red { background: #fee2e2; color: #991b1b; }
+    .dq-badge-blue { background: #dbeafe; color: #1e40af; }
+    .dq-badge-green { background: #d1fae5; color: #065f46; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="max-w-6xl mx-auto">
+    <!-- Header -->
+    <div class="mb-4">
+        <h1 class="text-xl font-bold text-gray-800">Data Quality</h1>
+        <p class="text-sm text-gray-500">Structural integrity checks and data fixes</p>
+    </div>
+
+    <!-- Tabs -->
+    <div class="border-b border-gray-200 mb-6">
+        <a href="{{ url_for('data_quality.descriptions') }}" class="dq-tab">Descriptions</a>
+        <a href="{{ url_for('data_quality.structural') }}" class="dq-tab active">Structural</a>
+        <span class="dq-tab" style="opacity:0.4; cursor:default;">Library</span>
+    </div>
+
+    <!-- KPI Cards -->
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
+        <div class="dq-card">
+            <div class="dq-value" style="color: {% if kpis.mismatches > 0 %}#b45309{% else %}#065f46{% endif %};">{{ kpis.mismatches }}</div>
+            <div class="dq-label">Category Mismatches</div>
+        </div>
+        <div class="dq-card">
+            <div class="dq-value" style="color: {% if kpis.duplicates > 0 %}#b45309{% else %}#065f46{% endif %};">{{ kpis.duplicates }}</div>
+            <div class="dq-label">Duplicate Defects</div>
+        </div>
+        <div class="dq-card">
+            <div class="dq-value" style="color: {% if kpis.orphans > 0 %}#dc2626{% else %}#065f46{% endif %};">{{ kpis.orphans }}</div>
+            <div class="dq-label">Orphan Items</div>
+        </div>
+        <div class="dq-card">
+            <div class="dq-value" style="color: {% if kpis.wash_mismatches > 0 %}#b45309{% else %}#065f46{% endif %};">{{ kpis.wash_mismatches }}</div>
+            <div class="dq-label">Wash Mismatches</div>
+        </div>
+    </div>
+
+    <!-- ================================================================ -->
+    <!-- Section 2A: Category Mismatches                                 -->
+    <!-- ================================================================ -->
+    <details class="bg-white rounded-lg shadow mb-4 overflow-hidden">
+        <summary class="dq-section-header">
+            2A. Description vs Category Mismatch
+            <span class="dq-badge {% if mismatches %}dq-badge-amber{% else %}dq-badge-green{% endif %}">{{ mismatches|length }}</span>
+            <span class="text-xs font-normal text-gray-400 ml-2">Description keywords suggest a different trade category</span>
+        </summary>
+        <div class="overflow-x-auto">
+            {% if mismatches %}
+            <table class="min-w-full text-sm">
+                <thead>
+                    <tr class="bg-gray-50 text-left text-xs text-gray-500 uppercase tracking-wider">
+                        <th class="px-4 py-2 w-16">Unit</th>
+                        <th class="px-4 py-2">Description</th>
+                        <th class="px-4 py-2 w-28">Logged</th>
+                        <th class="px-4 py-2 w-28">Suggested</th>
+                        <th class="px-4 py-2 w-32">Item</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-100">
+                    {% for m in mismatches %}
+                    <tr class="hover:bg-gray-50">
+                        <td class="px-4 py-2 text-gray-600">{{ m.unit_number }}</td>
+                        <td class="px-4 py-2 text-gray-900">{{ m.original_comment }}</td>
+                        <td class="px-4 py-2 text-gray-600">{{ m.category_name }}</td>
+                        <td class="px-4 py-2 text-amber-700 font-medium">{{ m.suggested_categories }}</td>
+                        <td class="px-4 py-2 text-gray-400 text-xs">{{ m.item_description }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            <div class="px-4 py-3 text-xs text-gray-400 border-t">
+                Review only &mdash; some may be correct (e.g. "paint" on a door frame is valid under DOORS).
+                Keyword matching is approximate.
+            </div>
+            {% else %}
+            <div class="p-6 text-center text-gray-400">No category mismatches detected.</div>
+            {% endif %}
+        </div>
+    </details>
+
+    <!-- ================================================================ -->
+    <!-- Section 2B: Duplicate Defects                                   -->
+    <!-- ================================================================ -->
+    <details class="bg-white rounded-lg shadow mb-4 overflow-hidden">
+        <summary class="dq-section-header">
+            2B. Duplicate Defects (Same Unit + Template)
+            <span class="dq-badge {% if duplicates %}dq-badge-amber{% else %}dq-badge-green{% endif %}">{{ duplicates|length }}</span>
+            <span class="text-xs font-normal text-gray-400 ml-2">Multiple defect records on the same item in the same unit</span>
+        </summary>
+        <div class="overflow-x-auto">
+            {% if duplicates %}
+            <table class="min-w-full text-sm">
+                <thead>
+                    <tr class="bg-gray-50 text-left text-xs text-gray-500 uppercase tracking-wider">
+                        <th class="px-4 py-2 w-16">Unit</th>
+                        <th class="px-4 py-2">Item</th>
+                        <th class="px-4 py-2 w-24">Category</th>
+                        <th class="px-4 py-2 w-16">Count</th>
+                        <th class="px-4 py-2">Descriptions</th>
+                        <th class="px-4 py-2 w-24">Action</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-100">
+                    {% for d in duplicates %}
+                    <tr class="hover:bg-gray-50">
+                        <td class="px-4 py-2 text-gray-600">{{ d.unit_number }}</td>
+                        <td class="px-4 py-2 text-gray-900">{{ d.item_description }}</td>
+                        <td class="px-4 py-2 text-gray-600 text-xs">{{ d.category_name }}</td>
+                        <td class="px-4 py-2 text-amber-700 font-bold text-center">{{ d.duplicate_count }}x</td>
+                        <td class="px-4 py-2">
+                            {% for desc in d.description_list %}
+                            <div class="text-xs text-gray-700 {% if not loop.first %}mt-1 pt-1 border-t border-gray-100{% endif %}">
+                                <span class="text-gray-400 font-mono">{{ d.defect_id_list[loop.index0][:8] }}</span>
+                                {{ desc }}
+                                {% if not loop.first %}
+                                <form class="inline" hx-post="{{ url_for('data_quality.delete_defect') }}"
+                                      hx-target="closest tr" hx-swap="outerHTML"
+                                      hx-confirm="Delete defect {{ d.defect_id_list[loop.index0][:8] }}? This cannot be undone.">
+                                    <input type="hidden" name="defect_id" value="{{ d.defect_id_list[loop.index0] }}">
+                                    <button type="submit"
+                                        class="ml-2 px-1.5 py-0.5 text-xs bg-red-50 text-red-600 rounded hover:bg-red-100">
+                                        Delete
+                                    </button>
+                                </form>
+                                {% endif %}
+                            </div>
+                            {% endfor %}
+                        </td>
+                        <td class="px-4 py-2 text-xs text-gray-400">First kept</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            {% else %}
+            <div class="p-6 text-center text-gray-400">No duplicate defects found.</div>
+            {% endif %}
+        </div>
+    </details>
+
+    <!-- ================================================================ -->
+    <!-- Section 2C: Orphan Inspection Items                             -->
+    <!-- ================================================================ -->
+    <details class="bg-white rounded-lg shadow mb-4 overflow-hidden">
+        <summary class="dq-section-header">
+            2C. Orphan Inspection Items
+            <span class="dq-badge {% if orphans %}dq-badge-red{% else %}dq-badge-green{% endif %}">{{ orphans|length }}</span>
+            <span class="text-xs font-normal text-gray-400 ml-2">Marked NTS/NI but no matching defect record</span>
+        </summary>
+        <div class="overflow-x-auto">
+            {% if orphans %}
+            <table class="min-w-full text-sm">
+                <thead>
+                    <tr class="bg-gray-50 text-left text-xs text-gray-500 uppercase tracking-wider">
+                        <th class="px-4 py-2 w-16">Unit</th>
+                        <th class="px-4 py-2">Item</th>
+                        <th class="px-4 py-2 w-24">Category</th>
+                        <th class="px-4 py-2 w-20">Status</th>
+                        <th class="px-4 py-2">Comment</th>
+                        <th class="px-4 py-2 w-24">Action</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-100">
+                    {% for o in orphans %}
+                    <tr class="hover:bg-gray-50">
+                        <td class="px-4 py-2 text-gray-600">{{ o.unit_number }}</td>
+                        <td class="px-4 py-2 text-gray-900">{{ o.item_description }}</td>
+                        <td class="px-4 py-2 text-gray-600 text-xs">{{ o.category_name }}</td>
+                        <td class="px-4 py-2">
+                            <span class="px-2 py-0.5 text-xs rounded
+                                {% if o.item_status == 'not_to_standard' %}bg-red-100 text-red-700
+                                {% else %}bg-amber-100 text-amber-700{% endif %}">
+                                {{ o.item_status }}
+                            </span>
+                        </td>
+                        <td class="px-4 py-2 text-gray-500 text-xs">{{ o.comment or '-' }}</td>
+                        <td class="px-4 py-2">
+                            <form hx-post="{{ url_for('data_quality.reset_orphan') }}"
+                                  hx-target="closest tr" hx-swap="outerHTML"
+                                  hx-confirm="Reset this item to OK? The NTS/NI status will be cleared.">
+                                <input type="hidden" name="item_id" value="{{ o.item_id }}">
+                                <button type="submit"
+                                    class="px-2 py-1 text-xs bg-green-50 text-green-700 rounded hover:bg-green-100">
+                                    Reset to OK
+                                </button>
+                            </form>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            {% else %}
+            <div class="p-6 text-center text-gray-400">No orphan inspection items found.</div>
+            {% endif %}
+        </div>
+    </details>
+
+    <!-- ================================================================ -->
+    <!-- Section 2D: Wash Mismatches                                     -->
+    <!-- ================================================================ -->
+    <details class="bg-white rounded-lg shadow mb-4 overflow-hidden">
+        <summary class="dq-section-header">
+            2D. Wash Mismatches
+            <span class="dq-badge {% if wash_mismatches %}dq-badge-amber{% else %}dq-badge-green{% endif %}">{{ wash_mismatches|length }}</span>
+            <span class="text-xs font-normal text-gray-400 ml-2">Inspection item comment differs from washed defect description</span>
+        </summary>
+        <div>
+            {% if wash_mismatches %}
+            <!-- Bulk sync button -->
+            <div class="p-3 bg-blue-50 border-b border-blue-100">
+                <form hx-post="{{ url_for('data_quality.sync_wash_all') }}"
+                      hx-target="#wash-result" hx-swap="innerHTML"
+                      hx-confirm="Sync all {{ wash_mismatches|length }} inspection items to their washed descriptions?">
+                    <button type="submit"
+                        class="px-3 py-1.5 text-xs bg-blue-600 text-white rounded hover:bg-blue-700">
+                        Bulk Sync All {{ wash_mismatches|length }}
+                    </button>
+                    <span class="text-xs text-blue-600 ml-2">Updates inspection_item.comment to match defect.original_comment</span>
+                </form>
+                <div id="wash-result" class="mt-2"></div>
+            </div>
+            <div class="overflow-x-auto">
+                <table class="min-w-full text-sm">
+                    <thead>
+                        <tr class="bg-gray-50 text-left text-xs text-gray-500 uppercase tracking-wider">
+                            <th class="px-4 py-2 w-16">Unit</th>
+                            <th class="px-4 py-2 w-32">Item</th>
+                            <th class="px-4 py-2">Raw (inspection item)</th>
+                            <th class="px-4 py-2">Washed (defect)</th>
+                            <th class="px-4 py-2 w-20">Action</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-gray-100">
+                        {% for w in wash_mismatches %}
+                        <tr class="hover:bg-gray-50">
+                            <td class="px-4 py-2 text-gray-600">{{ w.unit_number }}</td>
+                            <td class="px-4 py-2 text-gray-900 text-xs">{{ w.item_description }}</td>
+                            <td class="px-4 py-2 text-red-600 text-xs">{{ w.raw }}</td>
+                            <td class="px-4 py-2 text-green-700 text-xs">{{ w.washed }}</td>
+                            <td class="px-4 py-2">
+                                <form hx-post="{{ url_for('data_quality.sync_wash') }}"
+                                      hx-target="closest tr" hx-swap="outerHTML">
+                                    <input type="hidden" name="item_id" value="{{ w.item_id }}">
+                                    <input type="hidden" name="washed" value="{{ w.washed }}">
+                                    <button type="submit"
+                                        class="px-2 py-1 text-xs bg-green-50 text-green-700 rounded hover:bg-green-100">
+                                        Sync
+                                    </button>
+                                </form>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="p-6 text-center text-gray-400">All inspection items match their washed defect descriptions.</div>
+            {% endif %}
+        </div>
+    </details>
+</div>
+{% endblock %}

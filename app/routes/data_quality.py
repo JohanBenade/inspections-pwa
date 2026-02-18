@@ -1,7 +1,7 @@
 """
 Data Quality Console - Admin power tools for defect description management.
 Tab 1: Description Health (singletons, long, vague, clusters)
-Tab 2: Structural Checks (future)
+Tab 2: Structural Checks (mismatches, duplicates, orphans, wash sync)
 Tab 3: Library Audit (future)
 Access: Admin only (Johan).
 """
@@ -465,3 +465,247 @@ def merge_cluster():
         canonical,
         merged_list
     )
+
+
+# ═══════════════════════════════════════════════════════════════════
+# TAB 2: STRUCTURAL CHECKS
+# ═══════════════════════════════════════════════════════════════════
+
+# Keyword -> area mapping for mismatch detection
+AREA_KEYWORDS = {
+    'PLUMBING': ['tap', 'pipe', 'drain', 'shower', 'basin', 'valve', 'geyser', 'water'],
+    'DOORS': ['door', 'handle', 'lock', 'hinge', 'closer', 'stop', 'frame'],
+    'WINDOWS': ['window', 'glass', 'burglar', 'seal'],
+    'FLOOR': ['tile', 'grout', 'skirting', 'floor'],
+    'WALLS': ['plaster', 'paint', 'wall', 'crack', 'damp'],
+    'JOINERY': ['bic', 'cupboard', 'drawer', 'shelf', 'counter', 'desk'],
+    'ELECTRICAL': ['switch', 'plug', 'light', 'isolator', 'db board'],
+}
+
+
+def _detect_area_from_description(desc):
+    """Return set of area names suggested by keywords in the description."""
+    desc_lower = desc.lower() if desc else ''
+    suggested = set()
+    for area, keywords in AREA_KEYWORDS.items():
+        for kw in keywords:
+            if kw in desc_lower:
+                suggested.add(area)
+                break
+    return suggested
+
+
+@data_quality_bp.route('/structural')
+@require_admin
+def structural():
+    """Tab 2: Structural Checks - mismatches, duplicates, orphans, wash sync."""
+    tenant_id = session.get('tenant_id', 'MONOGRAPH')
+
+    # ── KPI Cards ──────────────────────────────────────────
+
+    # 2A: Area mismatches - computed in Python after query
+    mismatch_raw = query_db(
+        "SELECT d.id AS defect_id, d.original_comment, "
+        "  u.unit_number, at2.area_name, ct.category_name, "
+        "  it.item_description "
+        "FROM defect d "
+        "JOIN unit u ON d.unit_id = u.id "
+        "JOIN item_template it ON d.item_template_id = it.id "
+        "JOIN category_template ct ON it.category_id = ct.id "
+        "JOIN area_template at2 ON ct.area_id = at2.id "
+        "WHERE d.status='open' AND d.tenant_id=? "
+        "AND d.original_comment IS NOT NULL",
+        (tenant_id,)
+    )
+    mismatches = []
+    for r in mismatch_raw:
+        row = dict(r)
+        suggested = _detect_area_from_description(row['original_comment'])
+        actual_cat = row['category_name'].upper() if row['category_name'] else ''
+        # Flag if description suggests a DIFFERENT category and does NOT match actual
+        if suggested and actual_cat not in suggested:
+            row['suggested_categories'] = ', '.join(sorted(suggested))
+            mismatches.append(row)
+
+    # 2B: Duplicates
+    dup_raw = query_db(
+        "SELECT d.unit_id, u.unit_number, d.item_template_id, "
+        "  it.item_description, ct.category_name, "
+        "  COUNT(*) AS duplicate_count, "
+        "  GROUP_CONCAT(d.id, '|') AS defect_ids, "
+        "  GROUP_CONCAT(d.original_comment, '|') AS descriptions "
+        "FROM defect d "
+        "JOIN unit u ON d.unit_id = u.id "
+        "JOIN item_template it ON d.item_template_id = it.id "
+        "JOIN category_template ct ON it.category_id = ct.id "
+        "WHERE d.status='open' AND d.tenant_id=? "
+        "GROUP BY d.unit_id, d.item_template_id "
+        "HAVING duplicate_count > 1 "
+        "ORDER BY duplicate_count DESC",
+        (tenant_id,)
+    )
+    duplicates = []
+    for r in dup_raw:
+        row = dict(r)
+        row['defect_id_list'] = row['defect_ids'].split('|') if row['defect_ids'] else []
+        row['description_list'] = row['descriptions'].split('|') if row['descriptions'] else []
+        duplicates.append(row)
+
+    # 2C: Orphan inspection items (NTS/NI with no defect)
+    orphan_raw = query_db(
+        "SELECT u.unit_number, it.item_description, ct.category_name, "
+        "  ii.status AS item_status, ii.id AS item_id, ii.comment, "
+        "  i.cycle_id "
+        "FROM inspection_item ii "
+        "JOIN inspection i ON ii.inspection_id = i.id "
+        "JOIN unit u ON i.unit_id = u.id "
+        "JOIN item_template it ON ii.item_template_id = it.id "
+        "JOIN category_template ct ON it.category_id = ct.id "
+        "LEFT JOIN defect d ON d.unit_id = u.id "
+        "  AND d.item_template_id = ii.item_template_id "
+        "  AND d.raised_cycle_id = i.cycle_id "
+        "WHERE ii.status IN ('not_to_standard', 'not_installed') "
+        "AND d.id IS NULL "
+        "AND i.tenant_id=? "
+        "AND i.cycle_id NOT LIKE 'test-%'",
+        (tenant_id,)
+    )
+    orphans = [dict(r) for r in orphan_raw]
+
+    # 2D: Wash mismatches (defect.original_comment != inspection_item.comment)
+    wash_raw = query_db(
+        "SELECT u.unit_number, it.item_description, "
+        "  d.original_comment AS washed, "
+        "  ii.comment AS raw, "
+        "  d.id AS defect_id, ii.id AS item_id "
+        "FROM defect d "
+        "JOIN unit u ON d.unit_id = u.id "
+        "JOIN item_template it ON d.item_template_id = it.id "
+        "JOIN inspection i ON i.unit_id = d.unit_id AND i.cycle_id = d.raised_cycle_id "
+        "JOIN inspection_item ii ON ii.inspection_id = i.id "
+        "  AND ii.item_template_id = d.item_template_id "
+        "WHERE d.tenant_id=? AND d.status='open' "
+        "AND ii.comment IS NOT NULL AND ii.comment != '' "
+        "AND ii.comment != d.original_comment",
+        (tenant_id,)
+    )
+    wash_mismatches = [dict(r) for r in wash_raw]
+
+    kpis = {
+        'mismatches': len(mismatches),
+        'duplicates': len(duplicates),
+        'orphans': len(orphans),
+        'wash_mismatches': len(wash_mismatches),
+    }
+
+    return render_template('data_quality/structural.html',
+                           kpis=kpis,
+                           mismatches=mismatches,
+                           duplicates=duplicates,
+                           orphans=orphans,
+                           wash_mismatches=wash_mismatches)
+
+
+@data_quality_bp.route('/reset-orphan', methods=['POST'])
+@require_admin
+def reset_orphan():
+    """Reset an orphan inspection item back to OK status."""
+    item_id = request.form.get('item_id', '').strip()
+    if not item_id:
+        return ('<tr class="bg-red-50"><td colspan="5" class="px-4 py-3 text-sm text-red-600">'
+                'No item ID provided.</td></tr>')
+
+    db = get_db()
+    db.execute(
+        "UPDATE inspection_item SET status='ok', comment=NULL WHERE id=?",
+        (item_id,)
+    )
+    db.commit()
+
+    return ('<tr class="bg-green-50"><td colspan="5" class="px-4 py-3 text-sm text-green-700">'
+            '<strong>Fixed.</strong> Item reset to OK.</td></tr>')
+
+
+@data_quality_bp.route('/delete-defect', methods=['POST'])
+@require_admin
+def delete_defect():
+    """Delete a single defect record (for duplicate cleanup)."""
+    tenant_id = session.get('tenant_id', 'MONOGRAPH')
+    defect_id = request.form.get('defect_id', '').strip()
+    if not defect_id:
+        return ('<tr class="bg-red-50"><td colspan="5" class="px-4 py-3 text-sm text-red-600">'
+                'No defect ID provided.</td></tr>')
+
+    db = get_db()
+    # Verify it exists and belongs to tenant
+    row = db.execute(
+        "SELECT id FROM defect WHERE id=? AND tenant_id=?",
+        (defect_id, tenant_id)
+    ).fetchone()
+    if not row:
+        return ('<tr class="bg-amber-50"><td colspan="5" class="px-4 py-3 text-sm text-amber-600">'
+                'Defect not found.</td></tr>')
+
+    db.execute("DELETE FROM defect WHERE id=?", (defect_id,))
+    db.commit()
+
+    return ('<tr class="bg-green-50"><td colspan="5" class="px-4 py-3 text-sm text-green-700">'
+            '<strong>Deleted.</strong> Defect {} removed.</td></tr>').format(defect_id[:8])
+
+
+@data_quality_bp.route('/sync-wash', methods=['POST'])
+@require_admin
+def sync_wash():
+    """Sync a single inspection_item.comment to match defect.original_comment."""
+    item_id = request.form.get('item_id', '').strip()
+    washed = request.form.get('washed', '').strip()
+    if not item_id or not washed:
+        return ('<tr class="bg-red-50"><td colspan="5" class="px-4 py-3 text-sm text-red-600">'
+                'Missing data.</td></tr>')
+
+    db = get_db()
+    db.execute(
+        "UPDATE inspection_item SET comment=? WHERE id=?",
+        (washed, item_id)
+    )
+    db.commit()
+
+    return ('<tr class="bg-green-50"><td colspan="5" class="px-4 py-3 text-sm text-green-700">'
+            '<strong>Synced.</strong> Inspection item updated to washed description.</td></tr>')
+
+
+@data_quality_bp.route('/sync-wash-all', methods=['POST'])
+@require_admin
+def sync_wash_all():
+    """Bulk sync all inspection_item.comment to match defect.original_comment."""
+    tenant_id = session.get('tenant_id', 'MONOGRAPH')
+
+    db = get_db()
+    # Find all mismatches and fix them
+    rows = db.execute(
+        "SELECT ii.id AS item_id, d.original_comment AS washed "
+        "FROM defect d "
+        "JOIN inspection i ON i.unit_id = d.unit_id AND i.cycle_id = d.raised_cycle_id "
+        "JOIN inspection_item ii ON ii.inspection_id = i.id "
+        "  AND ii.item_template_id = d.item_template_id "
+        "WHERE d.tenant_id=? AND d.status='open' "
+        "AND ii.comment IS NOT NULL AND ii.comment != '' "
+        "AND ii.comment != d.original_comment",
+        (tenant_id,)
+    ).fetchall()
+
+    count = 0
+    for r in rows:
+        db.execute(
+            "UPDATE inspection_item SET comment=? WHERE id=?",
+            (r[1], r[0])
+        )
+        count += 1
+
+    db.commit()
+
+    return (
+        '<div class="bg-green-50 border border-green-200 rounded-lg p-4 text-sm text-green-700">'
+        '<strong>Bulk sync complete.</strong> {} inspection item{} updated to match '
+        'washed defect descriptions.</div>'
+    ).format(count, 's' if count != 1 else '')
