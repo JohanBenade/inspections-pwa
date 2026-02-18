@@ -117,8 +117,7 @@
                hx-post="{{ url_for('inspection.update_item', inspection_id=inspection.id, item_id=item.id) }}"
                hx-vals='{"status": "{{ item.status }}", "area_id": "{{ area.id }}"}'
                hx-trigger="blur changed, keydown[key=='Enter']"
-               hx-target="#item-{{ item.id }}"
-               hx-swap="outerHTML"
+               hx-swap="none"
                name="comment">
         <div hx-get="{{ url_for('inspection.get_defect_suggestions', item_template_id=item.template_id) }}"
              hx-trigger="load"
