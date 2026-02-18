@@ -2,7 +2,7 @@
 Projects routes - Project, Phase, Unit navigation for students.
 """
 from flask import Blueprint, render_template, abort
-from app.auth import require_auth, require_role
+from app.auth import require_auth, require_role, require_role
 from app.services.db import query_db
 
 projects_bp = Blueprint('projects', __name__, url_prefix='/projects')
