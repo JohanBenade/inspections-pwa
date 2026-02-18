@@ -195,24 +195,24 @@
                 });
             }
 
-            /* Per-item outerHTML swap: target is detached, find new element in live DOM */
+            /* Per-item innerHTML swap: target stays in DOM, process normally */
             if (target.id && target.id.indexOf('item-') === 0) {
-                var liveEl = document.getElementById(target.id);
-                if (liveEl) {
-                    liveEl.querySelectorAll('.auto-caps').forEach(function(inp) {
-                        if (!inp._acSet) {
-                            inp._acSet = true;
-                            inp.addEventListener('input', function() {
-                                if (this.value.length === 1)
-                                    this.value = this.value.charAt(0).toUpperCase();
-                            });
-                        }
-                    });
-                    liveEl.querySelectorAll('[hx-trigger="load"]').forEach(function(el) {
+                target.querySelectorAll('.auto-caps').forEach(function(inp) {
+                    if (!inp._acSet) {
+                        inp._acSet = true;
+                        inp.addEventListener('input', function() {
+                            if (this.value.length === 1)
+                                this.value = this.value.charAt(0).toUpperCase();
+                        });
+                    }
+                });
+                target.querySelectorAll('[hx-trigger="load"]').forEach(function(el) {
+                    if (!el.dataset.pillsLoaded) {
+                        el.dataset.pillsLoaded = '1';
                         var url = el.getAttribute('hx-get');
                         if (url) htmx.ajax('GET', url, {target: el, swap: 'innerHTML'});
-                    });
-                }
+                    }
+                });
             }
         });
     })();
