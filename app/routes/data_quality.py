@@ -25,23 +25,23 @@ VAGUE_PATTERNS = [
 # Character threshold for "long" descriptions
 LONG_THRESHOLD = 50
 
-# Similarity threshold for clustering
-CLUSTER_THRESHOLD = 0.6
+# Similarity threshold for clustering (0.8 = tight matches only)
+CLUSTER_THRESHOLD = 0.8
 
 
 def _compute_clusters(descriptions):
     """
-    Group similar descriptions into clusters using category-scoped pairwise matching.
-    Uses union-find for efficient cluster merging.
+    Group similar descriptions into clusters using complete-linkage matching.
+    Every member in a cluster must be >= threshold similar to every other member.
+    This prevents transitive chaining (A~B, B~C does NOT put A+C together
+    unless A~C also holds).
+
+    Scoped by category to limit comparison space.
 
     Input: list of dicts with original_comment, usage, category_name
-    Output: list of cluster dicts sorted by total_usage desc, each containing:
-        - category: str
-        - members: list of {description, usage}
-        - total_usage: int
-        - suggested_canonical: str (highest usage member)
+    Output: list of cluster dicts sorted by total_usage desc
     """
-    # Group by category to limit comparison scope
+    # Group by category
     by_category = {}
     for d in descriptions:
         cat = d['category_name']
@@ -49,76 +49,89 @@ def _compute_clusters(descriptions):
             by_category[cat] = []
         by_category[cat].append(d)
 
-    # Union-find structure
-    parent = {}
-
-    def find(x):
-        while parent[x] != x:
-            parent[x] = parent[parent[x]]
-            x = parent[x]
-        return x
-
-    def union(a, b):
-        ra, rb = find(a), find(b)
-        if ra != rb:
-            parent[ra] = rb
-
     # Build lookup: description -> {usage, category}
     desc_info = {}
     for d in descriptions:
         key = d['original_comment']
         if key not in desc_info:
             desc_info[key] = {'usage': d['usage'], 'category': d['category_name']}
-            parent[key] = key
         else:
-            # Same description in multiple categories - sum usage
             desc_info[key]['usage'] += d['usage']
 
-    # Pairwise comparison within each category
+    # Pre-compute similarity scores within each category, store edges
+    edges = {}  # (a, b) -> score, where a < b alphabetically
     for cat, members in by_category.items():
-        descs_in_cat = [m['original_comment'] for m in members]
+        descs_in_cat = list(set(m['original_comment'] for m in members))
         n = len(descs_in_cat)
         for i in range(n):
             for j in range(i + 1, n):
                 a, b = descs_in_cat[i], descs_in_cat[j]
-                if a == b:
-                    continue
                 score = SequenceMatcher(
                     None, a.lower().strip(), b.lower().strip()
                 ).ratio()
                 if score >= CLUSTER_THRESHOLD:
-                    union(a, b)
+                    key = (min(a, b), max(a, b))
+                    edges[key] = score
 
-    # Collect clusters
-    cluster_map = {}
-    for desc in desc_info:
-        root = find(desc)
-        if root not in cluster_map:
-            cluster_map[root] = []
-        cluster_map[root].append(desc)
+    def are_all_similar(group, candidate):
+        """Check if candidate is >= threshold similar to ALL members of group."""
+        for member in group:
+            key = (min(member, candidate), max(member, candidate))
+            if key not in edges:
+                return False
+        return True
 
-    # Filter to clusters with 2+ members, build output
-    clusters = []
-    for root, members in cluster_map.items():
-        if len(members) < 2:
+    # Build clusters using complete-linkage greedy approach
+    # Start with highest-similarity pairs, try to grow each cluster
+    clustered = set()
+    clusters_raw = []
+
+    # Sort edges by score desc so we start with strongest matches
+    sorted_edges = sorted(edges.items(), key=lambda x: x[1], reverse=True)
+
+    for (a, b), score in sorted_edges:
+        if a in clustered or b in clustered:
             continue
+        # Start a new cluster with this pair
+        cluster = [a, b]
+        clustered.add(a)
+        clustered.add(b)
+
+        # Try to grow: find unclustered descriptions similar to ALL current members
+        # Get category for this cluster
+        cat = desc_info[a]['category']
+        if cat in by_category:
+            candidates = [
+                m['original_comment'] for m in by_category[cat]
+                if m['original_comment'] not in clustered
+            ]
+            for c in candidates:
+                if are_all_similar(cluster, c):
+                    cluster.append(c)
+                    clustered.add(c)
+
+        if len(cluster) >= 2:
+            clusters_raw.append(cluster)
+
+    # Build output
+    clusters = []
+    for members in clusters_raw:
         member_list = []
         total = 0
+        cat = desc_info[members[0]]['category']
         for m in members:
             usage = desc_info[m]['usage']
             member_list.append({'description': m, 'usage': usage})
             total += usage
-        # Sort members by usage desc
         member_list.sort(key=lambda x: x['usage'], reverse=True)
         clusters.append({
-            'category': desc_info[root]['category'],
+            'category': cat,
             'members': member_list,
             'total_usage': total,
             'suggested_canonical': member_list[0]['description'],
             'member_count': len(member_list),
         })
 
-    # Sort clusters by total usage desc
     clusters.sort(key=lambda x: x['total_usage'], reverse=True)
     return clusters
 
