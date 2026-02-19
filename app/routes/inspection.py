@@ -730,6 +730,14 @@ def add_defect(inspection_id, item_id):
     now = datetime.now(timezone.utc).isoformat()
     if len(description) > 0:
         description = description[0].upper() + description[1:]
+    existing = query_db("SELECT id FROM inspection_defect WHERE inspection_item_id = ? AND tenant_id = ? AND LOWER(description) = LOWER(?)", [item_id, tenant_id, description], one=True)
+    if existing:
+        if area_id:
+            html = _render_single_item(inspection_id, item_id, tenant_id, area_id, force_expanded=True)
+            response = make_response(html)
+            response.headers['HX-Trigger'] = 'areaUpdated'
+            return response
+        return '', 204
     if item['status'] not in ('not_to_standard', 'not_installed'):
         db.execute("UPDATE inspection_item SET status = 'not_to_standard', marked_at = ? WHERE id = ?", [now, item_id])
     if inspection['status'] == 'not_started':
