@@ -308,6 +308,19 @@ def inspect_area(inspection_id, area_id):
             WHERE d.unit_id = ? AND d.status = 'open'
         """, [inspection['unit_id']])
         open_defects_map = {d['item_template_id']: d for d in open_defects}
+    all_inspection_defects = query_db("""
+        SELECT idf.id, idf.inspection_item_id, idf.description, idf.defect_type
+        FROM inspection_defect idf
+        WHERE idf.inspection_id = ? AND idf.tenant_id = ?
+        ORDER BY idf.created_at
+    """, [inspection_id, tenant_id])
+    inspection_defects_map = {}
+    for idef in (all_inspection_defects or []):
+        idef_dict = dict(idef)
+        iid = idef_dict['inspection_item_id']
+        if iid not in inspection_defects_map:
+            inspection_defects_map[iid] = []
+        inspection_defects_map[iid].append(idef_dict)
     
     # Get category comments
     cat_comments = query_db("""
@@ -419,6 +432,7 @@ def inspect_area(inspection_id, area_id):
             if item['status'] != 'skipped':
                 all_skipped = False
             
+            item_defects = inspection_defects_map.get(item['id'], [])
             checklist.append({
                 'id': item['id'],
                 'template_id': item['template_id'],
@@ -432,6 +446,7 @@ def inspect_area(inspection_id, area_id):
                 'has_open_defect': has_open_defect,
                 'defect_cycle': defect_info['raised_cycle'] if defect_info else None,
                 'defect_comment': defect_info['original_comment'] if defect_info else None,
+                'inspection_defects': item_defects,
             })
         
         # Skip empty categories in filter modes
@@ -503,6 +518,12 @@ def _build_item_for_render(inspection_id, item_id, tenant_id, unit_id=None, cycl
             defect_cycle = defect_info['raised_cycle']
             defect_comment = defect_info['original_comment']
 
+    inspection_defects = query_db("""
+        SELECT id, description, defect_type FROM inspection_defect
+        WHERE inspection_item_id = ? AND tenant_id = ?
+        ORDER BY created_at
+    """, [item_id, tenant_id])
+    inspection_defects = [dict(d) for d in inspection_defects] if inspection_defects else []
     return {
         'id': item_raw['id'],
         'template_id': item_raw['template_id'],
@@ -516,6 +537,7 @@ def _build_item_for_render(inspection_id, item_id, tenant_id, unit_id=None, cycl
         'has_open_defect': has_open_defect,
         'defect_cycle': defect_cycle,
         'defect_comment': defect_comment,
+        'inspection_defects': inspection_defects,
     }
 
 
@@ -636,6 +658,26 @@ def update_item(inspection_id, item_id):
                         UPDATE inspection_item SET status = 'pending', marked_at = NULL
                         WHERE id = ?
                     """, [child['id']])
+                    db.execute("""
+                        DELETE FROM inspection_defect WHERE inspection_item_id = ?
+                    """, [child['id']])
+        
+        # Clear inspection defects when item transitions to OK
+        if status == 'ok':
+            db.execute("""
+                DELETE FROM inspection_defect WHERE inspection_item_id = ?
+            """, [item_id])
+        
+        # Clear children inspection defects when parent cascades to not_installed
+        if template and template['parent_item_id'] is None and status == 'not_installed':
+            for child in (query_db("""
+                SELECT ii.id FROM inspection_item ii
+                JOIN item_template it ON ii.item_template_id = it.id
+                WHERE it.parent_item_id = ? AND ii.inspection_id = ?
+            """, [item['item_template_id'], inspection_id]) or []):
+                db.execute("""
+                    DELETE FROM inspection_defect WHERE inspection_item_id = ?
+                """, [child['id']])
         
         # Auto-transition inspection from not_started to in_progress
         if inspection['status'] == 'not_started':
@@ -666,6 +708,58 @@ def update_item(inspection_id, item_id):
         response.headers['HX-Trigger'] = 'areaUpdated'
         return response
     
+    return '', 204
+
+
+@inspection_bp.route('/<inspection_id>/item/<item_id>/defect', methods=['POST'])
+@require_auth
+def add_defect(inspection_id, item_id):
+    tenant_id = session['tenant_id']
+    db = get_db()
+    description = request.form.get('description', '').strip()
+    area_id = request.form.get('area_id')
+    if not description:
+        return '', 204
+    inspection = query_db("SELECT * FROM inspection WHERE id = ? AND tenant_id = ?", [inspection_id, tenant_id], one=True)
+    if not inspection:
+        abort(404)
+    item = query_db("SELECT * FROM inspection_item WHERE id = ? AND inspection_id = ?", [item_id, inspection_id], one=True)
+    if not item:
+        abort(404)
+    now = datetime.now(timezone.utc).isoformat()
+    if len(description) > 0:
+        description = description[0].upper() + description[1:]
+    if item['status'] not in ('not_to_standard', 'not_installed'):
+        db.execute("UPDATE inspection_item SET status = 'not_to_standard', marked_at = ? WHERE id = ?", [now, item_id])
+    if inspection['status'] == 'not_started':
+        db.execute("UPDATE inspection SET status = 'in_progress', started_at = ?, updated_at = ? WHERE id = ?", [now, now, inspection_id])
+    defect_id = generate_id()
+    db.execute("INSERT INTO inspection_defect (id, tenant_id, inspection_id, inspection_item_id, item_template_id, description, defect_type, created_at) VALUES (?, ?, ?, ?, ?, ?, 'not_to_standard', ?)", [defect_id, tenant_id, inspection_id, item_id, item['item_template_id'], description, now])
+    db.commit()
+    if area_id:
+        html = _render_single_item(inspection_id, item_id, tenant_id, area_id)
+        response = make_response(html)
+        response.headers['HX-Trigger'] = 'areaUpdated'
+        return response
+    return '', 204
+
+
+@inspection_bp.route('/<inspection_id>/item/<item_id>/defect/<defect_id>', methods=['DELETE'])
+@require_auth
+def remove_defect(inspection_id, item_id, defect_id):
+    tenant_id = session['tenant_id']
+    db = get_db()
+    area_id = request.args.get('area_id')
+    inspection = query_db("SELECT * FROM inspection WHERE id = ? AND tenant_id = ?", [inspection_id, tenant_id], one=True)
+    if not inspection:
+        abort(404)
+    db.execute("DELETE FROM inspection_defect WHERE id = ? AND inspection_item_id = ? AND tenant_id = ?", [defect_id, item_id, tenant_id])
+    db.commit()
+    if area_id:
+        html = _render_single_item(inspection_id, item_id, tenant_id, area_id)
+        response = make_response(html)
+        response.headers['HX-Trigger'] = 'areaUpdated'
+        return response
     return '', 204
 
 
@@ -807,44 +901,26 @@ def submit_inspection(inspection_id):
     """, [inspection_id])
     
     for item in defect_items:
-        existing = query_db("""
-            SELECT * FROM defect 
-            WHERE unit_id = ? AND item_template_id = ?
-            ORDER BY created_at DESC LIMIT 1
-        """, [inspection['unit_id'], item['template_id']], one=True)
-        
-        if existing:
-            if existing['status'] == 'cleared':
-                db.execute("""
-                    UPDATE defect 
-                    SET status = 'open', 
-                        cleared_cycle_id = NULL, 
-                        cleared_at = NULL,
-                        updated_at = CURRENT_TIMESTAMP
-                    WHERE id = ?
-                """, [existing['id']])
-            
-            history_id = generate_id()
-            db.execute("""
-                INSERT INTO defect_history (id, tenant_id, defect_id, cycle_id, comment, status)
-                VALUES (?, ?, ?, ?, ?, 'open')
-            """, [history_id, tenant_id, existing['id'], inspection['cycle_id'], 
-                  item['comment'] or 'Not rectified'])
-        else:
-            defect_id = generate_id()
-            washed_comment = wash_description(db, tenant_id, item['template_id'], item['comment'])
-            db.execute("""
-                INSERT INTO defect (id, tenant_id, unit_id, item_template_id,
-                                   raised_cycle_id, defect_type, status, original_comment, raw_comment)
-                VALUES (?, ?, ?, ?, ?, ?, 'open', ?, ?)
-            """, [defect_id, tenant_id, inspection['unit_id'], item['template_id'],
-                  inspection['cycle_id'], item['status'], washed_comment, item['comment']])
-            
-            history_id = generate_id()
-            db.execute("""
-                INSERT INTO defect_history (id, tenant_id, defect_id, cycle_id, comment, status)
-                VALUES (?, ?, ?, ?, ?, 'open')
-            """, [history_id, tenant_id, defect_id, inspection['cycle_id'], washed_comment])
+        item_defects = query_db("SELECT id, description, defect_type FROM inspection_defect WHERE inspection_item_id = ? AND tenant_id = ? ORDER BY created_at", [item['id'], tenant_id])
+        item_defects = [dict(d) for d in item_defects] if item_defects else []
+        if not item_defects and item['comment']:
+            item_defects = [{'description': item['comment'], 'defect_type': item['status']}]
+        elif not item_defects:
+            item_defects = [{'description': 'Defect noted', 'defect_type': item['status']}]
+        existing = query_db("SELECT * FROM defect WHERE unit_id = ? AND item_template_id = ? AND status = 'open' ORDER BY created_at DESC LIMIT 1", [inspection['unit_id'], item['template_id']], one=True)
+        for idx, idef in enumerate(item_defects):
+            desc_raw = idef['description']
+            if idx == 0 and existing:
+                if existing['status'] == 'cleared':
+                    db.execute("UPDATE defect SET status = 'open', cleared_cycle_id = NULL, cleared_at = NULL, updated_at = CURRENT_TIMESTAMP WHERE id = ?", [existing['id']])
+                history_id = generate_id()
+                db.execute("INSERT INTO defect_history (id, tenant_id, defect_id, cycle_id, comment, status) VALUES (?, ?, ?, ?, ?, 'open')", [history_id, tenant_id, existing['id'], inspection['cycle_id'], desc_raw or 'Not rectified'])
+            else:
+                defect_id = generate_id()
+                washed_comment = wash_description(db, tenant_id, item['template_id'], desc_raw)
+                db.execute("INSERT INTO defect (id, tenant_id, unit_id, item_template_id, raised_cycle_id, defect_type, status, original_comment, raw_comment) VALUES (?, ?, ?, ?, ?, ?, 'open', ?, ?)", [defect_id, tenant_id, inspection['unit_id'], item['template_id'], inspection['cycle_id'], item['status'], washed_comment, desc_raw])
+                history_id = generate_id()
+                db.execute("INSERT INTO defect_history (id, tenant_id, defect_id, cycle_id, comment, status) VALUES (?, ?, ?, ?, ?, 'open')", [history_id, tenant_id, defect_id, inspection['cycle_id'], washed_comment])
     
     ok_items = query_db("""
         SELECT ii.item_template_id
@@ -853,23 +929,12 @@ def submit_inspection(inspection_id):
     """, [inspection_id])
     
     for item in ok_items:
-        defect = query_db("""
-            SELECT * FROM defect
-            WHERE unit_id = ? AND item_template_id = ? AND status = 'open'
-        """, [inspection['unit_id'], item['item_template_id']], one=True)
-        
-        if defect:
-            db.execute("""
-                UPDATE defect
-                SET status = 'cleared', cleared_cycle_id = ?, cleared_at = CURRENT_TIMESTAMP
-                WHERE id = ?
-            """, [inspection['cycle_id'], defect['id']])
-            
+        open_defects = query_db("SELECT * FROM defect WHERE unit_id = ? AND item_template_id = ? AND status = 'open'", [inspection['unit_id'], item['item_template_id']])
+        for defect in (open_defects or []):
+            db.execute("UPDATE defect SET status = 'cleared', cleared_cycle_id = ?, cleared_at = CURRENT_TIMESTAMP WHERE id = ?", [inspection['cycle_id'], defect['id']])
             history_id = generate_id()
-            db.execute("""
-                INSERT INTO defect_history (id, tenant_id, defect_id, cycle_id, comment, status)
-                VALUES (?, ?, ?, ?, ?, 'cleared')
-            """, [history_id, tenant_id, defect['id'], inspection['cycle_id'], 'Rectified'])
+            db.execute("INSERT INTO defect_history (id, tenant_id, defect_id, cycle_id, comment, status) VALUES (?, ?, ?, ?, ?, 'cleared')", [history_id, tenant_id, defect['id'], inspection['cycle_id'], 'Rectified'])
+    db.execute("DELETE FROM inspection_defect WHERE inspection_id = ? AND tenant_id = ?", [inspection_id, tenant_id])
     
     db.execute("""
         UPDATE inspection 
@@ -1001,14 +1066,11 @@ def get_open_defects(inspection_id):
 @inspection_bp.route('/<inspection_id>/defect-count')
 @require_auth
 def get_defect_count(inspection_id):
-    defect_count = query_db("""
-        SELECT COUNT(*) as defects
-        FROM inspection_item ii
-        WHERE ii.inspection_id = ?
-        AND ii.status IN ('not_to_standard', 'not_installed')
-    """, [inspection_id], one=True)
-    
-    count = defect_count['defects'] or 0
+    multi_count = query_db("SELECT COUNT(*) as cnt FROM inspection_defect WHERE inspection_id = ? AND tenant_id = ?", [inspection_id, session['tenant_id']], one=True)
+    count = multi_count['cnt'] or 0
+    if count == 0:
+        item_count = query_db("SELECT COUNT(*) as defects FROM inspection_item ii WHERE ii.inspection_id = ? AND ii.status IN ('not_to_standard', 'not_installed')", [inspection_id], one=True)
+        count = item_count['defects'] or 0
     if count > 0:
         return f'<span class="text-red-600 font-medium">{count} defect{"s" if count != 1 else ""} will be raised.</span>'
     return ''
@@ -1090,20 +1152,22 @@ def get_defect_suggestions(item_template_id):
         pills_html = '<div class="flex flex-wrap gap-2.5 mt-2">'
         for s in suggestions:
             desc = s['description']
+            escaped = desc.replace(chr(39), chr(92)+chr(39))
             pills_html += f'''<button type="button"
                 class="px-3 py-2 bg-blue-50 text-blue-700 rounded-lg text-xs hover:bg-blue-100 transition-colors guide-pill"
-                onclick="var w=this.closest('.guide-pills');var url=w.dataset.postUrl;var aid=w.dataset.areaId;var tid=w.dataset.itemId;htmx.ajax('POST',url,{{values:{{status:'not_to_standard',comment:'{desc.replace(chr(39), chr(92)+chr(39))}',area_id:aid}},target:'#'+tid,swap:'innerHTML'}})"
+                onclick="var w=this.closest('.guide-pills');var url=w.dataset.addUrl;var aid=w.dataset.areaId;var tid=w.dataset.itemId;htmx.ajax('POST',url,{{values:{{description:'{escaped}',area_id:aid}},target:'#'+tid,swap:'innerHTML'}})"
                 >{desc}</button>'''
         pills_html += '</div>'
         return pills_html
     
-    # Active mode - show pills below defect input
     pills_html = '<div class="flex flex-wrap gap-2.5 mt-2">'
     for s in suggestions:
         desc = s['description']
+        escaped = desc.replace(chr(39), chr(92)+chr(39))
         pills_html += f'''<button type="button"
             class="px-3 py-2 bg-blue-50 text-blue-700 rounded-lg text-xs hover:bg-blue-100 transition-colors"
-            onclick="var input=this.closest('.defect-input-wrapper').querySelector('input');input.value='{desc.replace(chr(39), chr(92)+chr(39))}';input.dispatchEvent(new Event('blur'))"
+            onclick="var w=this.closest('.defect-input-wrapper');htmx.ajax('POST',w.dataset.addUrl,{{target:'#'+w.dataset.itemId,swap:'innerHTML',values:{{description:'{escaped}',area_id:w.dataset.areaId}}}})"
+            ontouchend="event.preventDefault();this.click()"
             >{desc}</button>'''
     pills_html += '</div>'
     return pills_html

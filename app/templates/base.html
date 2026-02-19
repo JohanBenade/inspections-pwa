@@ -245,6 +245,25 @@
     })();
     </script>
     
+    <!-- PWA wake recovery -->
+    <script>
+    (function() {
+        var lastHidden = 0;
+        document.addEventListener('visibilitychange', function() {
+            if (document.hidden) {
+                lastHidden = Date.now();
+            } else {
+                var elapsed = Date.now() - lastHidden;
+                if (elapsed > 30000) {
+                    fetch(window.location.href, {method: 'HEAD', cache: 'no-store'})
+                        .then(function(r) { if (!r.ok) window.location.reload(); })
+                        .catch(function() { window.location.reload(); });
+                }
+            }
+        });
+    })();
+    </script>
+    
     {% block extra_scripts %}{% endblock %}
 </body>
 </html>

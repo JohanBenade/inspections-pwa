@@ -303,6 +303,23 @@ CREATE TABLE IF NOT EXISTS schema_version (
 INSERT OR IGNORE INTO schema_version (version) VALUES (2);
 
 -- ============================================
+-- INSPECTION DEFECTS (multi-defect per item during inspection)
+-- ============================================
+
+CREATE TABLE IF NOT EXISTS inspection_defect (
+    id TEXT PRIMARY KEY,
+    tenant_id TEXT NOT NULL,
+    inspection_id TEXT NOT NULL,
+    inspection_item_id TEXT NOT NULL,
+    item_template_id TEXT NOT NULL,
+    description TEXT NOT NULL,
+    defect_type TEXT NOT NULL DEFAULT 'not_to_standard',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (inspection_id) REFERENCES inspection(id),
+    FOREIGN KEY (inspection_item_id) REFERENCES inspection_item(id)
+);
+
+-- ============================================
 -- INDEXES
 -- ============================================
 
@@ -319,3 +336,5 @@ CREATE INDEX IF NOT EXISTS idx_defect_status ON defect(status);
 CREATE INDEX IF NOT EXISTS idx_defect_history_defect ON defect_history(defect_id);
 CREATE INDEX IF NOT EXISTS idx_category_comment_unit ON category_comment(unit_id);
 CREATE INDEX IF NOT EXISTS idx_excluded_item_cycle ON cycle_excluded_item(cycle_id);
+CREATE INDEX IF NOT EXISTS idx_inspection_defect_item ON inspection_defect(inspection_item_id);
+CREATE INDEX IF NOT EXISTS idx_inspection_defect_inspection ON inspection_defect(inspection_id);
