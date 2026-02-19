@@ -8,7 +8,6 @@
     .font-body { font-family: 'DM Sans', system-ui, sans-serif; }
     .gold-accent { color: #C8963E; }
     .bg-gold { background-color: #C8963E; }
-    .border-gold { border-color: #C8963E; }
     .section-num { font-family: 'Cormorant Garamond', serif; font-size: 0.75rem; font-weight: 600; letter-spacing: 0.15em; color: #C8963E; text-transform: uppercase; }
     .verdict-bar { background: linear-gradient(135deg, #0A0A0A 0%, #1A1A1A 100%); }
     .verdict-bar-warn { background: linear-gradient(135deg, #7f1d1d 0%, #991b1b 50%, #7f1d1d 100%); }
@@ -45,7 +44,7 @@
     </div>
 
     {% if not has_data %}
-    <div class="section-card text-center py-12"><p class="text-gray-400 font-display text-xl">No inspection data for this zone yet.</p></div>
+    <div class="section-card text-center py-12"><p class="text-gray-400 font-display text-xl">No inspection data yet.</p></div>
     {% else %}
 
     <!-- ==================== VERDICT BAR ==================== -->
@@ -56,17 +55,11 @@
             <div>
                 <div class="text-white text-xs font-semibold tracking-widest uppercase mb-1" style="opacity: 0.7;">Rectification Status</div>
                 <div class="font-display text-white text-2xl lg:text-3xl font-bold">
-                    {% if pct == 0 and rect_totals.new_defects > 0 %}
-                    Rectification Stalled
-                    {% elif pct == 0 %}
-                    Awaiting Rectification
-                    {% elif pct < 50 %}
-                    Rectification In Progress
-                    {% elif pct < 100 %}
-                    Rectification On Track
-                    {% else %}
-                    Fully Rectified
-                    {% endif %}
+                    {% if pct == 0 and rect_totals.new_defects > 0 %}Rectification Stalled
+                    {% elif pct == 0 %}Awaiting Rectification
+                    {% elif pct < 50 %}Rectification In Progress
+                    {% elif pct < 100 %}Rectification On Track
+                    {% else %}Fully Rectified{% endif %}
                 </div>
             </div>
             <div class="flex flex-wrap gap-6 text-white">
@@ -92,55 +85,13 @@
     </div>
     {% endif %}
 
-    <!-- ==================== KPI CARDS ==================== -->
-    <div class="grid grid-cols-2 lg:grid-cols-5 gap-3 mb-6">
-        <div class="kpi-card rounded-md px-4 py-3">
-            <div class="kpi-value text-gray-900">{{ summary.total_units }}</div>
-            <div class="kpi-label">Units Inspected</div>
-        </div>
-        <div class="kpi-card rounded-md px-4 py-3">
-            <div class="kpi-value {% if summary.total_defects > 0 %}text-red-700{% else %}text-emerald-700{% endif %}">{{ summary.total_defects }}</div>
-            <div class="kpi-label">Open Defects</div>
-        </div>
-        <div class="kpi-card rounded-md px-4 py-3">
-            <div class="kpi-value text-gray-900">{{ summary.avg_defects }}</div>
-            <div class="kpi-label">Avg / Unit <span style="color: #9A9A9A;">(med: {{ summary.median_defects }})</span></div>
-        </div>
-        <div class="kpi-card rounded-md px-4 py-3">
-            <div class="kpi-value text-gray-900">{{ summary.defect_rate }}%</div>
-            <div class="kpi-label">Defect Rate</div>
-        </div>
-        <div class="kpi-card rounded-md px-4 py-3">
-            <div class="kpi-value gold-accent">R{{ summary.max_round }}</div>
-            <div class="kpi-label">Latest Round</div>
-        </div>
-    </div>
-
-    <!-- ==================== 01 RECTIFICATION SCORECARD ==================== -->
+    <!-- ==================== 01 CONTRACTOR PERFORMANCE ==================== -->
     {% if rectification %}
     <div class="section-card mb-6">
-        <div class="section-num">01 &mdash; Rectification Scorecard</div>
+        <div class="section-num">01 &mdash; Contractor Performance</div>
         <div class="divider"></div>
-        <div class="section-title">Contractor Performance</div>
         <div class="section-subtitle">Defect resolution for re-inspected units &middot; Round {{ summary.max_round - 1 }} &rarr; Round {{ summary.max_round }}</div>
 
-        <!-- Big 3 stats -->
-        <div class="grid grid-cols-3 gap-4 mb-6">
-            <div class="text-center py-4 rounded-lg" style="background: {% if rect_totals.clearance_pct == 0 %}rgba(196,77,63,0.08){% elif rect_totals.clearance_pct < 50 %}rgba(200,150,62,0.08){% else %}rgba(74,124,89,0.08){% endif %};">
-                <div class="font-display text-4xl lg:text-5xl font-bold {% if rect_totals.clearance_pct == 0 %}text-red-700{% elif rect_totals.clearance_pct < 50 %}text-amber-700{% else %}text-emerald-700{% endif %}">{{ rect_totals.clearance_pct }}%</div>
-                <div class="text-xs font-semibold uppercase tracking-wider text-gray-500 mt-1">Rectification Rate</div>
-            </div>
-            <div class="text-center py-4 rounded-lg" style="background: {% if rect_totals.new_defects > 0 %}rgba(200,150,62,0.08){% else %}rgba(74,124,89,0.08){% endif %};">
-                <div class="font-display text-4xl lg:text-5xl font-bold {% if rect_totals.new_defects > 0 %}text-amber-700{% else %}text-emerald-700{% endif %}">{{ rect_totals.new_defects }}</div>
-                <div class="text-xs font-semibold uppercase tracking-wider text-gray-500 mt-1">New Defects Found</div>
-            </div>
-            <div class="text-center py-4 rounded-lg" style="background: rgba(61,107,142,0.06);">
-                <div class="font-display text-4xl lg:text-5xl font-bold text-gray-800">{{ rect_totals.total_open }}</div>
-                <div class="text-xs font-semibold uppercase tracking-wider text-gray-500 mt-1">Total Open Now</div>
-            </div>
-        </div>
-
-        <!-- Per-unit table -->
         <table class="w-full data-table">
             <thead>
                 <tr>
@@ -149,7 +100,7 @@
                     <th class="text-center">Rectified</th>
                     <th class="text-center">New in R{{ summary.max_round }}</th>
                     <th class="text-center">Open Now</th>
-                    <th class="text-left" style="width: 160px;">Clearance</th>
+                    <th class="text-left" style="width: 140px;">Clearance</th>
                     <th class="text-center">Trajectory</th>
                 </tr>
             </thead>
@@ -170,15 +121,10 @@
                         </div>
                     </td>
                     <td class="text-center font-semibold text-sm">
-                        {% if r.total_open > r.prev_raised %}
-                        <span class="trajectory-worse">&#9650; Worse</span>
-                        {% elif r.total_open == r.prev_raised %}
-                        <span class="trajectory-same">&#9644; Same</span>
-                        {% elif r.total_open > 0 %}
-                        <span class="trajectory-better">&#9660; Improving</span>
-                        {% else %}
-                        <span class="trajectory-better">&#10003; Clear</span>
-                        {% endif %}
+                        {% if r.total_open > r.prev_raised %}<span class="trajectory-worse">&#9650; Worse</span>
+                        {% elif r.total_open == r.prev_raised %}<span class="trajectory-same">&#9644; Same</span>
+                        {% elif r.total_open > 0 %}<span class="trajectory-better">&#9660; Improving</span>
+                        {% else %}<span class="trajectory-better">&#10003; Clear</span>{% endif %}
                     </td>
                 </tr>
                 {% endfor %}
@@ -198,13 +144,9 @@
                         </div>
                     </td>
                     <td class="text-center font-bold text-sm">
-                        {% if rect_totals.total_open > rect_totals.prev_raised %}
-                        <span class="trajectory-worse">&#9650; Worse</span>
-                        {% elif rect_totals.prev_cleared > 0 %}
-                        <span class="trajectory-better">&#9660; Improving</span>
-                        {% else %}
-                        <span class="trajectory-same">&#9644; No Change</span>
-                        {% endif %}
+                        {% if rect_totals.total_open > rect_totals.prev_raised %}<span class="trajectory-worse">&#9650; Worse</span>
+                        {% elif rect_totals.prev_cleared > 0 %}<span class="trajectory-better">&#9660; Improving</span>
+                        {% else %}<span class="trajectory-same">&#9644; No Change</span>{% endif %}
                     </td>
                 </tr>
                 {% endif %}
@@ -214,22 +156,19 @@
         {% if rect_callout %}
         <div class="callout {% if rect_totals.clearance_pct == 0 %}callout-red{% elif rect_totals.clearance_pct < 50 %}callout-amber{% else %}callout-green{% endif %} mt-5">
             <strong>Finding:</strong> {{ rect_callout }}
-            {% if rect_totals.total_open > rect_totals.prev_raised %}
-            Total defect load increased from {{ rect_totals.prev_raised }} to {{ rect_totals.total_open }} &mdash; a {{ ((rect_totals.total_open - rect_totals.prev_raised) / rect_totals.prev_raised * 100)|round|int }}% increase.
-            {% endif %}
         </div>
         {% endif %}
     </div>
     {% endif %}
 
-    <!-- ==================== 02 UNIT PROGRESS MAP ==================== -->
+    <!-- ==================== 02 BLOCK OVERVIEW ==================== -->
     <div class="section-card mb-6">
-        <div class="section-num">{% if rectification %}02{% else %}01{% endif %} &mdash; Unit Progress</div>
+        <div class="section-num">{% if rectification %}02{% else %}01{% endif %} &mdash; Block Overview</div>
         <div class="divider"></div>
-        <div class="section-title">Pipeline Overview</div>
-        <div class="section-subtitle">All {{ summary.total_units }} units in this zone &middot; Colour indicates current status</div>
+        <div class="section-subtitle">{{ summary.total_units }} units &middot; {{ summary.total_defects }} open defects &middot; {{ summary.avg_defects }} avg per unit (median: {{ summary.median_defects }}) &middot; {{ summary.defect_rate }}% defect rate</div>
 
-        <div class="flex flex-wrap gap-2 mb-4">
+        <!-- Unit grid -->
+        <div class="flex flex-wrap gap-2 mb-3">
             {% for u in units|sort(attribute='unit_number') %}
             {% set is_reinspected = (u.round_number > 1) %}
             <div class="unit-grid-cell {% if u.insp_status == 'certified' %}bg-emerald-500 text-white{% elif is_reinspected and u.defect_count > 0 %}bg-red-100 text-red-700{% elif u.defect_count > summary.median_defects %}bg-red-50 text-red-600{% elif u.defect_count == 0 %}bg-emerald-100 text-emerald-700{% else %}bg-amber-50 text-amber-700{% endif %}" title="Unit {{ u.unit_number }}: {{ u.defect_count }} defects (R{{ u.round_number }})">
@@ -239,7 +178,6 @@
         </div>
         <div class="flex flex-wrap gap-4 text-xs text-gray-500">
             <span class="flex items-center gap-1"><span class="inline-block w-3 h-3 rounded bg-emerald-500"></span> Certified</span>
-            <span class="flex items-center gap-1"><span class="inline-block w-3 h-3 rounded bg-emerald-100"></span> No defects</span>
             <span class="flex items-center gap-1"><span class="inline-block w-3 h-3 rounded bg-amber-50 border border-amber-200"></span> Below median</span>
             <span class="flex items-center gap-1"><span class="inline-block w-3 h-3 rounded bg-red-50 border border-red-200"></span> Above median</span>
             <span class="flex items-center gap-1"><span class="inline-block w-3 h-3 rounded bg-red-100"></span> Re-inspected, not improving</span>
@@ -270,7 +208,7 @@
             </div>
             {% if area_data|length >= 2 %}
             <div class="callout callout-amber mt-5">
-                <strong>Focus:</strong> {{ area_data[0].area }} and {{ area_data[1].area }} account for {{ area_data[0].pct + area_data[1].pct }}% of all defects. Prioritise these areas.
+                <strong>Focus:</strong> {{ area_data[0].area }} and {{ area_data[1].area }} account for {{ area_data[0].pct + area_data[1].pct }}% of all defects.
             </div>
             {% endif %}
         </div>
@@ -310,22 +248,34 @@
     </div>
     {% endif %}
 
-    <!-- ==================== 05 MOST COMMON DEFECTS ==================== -->
+    <!-- ==================== 05 MOST COMMON ISSUES ==================== -->
     {% if top_defects %}
     <div class="section-card mb-6">
-        <div class="section-num">{% if rectification %}05{% else %}04{% endif %} &mdash; Defect Types</div>
+        <div class="section-num">{% if rectification %}05{% else %}04{% endif %} &mdash; Most Common Issues</div>
         <div class="divider"></div>
-        <div class="section-title">Most Common Issues</div>
         <div class="section-subtitle">Top 10 defect descriptions by frequency &middot; Median: {{ td_median }}</div>
 
-        <div class="grid grid-cols-1 lg:grid-cols-2 gap-x-6 gap-y-2">
-            {% for d in top_defects %}
-            <div class="flex items-center gap-3 py-2" style="border-bottom: 1px solid #f0f0f0;">
-                <span class="inline-flex items-center justify-center w-6 h-6 rounded-full text-xs font-bold flex-shrink-0 {% if loop.index <= 3 %}bg-gold text-white{% else %}bg-gray-200 text-gray-600{% endif %}">{{ loop.index }}</span>
-                <span class="text-sm text-gray-700 flex-1">{{ d.description }}</span>
-                <span class="text-sm font-bold tabular-nums {% if d.count > td_median %}text-red-600{% elif d.count == td_median %}text-amber-600{% else %}text-emerald-600{% endif %}">{{ d.count }}</span>
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-x-8">
+            <!-- Left column: 1-5 -->
+            <div>
+                {% for d in top_defects[:5] %}
+                <div class="flex items-center gap-3 py-2" style="border-bottom: 1px solid #f0f0f0;">
+                    <span class="inline-flex items-center justify-center w-6 h-6 rounded-full text-xs font-bold flex-shrink-0 {% if loop.index <= 3 %}bg-gold text-white{% else %}bg-gray-200 text-gray-600{% endif %}">{{ loop.index }}</span>
+                    <span class="text-sm text-gray-700 flex-1">{{ d.description }}</span>
+                    <span class="text-sm font-bold tabular-nums {% if d.count > td_median %}text-red-600{% elif d.count == td_median %}text-amber-600{% else %}text-emerald-600{% endif %}">{{ d.count }}</span>
+                </div>
+                {% endfor %}
             </div>
-            {% endfor %}
+            <!-- Right column: 6-10 -->
+            <div>
+                {% for d in top_defects[5:10] %}
+                <div class="flex items-center gap-3 py-2" style="border-bottom: 1px solid #f0f0f0;">
+                    <span class="inline-flex items-center justify-center w-6 h-6 rounded-full text-xs font-bold flex-shrink-0 bg-gray-200 text-gray-600">{{ loop.index + 5 }}</span>
+                    <span class="text-sm text-gray-700 flex-1">{{ d.description }}</span>
+                    <span class="text-sm font-bold tabular-nums {% if d.count > td_median %}text-red-600{% elif d.count == td_median %}text-amber-600{% else %}text-emerald-600{% endif %}">{{ d.count }}</span>
+                </div>
+                {% endfor %}
+            </div>
         </div>
     </div>
     {% endif %}
@@ -333,9 +283,8 @@
     <!-- ==================== 06 UNIT DETAIL TABLE ==================== -->
     {% if units %}
     <div class="section-card mb-6">
-        <div class="section-num">{% if rectification %}06{% else %}05{% endif %} &mdash; Evidence</div>
+        <div class="section-num">{% if rectification %}06{% else %}05{% endif %} &mdash; Unit Detail</div>
         <div class="divider"></div>
-        <div class="section-title">Unit-by-Unit Detail</div>
         <div class="section-subtitle">All units ranked worst-first &middot; Median: {{ summary.median_defects }} defects</div>
 
         <div class="overflow-x-auto">
@@ -386,7 +335,7 @@
             <span class="text-xs text-gray-400 ml-2">(click to expand)</span>
         </summary>
         <div class="divider mt-2"></div>
-        <div class="section-subtitle">Independent stats per round. Unit counts differ between rounds &mdash; compare rates, not totals.</div>
+        <div class="section-subtitle">Independent stats per round. Unit counts differ &mdash; compare rates, not totals.</div>
         <div class="grid grid-cols-1 sm:grid-cols-{{ rounds|length }} gap-4 mt-3">
             {% for r in rounds %}
             <div class="p-4 rounded-lg {% if loop.last %}bg-blue-50{% else %}bg-gray-50{% endif %}">
