@@ -541,7 +541,7 @@ def _build_item_for_render(inspection_id, item_id, tenant_id, unit_id=None, cycl
     }
 
 
-def _render_single_item(inspection_id, item_id, tenant_id, area_id, swap_oob=False):
+def _render_single_item(inspection_id, item_id, tenant_id, area_id, swap_oob=False, force_expanded=False):
     """Render a single item partial for HTMX per-item swap.
 
     Returns content only (no wrapper div). The stable wrapper <div id="item-{id}">
@@ -577,7 +577,8 @@ def _render_single_item(inspection_id, item_id, tenant_id, area_id, swap_oob=Fal
                            item=item,
                            inspection=inspection,
                            area=area,
-                           is_followup=is_followup)
+                           is_followup=is_followup,
+                           force_expanded=force_expanded)
 
     if swap_oob:
         html = '<div id="item-' + item_id + '" hx-swap-oob="innerHTML">' + html + '</div>'
@@ -737,7 +738,7 @@ def add_defect(inspection_id, item_id):
     db.execute("INSERT INTO inspection_defect (id, tenant_id, inspection_id, inspection_item_id, item_template_id, description, defect_type, created_at) VALUES (?, ?, ?, ?, ?, ?, 'not_to_standard', ?)", [defect_id, tenant_id, inspection_id, item_id, item['item_template_id'], description, now])
     db.commit()
     if area_id:
-        html = _render_single_item(inspection_id, item_id, tenant_id, area_id)
+        html = _render_single_item(inspection_id, item_id, tenant_id, area_id, force_expanded=True)
         response = make_response(html)
         response.headers['HX-Trigger'] = 'areaUpdated'
         return response
@@ -756,7 +757,7 @@ def remove_defect(inspection_id, item_id, defect_id):
     db.execute("DELETE FROM inspection_defect WHERE id = ? AND inspection_item_id = ? AND tenant_id = ?", [defect_id, item_id, tenant_id])
     db.commit()
     if area_id:
-        html = _render_single_item(inspection_id, item_id, tenant_id, area_id)
+        html = _render_single_item(inspection_id, item_id, tenant_id, area_id, force_expanded=True)
         response = make_response(html)
         response.headers['HX-Trigger'] = 'areaUpdated'
         return response
