@@ -197,6 +197,7 @@ def block_floor_detail(block_slug, floor):
         return render_template('analytics/block_floor_detail.html',
                                block=block, floor=floor, label=label,
                                has_data=False, units=[], rounds=[],
+                               rectification=[], rect_totals={}, rect_callout='',
                                area_data=[], area_deep_dive=[], dd_callout='',
                                top_defects=[], summary={}, td_median=0)
 
@@ -300,8 +301,8 @@ def block_floor_detail(block_slug, floor):
             SELECT ic.cycle_number as round_number,
                 COUNT(DISTINCT d.id) as total_defects,
                 COUNT(DISTINCT i.unit_id) as units_inspected,
-                SUM(CASE WHEN d.status = 'open' THEN 1 ELSE 0 END) as still_open,
-                SUM(CASE WHEN d.status = 'cleared' THEN 1 ELSE 0 END) as cleared
+                COUNT(DISTINCT CASE WHEN d.status = 'open' THEN d.id END) as still_open,
+                COUNT(DISTINCT CASE WHEN d.status = 'cleared' THEN d.id END) as cleared
             FROM inspection_cycle ic
             JOIN inspection i ON i.cycle_id = ic.id AND i.tenant_id = ic.tenant_id
             LEFT JOIN defect d ON d.raised_cycle_id = ic.id AND d.tenant_id = ic.tenant_id
@@ -316,6 +317,83 @@ def block_floor_detail(block_slug, floor):
             clearance_base = r['total_defects']
             r['clearance_pct'] = round(r['cleared'] / clearance_base * 100, 1) if clearance_base > 0 else 0
         rounds = rounds_raw
+
+    # 3b. Rectification tracker (only when re-inspected units exist)
+    rectification = []
+    rect_totals = {}
+    rect_callout = ''
+
+    if max_round > 1:
+        prev_cycle_ids = [c['id'] for c in cycles if c['cycle_number'] == max_round - 1]
+        latest_cycle_ids = [c['id'] for c in cycles if c['cycle_number'] == max_round]
+
+        if prev_cycle_ids and latest_cycle_ids:
+            ph_latest = ','.join('?' * len(latest_cycle_ids))
+            ph_prev = ','.join('?' * len(prev_cycle_ids))
+
+            # Find units inspected in the latest round
+            re_units = [dict(r) for r in query_db("""
+                SELECT DISTINCT u.id as unit_id, u.unit_number
+                FROM inspection i
+                JOIN unit u ON i.unit_id = u.id
+                WHERE i.cycle_id IN ({}) AND i.tenant_id = ?
+                ORDER BY u.unit_number
+            """.format(ph_latest), latest_cycle_ids + [tenant_id])]
+
+            for unit in re_units:
+                uid = unit['unit_id']
+
+                # Previous round: how many raised, how many cleared
+                prev = dict(query_db("""
+                    SELECT COUNT(*) as raised,
+                        SUM(CASE WHEN status = 'cleared' THEN 1 ELSE 0 END) as cleared
+                    FROM defect WHERE unit_id = ? AND raised_cycle_id IN ({}) AND tenant_id = ?
+                """.format(ph_prev), [uid] + prev_cycle_ids + [tenant_id], one=True))
+
+                # New defects raised in latest round
+                new = dict(query_db("""
+                    SELECT COUNT(*) as cnt FROM defect
+                    WHERE unit_id = ? AND raised_cycle_id IN ({}) AND tenant_id = ?
+                """.format(ph_latest), [uid] + latest_cycle_ids + [tenant_id], one=True))
+
+                # Total currently open for this unit
+                open_cnt = dict(query_db("""
+                    SELECT COUNT(*) as cnt FROM defect
+                    WHERE unit_id = ? AND status = 'open' AND tenant_id = ?
+                """, [uid, tenant_id], one=True))
+
+                prev_raised = prev['raised']
+                prev_cleared = prev['cleared'] or 0
+                clearance_pct = round(prev_cleared / prev_raised * 100, 1) if prev_raised > 0 else 0
+
+                rectification.append({
+                    'unit_number': unit['unit_number'],
+                    'prev_raised': prev_raised,
+                    'prev_cleared': prev_cleared,
+                    'new_defects': new['cnt'],
+                    'total_open': open_cnt['cnt'],
+                    'clearance_pct': clearance_pct,
+                })
+
+            if rectification:
+                sum_prev = sum(r['prev_raised'] for r in rectification)
+                sum_cleared = sum(r['prev_cleared'] for r in rectification)
+                sum_new = sum(r['new_defects'] for r in rectification)
+                sum_open = sum(r['total_open'] for r in rectification)
+                total_pct = round(sum_cleared / sum_prev * 100, 1) if sum_prev > 0 else 0
+
+                rect_totals = {
+                    'prev_raised': sum_prev,
+                    'prev_cleared': sum_cleared,
+                    'new_defects': sum_new,
+                    'total_open': sum_open,
+                    'clearance_pct': total_pct,
+                }
+
+                rect_callout = 'Of {} defects raised on re-inspected units in Round {}, {} ({:.1f}%) have been rectified.'.format(
+                    sum_prev, max_round - 1, sum_cleared, total_pct)
+                if sum_new > 0:
+                    rect_callout += ' {} new defects identified in Round {}.'.format(sum_new, max_round)
 
     # 4. Area breakdown (all open defects in this block+floor)
     area_data_raw = [dict(r) for r in query_db("""
@@ -409,6 +487,9 @@ def block_floor_detail(block_slug, floor):
                            has_data=True,
                            units=units,
                            rounds=rounds,
+                           rectification=rectification,
+                           rect_totals=rect_totals,
+                           rect_callout=rect_callout,
                            area_data=area_data_raw,
                            area_deep_dive=area_deep_dive,
                            dd_callout=dd_callout,
