@@ -197,7 +197,8 @@ def block_floor_detail(block_slug, floor):
         return render_template('analytics/block_floor_detail.html',
                                block=block, floor=floor, label=label,
                                has_data=False, units=[], rounds=[],
-                               area_data=[], top_defects=[], summary={})
+                               area_data=[], area_deep_dive=[], dd_callout='',
+                               top_defects=[], summary={}, td_median=0)
 
     # Build cycle_id -> round_number lookup
     cycle_round_map = {c['id']: c['cycle_number'] for c in cycles}
@@ -252,6 +253,7 @@ def block_floor_detail(block_slug, floor):
     units = []
     for un in sorted(unit_latest.keys()):
         r = unit_latest[un]
+        u_defect_rate = round(r['defect_count'] / ITEMS_PER_UNIT * 100, 1) if ITEMS_PER_UNIT > 0 else 0
         units.append({
             'unit_number': un,
             'round_number': r['round_number'],
@@ -259,8 +261,11 @@ def block_floor_detail(block_slug, floor):
             'status_label': status_display.get(r['insp_status'], r['insp_status']),
             'status_colour': status_colour.get(r['insp_status'], 'bg-gray-100 text-gray-600'),
             'defect_count': r['defect_count'],
+            'defect_rate': u_defect_rate,
             'inspector_name': r['inspector_name'] or '-',
         })
+    # Sort worst-first
+    units.sort(key=lambda u: u['defect_count'], reverse=True)
 
     # Summary stats
     total_units = len(units)
@@ -268,16 +273,24 @@ def block_floor_detail(block_slug, floor):
     avg_defects = round(total_defects / total_units, 1) if total_units > 0 else 0
     items_inspected = ITEMS_PER_UNIT * total_units
     defect_rate = round(total_defects / items_inspected * 100, 1) if items_inspected > 0 else 0
-    max_defects_unit = max(units, key=lambda u: u['defect_count']) if units else None
+
+    # Median calculation
+    counts_list = sorted(u['defect_count'] for u in units)
+    if not counts_list:
+        median_defects = 0
+    elif len(counts_list) % 2 == 0:
+        median_defects = round((counts_list[len(counts_list)//2-1] + counts_list[len(counts_list)//2]) / 2, 1)
+    else:
+        median_defects = counts_list[len(counts_list)//2]
 
     summary = {
         'total_units': total_units,
         'total_defects': total_defects,
         'avg_defects': avg_defects,
         'defect_rate': defect_rate,
+        'items_inspected': items_inspected,
         'max_round': max_round,
-        'worst_unit': max_defects_unit['unit_number'] if max_defects_unit else '-',
-        'worst_count': max_defects_unit['defect_count'] if max_defects_unit else 0,
+        'median_defects': median_defects,
     }
 
     # 3. Round comparison (only if max_round > 1)
@@ -324,7 +337,47 @@ def block_floor_detail(block_slug, floor):
         a['pct'] = round(a['defect_count'] / total_defects * 100, 1) if total_defects > 0 else 0
         a['colour'] = AREA_COLOURS.get(a['area'], '#9ca3af')
 
-    # 5. Top defect types (scoped to block+floor)
+    # 5. Area Deep Dive - top 3 defects in top 2 areas
+    area_deep_dive = []
+    dd_colours = ['#C8963E', '#3D6B8E']
+    for idx, area_row in enumerate(area_data_raw[:2]):
+        area_name = area_row['area']
+        area_defects = [dict(r) for r in query_db("""
+            SELECT d.original_comment as description, COUNT(*) as count
+            FROM defect d
+            JOIN unit u ON d.unit_id = u.id
+            JOIN item_template it ON d.item_template_id = it.id
+            JOIN category_template ct ON it.category_id = ct.id
+            JOIN area_template at2 ON ct.area_id = at2.id
+            WHERE u.block = ? AND u.floor = ? AND d.tenant_id = ?
+            AND d.status = 'open' AND d.raised_cycle_id NOT LIKE 'test-%'
+            AND at2.area_name = ?
+            GROUP BY d.original_comment
+            ORDER BY count DESC
+            LIMIT 3
+        """, [block, floor, tenant_id, area_name])]
+        max_dd = area_defects[0]['count'] if area_defects else 1
+        for d in area_defects:
+            d['bar_pct'] = round(d['count'] / max_dd * 100)
+        area_deep_dive.append({
+            'area': area_name, 'total': area_row['defect_count'],
+            'pct_of_total': area_row['pct'], 'colour': dd_colours[idx],
+            'defects': area_defects,
+        })
+
+    dd_callout = ''
+    if len(area_deep_dive) >= 1 and area_deep_dive[0]['defects']:
+        a1 = area_deep_dive[0]
+        d1 = a1['defects'][0]
+        dd_callout = 'The most frequent defect in {} is {} ({} occurrences).'.format(
+            a1['area'], d1['description'].lower(), d1['count'])
+        if len(area_deep_dive) >= 2 and area_deep_dive[1]['defects']:
+            a2 = area_deep_dive[1]
+            d2 = a2['defects'][0]
+            dd_callout += ' In {}, {} leads with {} occurrences.'.format(
+                a2['area'], d2['description'].lower(), d2['count'])
+
+    # 6. Top defect types (scoped to block+floor)
     top_defects = [dict(r) for r in query_db("""
         SELECT d.original_comment as description, COUNT(*) as count
         FROM defect d
@@ -341,6 +394,15 @@ def block_floor_detail(block_slug, floor):
         d['bar_pct'] = round(d['count'] / max_defect_count * 100)
         d['pct'] = round(d['count'] / total_defects * 100, 1) if total_defects > 0 else 0
 
+    # Top defect median for colour coding
+    td_counts = sorted(d['count'] for d in top_defects) if top_defects else []
+    if not td_counts:
+        td_median = 0
+    elif len(td_counts) % 2 == 0:
+        td_median = round((td_counts[len(td_counts)//2-1] + td_counts[len(td_counts)//2]) / 2, 1)
+    else:
+        td_median = td_counts[len(td_counts)//2]
+
     return render_template('analytics/block_floor_detail.html',
                            block=block, floor=floor, label=label,
                            block_slug=block_slug,
@@ -348,7 +410,10 @@ def block_floor_detail(block_slug, floor):
                            units=units,
                            rounds=rounds,
                            area_data=area_data_raw,
+                           area_deep_dive=area_deep_dive,
+                           dd_callout=dd_callout,
                            top_defects=top_defects,
+                           td_median=td_median,
                            summary=summary)
 
 

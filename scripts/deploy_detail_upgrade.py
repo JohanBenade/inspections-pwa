@@ -1,4 +1,233 @@
-{% extends "base.html" %}
+"""
+Upgrade block_floor_detail: Add median, deep dive, callouts, worst-first sorting.
+Patches analytics.py backend + replaces template.
+"""
+import os
+import re
+import py_compile
+
+REPO = os.getcwd()
+ANALYTICS = os.path.join(REPO, 'app/routes/analytics.py')
+TEMPLATE = os.path.join(REPO, 'app/templates/analytics/block_floor_detail.html')
+
+def main():
+    print("=== Upgrade Detail Page: Legacy-Aligned ===\n")
+
+    with open(ANALYTICS, 'r') as f:
+        content = f.read()
+
+    errors = 0
+
+    old1 = """    units = []
+    for un in sorted(unit_latest.keys()):
+        r = unit_latest[un]
+        units.append({
+            'unit_number': un,
+            'round_number': r['round_number'],
+            'insp_status': r['insp_status'],
+            'status_label': status_display.get(r['insp_status'], r['insp_status']),
+            'status_colour': status_colour.get(r['insp_status'], 'bg-gray-100 text-gray-600'),
+            'defect_count': r['defect_count'],
+            'inspector_name': r['inspector_name'] or '-',
+        })
+
+    # Summary stats
+    total_units = len(units)
+    total_defects = sum(u['defect_count'] for u in units)
+    avg_defects = round(total_defects / total_units, 1) if total_units > 0 else 0
+    items_inspected = ITEMS_PER_UNIT * total_units
+    defect_rate = round(total_defects / items_inspected * 100, 1) if items_inspected > 0 else 0
+    max_defects_unit = max(units, key=lambda u: u['defect_count']) if units else None
+
+    summary = {
+        'total_units': total_units,
+        'total_defects': total_defects,
+        'avg_defects': avg_defects,
+        'defect_rate': defect_rate,
+        'max_round': max_round,
+        'worst_unit': max_defects_unit['unit_number'] if max_defects_unit else '-',
+        'worst_count': max_defects_unit['defect_count'] if max_defects_unit else 0,
+    }"""
+
+    new1 = """    units = []
+    for un in sorted(unit_latest.keys()):
+        r = unit_latest[un]
+        u_defect_rate = round(r['defect_count'] / ITEMS_PER_UNIT * 100, 1) if ITEMS_PER_UNIT > 0 else 0
+        units.append({
+            'unit_number': un,
+            'round_number': r['round_number'],
+            'insp_status': r['insp_status'],
+            'status_label': status_display.get(r['insp_status'], r['insp_status']),
+            'status_colour': status_colour.get(r['insp_status'], 'bg-gray-100 text-gray-600'),
+            'defect_count': r['defect_count'],
+            'defect_rate': u_defect_rate,
+            'inspector_name': r['inspector_name'] or '-',
+        })
+    # Sort worst-first
+    units.sort(key=lambda u: u['defect_count'], reverse=True)
+
+    # Summary stats
+    total_units = len(units)
+    total_defects = sum(u['defect_count'] for u in units)
+    avg_defects = round(total_defects / total_units, 1) if total_units > 0 else 0
+    items_inspected = ITEMS_PER_UNIT * total_units
+    defect_rate = round(total_defects / items_inspected * 100, 1) if items_inspected > 0 else 0
+
+    # Median calculation
+    counts_list = sorted(u['defect_count'] for u in units)
+    if not counts_list:
+        median_defects = 0
+    elif len(counts_list) % 2 == 0:
+        median_defects = round((counts_list[len(counts_list)//2-1] + counts_list[len(counts_list)//2]) / 2, 1)
+    else:
+        median_defects = counts_list[len(counts_list)//2]
+
+    summary = {
+        'total_units': total_units,
+        'total_defects': total_defects,
+        'avg_defects': avg_defects,
+        'defect_rate': defect_rate,
+        'items_inspected': items_inspected,
+        'max_round': max_round,
+        'median_defects': median_defects,
+    }"""
+
+    if old1 in content:
+        content = content.replace(old1, new1, 1)
+        print("OK: Patch 1 - defect_rate, worst-first sort, median")
+    else:
+        print("ERROR: Patch 1 - could not find unit building block")
+        errors += 1
+
+    old2 = """    # 5. Top defect types (scoped to block+floor)"""
+    new2 = """    # 5. Area Deep Dive - top 3 defects in top 2 areas
+    area_deep_dive = []
+    dd_colours = ['#C8963E', '#3D6B8E']
+    for idx, area_row in enumerate(area_data_raw[:2]):
+        area_name = area_row['area']
+        area_defects = [dict(r) for r in query_db(\"\"\"
+            SELECT d.original_comment as description, COUNT(*) as count
+            FROM defect d
+            JOIN unit u ON d.unit_id = u.id
+            JOIN item_template it ON d.item_template_id = it.id
+            JOIN category_template ct ON it.category_id = ct.id
+            JOIN area_template at2 ON ct.area_id = at2.id
+            WHERE u.block = ? AND u.floor = ? AND d.tenant_id = ?
+            AND d.status = 'open' AND d.raised_cycle_id NOT LIKE 'test-%'
+            AND at2.area_name = ?
+            GROUP BY d.original_comment
+            ORDER BY count DESC
+            LIMIT 3
+        \"\"\", [block, floor, tenant_id, area_name])]
+        max_dd = area_defects[0]['count'] if area_defects else 1
+        for d in area_defects:
+            d['bar_pct'] = round(d['count'] / max_dd * 100)
+        area_deep_dive.append({
+            'area': area_name, 'total': area_row['defect_count'],
+            'pct_of_total': area_row['pct'], 'colour': dd_colours[idx],
+            'defects': area_defects,
+        })
+
+    dd_callout = ''
+    if len(area_deep_dive) >= 1 and area_deep_dive[0]['defects']:
+        a1 = area_deep_dive[0]
+        d1 = a1['defects'][0]
+        dd_callout = 'The most frequent defect in {} is {} ({} occurrences).'.format(
+            a1['area'], d1['description'].lower(), d1['count'])
+        if len(area_deep_dive) >= 2 and area_deep_dive[1]['defects']:
+            a2 = area_deep_dive[1]
+            d2 = a2['defects'][0]
+            dd_callout += ' In {}, {} leads with {} occurrences.'.format(
+                a2['area'], d2['description'].lower(), d2['count'])
+
+    # 6. Top defect types (scoped to block+floor)"""
+
+    if old2 in content:
+        content = content.replace(old2, new2, 1)
+        print("OK: Patch 2 - area deep dive + callout")
+    else:
+        print("ERROR: Patch 2 - could not find top defects comment")
+        errors += 1
+
+    old3 = """    max_defect_count = top_defects[0]['count'] if top_defects else 1
+    for d in top_defects:
+        d['bar_pct'] = round(d['count'] / max_defect_count * 100)
+        d['pct'] = round(d['count'] / total_defects * 100, 1) if total_defects > 0 else 0
+
+    return render_template('analytics/block_floor_detail.html',"""
+
+    new3 = """    max_defect_count = top_defects[0]['count'] if top_defects else 1
+    for d in top_defects:
+        d['bar_pct'] = round(d['count'] / max_defect_count * 100)
+        d['pct'] = round(d['count'] / total_defects * 100, 1) if total_defects > 0 else 0
+
+    # Top defect median for colour coding
+    td_counts = sorted(d['count'] for d in top_defects) if top_defects else []
+    if not td_counts:
+        td_median = 0
+    elif len(td_counts) % 2 == 0:
+        td_median = round((td_counts[len(td_counts)//2-1] + td_counts[len(td_counts)//2]) / 2, 1)
+    else:
+        td_median = td_counts[len(td_counts)//2]
+
+    return render_template('analytics/block_floor_detail.html',"""
+
+    if old3 in content:
+        content = content.replace(old3, new3, 1)
+        print("OK: Patch 3 - td_median")
+    else:
+        print("ERROR: Patch 3 - could not find render_template block")
+        errors += 1
+
+    old4 = """                           area_data=area_data_raw,
+                           top_defects=top_defects,
+                           summary=summary)"""
+
+    new4 = """                           area_data=area_data_raw,
+                           area_deep_dive=area_deep_dive,
+                           dd_callout=dd_callout,
+                           top_defects=top_defects,
+                           td_median=td_median,
+                           summary=summary)"""
+
+    if old4 in content:
+        content = content.replace(old4, new4, 1)
+        print("OK: Patch 4 - render_template args")
+    else:
+        print("ERROR: Patch 4 - could not find render args")
+        errors += 1
+
+    old5 = """                               has_data=False, units=[], rounds=[],
+                               area_data=[], top_defects=[], summary={})"""
+
+    new5 = """                               has_data=False, units=[], rounds=[],
+                               area_data=[], area_deep_dive=[], dd_callout='',
+                               top_defects=[], summary={}, td_median=0)"""
+
+    if old5 in content:
+        content = content.replace(old5, new5, 1)
+        print("OK: Patch 5 - empty state render args")
+    else:
+        print("ERROR: Patch 5 - could not find empty render args")
+        errors += 1
+
+    if errors > 0:
+        print("\nABORTING - {} errors".format(errors))
+        return
+
+    with open(ANALYTICS, 'w') as f:
+        f.write(content)
+
+    try:
+        py_compile.compile(ANALYTICS, doraise=True)
+        print("OK: Syntax check passed")
+    except py_compile.PyCompileError as e:
+        print("SYNTAX ERROR: {}".format(e))
+        os.system("cd {} && git checkout -- app/routes/analytics.py".format(REPO))
+        print("Reverted analytics.py")
+        return
+
+    DETAIL_HTML = r'''{% extends "base.html" %}
 {% block title %}{{ label }}{% endblock %}
 {% block content %}
 <div class="space-y-6">
@@ -130,3 +359,14 @@
     {% endif %}
 </div>
 {% endblock %}
+'''
+
+    with open(TEMPLATE, 'w') as f:
+        f.write(DETAIL_HTML)
+    print("OK: Template replaced with legacy-aligned version")
+
+    print("\n=== ALL PATCHES APPLIED ===")
+    print("\nNext: git add -A && git commit -m 'fix: detail page legacy-aligned visuals' && git push origin main")
+
+if __name__ == '__main__':
+    main()
