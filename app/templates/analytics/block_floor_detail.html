@@ -13,9 +13,6 @@
     .verdict-bar-warn { background: linear-gradient(135deg, #7f1d1d 0%, #991b1b 50%, #7f1d1d 100%); }
     .verdict-bar-good { background: linear-gradient(135deg, #14532d 0%, #166534 50%, #14532d 100%); }
     .verdict-bar-wait { background: linear-gradient(135deg, #78350f 0%, #92400e 50%, #78350f 100%); }
-    .kpi-card { border-left: 3px solid #C8963E; background: #FAFAF8; }
-    .kpi-value { font-family: 'DM Sans', system-ui, sans-serif; font-weight: 700; font-size: 2rem; line-height: 1; letter-spacing: -0.02em; }
-    .kpi-label { font-family: 'DM Sans', system-ui, sans-serif; font-size: 0.8rem; color: #6B6B6B; margin-top: 0.35rem; }
     .data-table th { font-family: 'DM Sans', system-ui, sans-serif; font-size: 0.7rem; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: #6B6B6B; padding: 0.6rem 0.75rem; border-bottom: 2px solid #0A0A0A; }
     .data-table td { font-family: 'DM Sans', system-ui, sans-serif; font-size: 0.85rem; padding: 0.6rem 0.75rem; border-bottom: 1px solid #e5e5e5; }
     .data-table tr:last-child td { border-bottom: none; }
@@ -28,10 +25,11 @@
     .trajectory-same { color: #6B6B6B; }
     .trajectory-better { color: #4A7C59; }
     .section-card { background: #FAFAF8; border: 1px solid #e5e5e5; border-radius: 8px; padding: 1.5rem; }
-    .section-title { font-family: 'Cormorant Garamond', serif; font-size: 1.5rem; font-weight: 600; color: #0A0A0A; margin-bottom: 0.15rem; }
     .section-subtitle { font-family: 'DM Sans', system-ui, sans-serif; font-size: 0.8rem; color: #9A9A9A; margin-bottom: 1.25rem; }
-    .unit-grid-cell { width: 2.5rem; height: 2.5rem; border-radius: 4px; display: inline-flex; align-items: center; justify-content: center; font-family: 'DM Sans', sans-serif; font-size: 0.7rem; font-weight: 600; }
     .divider { height: 1px; background: #0A0A0A; margin: 0.5rem 0 1.5rem 0; }
+    .group-header { font-family: 'DM Sans', sans-serif; font-size: 0.7rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; padding: 0.5rem 0.75rem; }
+    .group-header-blue { background: rgba(61,107,142,0.08); color: #3D6B8E; }
+    .group-header-gray { background: rgba(107,107,107,0.08); color: #6B6B6B; }
 </style>
 
 <div class="font-body" style="max-width: 1280px; margin: 0 auto;">
@@ -40,7 +38,7 @@
     <div class="mb-6">
         <a href="{{ url_for('analytics.dashboard') }}" class="text-sm gold-accent hover:underline">&larr; Dashboard</a>
         <h1 class="font-display text-3xl lg:text-4xl font-bold text-gray-900 mt-2" style="letter-spacing: -0.01em;">{{ label }}</h1>
-        <div class="text-sm text-gray-400 mt-1">Inspection Analytics &middot; PPSH Phase 3 &middot; Round {{ summary.max_round if has_data else '-' }}</div>
+        <div class="text-sm text-gray-400 mt-1">Inspection Analytics &middot; PPSH Phase 3 &middot; {{ summary.total_units }} units &middot; {{ summary.total_defects }} open defects &middot; {{ summary.avg_defects }} avg per unit &middot; {{ summary.defect_rate }}% defect rate</div>
     </div>
 
     {% if not has_data %}
@@ -85,112 +83,107 @@
     </div>
     {% endif %}
 
-    <!-- ==================== 01 CONTRACTOR PERFORMANCE ==================== -->
-    {% if rectification %}
+    <!-- ==================== 01 BLOCK STATUS (single grouped table) ==================== -->
+    {% if units %}
     <div class="section-card mb-6">
-        <div class="section-num">01 &mdash; Contractor Performance</div>
+        <div class="section-num">01 &mdash; Block Status</div>
         <div class="divider"></div>
-        <div class="section-subtitle">Defect resolution for re-inspected units &middot; Round {{ summary.max_round - 1 }} &rarr; Round {{ summary.max_round }}</div>
+        <div class="section-subtitle">All {{ summary.total_units }} units &middot; Median: {{ summary.median_defects }} defects</div>
 
-        <table class="w-full data-table">
-            <thead>
-                <tr>
-                    <th class="text-left">Unit</th>
-                    <th class="text-center">R{{ summary.max_round - 1 }} Flagged</th>
-                    <th class="text-center">Rectified</th>
-                    <th class="text-center">New in R{{ summary.max_round }}</th>
-                    <th class="text-center">Open Now</th>
-                    <th class="text-left" style="width: 140px;">Clearance</th>
-                    <th class="text-center">Trajectory</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for r in rectification %}
-                <tr>
-                    <td class="font-semibold">{{ r.unit_number }}</td>
-                    <td class="text-center">{{ r.prev_raised }}</td>
-                    <td class="text-center font-semibold {% if r.prev_cleared > 0 %}text-emerald-600{% else %}text-red-600{% endif %}">{{ r.prev_cleared }}</td>
-                    <td class="text-center {% if r.new_defects > 0 %}text-amber-600 font-semibold{% else %}text-gray-400{% endif %}">{% if r.new_defects > 0 %}+{{ r.new_defects }}{% else %}&mdash;{% endif %}</td>
-                    <td class="text-center font-semibold {% if r.total_open > r.prev_raised %}text-red-600{% elif r.total_open > 0 %}text-amber-600{% else %}text-emerald-600{% endif %}">{{ r.total_open }}</td>
-                    <td>
-                        <div class="flex items-center gap-2">
-                            <div class="flex-1 rounded-full h-2" style="background: #e5e5e5;">
-                                <div class="h-2 rounded-full {% if r.clearance_pct >= 75 %}bg-emerald-500{% elif r.clearance_pct >= 25 %}bg-amber-500{% else %}bg-red-400{% endif %}" style="width: {{ [r.clearance_pct, 2]|max }}%;"></div>
-                            </div>
-                            <span class="text-xs font-semibold tabular-nums text-gray-500 w-10 text-right">{{ r.clearance_pct }}%</span>
-                        </div>
-                    </td>
-                    <td class="text-center font-semibold text-sm">
-                        {% if r.total_open > r.prev_raised %}<span class="trajectory-worse">&#9650; Worse</span>
-                        {% elif r.total_open == r.prev_raised %}<span class="trajectory-same">&#9644; Same</span>
-                        {% elif r.total_open > 0 %}<span class="trajectory-better">&#9660; Improving</span>
-                        {% else %}<span class="trajectory-better">&#10003; Clear</span>{% endif %}
-                    </td>
-                </tr>
-                {% endfor %}
-                {% if rectification|length > 1 %}
-                <tr style="border-top: 2px solid #0A0A0A; background: #f5f3ee;">
-                    <td class="font-bold">Total</td>
-                    <td class="text-center font-bold">{{ rect_totals.prev_raised }}</td>
-                    <td class="text-center font-bold {% if rect_totals.prev_cleared > 0 %}text-emerald-600{% else %}text-red-600{% endif %}">{{ rect_totals.prev_cleared }}</td>
-                    <td class="text-center font-bold {% if rect_totals.new_defects > 0 %}text-amber-600{% else %}text-gray-400{% endif %}">{% if rect_totals.new_defects > 0 %}+{{ rect_totals.new_defects }}{% else %}&mdash;{% endif %}</td>
-                    <td class="text-center font-bold {% if rect_totals.total_open > rect_totals.prev_raised %}text-red-600{% else %}text-gray-900{% endif %}">{{ rect_totals.total_open }}</td>
-                    <td>
-                        <div class="flex items-center gap-2">
-                            <div class="flex-1 rounded-full h-2" style="background: #e5e5e5;">
-                                <div class="h-2 rounded-full {% if rect_totals.clearance_pct >= 75 %}bg-emerald-500{% elif rect_totals.clearance_pct >= 25 %}bg-amber-500{% else %}bg-red-400{% endif %}" style="width: {{ [rect_totals.clearance_pct, 2]|max }}%;"></div>
-                            </div>
-                            <span class="text-xs font-bold tabular-nums text-gray-600 w-10 text-right">{{ rect_totals.clearance_pct }}%</span>
-                        </div>
-                    </td>
-                    <td class="text-center font-bold text-sm">
-                        {% if rect_totals.total_open > rect_totals.prev_raised %}<span class="trajectory-worse">&#9650; Worse</span>
-                        {% elif rect_totals.prev_cleared > 0 %}<span class="trajectory-better">&#9660; Improving</span>
-                        {% else %}<span class="trajectory-same">&#9644; No Change</span>{% endif %}
-                    </td>
-                </tr>
-                {% endif %}
-            </tbody>
-        </table>
+        <div class="overflow-x-auto">
+            <table class="w-full data-table">
+                <thead>
+                    <tr>
+                        <th class="text-left">Unit</th>
+                        <th class="text-center">Round</th>
+                        <th class="text-center">Status</th>
+                        {% if rectification %}
+                        <th class="text-center">R1 Flagged</th>
+                        <th class="text-center">Rectified</th>
+                        <th class="text-center">New</th>
+                        {% endif %}
+                        <th class="text-center">Open Now</th>
+                        <th class="text-center">Rate</th>
+                        {% if rectification %}
+                        <th class="text-center">Trajectory</th>
+                        {% endif %}
+                    </tr>
+                </thead>
+                <tbody>
+                    {% if rectification %}
+                    <!-- GROUP: Re-inspected units -->
+                    <tr><td colspan="{% if rectification %}9{% else %}5{% endif %}" class="group-header group-header-blue">Re-inspected ({{ rectification|length }} units)</td></tr>
+                    {% set rect_lookup = {} %}
+                    {% for r in rectification %}
+                    {% if rect_lookup.update({r.unit_number: r}) %}{% endif %}
+                    {% endfor %}
+                    {% for u in units if u.round_number > 1 %}
+                    {% set r = rect_lookup.get(u.unit_number, {}) %}
+                    <tr>
+                        <td class="font-semibold">{{ u.unit_number }}</td>
+                        <td class="text-center"><span class="inline-block px-2 py-0.5 rounded text-xs font-semibold bg-blue-100 text-blue-700">R{{ u.round_number }}</span></td>
+                        <td class="text-center"><span class="inline-block px-2 py-0.5 rounded text-xs font-semibold {{ u.status_colour }}">{{ u.status_label }}</span></td>
+                        <td class="text-center">{{ r.get('prev_raised', '-') }}</td>
+                        <td class="text-center font-semibold {% if r.get('prev_cleared', 0) > 0 %}text-emerald-600{% else %}text-red-600{% endif %}">{{ r.get('prev_cleared', '-') }}</td>
+                        <td class="text-center {% if r.get('new_defects', 0) > 0 %}text-amber-600 font-semibold{% else %}text-gray-400{% endif %}">{% if r.get('new_defects', 0) > 0 %}+{{ r.new_defects }}{% else %}&mdash;{% endif %}</td>
+                        <td class="text-center font-bold {% if u.defect_count > summary.median_defects %}text-red-600{% elif u.defect_count == summary.median_defects %}text-amber-600{% else %}text-emerald-600{% endif %}">{{ u.defect_count }}</td>
+                        <td class="text-center text-sm tabular-nums text-gray-500">{{ u.defect_rate }}%</td>
+                        <td class="text-center font-semibold text-sm">
+                            {% if r.get('total_open', 0) > r.get('prev_raised', 0) %}<span class="trajectory-worse">&#9650; Worse</span>
+                            {% elif r.get('total_open', 0) == r.get('prev_raised', 0) %}<span class="trajectory-same">&#9644; Same</span>
+                            {% elif r.get('total_open', 0) > 0 %}<span class="trajectory-better">&#9660; Improving</span>
+                            {% else %}<span class="trajectory-better">&#10003; Clear</span>{% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
 
-        {% if rect_callout %}
+                    <!-- GROUP: Awaiting re-inspection -->
+                    <tr><td colspan="9" class="group-header group-header-gray" style="border-top: 2px solid #d4d4d4;">Awaiting Re-inspection ({{ units|selectattr('round_number', 'equalto', 1)|list|length }} units)</td></tr>
+                    {% endif %}
+
+                    {% set max_defects = units[0].defect_count if units else 1 %}
+                    {% for u in units if (not rectification or u.round_number == 1) %}
+                    <tr>
+                        <td class="font-semibold">{{ u.unit_number }}</td>
+                        <td class="text-center"><span class="inline-block px-2 py-0.5 rounded text-xs font-semibold bg-gray-100 text-gray-600">R{{ u.round_number }}</span></td>
+                        <td class="text-center"><span class="inline-block px-2 py-0.5 rounded text-xs font-semibold {{ u.status_colour }}">{{ u.status_label }}</span></td>
+                        {% if rectification %}
+                        <td class="text-center text-gray-300">&mdash;</td>
+                        <td class="text-center text-gray-300">&mdash;</td>
+                        <td class="text-center text-gray-300">&mdash;</td>
+                        {% endif %}
+                        <td class="text-center font-bold {% if u.defect_count > summary.median_defects %}text-red-600{% elif u.defect_count == summary.median_defects %}text-amber-600{% else %}text-emerald-600{% endif %}">{{ u.defect_count }}</td>
+                        <td class="text-center text-sm tabular-nums text-gray-500">{{ u.defect_rate }}%</td>
+                        {% if rectification %}
+                        <td class="text-center text-gray-300">&mdash;</td>
+                        {% endif %}
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        {% if rectification and rect_callout %}
         <div class="callout {% if rect_totals.clearance_pct == 0 %}callout-red{% elif rect_totals.clearance_pct < 50 %}callout-amber{% else %}callout-green{% endif %} mt-5">
             <strong>Finding:</strong> {{ rect_callout }}
         </div>
         {% endif %}
+
+        <div class="flex flex-wrap gap-4 text-xs text-gray-400 mt-3">
+            <span>Defect colour relative to median ({{ summary.median_defects }})</span>
+            <span class="flex items-center gap-1"><span class="inline-block w-2 h-2 rounded-full bg-emerald-500"></span> Below</span>
+            <span class="flex items-center gap-1"><span class="inline-block w-2 h-2 rounded-full bg-amber-500"></span> At</span>
+            <span class="flex items-center gap-1"><span class="inline-block w-2 h-2 rounded-full bg-red-500"></span> Above</span>
+        </div>
     </div>
     {% endif %}
 
-    <!-- ==================== 02 BLOCK OVERVIEW ==================== -->
-    <div class="section-card mb-6">
-        <div class="section-num">{% if rectification %}02{% else %}01{% endif %} &mdash; Block Overview</div>
-        <div class="divider"></div>
-        <div class="section-subtitle">{{ summary.total_units }} units &middot; {{ summary.total_defects }} open defects &middot; {{ summary.avg_defects }} avg per unit (median: {{ summary.median_defects }}) &middot; {{ summary.defect_rate }}% defect rate</div>
-
-        <!-- Unit grid -->
-        <div class="flex flex-wrap gap-2 mb-3">
-            {% for u in units|sort(attribute='unit_number') %}
-            {% set is_reinspected = (u.round_number > 1) %}
-            <div class="unit-grid-cell {% if u.insp_status == 'certified' %}bg-emerald-500 text-white{% elif is_reinspected and u.defect_count > 0 %}bg-red-100 text-red-700{% elif u.defect_count > summary.median_defects %}bg-red-50 text-red-600{% elif u.defect_count == 0 %}bg-emerald-100 text-emerald-700{% else %}bg-amber-50 text-amber-700{% endif %}" title="Unit {{ u.unit_number }}: {{ u.defect_count }} defects (R{{ u.round_number }})">
-                {{ u.unit_number }}
-            </div>
-            {% endfor %}
-        </div>
-        <div class="flex flex-wrap gap-4 text-xs text-gray-500">
-            <span class="flex items-center gap-1"><span class="inline-block w-3 h-3 rounded bg-emerald-500"></span> Certified</span>
-            <span class="flex items-center gap-1"><span class="inline-block w-3 h-3 rounded bg-amber-50 border border-amber-200"></span> Below median</span>
-            <span class="flex items-center gap-1"><span class="inline-block w-3 h-3 rounded bg-red-50 border border-red-200"></span> Above median</span>
-            <span class="flex items-center gap-1"><span class="inline-block w-3 h-3 rounded bg-red-100"></span> Re-inspected, not improving</span>
-        </div>
-    </div>
-
-    <!-- ==================== 03 WHERE TO FOCUS ==================== -->
+    <!-- ==================== 02 WHERE TO FOCUS ==================== -->
     {% if area_data %}
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
         <div class="section-card">
-            <div class="section-num">{% if rectification %}03{% else %}02{% endif %} &mdash; Defect Hotspots</div>
+            <div class="section-num">02 &mdash; Defect Hotspots</div>
             <div class="divider"></div>
-            <div class="section-title">Where to Focus</div>
             <div class="section-subtitle">Defects by area &middot; Prioritise top areas for rectification</div>
 
             <div class="space-y-3">
@@ -216,9 +209,8 @@
         <!-- AREA DEEP DIVE -->
         {% if area_deep_dive %}
         <div class="section-card">
-            <div class="section-num">{% if rectification %}04{% else %}03{% endif %} &mdash; Deep Dive</div>
+            <div class="section-num">03 &mdash; Deep Dive</div>
             <div class="divider"></div>
-            <div class="section-title">Top Issues by Area</div>
             <div class="section-subtitle">Most common defects in highest-impact areas</div>
 
             {% for area in area_deep_dive %}
@@ -248,10 +240,10 @@
     </div>
     {% endif %}
 
-    <!-- ==================== 05 MOST COMMON ISSUES ==================== -->
+    <!-- ==================== 04 MOST COMMON ISSUES ==================== -->
     {% if top_defects %}
     <div class="section-card mb-6">
-        <div class="section-num">{% if rectification %}05{% else %}04{% endif %} &mdash; Most Common Issues</div>
+        <div class="section-num">04 &mdash; Most Common Issues</div>
         <div class="divider"></div>
         <div class="section-subtitle">Top 10 defect descriptions by frequency &middot; Median: {{ td_median }}</div>
 
@@ -278,80 +270,6 @@
             </div>
         </div>
     </div>
-    {% endif %}
-
-    <!-- ==================== 06 UNIT DETAIL TABLE ==================== -->
-    {% if units %}
-    <div class="section-card mb-6">
-        <div class="section-num">{% if rectification %}06{% else %}05{% endif %} &mdash; Unit Detail</div>
-        <div class="divider"></div>
-        <div class="section-subtitle">All units ranked worst-first &middot; Median: {{ summary.median_defects }} defects</div>
-
-        <div class="overflow-x-auto">
-            <table class="w-full data-table">
-                <thead>
-                    <tr>
-                        <th class="text-left">Unit</th>
-                        <th class="text-center">Round</th>
-                        <th class="text-center">Status</th>
-                        <th class="text-center">Defects</th>
-                        <th class="text-center">Rate</th>
-                        <th class="text-left" style="width: 35%;">Distribution</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% set max_defects = units[0].defect_count if units else 1 %}
-                    {% for u in units %}
-                    <tr>
-                        <td class="font-semibold">{{ u.unit_number }}</td>
-                        <td class="text-center"><span class="inline-block px-2 py-0.5 rounded text-xs font-semibold {% if u.round_number > 1 %}bg-blue-100 text-blue-700{% else %}bg-gray-100 text-gray-600{% endif %}">R{{ u.round_number }}</span></td>
-                        <td class="text-center"><span class="inline-block px-2 py-0.5 rounded text-xs font-semibold {{ u.status_colour }}">{{ u.status_label }}</span></td>
-                        <td class="text-center font-bold tabular-nums {% if u.defect_count > summary.median_defects %}text-red-600{% elif u.defect_count == summary.median_defects %}text-amber-600{% else %}text-emerald-600{% endif %}">{{ u.defect_count }}</td>
-                        <td class="text-center text-sm tabular-nums text-gray-500">{{ u.defect_rate }}%</td>
-                        <td>
-                            <div class="rounded-full h-2" style="background: #e5e5e5;">
-                                <div class="h-2 rounded-full {% if u.defect_count > summary.median_defects %}bg-red-400{% elif u.defect_count == summary.median_defects %}bg-amber-400{% else %}bg-emerald-400{% endif %}" style="width: {{ (u.defect_count / max_defects * 100)|round }}%;"></div>
-                            </div>
-                        </td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-        </div>
-        <div class="flex flex-wrap gap-4 text-xs text-gray-400 mt-3">
-            <span>Colour relative to median ({{ summary.median_defects }})</span>
-            <span class="flex items-center gap-1"><span class="inline-block w-2 h-2 rounded-full bg-emerald-500"></span> Below</span>
-            <span class="flex items-center gap-1"><span class="inline-block w-2 h-2 rounded-full bg-amber-500"></span> At</span>
-            <span class="flex items-center gap-1"><span class="inline-block w-2 h-2 rounded-full bg-red-500"></span> Above</span>
-        </div>
-    </div>
-    {% endif %}
-
-    <!-- ==================== ROUND STATISTICS (collapsed) ==================== -->
-    {% if rounds|length > 1 %}
-    <details class="section-card mb-6">
-        <summary class="cursor-pointer">
-            <span class="section-num">{% if rectification %}07{% else %}06{% endif %} &mdash; Round Statistics</span>
-            <span class="text-xs text-gray-400 ml-2">(click to expand)</span>
-        </summary>
-        <div class="divider mt-2"></div>
-        <div class="section-subtitle">Independent stats per round. Unit counts differ &mdash; compare rates, not totals.</div>
-        <div class="grid grid-cols-1 sm:grid-cols-{{ rounds|length }} gap-4 mt-3">
-            {% for r in rounds %}
-            <div class="p-4 rounded-lg {% if loop.last %}bg-blue-50{% else %}bg-gray-50{% endif %}">
-                <div class="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">Round {{ r.round_number }}</div>
-                <div class="space-y-2 text-sm">
-                    <div class="flex justify-between"><span class="text-gray-500">Units inspected</span><span class="font-semibold">{{ r.units_inspected }}</span></div>
-                    <div class="flex justify-between"><span class="text-gray-500">Defects raised</span><span class="font-semibold">{{ r.total_defects }}</span></div>
-                    <div class="flex justify-between"><span class="text-gray-500">Avg per unit</span><span class="font-semibold">{{ r.avg_defects }}</span></div>
-                    <div class="flex justify-between pt-2" style="border-top: 1px solid #e5e5e5;"><span class="text-gray-500">Still open</span><span class="font-semibold {% if r.still_open > 0 %}text-red-600{% else %}text-emerald-600{% endif %}">{{ r.still_open }}</span></div>
-                    <div class="flex justify-between"><span class="text-gray-500">Cleared</span><span class="font-semibold text-emerald-600">{{ r.cleared }}</span></div>
-                    <div class="flex justify-between"><span class="text-gray-500">Clearance rate</span><span class="font-semibold {% if r.clearance_pct >= 50 %}text-emerald-600{% else %}text-amber-600{% endif %}">{{ r.clearance_pct }}%</span></div>
-                </div>
-            </div>
-            {% endfor %}
-        </div>
-    </details>
     {% endif %}
 
     <!-- FOOTER -->
