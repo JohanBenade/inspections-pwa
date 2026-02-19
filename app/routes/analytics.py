@@ -343,34 +343,41 @@ def block_floor_detail(block_slug, floor):
             for unit in re_units:
                 uid = unit['unit_id']
 
-                # Previous round: how many raised, how many cleared
+                # Previous round: total raised, rectified (fixed), superseded (re-raised)
                 prev = dict(query_db("""
                     SELECT COUNT(*) as raised,
-                        SUM(CASE WHEN status = 'cleared' THEN 1 ELSE 0 END) as cleared
+                        SUM(CASE WHEN status = 'cleared' AND clearance_note = 'rectified' THEN 1 ELSE 0 END) as rectified,
+                        SUM(CASE WHEN status = 'cleared' AND clearance_note = 'superseded' THEN 1 ELSE 0 END) as superseded,
+                        SUM(CASE WHEN status = 'open' THEN 1 ELSE 0 END) as still_open
                     FROM defect WHERE unit_id = ? AND raised_cycle_id IN ({}) AND tenant_id = ?
                 """.format(ph_prev), [uid] + prev_cycle_ids + [tenant_id], one=True))
 
-                # New defects raised in latest round
-                new = dict(query_db("""
+                # Genuinely new defects in latest round (templates NOT in previous round)
+                new_only = dict(query_db("""
                     SELECT COUNT(*) as cnt FROM defect
                     WHERE unit_id = ? AND raised_cycle_id IN ({}) AND tenant_id = ?
-                """.format(ph_latest), [uid] + latest_cycle_ids + [tenant_id], one=True))
+                    AND item_template_id NOT IN (
+                        SELECT item_template_id FROM defect
+                        WHERE unit_id = ? AND raised_cycle_id IN ({}) AND tenant_id = ?
+                    )
+                """.format(ph_latest, ph_prev),
+                    [uid] + latest_cycle_ids + [tenant_id, uid] + prev_cycle_ids + [tenant_id], one=True))
 
-                # Total currently open for this unit
+                # Total currently open for this unit (across all rounds)
                 open_cnt = dict(query_db("""
                     SELECT COUNT(*) as cnt FROM defect
                     WHERE unit_id = ? AND status = 'open' AND tenant_id = ?
                 """, [uid, tenant_id], one=True))
 
                 prev_raised = prev['raised']
-                prev_cleared = prev['cleared'] or 0
-                clearance_pct = round(prev_cleared / prev_raised * 100, 1) if prev_raised > 0 else 0
+                prev_rectified = prev['rectified'] or 0
+                clearance_pct = round(prev_rectified / prev_raised * 100, 1) if prev_raised > 0 else 0
 
                 rectification.append({
                     'unit_number': unit['unit_number'],
                     'prev_raised': prev_raised,
-                    'prev_cleared': prev_cleared,
-                    'new_defects': new['cnt'],
+                    'prev_cleared': prev_rectified,
+                    'new_defects': new_only['cnt'],
                     'total_open': open_cnt['cnt'],
                     'clearance_pct': clearance_pct,
                 })
