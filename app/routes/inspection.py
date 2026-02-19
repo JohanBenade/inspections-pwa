@@ -637,6 +637,13 @@ def update_item(inspection_id, item_id):
                         WHERE id = ?
                     """, [child['id']])
         
+        # Auto-transition inspection from not_started to in_progress
+        if inspection['status'] == 'not_started':
+            db.execute("""
+                UPDATE inspection SET status = 'in_progress', started_at = ?, updated_at = ?
+                WHERE id = ?
+            """, [now, now, inspection_id])
+        
         db.commit()
     
     if area_id:
