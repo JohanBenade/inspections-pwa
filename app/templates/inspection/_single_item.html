@@ -59,15 +59,15 @@
     {% else %}
     {# === INSPECT-FIRST FLOW === #}
     <div class="flex flex-wrap gap-2">
-        {% if item.status not in ['not_to_standard', 'not_installed'] %}
-        {# Inspect button: pending/ok items #}
+        {% if item.status == 'not_to_standard' %}
+        <span class="px-3 py-2 rounded text-xs font-medium bg-red-500 text-white inline-flex items-center">N.T.S.</span>
+        {% else %}
+        {# Inspect button: pending/ok/ni items - always available to recover #}
         <a href="javascript:void(0)" id="inspect-btn-{{ item.id }}"
            onclick="var p=document.getElementById('inspect-panel-{{ item.id }}');p.style.display='block';this.style.display='none';var pills=p.querySelector('[hx-get]');if(pills&&!pills.dataset.loaded){htmx.trigger(pills,'loadPills');pills.dataset.loaded='1'}"
            ontouchend="event.preventDefault();this.click()"
            class="px-3 py-2 rounded text-xs font-medium bg-blue-100 text-blue-700 hover:bg-blue-200 inline-flex items-center justify-center flex-1 text-center"
            style="text-decoration:none;min-height:38px">Inspect</a>
-        {% elif item.status == 'not_to_standard' %}
-        <span class="px-3 py-2 rounded text-xs font-medium bg-red-500 text-white inline-flex items-center">N.T.S.</span>
         {% endif %}
         <button type="button" hx-post="{{ url_for('inspection.update_item', inspection_id=inspection.id, item_id=item.id) }}" hx-vals='{"status": "ok", "area_id": "{{ area.id }}"}' hx-target="#item-{{ item.id }}" hx-swap="innerHTML" class="px-3 py-2 rounded text-xs font-medium transition-colors {% if item.status == 'ok' %}bg-green-500 text-white{% else %}bg-gray-100 text-gray-600 hover:bg-green-100{% endif %}">OK</button>
         <button type="button" hx-post="{{ url_for('inspection.update_item', inspection_id=inspection.id, item_id=item.id) }}" hx-vals='{"status": "not_installed", "area_id": "{{ area.id }}"}' hx-target="#item-{{ item.id }}" hx-swap="innerHTML" class="px-3 py-2 rounded text-xs font-medium transition-colors {% if item.status == 'not_installed' %}bg-yellow-500 text-white{% else %}bg-gray-100 text-gray-600 hover:bg-yellow-100{% endif %}">N/I</button>
@@ -122,8 +122,8 @@
     {% elif show_as_defect and item.status == 'ok' %}
     <div class="mt-2 p-2 bg-green-50 rounded border border-green-200"><span class="text-sm text-green-700 font-medium">Marked as rectified</span></div>
 
-    {# Pending/OK items (non-followup): hidden inspect panel #}
-    {% elif not show_as_defect and item.status not in ['not_to_standard', 'not_installed'] %}
+    {# Pending/OK/NI items (non-followup): hidden inspect panel #}
+    {% elif not show_as_defect and item.status != 'not_to_standard' %}
     <div id="inspect-panel-{{ item.id }}" style="display:none" class="mt-2 defect-input-wrapper" data-add-url="{{ url_for('inspection.add_defect', inspection_id=inspection.id, item_id=item.id) }}" data-area-id="{{ area.id }}" data-item-id="item-{{ item.id }}">
         <div class="text-xs font-medium text-gray-500 uppercase tracking-wide mb-2">What to look for</div>
         <div hx-get="{{ url_for('inspection.get_defect_suggestions', item_template_id=item.template_id) }}" hx-trigger="loadPills once" hx-swap="innerHTML"></div>
