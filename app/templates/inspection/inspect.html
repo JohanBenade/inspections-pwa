@@ -163,7 +163,7 @@
             }
         });
 
-        /* After swap settles, restore categories for full area swaps + rebind auto-caps for any swap */
+        /* After swap settles, restore categories for full area swaps + rebind auto-caps + load pills */
         document.body.addEventListener('htmx:afterSettle', function(evt) {
             var target = evt.detail.target;
             if (!target) return;
@@ -180,6 +180,18 @@
                         }
                     });
                 }
+            }
+
+            /* Per-item innerHTML swap: trigger pill loading for newly inserted hx-trigger="load" elements.
+               With innerHTML swap, target is the stable wrapper div (still in DOM), so querySelectorAll works. */
+            if (target.id && target.id.indexOf('item-') === 0) {
+                target.querySelectorAll('[hx-trigger="load"]').forEach(function(el) {
+                    if (!el.dataset.pillsLoaded) {
+                        el.dataset.pillsLoaded = '1';
+                        var url = el.getAttribute('hx-get');
+                        if (url) htmx.ajax('GET', url, {target: el, swap: 'innerHTML'});
+                    }
+                });
             }
 
             /* Rebind auto-caps on any swap that might include inputs */

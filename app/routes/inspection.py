@@ -520,7 +520,12 @@ def _build_item_for_render(inspection_id, item_id, tenant_id, unit_id=None, cycl
 
 
 def _render_single_item(inspection_id, item_id, tenant_id, area_id, swap_oob=False):
-    """Render a single item partial for HTMX per-item swap."""
+    """Render a single item partial for HTMX per-item swap.
+
+    Returns content only (no wrapper div). The stable wrapper <div id="item-{id}">
+    lives in area.html and never gets replaced (innerHTML swap).
+    For OOB children, manually wraps content in <div id="item-{id}" hx-swap-oob="innerHTML">.
+    """
     inspection = query_db("""
         SELECT i.*, u.unit_type, u.unit_number, u.id as unit_id,
                ic.cycle_number, ic.id as cycle_id
@@ -546,12 +551,16 @@ def _render_single_item(inspection_id, item_id, tenant_id, area_id, swap_oob=Fal
 
     is_followup = inspection['cycle_number'] > 1
 
-    return render_template('inspection/_single_item.html',
+    html = render_template('inspection/_single_item.html',
                            item=item,
                            inspection=inspection,
                            area=area,
-                           is_followup=is_followup,
-                           swap_oob=swap_oob)
+                           is_followup=is_followup)
+
+    if swap_oob:
+        html = '<div id="item-' + item_id + '" hx-swap-oob="innerHTML">' + html + '</div>'
+
+    return html
 
 
 @inspection_bp.route('/<inspection_id>/item/<item_id>', methods=['POST'])
@@ -1076,7 +1085,7 @@ def get_defect_suggestions(item_template_id):
             desc = s['description']
             pills_html += f'''<button type="button"
                 class="px-3 py-2 bg-blue-50 text-blue-700 rounded-lg text-xs hover:bg-blue-100 transition-colors guide-pill"
-                onclick="var w=this.closest('.guide-pills');var url=w.dataset.postUrl;var aid=w.dataset.areaId;htmx.ajax('POST',url,{{values:{{status:'not_to_standard',comment:'{desc.replace(chr(39), chr(92)+chr(39))}',area_id:aid}},target:'#area-content',swap:'innerHTML'}})"
+                onclick="var w=this.closest('.guide-pills');var url=w.dataset.postUrl;var aid=w.dataset.areaId;var tid=w.dataset.itemId;htmx.ajax('POST',url,{{values:{{status:'not_to_standard',comment:'{desc.replace(chr(39), chr(92)+chr(39))}',area_id:aid}},target:'#'+tid,swap:'innerHTML'}})"
                 >{desc}</button>'''
         pills_html += '</div>'
         return pills_html
