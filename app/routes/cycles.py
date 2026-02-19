@@ -82,7 +82,7 @@ def list_cycles():
             (SELECT COUNT(DISTINCT i.unit_id) FROM inspection i WHERE i.cycle_id = ic.id) as units_inspected,
             (SELECT COUNT(DISTINCT i.unit_id) FROM inspection i WHERE i.cycle_id = ic.id AND i.status = 'submitted') as units_submitted,
             (SELECT COUNT(*) FROM cycle_excluded_item cei WHERE cei.cycle_id = ic.id) as excluded_count,
-            (SELECT COUNT(*) FROM defect d WHERE d.raised_cycle_id = ic.id AND d.status = 'open' AND d.tenant_id = ic.tenant_id) as defect_count,
+            (SELECT COUNT(*) FROM inspection_item ii JOIN inspection i ON ii.inspection_id = i.id WHERE i.cycle_id = ic.id AND ii.status IN ('not_to_standard', 'not_installed')) as defect_count,
             (SELECT COUNT(DISTINCT i2.id) FROM inspection i2 WHERE i2.cycle_id = ic.id AND i2.manager_reviewed_at IS NOT NULL) as spot_checked,
             (SELECT COUNT(DISTINCT i3.id) FROM inspection i3 WHERE i3.cycle_id = ic.id) as inspected_count
         FROM inspection_cycle ic
@@ -255,7 +255,7 @@ def view_cycle(cycle_id):
         SELECT u.unit_number, u.status as unit_status, u.id as unit_id,
             i.id as inspection_id, i.status as inspection_status,
             i.inspection_date, COALESCE(i.inspector_name, assigned_insp.name) as inspector_name,
-            (SELECT COUNT(*) FROM defect d WHERE d.unit_id = u.id AND d.status = 'open') as open_defects
+            (SELECT COUNT(*) FROM inspection_item ii WHERE ii.inspection_id = i.id AND ii.status IN ('not_to_standard', 'not_installed')) as open_defects
         FROM unit u
         LEFT JOIN inspection i ON i.unit_id = u.id AND i.cycle_id = ?
         LEFT JOIN cycle_unit_assignment cua ON cua.unit_id = u.id AND cua.cycle_id = ?
