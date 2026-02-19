@@ -153,11 +153,7 @@
             <!-- Items -->
             <div class="divide-y">
                 {% for item in category.checklist %}
-                {% if item.status != 'skipped' %}
-                <div id="item-{{ item.id }}">
                 {% include 'inspection/_single_item.html' %}
-                </div>
-                {% endif %}
                 {% endfor %}
             </div>
             {% endif %}

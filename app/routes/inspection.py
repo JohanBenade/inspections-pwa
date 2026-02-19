@@ -546,16 +546,12 @@ def _render_single_item(inspection_id, item_id, tenant_id, area_id, swap_oob=Fal
 
     is_followup = inspection['cycle_number'] > 1
 
-    html = render_template('inspection/_single_item.html',
+    return render_template('inspection/_single_item.html',
                            item=item,
                            inspection=inspection,
                            area=area,
-                           is_followup=is_followup)
-
-    if swap_oob:
-        html = '<div id="item-' + item_id + '" hx-swap-oob="innerHTML">' + html + '</div>'
-
-    return html
+                           is_followup=is_followup,
+                           swap_oob=swap_oob)
 
 
 @inspection_bp.route('/<inspection_id>/item/<item_id>', methods=['POST'])
