@@ -33,10 +33,162 @@ BATCH_LABEL_SQL = ("(ic.block || ' ' || CASE ic.floor "
                    "ELSE 'Floor ' || ic.floor END)")
 
 
+
+# ============================================================
+# ANALYTICS DASHBOARD v2 - Block+Floor Cards
+# ============================================================
+
+ITEMS_PER_UNIT = 437
+PROJECT_TOTAL_UNITS = 690
+CARD_COLOURS = ['#C8963E', '#3D6B8E', '#4A7C59', '#C44D3F', '#7B6B8D', '#5A8A7A', '#B07D4B']
+
+
+def _block_to_slug(block_name):
+    """Convert block name to URL slug: 'Block 5' -> 'block-5'."""
+    return block_name.lower().replace(' ', '-')
+
+
+def _slug_to_block(slug):
+    """Convert URL slug back to block name: 'block-5' -> 'Block 5'."""
+    return slug.replace('-', ' ').title()
+
+
 @analytics_bp.route('/')
 @require_manager
 def dashboard():
-    """Analytics Dashboard - defect patterns across all units in a cycle."""
+    """Analytics Dashboard - block+floor cards with project overview."""
+    tenant_id = session.get('tenant_id', 'MONOGRAPH')
+
+    # 1. Unit counts per block+floor
+    unit_counts_raw = query_db("""
+        SELECT u.block, u.floor, COUNT(DISTINCT u.id) as total_units
+        FROM unit u
+        WHERE u.tenant_id = ? AND u.unit_number NOT LIKE 'TEST%'
+        GROUP BY u.block, u.floor
+        ORDER BY u.block, u.floor
+    """, [tenant_id])
+    unit_counts = [dict(r) for r in unit_counts_raw]
+
+    if not unit_counts:
+        return render_template('analytics/dashboard_v2.html',
+                               has_data=False, cards=[], project={})
+
+    # 2. Open defects per block+floor
+    defect_counts_raw = query_db("""
+        SELECT u.block, u.floor, COUNT(d.id) as open_defects
+        FROM defect d
+        JOIN unit u ON d.unit_id = u.id
+        WHERE d.tenant_id = ? AND d.status = 'open'
+        AND d.raised_cycle_id NOT LIKE 'test-%'
+        GROUP BY u.block, u.floor
+    """, [tenant_id])
+    defect_map = {}
+    for r in defect_counts_raw:
+        defect_map[(r['block'], r['floor'])] = r['open_defects']
+
+    # 3. Round breakdown per block+floor
+    rounds_raw = query_db("""
+        SELECT ic.block, ic.floor, ic.cycle_number as round_number,
+            COUNT(DISTINCT i.unit_id) as units_inspected
+        FROM inspection i
+        JOIN inspection_cycle ic ON i.cycle_id = ic.id
+        WHERE i.tenant_id = ? AND i.cycle_id NOT LIKE 'test-%'
+        AND i.status NOT IN ('not_started')
+        GROUP BY ic.block, ic.floor, ic.cycle_number
+        ORDER BY ic.block, ic.floor, ic.cycle_number
+    """, [tenant_id])
+    rounds_map = {}
+    for r in rounds_raw:
+        key = (r['block'], r['floor'])
+        if key not in rounds_map:
+            rounds_map[key] = []
+        rounds_map[key].append({
+            'round_number': r['round_number'],
+            'units_inspected': r['units_inspected'],
+        })
+
+    # 4. Certified counts per block+floor
+    certified_raw = query_db("""
+        SELECT u.block, u.floor, COUNT(DISTINCT i.unit_id) as certified
+        FROM inspection i
+        JOIN unit u ON i.unit_id = u.id
+        WHERE i.tenant_id = ? AND i.status = 'certified'
+        AND i.cycle_id NOT LIKE 'test-%'
+        GROUP BY u.block, u.floor
+    """, [tenant_id])
+    certified_map = {}
+    for r in certified_raw:
+        certified_map[(r['block'], r['floor'])] = r['certified']
+
+    # 5. Build cards
+    cards = []
+    total_units_project = 0
+    total_defects_project = 0
+    total_certified_project = 0
+
+    for idx, uc in enumerate(unit_counts):
+        key = (uc['block'], uc['floor'])
+        total_units = uc['total_units']
+        open_defects = defect_map.get(key, 0)
+        rounds = rounds_map.get(key, [])
+        certified = certified_map.get(key, 0)
+        max_round = max((r['round_number'] for r in rounds), default=1)
+        avg_defects = round(open_defects / total_units, 1) if total_units > 0 else 0
+        items_inspected = ITEMS_PER_UNIT * total_units
+        defect_rate = round(open_defects / items_inspected * 100, 1) if items_inspected > 0 else 0
+
+        floor_label = FLOOR_LABELS.get(uc['floor'], 'Floor {}'.format(uc['floor']))
+
+        cards.append({
+            'block': uc['block'],
+            'floor': uc['floor'],
+            'label': '{} {}'.format(uc['block'], floor_label),
+            'block_slug': _block_to_slug(uc['block']),
+            'total_units': total_units,
+            'open_defects': open_defects,
+            'avg_defects': avg_defects,
+            'defect_rate': defect_rate,
+            'rounds': rounds,
+            'max_round': max_round,
+            'certified': certified,
+            'colour': CARD_COLOURS[idx % len(CARD_COLOURS)],
+        })
+
+        total_units_project += total_units
+        total_defects_project += open_defects
+        total_certified_project += certified
+
+    # 6. Project overview
+    items_project = ITEMS_PER_UNIT * total_units_project
+    project = {
+        'total_units': total_units_project,
+        'open_defects': total_defects_project,
+        'avg_defects': round(total_defects_project / total_units_project, 1) if total_units_project > 0 else 0,
+        'defect_rate': round(total_defects_project / items_project * 100, 1) if items_project > 0 else 0,
+        'certified': total_certified_project,
+    }
+
+    return render_template('analytics/dashboard_v2.html',
+                           has_data=True,
+                           cards=cards,
+                           project=project)
+
+
+@analytics_bp.route('/<block_slug>/<int:floor>')
+@require_manager
+def block_floor_detail(block_slug, floor):
+    """Block+Floor detail page - placeholder until Phase B."""
+    block = _slug_to_block(block_slug)
+    floor_label = FLOOR_LABELS.get(floor, 'Floor {}'.format(floor))
+    return render_template('analytics/block_floor_detail.html',
+                           block=block, floor=floor,
+                           label='{} {}'.format(block, floor_label))
+
+
+@analytics_bp.route('/legacy')
+@require_manager
+def dashboard_legacy():
+    """LEGACY: Analytics Dashboard - cycle-based view. Will be removed."""
     tenant_id = session.get('tenant_id', 'MONOGRAPH')
 
     # Get available cycles for selector

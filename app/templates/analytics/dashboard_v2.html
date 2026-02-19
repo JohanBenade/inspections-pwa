@@ -1,0 +1,109 @@
+{% extends "base.html" %}
+
+{% block title %}Analytics{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+
+    <!-- Header -->
+    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+        <div>
+            <h1 class="text-2xl font-bold text-gray-900">Analytics Dashboard</h1>
+            <p class="text-sm text-gray-500 mt-1">Power Park Student Housing - Phase 3</p>
+        </div>
+        <a href="{{ url_for('analytics.dashboard_legacy') }}" class="text-xs text-gray-400 hover:text-gray-600">Legacy view</a>
+    </div>
+
+    {% if not has_data %}
+    <div class="bg-white rounded-lg shadow p-8 text-center text-gray-500">
+        No inspection data available yet.
+    </div>
+    {% else %}
+
+    <!-- Project Overview Card -->
+    <div class="bg-white rounded-lg shadow p-5" style="border-left: 4px solid #1e3a5f;">
+        <h2 class="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-3">Project Overview</h2>
+        <div class="grid grid-cols-2 sm:grid-cols-5 gap-4">
+            <div>
+                <div class="text-2xl font-bold text-gray-900">{{ project.total_units }}</div>
+                <div class="text-xs text-gray-500">of ~690 units</div>
+            </div>
+            <div>
+                <div class="text-2xl font-bold {% if project.open_defects > 0 %}text-red-600{% else %}text-emerald-600{% endif %}">{{ project.open_defects }}</div>
+                <div class="text-xs text-gray-500">open defects</div>
+            </div>
+            <div>
+                <div class="text-2xl font-bold text-gray-900">{{ project.avg_defects }}</div>
+                <div class="text-xs text-gray-500">avg per unit</div>
+            </div>
+            <div>
+                <div class="text-2xl font-bold text-gray-900">{{ project.defect_rate }}%</div>
+                <div class="text-xs text-gray-500">defect rate</div>
+            </div>
+            <div>
+                <div class="text-2xl font-bold {% if project.certified > 0 %}text-emerald-600{% else %}text-gray-400{% endif %}">{{ project.certified }}</div>
+                <div class="text-xs text-gray-500">certified</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Block + Floor Cards -->
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {% for card in cards %}
+        <div class="bg-white rounded-lg shadow p-5" style="border-left: 4px solid {{ card.colour }};">
+            <!-- Card Header -->
+            <div class="flex items-center justify-between mb-3">
+                <h3 class="text-sm font-semibold text-gray-500 uppercase tracking-wide">{{ card.label }}</h3>
+                <span class="text-xs px-2 py-0.5 rounded-full
+                    {% if card.max_round > 1 %}bg-blue-100 text-blue-700{% else %}bg-gray-100 text-gray-600{% endif %}">
+                    {% if card.max_round > 1 %}Re-inspections{% else %}Round 1{% endif %}
+                </span>
+            </div>
+
+            <!-- Stats Row -->
+            <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
+                <div>
+                    <div class="text-2xl font-bold text-gray-900">{{ card.total_units }}</div>
+                    <div class="text-xs text-gray-500">units</div>
+                </div>
+                <div>
+                    <div class="text-2xl font-bold {% if card.open_defects > 0 %}text-red-600{% else %}text-emerald-600{% endif %}">{{ card.open_defects }}</div>
+                    <div class="text-xs text-gray-500">open defects</div>
+                </div>
+                <div>
+                    <div class="text-2xl font-bold text-gray-900">{{ card.avg_defects }}</div>
+                    <div class="text-xs text-gray-500">avg per unit</div>
+                </div>
+                <div>
+                    <div class="text-2xl font-bold text-gray-900">{{ card.defect_rate }}%</div>
+                    <div class="text-xs text-gray-500">defect rate</div>
+                </div>
+            </div>
+
+            <!-- Round Progress -->
+            <div class="space-y-1 mb-4">
+                {% for round in card.rounds %}
+                <div class="flex items-center justify-between text-sm">
+                    <span class="text-gray-600">Round {{ round.round_number }}</span>
+                    <span class="text-gray-900 font-medium">{{ round.units_inspected }} inspected</span>
+                </div>
+                {% endfor %}
+            </div>
+
+            <!-- Certified + View Link -->
+            <div class="flex items-center justify-between pt-3 border-t border-gray-100">
+                <span class="text-sm {% if card.certified > 0 %}text-emerald-600 font-medium{% else %}text-gray-400{% endif %}">
+                    {{ card.certified }} certified
+                </span>
+                <a href="{{ url_for('analytics.block_floor_detail', block_slug=card.block_slug, floor=card.floor) }}"
+                   class="text-sm font-medium text-primary hover:underline">
+                    View Details &rarr;
+                </a>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+
+    {% endif %}
+</div>
+{% endblock %}

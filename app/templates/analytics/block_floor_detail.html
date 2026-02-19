@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+
+{% block title %}{{ label }}{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+    <div class="flex items-center gap-4">
+        <a href="{{ url_for('analytics.dashboard') }}" class="text-primary hover:underline text-sm">&larr; Dashboard</a>
+        <h1 class="text-2xl font-bold text-gray-900">{{ label }}</h1>
+    </div>
+    <div class="bg-white rounded-lg shadow p-8 text-center text-gray-500">
+        <p class="text-lg mb-2">Detail view coming soon</p>
+        <p class="text-sm">Unit table, round comparison, area breakdown, and top defect types will appear here.</p>
+    </div>
+</div>
+{% endblock %}
