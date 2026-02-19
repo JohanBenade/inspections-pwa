@@ -66,8 +66,7 @@
            ontouchend="event.preventDefault();this.click()"
            class="px-3 py-2 rounded text-xs font-medium bg-blue-100 text-blue-700 hover:bg-blue-200 inline-flex items-center justify-center flex-1 text-center"
            style="text-decoration:none;min-height:38px">Inspect</a>
-        {% else %}
-        {# NTS indicator #}
+        {% elif item.status == 'not_to_standard' %}
         <span class="px-3 py-2 rounded text-xs font-medium bg-red-500 text-white inline-flex items-center">N.T.S.</span>
         {% endif %}
         <button type="button" hx-post="{{ url_for('inspection.update_item', inspection_id=inspection.id, item_id=item.id) }}" hx-vals='{"status": "ok", "area_id": "{{ area.id }}"}' hx-target="#item-{{ item.id }}" hx-swap="innerHTML" class="px-3 py-2 rounded text-xs font-medium transition-colors {% if item.status == 'ok' %}bg-green-500 text-white{% else %}bg-gray-100 text-gray-600 hover:bg-green-100{% endif %}">OK</button>
