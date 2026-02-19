@@ -222,6 +222,29 @@
     <!-- Spacer for bottom nav on mobile -->
     <div class="h-16 md:hidden"></div>
     
+    <!-- PWA wake recovery: detect when app returns from background and verify connectivity -->
+    <script>
+    (function() {
+        var lastHidden = 0;
+        document.addEventListener('visibilitychange', function() {
+            if (document.hidden) {
+                lastHidden = Date.now();
+            } else {
+                var elapsed = Date.now() - lastHidden;
+                /* If suspended for more than 30 seconds, check connectivity */
+                if (elapsed > 30000) {
+                    fetch(window.location.href, {method: 'HEAD', cache: 'no-store'})
+                        .then(function(r) {
+                        })
+                        .catch(function() {
+                            window.location.reload();
+                        });
+                }
+            }
+        });
+    })();
+    </script>
+    
     {% block extra_scripts %}{% endblock %}
 </body>
 </html>
