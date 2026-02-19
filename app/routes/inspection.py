@@ -230,6 +230,19 @@ def inspect(inspection_id):
         GROUP BY at.id
     """, [inspection_id])
     area_defect_map = {d['area_id']: d['defect_count'] for d in area_defects}
+
+    area_progress = query_db("""
+        SELECT at.id as area_id,
+            COUNT(CASE WHEN ii.status NOT IN ('pending') THEN 1 END) as marked,
+            COUNT(*) as total
+        FROM inspection_item ii
+        JOIN item_template it ON ii.item_template_id = it.id
+        JOIN category_template ct ON it.category_id = ct.id
+        JOIN area_template at ON ct.area_id = at.id
+        WHERE ii.inspection_id = ? AND ii.status != 'skipped'
+        GROUP BY at.id
+    """, [inspection_id])
+    area_progress_map = {p['area_id']: {'marked': p['marked'], 'total': p['total']} for p in area_progress}
     
     area_notes = query_db("""
         SELECT area_template_id, note FROM cycle_area_note
@@ -253,6 +266,7 @@ def inspect(inspection_id):
                          open_defects=open_defects,
                          category_comments=category_comments,
                          area_defect_map=area_defect_map,
+                         area_progress_map=area_progress_map,
                          area_notes_map=area_notes_map,
                          pdf_available=pdf_available,
                          current_user=current_user)
@@ -1111,6 +1125,19 @@ def get_area_badges(inspection_id):
         WHERE ii.inspection_id = ? AND ii.status != 'skipped'
     """, [inspection_id])
     
+    area_progress = query_db("""
+        SELECT at.id as area_id,
+            COUNT(CASE WHEN ii.status NOT IN ('pending') THEN 1 END) as marked,
+            COUNT(*) as total
+        FROM inspection_item ii
+        JOIN item_template it ON ii.item_template_id = it.id
+        JOIN category_template ct ON it.category_id = ct.id
+        JOIN area_template at ON ct.area_id = at.id
+        WHERE ii.inspection_id = ? AND ii.status != 'skipped'
+        GROUP BY at.id
+    """, [inspection_id])
+    progress_map = {p['area_id']: (p['marked'], p['total']) for p in area_progress}
+
     html_parts = []
     for area in all_areas:
         aid = area['id']
@@ -1119,6 +1146,8 @@ def get_area_badges(inspection_id):
             html_parts.append(f'<span id="area-badge-{aid}" hx-swap-oob="true" class="bg-red-500 text-white text-xs px-1.5 py-0.5 rounded-full">{count}</span>')
         else:
             html_parts.append(f'<span id="area-badge-{aid}" hx-swap-oob="true"></span>')
+        marked, total = progress_map.get(aid, (0, 0))
+        html_parts.append(f'<span id="area-progress-{aid}" hx-swap-oob="true" class="text-xs text-gray-500">{marked}/{total}</span>')
     
     return '\n'.join(html_parts)
 

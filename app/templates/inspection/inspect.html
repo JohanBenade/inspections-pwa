@@ -48,11 +48,17 @@
                         hx-target="#area-content"
                         hx-swap="innerHTML"
                         onclick="document.querySelectorAll('.area-tab').forEach(t => {t.classList.remove('border-blue-500', 'text-blue-600'); t.classList.add('border-transparent', 'text-gray-500')}); this.classList.add('border-blue-500', 'text-blue-600'); this.classList.remove('border-transparent', 'text-gray-500')">
-                    {{ area.name }}
-                    <span id="area-badge-{{ area.id }}" {% if area_defect_map.get(area.id) %}class="bg-red-500 text-white text-xs px-1.5 py-0.5 rounded-full"{% endif %}>{{ area_defect_map[area.id] if area_defect_map.get(area.id) else '' }}</span>
-                    {% if area_notes_map.get(area.id) %}
-                    <span class="text-orange-500 text-xs">*</span>
-                    {% endif %}
+                    <span class="flex flex-col items-start">
+                        <span class="flex items-center gap-2">
+                            {{ area.name }}
+                            <span id="area-badge-{{ area.id }}" {% if area_defect_map.get(area.id) %}class="bg-red-500 text-white text-xs px-1.5 py-0.5 rounded-full"{% endif %}>{{ area_defect_map[area.id] if area_defect_map.get(area.id) else '' }}</span>
+                            {% if area_notes_map.get(area.id) %}
+                            <span class="text-orange-500 text-xs">*</span>
+                            {% endif %}
+                        </span>
+                        {% set prog = area_progress_map.get(area.id, {}) %}
+                        <span id="area-progress-{{ area.id }}" class="text-xs text-gray-500">{{ prog.get('marked', 0) }}/{{ prog.get('total', 0) }}</span>
+                    </span>
                 </button>
                 {% endfor %}
             </div>
