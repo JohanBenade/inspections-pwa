@@ -4,13 +4,166 @@
 
 {% block content %}
 <div class="space-y-6">
-    <div class="flex items-center gap-4">
+
+    <!-- Header + Back -->
+    <div>
         <a href="{{ url_for('analytics.dashboard') }}" class="text-primary hover:underline text-sm">&larr; Dashboard</a>
-        <h1 class="text-2xl font-bold text-gray-900">{{ label }}</h1>
+        <h1 class="text-2xl font-bold text-gray-900 mt-1">{{ label }}</h1>
     </div>
+
+    {% if not has_data %}
     <div class="bg-white rounded-lg shadow p-8 text-center text-gray-500">
-        <p class="text-lg mb-2">Detail view coming soon</p>
-        <p class="text-sm">Unit table, round comparison, area breakdown, and top defect types will appear here.</p>
+        No inspection data for this block+floor yet.
     </div>
+    {% else %}
+
+    <!-- Summary Cards -->
+    <div class="grid grid-cols-2 sm:grid-cols-5 gap-3">
+        <div class="bg-white rounded-lg shadow p-4">
+            <div class="text-2xl font-bold text-gray-900">{{ summary.total_units }}</div>
+            <div class="text-xs text-gray-500">units</div>
+        </div>
+        <div class="bg-white rounded-lg shadow p-4">
+            <div class="text-2xl font-bold {% if summary.total_defects > 0 %}text-red-600{% else %}text-emerald-600{% endif %}">{{ summary.total_defects }}</div>
+            <div class="text-xs text-gray-500">open defects</div>
+        </div>
+        <div class="bg-white rounded-lg shadow p-4">
+            <div class="text-2xl font-bold text-gray-900">{{ summary.avg_defects }}</div>
+            <div class="text-xs text-gray-500">avg per unit</div>
+        </div>
+        <div class="bg-white rounded-lg shadow p-4">
+            <div class="text-2xl font-bold text-gray-900">{{ summary.defect_rate }}%</div>
+            <div class="text-xs text-gray-500">defect rate</div>
+        </div>
+        <div class="bg-white rounded-lg shadow p-4">
+            <div class="text-2xl font-bold text-gray-900">R{{ summary.max_round }}</div>
+            <div class="text-xs text-gray-500">latest round</div>
+        </div>
+    </div>
+
+    <!-- Section 1: Unit Status Table -->
+    <div class="bg-white rounded-lg shadow overflow-hidden">
+        <div class="px-5 py-4 border-b border-gray-100">
+            <h2 class="text-lg font-semibold text-gray-900">Unit Status</h2>
+        </div>
+        <div class="overflow-x-auto">
+            <table class="w-full text-sm">
+                <thead class="bg-gray-50 text-gray-500 text-xs uppercase">
+                    <tr>
+                        <th class="px-4 py-3 text-left">Unit</th>
+                        <th class="px-4 py-3 text-left">Round</th>
+                        <th class="px-4 py-3 text-left">Status</th>
+                        <th class="px-4 py-3 text-right">Defects</th>
+                        <th class="px-4 py-3 text-left hidden sm:table-cell">Inspector</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-100">
+                    {% for u in units %}
+                    <tr class="{% if u.defect_count > 30 %}bg-red-50{% elif u.defect_count <= 20 %}bg-emerald-50{% endif %}">
+                        <td class="px-4 py-3 font-medium text-gray-900">{{ u.unit_number }}</td>
+                        <td class="px-4 py-3 text-gray-600">{{ u.round_number }}</td>
+                        <td class="px-4 py-3">
+                            <span class="inline-block text-xs px-2 py-0.5 rounded-full {{ u.status_colour }}">{{ u.status_label }}</span>
+                        </td>
+                        <td class="px-4 py-3 text-right font-medium {% if u.defect_count > 30 %}text-red-600{% elif u.defect_count <= 20 %}text-emerald-600{% else %}text-gray-900{% endif %}">{{ u.defect_count }}</td>
+                        <td class="px-4 py-3 text-gray-500 hidden sm:table-cell">{{ u.inspector_name }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Section 2: Round Comparison (conditional) -->
+    {% if rounds|length > 1 %}
+    <div class="bg-white rounded-lg shadow overflow-hidden">
+        <div class="px-5 py-4 border-b border-gray-100">
+            <h2 class="text-lg font-semibold text-gray-900">Round Comparison</h2>
+        </div>
+        <div class="p-5">
+            <div class="grid grid-cols-1 sm:grid-cols-{{ rounds|length }} gap-4">
+                {% for r in rounds %}
+                <div class="p-4 rounded-lg {% if loop.last %}bg-blue-50 border border-blue-200{% else %}bg-gray-50{% endif %}">
+                    <div class="text-sm font-semibold text-gray-500 uppercase mb-3">Round {{ r.round_number }}</div>
+                    <div class="space-y-2">
+                        <div class="flex justify-between text-sm">
+                            <span class="text-gray-600">Units inspected</span>
+                            <span class="font-medium text-gray-900">{{ r.units_inspected }}</span>
+                        </div>
+                        <div class="flex justify-between text-sm">
+                            <span class="text-gray-600">Defects raised</span>
+                            <span class="font-medium text-gray-900">{{ r.total_defects }}</span>
+                        </div>
+                        <div class="flex justify-between text-sm">
+                            <span class="text-gray-600">Still open</span>
+                            <span class="font-medium {% if r.still_open > 0 %}text-red-600{% else %}text-emerald-600{% endif %}">{{ r.still_open }}</span>
+                        </div>
+                        <div class="flex justify-between text-sm">
+                            <span class="text-gray-600">Cleared</span>
+                            <span class="font-medium text-emerald-600">{{ r.cleared }}</span>
+                        </div>
+                        {% if r.cleared > 0 or r.total_defects > 0 %}
+                        <div class="flex justify-between text-sm pt-2 border-t border-gray-200">
+                            <span class="text-gray-600">Clearance rate</span>
+                            <span class="font-medium {% if r.clearance_pct >= 50 %}text-emerald-600{% else %}text-amber-600{% endif %}">{{ r.clearance_pct }}%</span>
+                        </div>
+                        {% endif %}
+                        <div class="flex justify-between text-sm">
+                            <span class="text-gray-600">Avg per unit</span>
+                            <span class="font-medium text-gray-900">{{ r.avg_defects }}</span>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Section 3: Area Breakdown -->
+    {% if area_data %}
+    <div class="bg-white rounded-lg shadow overflow-hidden">
+        <div class="px-5 py-4 border-b border-gray-100">
+            <h2 class="text-lg font-semibold text-gray-900">Defects by Area</h2>
+        </div>
+        <div class="p-5 space-y-3">
+            {% for a in area_data %}
+            <div>
+                <div class="flex items-center justify-between text-sm mb-1">
+                    <span class="text-gray-700 font-medium">{{ a.area }}</span>
+                    <span class="text-gray-500">{{ a.defect_count }} ({{ a.pct }}%)</span>
+                </div>
+                <div class="w-full bg-gray-100 rounded-full h-4">
+                    <div class="h-4 rounded-full" style="width: {{ a.bar_pct }}%; background-color: {{ a.colour }};"></div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Section 4: Top Defect Types -->
+    {% if top_defects %}
+    <div class="bg-white rounded-lg shadow overflow-hidden">
+        <div class="px-5 py-4 border-b border-gray-100">
+            <h2 class="text-lg font-semibold text-gray-900">Top Defect Types</h2>
+        </div>
+        <div class="p-5 space-y-3">
+            {% for d in top_defects %}
+            <div>
+                <div class="flex items-center justify-between text-sm mb-1">
+                    <span class="text-gray-700 truncate mr-4">{{ d.description }}</span>
+                    <span class="text-gray-500 whitespace-nowrap">{{ d.count }} ({{ d.pct }}%)</span>
+                </div>
+                <div class="w-full bg-gray-100 rounded-full h-3">
+                    <div class="h-3 rounded-full bg-primary" style="width: {{ d.bar_pct }}%;"></div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+
+    {% endif %}
 </div>
 {% endblock %}

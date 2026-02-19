@@ -1,6 +1,3 @@
-"""
-Deployment script: Analytics Restructure Phase A - Block+Floor Dashboard
-"""
 import os
 import py_compile
 
@@ -341,7 +338,7 @@ def main():
     detail_path = os.path.join(TEMPLATE_DIR, 'block_floor_detail.html')
     with open(detail_path, 'w') as f:
         f.write(DETAIL_TEMPLATE)
-    print("OK: Created block_floor_detail.html")
+    print("OK: Created block_floor_detail.html (stub)")
 
     old_dash_path = os.path.join(TEMPLATE_DIR, 'dashboard.html')
     with open(old_dash_path, 'r') as f:
@@ -356,10 +353,7 @@ def main():
     else:
         print("SKIP: dashboard.html form action already updated")
 
-    print()
-    print("=== DEPLOYMENT COMPLETE ===")
-    print()
-    print("Next: git add -A && git commit -m 'feat: analytics restructure - block+floor dashboard' && git push origin main")
+    print("\nPhase A complete.")
 
 
 if __name__ == '__main__':

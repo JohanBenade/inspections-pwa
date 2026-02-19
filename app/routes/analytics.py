@@ -177,12 +177,180 @@ def dashboard():
 @analytics_bp.route('/<block_slug>/<int:floor>')
 @require_manager
 def block_floor_detail(block_slug, floor):
-    """Block+Floor detail page - placeholder until Phase B."""
+    """Block+Floor detail page - unit table, round comparison, area breakdown, top defects."""
+    tenant_id = session.get('tenant_id', 'MONOGRAPH')
     block = _slug_to_block(block_slug)
     floor_label = FLOOR_LABELS.get(floor, 'Floor {}'.format(floor))
+    label = '{} {}'.format(block, floor_label)
+
+    # 1. All cycles for this block+floor
+    cycles = [dict(r) for r in query_db("""
+        SELECT id, cycle_number
+        FROM inspection_cycle
+        WHERE block = ? AND floor = ? AND tenant_id = ? AND id NOT LIKE 'test-%'
+        ORDER BY cycle_number
+    """, [block, floor, tenant_id])]
+    cycle_ids = [c['id'] for c in cycles]
+    max_round = max((c['cycle_number'] for c in cycles), default=0)
+
+    if not cycle_ids:
+        return render_template('analytics/block_floor_detail.html',
+                               block=block, floor=floor, label=label,
+                               has_data=False, units=[], rounds=[],
+                               area_data=[], top_defects=[], summary={})
+
+    # Build cycle_id -> round_number lookup
+    cycle_round_map = {c['id']: c['cycle_number'] for c in cycles}
+
+    # 2. Unit status table
+    units_raw = [dict(r) for r in query_db("""
+        SELECT u.id as unit_id, u.unit_number,
+            i.id as inspection_id, i.status as insp_status,
+            i.cycle_id, i.inspector_name,
+            ic.cycle_number as round_number,
+            COUNT(d.id) as defect_count
+        FROM unit u
+        JOIN inspection i ON i.unit_id = u.id AND i.tenant_id = u.tenant_id
+        JOIN inspection_cycle ic ON i.cycle_id = ic.id
+        LEFT JOIN defect d ON d.unit_id = u.id AND d.raised_cycle_id = i.cycle_id
+            AND d.status = 'open' AND d.tenant_id = u.tenant_id
+        WHERE u.block = ? AND u.floor = ? AND u.tenant_id = ?
+        AND i.cycle_id NOT LIKE 'test-%'
+        GROUP BY u.id, i.cycle_id
+        ORDER BY u.unit_number, ic.cycle_number
+    """, [block, floor, tenant_id])]
+
+    # Keep only the latest round per unit for the table
+    unit_latest = {}
+    for r in units_raw:
+        un = r['unit_number']
+        if un not in unit_latest or r['round_number'] > unit_latest[un]['round_number']:
+            unit_latest[un] = r
+
+    # Status display mapping
+    status_display = {
+        'not_started': 'Not Started',
+        'in_progress': 'In Progress',
+        'submitted': 'Submitted',
+        'reviewed': 'Reviewed',
+        'pending_followup': 'Signed Off',
+        'approved': 'Approved',
+        'certified': 'Certified',
+        'closed': 'Closed',
+    }
+    status_colour = {
+        'not_started': 'bg-gray-100 text-gray-600',
+        'in_progress': 'bg-blue-100 text-blue-700',
+        'submitted': 'bg-yellow-100 text-yellow-700',
+        'reviewed': 'bg-purple-100 text-purple-700',
+        'pending_followup': 'bg-emerald-100 text-emerald-700',
+        'approved': 'bg-emerald-100 text-emerald-700',
+        'certified': 'bg-emerald-200 text-emerald-800',
+        'closed': 'bg-gray-200 text-gray-700',
+    }
+
+    units = []
+    for un in sorted(unit_latest.keys()):
+        r = unit_latest[un]
+        units.append({
+            'unit_number': un,
+            'round_number': r['round_number'],
+            'insp_status': r['insp_status'],
+            'status_label': status_display.get(r['insp_status'], r['insp_status']),
+            'status_colour': status_colour.get(r['insp_status'], 'bg-gray-100 text-gray-600'),
+            'defect_count': r['defect_count'],
+            'inspector_name': r['inspector_name'] or '-',
+        })
+
+    # Summary stats
+    total_units = len(units)
+    total_defects = sum(u['defect_count'] for u in units)
+    avg_defects = round(total_defects / total_units, 1) if total_units > 0 else 0
+    items_inspected = ITEMS_PER_UNIT * total_units
+    defect_rate = round(total_defects / items_inspected * 100, 1) if items_inspected > 0 else 0
+    max_defects_unit = max(units, key=lambda u: u['defect_count']) if units else None
+
+    summary = {
+        'total_units': total_units,
+        'total_defects': total_defects,
+        'avg_defects': avg_defects,
+        'defect_rate': defect_rate,
+        'max_round': max_round,
+        'worst_unit': max_defects_unit['unit_number'] if max_defects_unit else '-',
+        'worst_count': max_defects_unit['defect_count'] if max_defects_unit else 0,
+    }
+
+    # 3. Round comparison (only if max_round > 1)
+    rounds = []
+    if max_round > 1:
+        rounds_raw = [dict(r) for r in query_db("""
+            SELECT ic.cycle_number as round_number,
+                COUNT(DISTINCT d.id) as total_defects,
+                COUNT(DISTINCT i.unit_id) as units_inspected,
+                SUM(CASE WHEN d.status = 'open' THEN 1 ELSE 0 END) as still_open,
+                SUM(CASE WHEN d.status = 'cleared' THEN 1 ELSE 0 END) as cleared
+            FROM inspection_cycle ic
+            JOIN inspection i ON i.cycle_id = ic.id AND i.tenant_id = ic.tenant_id
+            LEFT JOIN defect d ON d.raised_cycle_id = ic.id AND d.tenant_id = ic.tenant_id
+            WHERE ic.block = ? AND ic.floor = ? AND ic.tenant_id = ?
+            AND ic.id NOT LIKE 'test-%'
+            GROUP BY ic.cycle_number
+            ORDER BY ic.cycle_number
+        """, [block, floor, tenant_id])]
+
+        for r in rounds_raw:
+            r['avg_defects'] = round(r['total_defects'] / r['units_inspected'], 1) if r['units_inspected'] > 0 else 0
+            clearance_base = r['total_defects']
+            r['clearance_pct'] = round(r['cleared'] / clearance_base * 100, 1) if clearance_base > 0 else 0
+        rounds = rounds_raw
+
+    # 4. Area breakdown (all open defects in this block+floor)
+    area_data_raw = [dict(r) for r in query_db("""
+        SELECT at2.area_name as area, COUNT(d.id) as defect_count
+        FROM defect d
+        JOIN unit u ON d.unit_id = u.id
+        JOIN item_template it ON d.item_template_id = it.id
+        JOIN category_template ct ON it.category_id = ct.id
+        JOIN area_template at2 ON ct.area_id = at2.id
+        WHERE u.block = ? AND u.floor = ? AND d.tenant_id = ?
+        AND d.status = 'open' AND d.raised_cycle_id NOT LIKE 'test-%'
+        GROUP BY at2.area_name
+        ORDER BY defect_count DESC
+    """, [block, floor, tenant_id])]
+
+    max_area_count = area_data_raw[0]['defect_count'] if area_data_raw else 1
+    for a in area_data_raw:
+        a['bar_pct'] = round(a['defect_count'] / max_area_count * 100)
+        a['pct'] = round(a['defect_count'] / total_defects * 100, 1) if total_defects > 0 else 0
+        a['colour'] = AREA_COLOURS.get(a['area'], '#9ca3af')
+
+    # 5. Top defect types (scoped to block+floor)
+    top_defects = [dict(r) for r in query_db("""
+        SELECT d.original_comment as description, COUNT(*) as count
+        FROM defect d
+        JOIN unit u ON d.unit_id = u.id
+        WHERE u.block = ? AND u.floor = ? AND d.tenant_id = ?
+        AND d.status = 'open' AND d.raised_cycle_id NOT LIKE 'test-%'
+        GROUP BY d.original_comment
+        ORDER BY count DESC
+        LIMIT 10
+    """, [block, floor, tenant_id])]
+
+    max_defect_count = top_defects[0]['count'] if top_defects else 1
+    for d in top_defects:
+        d['bar_pct'] = round(d['count'] / max_defect_count * 100)
+        d['pct'] = round(d['count'] / total_defects * 100, 1) if total_defects > 0 else 0
+
     return render_template('analytics/block_floor_detail.html',
-                           block=block, floor=floor,
-                           label='{} {}'.format(block, floor_label))
+                           block=block, floor=floor, label=label,
+                           block_slug=block_slug,
+                           has_data=True,
+                           units=units,
+                           rounds=rounds,
+                           area_data=area_data_raw,
+                           top_defects=top_defects,
+                           summary=summary)
+
 
 
 @analytics_bp.route('/legacy')
