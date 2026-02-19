@@ -313,24 +313,9 @@ def main():
         return
     print(f"  All {len(all_ids)} unique template IDs verified")
 
-    # --- STEP 1: Create Block 5 Ground Round 2 cycle ---
-    print("\n--- CREATING B5G ROUND 2 CYCLE ---")
-    cur.execute("""
-        SELECT id FROM inspection_cycle
-        WHERE block = 'Block 5' AND floor = 0 AND cycle_number = 2 AND tenant_id = ?
-    """, (TENANT,))
-    existing = cur.fetchone()
-    if existing:
-        cycle_b5g_r2 = existing[0]
-        print(f"  Existing cycle found: {cycle_b5g_r2}")
-    else:
-        cycle_b5g_r2 = gen_id()
-        cur.execute("""
-            INSERT INTO inspection_cycle
-            (id, tenant_id, phase_id, name, block, floor, cycle_number, status, created_at, updated_at)
-            VALUES (?, ?, 'phase-003', 'Cycle 2', 'Block 5', 0, 2, 'active', ?, ?)
-        """, (cycle_b5g_r2, TENANT, now, now))
-        print(f"  Created cycle: {cycle_b5g_r2}")
+    # --- STEP 1: Block 5 Ground Round 2 cycle (pre-created) ---
+    cycle_b5g_r2 = '855cd617'
+    print(f"\n--- B5G ROUND 2 CYCLE: {cycle_b5g_r2} ---")
 
     # Map units to cycles
     UNIT_CYCLES = {
