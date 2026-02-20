@@ -68,9 +68,9 @@ for unum in fix_units:
 
 # Update block assignment
 cur.execute("""
-    UPDATE unit SET block = 'Block 7', updated_at = ?
+    UPDATE unit SET block = 'Block 7'
     WHERE unit_number IN ('053','054','055','056') AND tenant_id = ?
-""", (now, TENANT))
+""", (TENANT,))
 print(f"  Updated {cur.rowcount} units to Block 7")
 
 # Create Block 7 Ground R1 cycle
@@ -128,7 +128,7 @@ print(f"  Reassigned {cur.rowcount} cycle_unit_assignments")
 cur.execute("SELECT id, block FROM unit WHERE unit_number = '057' AND tenant_id = ?", (TENANT,))
 u057 = cur.fetchone()
 if u057:
-    cur.execute("UPDATE unit SET block = 'Block 7', updated_at = ? WHERE id = ?", (now, u057[0]))
+    cur.execute("UPDATE unit SET block = 'Block 7' WHERE id = ?", (u057[0],))
     print(f"  Unit 057 also moved to Block 7")
     # Check for inspections
     cur.execute("SELECT id FROM inspection WHERE unit_id = ? AND cycle_id = ?", (u057[0], B6G_CYCLE))
@@ -157,9 +157,9 @@ for (block, floor), unit_numbers in sorted(UNIT_MAP.items()):
         unit_id = gen_id()
         cur.execute("""
             INSERT INTO unit
-            (id, tenant_id, unit_number, block, floor, status, created_at, updated_at)
-            VALUES (?, ?, ?, ?, ?, 'not_started', ?, ?)
-        """, (unit_id, TENANT, unum, block, floor, now, now))
+            (id, tenant_id, phase_id, unit_number, unit_type, block, floor, status)
+            VALUES (?, ?, ?, ?, ?, ?, ?, 'not_started')
+        """, (unit_id, TENANT, PHASE, unum, '4-Bed', block, floor))
         created += 1
 
 print(f"  Existing: {existing}")
