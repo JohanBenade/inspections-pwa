@@ -287,6 +287,18 @@ def dashboard():
     """, [tenant_id])]
     area_max = area_data[0]['defect_count'] if area_data else 1
 
+    # Area median for colour coding
+    area_counts_sorted = sorted([a['defect_count'] for a in area_data])
+    if area_counts_sorted:
+        mid = len(area_counts_sorted) // 2
+        area_median = area_counts_sorted[mid] if len(area_counts_sorted) % 2 else (area_counts_sorted[mid - 1] + area_counts_sorted[mid]) / 2
+    else:
+        area_median = 0
+    # Top 2 areas insight
+    area_top2_sum = sum(a['defect_count'] for a in area_data[:2]) if len(area_data) >= 2 else 0
+    area_top2_pct = round(area_top2_sum / project['open_defects'] * 100) if project['open_defects'] > 0 else 0
+    area_top2_names = [a['area'].title() for a in area_data[:2]] if len(area_data) >= 2 else []
+
     # 10. Worst units (top 5)
     worst_units = [dict(r) for r in query_db("""
         SELECT u.unit_number, u.block, u.floor,
@@ -299,6 +311,15 @@ def dashboard():
         ORDER BY defect_count DESC
         LIMIT 5
     """, [tenant_id])]
+
+    # Worst units insight for footer
+    worst_sum = sum(u['defect_count'] for u in worst_units)
+    worst_pct = round(worst_sum / project['open_defects'] * 100) if project['open_defects'] > 0 else 0
+    worst_blocks = {}
+    for u in worst_units:
+        key = u['block'] + ' ' + FLOOR_LABELS.get(u['floor'], 'Floor ' + str(u['floor']))
+        worst_blocks[key] = worst_blocks.get(key, 0) + 1
+    worst_dominant = max(worst_blocks.items(), key=lambda x: x[1]) if worst_blocks else ('', 0)
 
     # Separate active vs awaiting blocks (a block is active if ANY zone has inspections)
     active_blocks = set()
@@ -314,6 +335,12 @@ def dashboard():
                            area_data=area_data,
                            area_max=area_max,
                            area_colours=AREA_COLOURS,
+                           area_median=area_median,
+                           area_top2_pct=area_top2_pct,
+                           area_top2_names=area_top2_names,
+                           worst_pct=worst_pct,
+                           worst_dominant_zone=worst_dominant[0],
+                           worst_dominant_count=worst_dominant[1],
                            worst_units=worst_units,
                            active_blocks=active_blocks,
                            floor_labels=FLOOR_LABELS)

@@ -169,20 +169,29 @@
             <a href="{{ url_for('analytics.explore', area=area.area) }}" class="area-row">
                 <span class="area-label">{{ area.area|title }}</span>
                 <div style="flex: 1;">
-                    <div class="area-bar" style="width: {{ (area.defect_count / area_max * 100)|round }}%; background: {{ area_colours.get(area.area, '#6B6B6B') }};"></div>
+                    <div class="area-bar" style="width: {{ (area.defect_count / area_max * 100)|round }}%; background: {% if area.defect_count > area_median * 1.5 %}#C44D3F{% elif area.defect_count > area_median %}#C8963E{% else %}#4A7C59{% endif %};"></div>
                 </div>
                 <span class="area-pct">{{ area_pct }}%</span>
                 <span class="area-count">{{ area.defect_count }}</span>
             </a>
             {% endfor %}
-            <div style="font-size: 0.7rem; color: #9A9A9A; margin-top: 0.5rem; padding-top: 0.4rem; border-top: 1px solid #f0f0f0;">{{ '{:,}'.format(project.open_defects) }} open defects &middot; Colours identify areas &middot; Tap to drill down</div>
+            <div style="font-size: 0.7rem; color: #9A9A9A; margin-top: 0.5rem; padding-top: 0.4rem; border-top: 1px solid #f0f0f0;">
+                <div style="margin-bottom: 0.25rem;">
+                    <span class="legend-item"><span class="legend-dot" style="background: #C44D3F;"></span> &gt;{{ (area_median * 1.5)|round|int }}</span>&ensp;
+                    <span class="legend-item"><span class="legend-dot" style="background: #C8963E;"></span> {{ area_median|round|int }}&ndash;{{ (area_median * 1.5)|round|int }}</span>&ensp;
+                    <span class="legend-item"><span class="legend-dot" style="background: #4A7C59;"></span> &lt;{{ area_median|round|int }}</span>&ensp;
+                    <span style="color: #BABABA;">&middot;</span>&ensp;
+                    median: {{ area_median|round|int }}
+                </div>
+                <div style="margin-bottom: 0.25rem;">{{ area_top2_names[0] }} and {{ area_top2_names[1] }} account for {{ area_top2_pct }}% of all defects</div>
+                <div>Tap any area to explore units and defect detail &rarr;</div>
+            </div>
         </div>
 
         <!-- WORST UNITS -->
         <div class="hotspot-panel">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
-                <span style="font-size: 0.9rem; font-weight: 600; color: #1A1A1A;">Worst Units</span>
-                <span style="font-size: 0.7rem; color: #9A9A9A;">top 5 by open defects</span>
+                <span style="font-size: 0.9rem; font-weight: 600; color: #1A1A1A;">5 Worst Units by Open Defects</span>
             </div>
             {% for unit in worst_units %}
             {% set unit_block_slug = unit.block|lower|replace(' ', '-') %}
@@ -203,7 +212,10 @@
                 <span class="legend-item"><span class="legend-dot" style="background: #C8963E;"></span> {{ project.median_defects|round|int }}&ndash;{{ (project.median_defects * 1.5)|round|int }}</span>&ensp;
                 <span class="legend-item"><span class="legend-dot" style="background: #4A7C59;"></span> &lt;{{ project.median_defects|round|int }}</span>&ensp;
                 <span style="color: #BABABA;">&middot;</span>&ensp;
-                median: {{ project.median_defects }} &middot; Tap to drill down
+                median: {{ project.median_defects }}
+                </div>
+                <div style="margin-bottom: 0.25rem;">These 5 units hold {{ worst_pct }}% of all open defects &middot; {{ worst_dominant_count }} of 5 are {{ worst_dominant_zone }}</div>
+                <div>Tap any unit to drill down &rarr;</div>
             </div>
         </div>
     </div>
