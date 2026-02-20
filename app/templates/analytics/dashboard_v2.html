@@ -32,10 +32,12 @@
                 <h1 class="font-display text-3xl lg:text-4xl font-bold text-gray-900" style="letter-spacing: -0.01em;">PPSH Phase 3</h1>
                 <div class="text-sm text-gray-400 mt-1">Power Park Student Housing &middot; Inspection Analytics</div>
             </div>
-            <div class="flex gap-2">
-                <a href="{{ url_for('analytics.explore') }}" class="explore-btn">Explore &rarr;</a>
-                <a href="{{ url_for('analytics.dashboard_legacy') }}" class="text-xs text-gray-300 hover:text-gray-500 self-end ml-2">Legacy</a>
-            </div>
+            <a href="{{ url_for('analytics.explore') }}" class="explore-btn">Explore &rarr;</a>
+        </div>
+        <!-- TABS -->
+        <div style="display: flex; gap: 0; margin-top: 1rem; border-bottom: 2px solid #e5e5e5;">
+            <span style="padding: 0.5rem 1.25rem; font-size: 0.85rem; font-weight: 600; color: #C8963E; border-bottom: 2px solid #C8963E; margin-bottom: -2px; cursor: default;">Analytics (New)</span>
+            <a href="{{ url_for('analytics.dashboard_legacy') }}" style="padding: 0.5rem 1.25rem; font-size: 0.85rem; font-weight: 500; color: #9A9A9A; text-decoration: none; border-bottom: 2px solid transparent; margin-bottom: -2px;" onmouseover="this.style.color='#6B6B6B'" onmouseout="this.style.color='#9A9A9A'">Analytics (Legacy)</a>
         </div>
     </div>
 
