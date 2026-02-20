@@ -169,10 +169,117 @@ def dashboard():
         'certified': total_certified_project,
     }
 
+    # 7. Inspected-only metrics (honest numbers)
+    inspected_raw = query_db("""
+        SELECT COUNT(DISTINCT i.unit_id) as inspected
+        FROM inspection i
+        WHERE i.tenant_id = ? AND i.cycle_id NOT LIKE 'test-%'
+        AND i.status NOT IN ('not_started')
+    """, [tenant_id], one=True)
+    units_inspected = inspected_raw['inspected'] if inspected_raw else 0
+    items_inspected = ITEMS_PER_UNIT * units_inspected
+    project['units_inspected'] = units_inspected
+    project['pct_complete'] = round(units_inspected / PROJECT_TOTAL_UNITS * 100) if PROJECT_TOTAL_UNITS > 0 else 0
+    project['avg_defects_inspected'] = round(total_defects_project / units_inspected, 1) if units_inspected > 0 else 0
+    project['defect_rate_inspected'] = round(total_defects_project / items_inspected * 100, 1) if items_inspected > 0 else 0
+    project['items_inspected'] = items_inspected
+    project['project_total'] = PROJECT_TOTAL_UNITS
+
+    # 8. Rectification pulse (R2+ data)
+    rect_raw = query_db("""
+        SELECT
+            COUNT(*) as total_reviewed,
+            SUM(CASE WHEN d.status = 'cleared' AND d.clearance_note = 'rectified' THEN 1 ELSE 0 END) as rectified,
+            SUM(CASE WHEN d.status = 'cleared' AND d.clearance_note = 'superseded' THEN 1 ELSE 0 END) as superseded
+        FROM defect d
+        JOIN inspection_cycle ic ON d.raised_cycle_id = ic.id
+        WHERE d.tenant_id = ? AND ic.id NOT LIKE 'test-%'
+        AND d.status = 'cleared' AND d.clearance_note IS NOT NULL
+    """, [tenant_id], one=True)
+
+    r2_units_raw = query_db("""
+        SELECT COUNT(DISTINCT i.unit_id) as r2_units
+        FROM inspection i
+        JOIN inspection_cycle ic ON i.cycle_id = ic.id
+        WHERE i.tenant_id = ? AND ic.cycle_number > 1
+        AND ic.id NOT LIKE 'test-%' AND i.status NOT IN ('not_started')
+    """, [tenant_id], one=True)
+
+    r2_new_raw = query_db("""
+        SELECT COUNT(*) as new_defects
+        FROM defect d
+        JOIN inspection_cycle ic ON d.raised_cycle_id = ic.id
+        WHERE d.tenant_id = ? AND ic.cycle_number > 1
+        AND ic.id NOT LIKE 'test-%' AND d.status = 'open'
+    """, [tenant_id], one=True)
+
+    rectification = None
+    r2_units = r2_units_raw['r2_units'] if r2_units_raw else 0
+    if r2_units > 0:
+        rectified = rect_raw['rectified'] or 0 if rect_raw else 0
+        superseded = rect_raw['superseded'] or 0 if rect_raw else 0
+        total_cleared = rectified + superseded
+        r2_new = r2_new_raw['new_defects'] or 0 if r2_new_raw else 0
+        clearance_pct = round(rectified / total_cleared * 100, 1) if total_cleared > 0 else 0
+        rectification = {
+            'r2_units': r2_units,
+            'total_reviewed': total_cleared,
+            'rectified': rectified,
+            'superseded': superseded,
+            'new_defects': r2_new,
+            'clearance_pct': clearance_pct,
+        }
+
+    # 9. Area breakdown (top problem areas)
+    area_data = [dict(r) for r in query_db("""
+        SELECT at2.area_name AS area, COUNT(d.id) AS defect_count
+        FROM defect d
+        JOIN item_template it ON d.item_template_id = it.id
+        JOIN category_template ct ON it.category_id = ct.id
+        JOIN area_template at2 ON ct.area_id = at2.id
+        WHERE d.tenant_id = ? AND d.status = 'open'
+        AND d.raised_cycle_id NOT LIKE 'test-%'
+        GROUP BY at2.area_name
+        ORDER BY defect_count DESC
+    """, [tenant_id])]
+    area_max = area_data[0]['defect_count'] if area_data else 1
+
+    # 10. Worst units (top 5)
+    worst_units = [dict(r) for r in query_db("""
+        SELECT u.unit_number, u.block, u.floor,
+               COUNT(d.id) as defect_count
+        FROM defect d
+        JOIN unit u ON d.unit_id = u.id
+        WHERE d.tenant_id = ? AND d.status = 'open'
+        AND d.raised_cycle_id NOT LIKE 'test-%'
+        GROUP BY u.id, u.unit_number, u.block, u.floor
+        ORDER BY defect_count DESC
+        LIMIT 5
+    """, [tenant_id])]
+
+    # Separate active vs awaiting blocks
+    active_blocks = set()
+    for card in cards:
+        if card['open_defects'] > 0 or card['max_round'] > 0:
+            active_blocks.add(card['block'])
+    # Check for inspections in blocks with 0 defects
+    for card in cards:
+        if card['block'] not in active_blocks:
+            key = (card['block'], card['floor'])
+            if key in rounds_map and rounds_map[key]:
+                active_blocks.add(card['block'])
+
     return render_template('analytics/dashboard_v2.html',
                            has_data=True,
                            cards=cards,
-                           project=project)
+                           project=project,
+                           rectification=rectification,
+                           area_data=area_data,
+                           area_max=area_max,
+                           area_colours=AREA_COLOURS,
+                           worst_units=worst_units,
+                           active_blocks=active_blocks,
+                           floor_labels=FLOOR_LABELS)
 
 
 @analytics_bp.route('/<block_slug>/<int:floor>')
