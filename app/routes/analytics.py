@@ -142,6 +142,7 @@ def dashboard():
         cards.append({
             'block': uc['block'],
             'floor': uc['floor'],
+            'floor_label': floor_label,
             'label': '{} {}'.format(uc['block'], floor_label),
             'block_slug': _block_to_slug(uc['block']),
             'total_units': total_units,
@@ -503,6 +504,360 @@ def block_floor_detail(block_slug, floor):
                            top_defects=top_defects,
                            td_median=td_median,
                            summary=summary)
+
+
+# ============================================================
+# BLOCK DETAIL - Compare zones within a block
+# ============================================================
+
+@analytics_bp.route('/<block_slug>')
+@require_manager
+def block_detail(block_slug):
+    """Block detail page - compare zones (floors) within a block."""
+    tenant_id = session.get('tenant_id', 'MONOGRAPH')
+    block = _slug_to_block(block_slug)
+
+    # Get all zones in this block with stats
+    zones_raw = [dict(r) for r in query_db("""
+        SELECT u.floor,
+            COUNT(DISTINCT u.id) as total_units,
+            COUNT(DISTINCT CASE WHEN d.status = 'open' THEN d.id END) as open_defects,
+            MAX(ic.cycle_number) as max_round,
+            COUNT(DISTINCT CASE WHEN d.status = 'cleared' AND d.clearance_note = 'rectified' THEN d.id END) as rectified
+        FROM unit u
+        LEFT JOIN inspection i ON i.unit_id = u.id AND i.tenant_id = u.tenant_id
+        LEFT JOIN inspection_cycle ic ON i.cycle_id = ic.id
+        LEFT JOIN defect d ON d.unit_id = u.id AND d.tenant_id = u.tenant_id
+        WHERE u.block = ? AND u.tenant_id = ?
+        AND u.unit_number NOT LIKE 'TEST%'
+        GROUP BY u.floor
+        ORDER BY u.floor
+    """, [block, tenant_id])]
+
+    zones = []
+    total_units = 0
+    total_defects = 0
+    for z in zones_raw:
+        units = z['total_units']
+        defects = z['open_defects']
+        if units == 0:
+            continue
+        total_units += units
+        total_defects += defects
+        avg = round(defects / units, 1) if units > 0 else 0
+        rate = round(defects / (units * ITEMS_PER_UNIT) * 100, 1) if units > 0 else 0
+        zones.append({
+            'floor': z['floor'],
+            'floor_label': FLOOR_LABELS.get(z['floor'], 'Floor {}'.format(z['floor'])),
+            'total_units': units,
+            'open_defects': defects,
+            'avg_defects': avg,
+            'defect_rate': rate,
+            'max_round': z['max_round'] or 1,
+            'rectified': z['rectified'] or 0,
+            'slug': '{}/{}'.format(block_slug, z['floor']),
+        })
+
+    # Block-wide area breakdown
+    area_data = [dict(r) for r in query_db("""
+        SELECT at2.area_name as area, COUNT(d.id) as defect_count
+        FROM defect d
+        JOIN item_template it ON d.item_template_id = it.id
+        JOIN category_template ct ON it.category_id = ct.id
+        JOIN area_template at2 ON ct.area_id = at2.id
+        JOIN unit u ON d.unit_id = u.id
+        WHERE d.status = 'open' AND d.tenant_id = ? AND u.block = ?
+        AND u.unit_number NOT LIKE 'TEST%'
+        GROUP BY at2.area_name
+        ORDER BY defect_count DESC
+    """, [tenant_id, block])]
+
+    if area_data:
+        max_area = area_data[0]['defect_count']
+        for a in area_data:
+            a['pct'] = round(a['defect_count'] / total_defects * 100, 1) if total_defects > 0 else 0
+            a['bar_pct'] = round(a['defect_count'] / max_area * 100) if max_area > 0 else 0
+            a['colour'] = AREA_COLOURS.get(a['area'], '#6B6B6B')
+
+    # Block-wide top defect types
+    top_defects = [dict(r) for r in query_db("""
+        SELECT d.original_comment as description, COUNT(*) as count
+        FROM defect d
+        JOIN unit u ON d.unit_id = u.id
+        WHERE d.status = 'open' AND d.tenant_id = ? AND u.block = ?
+        AND u.unit_number NOT LIKE 'TEST%'
+        GROUP BY d.original_comment
+        ORDER BY count DESC
+        LIMIT 10
+    """, [tenant_id, block])]
+
+    return render_template('analytics/block_detail.html',
+                           block=block,
+                           block_slug=block_slug,
+                           zones=zones,
+                           total_units=total_units,
+                           total_defects=total_defects,
+                           area_data=area_data,
+                           top_defects=top_defects,
+                           has_data=len(zones) > 0)
+
+
+# ============================================================
+# DRILL-DOWN EXPLORE ENGINE
+# ============================================================
+
+@analytics_bp.route('/explore')
+@require_manager
+def explore():
+    """Universal drill-down: any number on any page links here with filters.
+    Every combination of filters shows ranked children + defect breakdown."""
+    tenant_id = session.get('tenant_id', 'MONOGRAPH')
+
+    # Parse filters
+    f_block = request.args.get('block')
+    f_floor = request.args.get('floor', type=int)
+    f_unit = request.args.get('unit')
+    f_area = request.args.get('area')
+    f_category = request.args.get('category')
+    f_round = request.args.get('round', type=int)
+
+    # Build WHERE clauses and params
+    where_parts = ["d.tenant_id = ?", "d.status = 'open'", "u.unit_number NOT LIKE 'TEST%'"]
+    params = [tenant_id]
+
+    if f_block:
+        where_parts.append("u.block = ?")
+        params.append(f_block)
+    if f_floor is not None:
+        where_parts.append("u.floor = ?")
+        params.append(f_floor)
+    if f_unit:
+        where_parts.append("u.unit_number = ?")
+        params.append(f_unit)
+    if f_area:
+        where_parts.append("at2.area_name = ?")
+        params.append(f_area)
+    if f_category:
+        where_parts.append("ct.category_name = ?")
+        params.append(f_category)
+    if f_round:
+        where_parts.append("ic.cycle_number = ?")
+        params.append(f_round)
+
+    where_sql = " AND ".join(where_parts)
+
+    # Base FROM clause (always the same full join chain)
+    from_sql = """
+        FROM defect d
+        JOIN unit u ON d.unit_id = u.id
+        JOIN item_template it ON d.item_template_id = it.id
+        JOIN category_template ct ON it.category_id = ct.id
+        JOIN area_template at2 ON ct.area_id = at2.id
+        LEFT JOIN inspection_cycle ic ON d.raised_cycle_id = ic.id
+    """
+
+    # Summary for current scope
+    summary = dict(query_db("""
+        SELECT COUNT(DISTINCT d.id) as total_defects,
+               COUNT(DISTINCT u.id) as total_units,
+               COUNT(DISTINCT u.block) as block_count
+        {} WHERE {}
+    """.format(from_sql, where_sql), params, one=True))
+
+    avg_per_unit = round(summary['total_defects'] / summary['total_units'], 1) if summary['total_units'] > 0 else 0
+    summary['avg_per_unit'] = avg_per_unit
+
+    # ---- LOCATION BREAKDOWN ----
+    # Show the next level of location hierarchy the user hasn't filtered to yet
+    location_data = []
+    location_level = None
+
+    if not f_block:
+        # Show blocks
+        location_level = 'block'
+        location_data = [dict(r) for r in query_db("""
+            SELECT u.block as name, COUNT(DISTINCT d.id) as defects,
+                   COUNT(DISTINCT u.id) as units
+            {} WHERE {}
+            GROUP BY u.block ORDER BY defects DESC
+        """.format(from_sql, where_sql), params)]
+    elif f_floor is None:
+        # Show floors within block
+        location_level = 'floor'
+        location_data = [dict(r) for r in query_db("""
+            SELECT u.floor as name, COUNT(DISTINCT d.id) as defects,
+                   COUNT(DISTINCT u.id) as units
+            {} WHERE {}
+            GROUP BY u.floor ORDER BY defects DESC
+        """.format(from_sql, where_sql), params)]
+        for loc in location_data:
+            loc['display'] = FLOOR_LABELS.get(loc['name'], 'Floor {}'.format(loc['name']))
+    elif not f_unit:
+        # Show units within zone
+        location_level = 'unit'
+        location_data = [dict(r) for r in query_db("""
+            SELECT u.unit_number as name, COUNT(DISTINCT d.id) as defects
+            {} WHERE {}
+            GROUP BY u.unit_number ORDER BY defects DESC
+        """.format(from_sql, where_sql), params)]
+
+    # Add percentages and bar widths to location data
+    if location_data:
+        max_loc = location_data[0]['defects']
+        for loc in location_data:
+            loc['pct'] = round(loc['defects'] / summary['total_defects'] * 100, 1) if summary['total_defects'] > 0 else 0
+            loc['bar_pct'] = round(loc['defects'] / max_loc * 100) if max_loc > 0 else 0
+            if 'display' not in loc:
+                loc['display'] = str(loc['name'])
+
+    # ---- DEFECT BREAKDOWN ----
+    # Show the next level of defect hierarchy the user hasn't filtered to yet
+    defect_data = []
+    defect_level = None
+
+    if not f_area:
+        # Show areas
+        defect_level = 'area'
+        defect_data = [dict(r) for r in query_db("""
+            SELECT at2.area_name as name, COUNT(DISTINCT d.id) as defects,
+                   COUNT(DISTINCT u.id) as units
+            {} WHERE {}
+            GROUP BY at2.area_name ORDER BY defects DESC
+        """.format(from_sql, where_sql), params)]
+    elif not f_category:
+        # Show categories within area
+        defect_level = 'category'
+        defect_data = [dict(r) for r in query_db("""
+            SELECT ct.category_name as name, COUNT(DISTINCT d.id) as defects,
+                   COUNT(DISTINCT u.id) as units
+            {} WHERE {}
+            GROUP BY ct.category_name ORDER BY defects DESC
+        """.format(from_sql, where_sql), params)]
+    else:
+        # Show individual defect descriptions within category
+        defect_level = 'item'
+        defect_data = [dict(r) for r in query_db("""
+            SELECT d.original_comment as name, COUNT(DISTINCT d.id) as defects,
+                   COUNT(DISTINCT u.id) as units
+            {} WHERE {}
+            GROUP BY d.original_comment ORDER BY defects DESC
+        """.format(from_sql, where_sql), params)]
+
+    # Add colours and bar widths to defect data
+    if defect_data:
+        max_def = defect_data[0]['defects']
+        for dd in defect_data:
+            dd['pct'] = round(dd['defects'] / summary['total_defects'] * 100, 1) if summary['total_defects'] > 0 else 0
+            dd['bar_pct'] = round(dd['defects'] / max_def * 100) if max_def > 0 else 0
+            dd['colour'] = AREA_COLOURS.get(dd['name'], '#6B6B6B')
+
+    # ---- BREADCRUMB ----
+    breadcrumbs = [{'label': 'Project', 'url': '/analytics/explore'}]
+    crumb_params = {}
+
+    if f_block:
+        crumb_params['block'] = f_block
+        breadcrumbs.append({
+            'label': f_block,
+            'url': '/analytics/explore?block={}'.format(f_block)
+        })
+    if f_floor is not None:
+        crumb_params['floor'] = f_floor
+        breadcrumbs.append({
+            'label': FLOOR_LABELS.get(f_floor, 'Floor {}'.format(f_floor)),
+            'url': '/analytics/explore?block={}&floor={}'.format(f_block, f_floor)
+        })
+    if f_unit:
+        crumb_params['unit'] = f_unit
+        breadcrumbs.append({
+            'label': 'Unit {}'.format(f_unit),
+            'url': '/analytics/explore?block={}&floor={}&unit={}'.format(f_block, f_floor, f_unit)
+        })
+    if f_area:
+        # Area breadcrumb preserves location filters
+        area_url_parts = ['area={}'.format(f_area)]
+        if f_block:
+            area_url_parts.append('block={}'.format(f_block))
+        if f_floor is not None:
+            area_url_parts.append('floor={}'.format(f_floor))
+        if f_unit:
+            area_url_parts.append('unit={}'.format(f_unit))
+        breadcrumbs.append({
+            'label': f_area.title(),
+            'url': '/analytics/explore?{}'.format('&'.join(area_url_parts))
+        })
+    if f_category:
+        cat_url_parts = ['area={}&category={}'.format(f_area, f_category)]
+        if f_block:
+            cat_url_parts.append('block={}'.format(f_block))
+        if f_floor is not None:
+            cat_url_parts.append('floor={}'.format(f_floor))
+        breadcrumbs.append({
+            'label': f_category,
+            'url': '/analytics/explore?{}'.format('&'.join(cat_url_parts))
+        })
+
+    # Build title
+    title_parts = []
+    if f_block:
+        title_parts.append(f_block)
+    if f_floor is not None:
+        title_parts.append(FLOOR_LABELS.get(f_floor, 'Floor {}'.format(f_floor)))
+    if f_unit:
+        title_parts.append('Unit {}'.format(f_unit))
+    if f_area:
+        title_parts.append(f_area.title())
+    if f_category:
+        title_parts.append(f_category)
+    title = ' > '.join(title_parts) if title_parts else 'All Blocks'
+
+    # Build link helpers for template
+    def _explore_url(**extra):
+        """Build explore URL preserving current filters + adding extras."""
+        p = {}
+        if f_block:
+            p['block'] = f_block
+        if f_floor is not None:
+            p['floor'] = f_floor
+        if f_unit:
+            p['unit'] = f_unit
+        if f_area:
+            p['area'] = f_area
+        if f_category:
+            p['category'] = f_category
+        if f_round:
+            p['round'] = f_round
+        p.update(extra)
+        return '/analytics/explore?' + '&'.join('{}={}'.format(k, v) for k, v in p.items())
+
+    # Pre-build URLs for location drill-down
+    for loc in location_data:
+        if location_level == 'block':
+            loc['url'] = _explore_url(block=loc['name'])
+        elif location_level == 'floor':
+            loc['url'] = _explore_url(floor=loc['name'])
+        elif location_level == 'unit':
+            loc['url'] = _explore_url(unit=loc['name'])
+
+    # Pre-build URLs for defect drill-down
+    for dd in defect_data:
+        if defect_level == 'area':
+            dd['url'] = _explore_url(area=dd['name'])
+        elif defect_level == 'category':
+            dd['url'] = _explore_url(category=dd['name'])
+        else:
+            dd['url'] = None  # Item level = bottom, no further drill
+
+    return render_template('analytics/explore.html',
+                           title=title,
+                           breadcrumbs=breadcrumbs,
+                           summary=summary,
+                           location_data=location_data,
+                           location_level=location_level,
+                           defect_data=defect_data,
+                           defect_level=defect_level,
+                           filters={'block': f_block, 'floor': f_floor, 'unit': f_unit,
+                                    'area': f_area, 'category': f_category, 'round': f_round})
 
 
 

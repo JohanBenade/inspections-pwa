@@ -1,0 +1,147 @@
+{% extends "base.html" %}
+{% block title %}{{ block }}{% endblock %}
+
+{% block content %}
+<style>
+    @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;600;700&family=DM+Sans:wght@400;500;600;700&display=swap');
+    .font-display { font-family: 'Cormorant Garamond', Georgia, serif; }
+    .font-body { font-family: 'DM Sans', system-ui, sans-serif; }
+    .gold-accent { color: #C8963E; }
+    .section-num { font-family: 'Cormorant Garamond', serif; font-size: 0.75rem; font-weight: 600; letter-spacing: 0.15em; color: #C8963E; text-transform: uppercase; }
+    .section-card { background: #FAFAF8; border: 1px solid #e5e5e5; border-radius: 8px; padding: 1.5rem; }
+    .section-subtitle { font-family: 'DM Sans', system-ui, sans-serif; font-size: 0.8rem; color: #9A9A9A; margin-bottom: 1.25rem; }
+    .divider { height: 1px; background: #0A0A0A; margin: 0.5rem 0 1.5rem 0; }
+    .callout { padding: 1rem 1.25rem; border-radius: 4px; font-family: 'DM Sans', system-ui, sans-serif; font-size: 0.85rem; line-height: 1.5; }
+    .callout-amber { background: rgba(200,150,62,0.1); border-left: 4px solid #C8963E; color: #1A1A1A; }
+    .zone-card { background: #FAFAF8; border: 1px solid #e5e5e5; border-radius: 8px; padding: 1.25rem; transition: all 0.15s ease; display: block; text-decoration: none; color: inherit; }
+    .zone-card:hover { border-color: #C8963E; box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
+    .zone-metric { font-family: 'DM Sans', sans-serif; font-weight: 700; font-size: 1.75rem; line-height: 1; letter-spacing: -0.02em; }
+    .zone-label { font-family: 'DM Sans', sans-serif; font-size: 0.75rem; color: #6B6B6B; margin-top: 0.25rem; }
+    .data-table th { font-family: 'DM Sans', system-ui, sans-serif; font-size: 0.7rem; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: #6B6B6B; padding: 0.6rem 0.75rem; border-bottom: 2px solid #0A0A0A; }
+    .data-table td { font-family: 'DM Sans', system-ui, sans-serif; font-size: 0.85rem; padding: 0.6rem 0.75rem; border-bottom: 1px solid #e5e5e5; }
+</style>
+
+<div class="font-body" style="max-width: 1280px; margin: 0 auto;">
+
+    <!-- BREADCRUMB + TITLE -->
+    <div class="mb-6">
+        <a href="{{ url_for('analytics.dashboard') }}" class="text-sm gold-accent hover:underline">&larr; Dashboard</a>
+        <h1 class="font-display text-3xl lg:text-4xl font-bold text-gray-900 mt-2" style="letter-spacing: -0.01em;">{{ block }}</h1>
+        <div class="text-sm text-gray-400 mt-1">{{ total_units }} units &middot; {{ total_defects }} open defects &middot; PPSH Phase 3</div>
+    </div>
+
+    {% if not has_data %}
+    <div class="section-card text-center py-12"><p class="text-gray-400 font-display text-xl">No inspection data for this block yet.</p></div>
+    {% else %}
+
+    <!-- ==================== ZONE CARDS ==================== -->
+    <div class="section-card mb-6">
+        <div class="section-num">01 &mdash; Floors</div>
+        <div class="divider"></div>
+        <div class="section-subtitle">Compare floors within {{ block }} &middot; Ranked by defect count</div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {% for z in zones|sort(attribute='open_defects', reverse=True) %}
+            <a href="{{ url_for('analytics.block_floor_detail', block_slug=block_slug, floor=z.floor) }}" class="zone-card">
+                <div class="flex items-center justify-between mb-3">
+                    <span class="font-display text-lg font-semibold text-gray-900">{{ z.floor_label }}</span>
+                    <span class="inline-block px-2 py-0.5 rounded text-xs font-semibold {% if z.max_round > 1 %}bg-blue-100 text-blue-700{% else %}bg-gray-100 text-gray-600{% endif %}">R{{ z.max_round }}</span>
+                </div>
+                <div class="grid grid-cols-3 gap-3">
+                    <div>
+                        <div class="zone-metric text-gray-900">{{ z.total_units }}</div>
+                        <div class="zone-label">Units</div>
+                    </div>
+                    <div>
+                        <div class="zone-metric {% if z.open_defects > 0 %}text-red-600{% else %}text-emerald-600{% endif %}">{{ z.open_defects }}</div>
+                        <div class="zone-label">Open defects</div>
+                    </div>
+                    <div>
+                        <div class="zone-metric text-gray-900">{{ z.avg_defects }}</div>
+                        <div class="zone-label">Avg / unit</div>
+                    </div>
+                </div>
+                <div class="mt-3 flex items-center justify-between text-xs text-gray-400">
+                    <span>{{ z.defect_rate }}% defect rate</span>
+                    {% if z.rectified > 0 %}<span class="text-emerald-600 font-semibold">{{ z.rectified }} rectified</span>{% endif %}
+                </div>
+            </a>
+            {% endfor %}
+        </div>
+    </div>
+
+    <!-- ==================== AREA BREAKDOWN ==================== -->
+    {% if area_data %}
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+        <div class="section-card">
+            <div class="section-num">02 &mdash; Defect Hotspots</div>
+            <div class="divider"></div>
+            <div class="section-subtitle">All floors combined &middot; Tap an area to drill down</div>
+
+            <div class="space-y-3">
+                {% for a in area_data %}
+                <a href="{{ url_for('analytics.explore', block=block, area=a.area) }}" class="block hover:opacity-80">
+                    <div class="flex items-center justify-between mb-1">
+                        <span class="text-sm font-medium text-gray-800">{{ a.area }}</span>
+                        <span class="text-sm font-bold tabular-nums" style="color: {{ a.colour }};">{{ a.defect_count }} <span class="font-normal text-gray-400 text-xs">({{ a.pct }}%)</span></span>
+                    </div>
+                    <div class="w-full rounded-full h-3" style="background: #e5e5e5;">
+                        <div class="h-3 rounded-full" style="width: {{ a.bar_pct }}%; background: {{ a.colour }};"></div>
+                    </div>
+                </a>
+                {% endfor %}
+            </div>
+            {% if area_data|length >= 2 %}
+            <div class="callout callout-amber mt-5">
+                <strong>Focus:</strong> {{ area_data[0].area }} and {{ area_data[1].area }} account for {{ area_data[0].pct + area_data[1].pct }}% of all {{ block }} defects.
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- TOP DEFECTS -->
+        {% if top_defects %}
+        <div class="section-card">
+            <div class="section-num">03 &mdash; Most Common Issues</div>
+            <div class="divider"></div>
+            <div class="section-subtitle">Top 10 across all floors in {{ block }}</div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-x-6">
+                <div>
+                    {% for d in top_defects[:5] %}
+                    <div class="flex items-center gap-3 py-2" style="border-bottom: 1px solid #f0f0f0;">
+                        <span class="inline-flex items-center justify-center w-6 h-6 rounded-full text-xs font-bold flex-shrink-0 {% if loop.index <= 3 %}text-white{% else %}bg-gray-200 text-gray-600{% endif %}" {% if loop.index <= 3 %}style="background: #C8963E;"{% endif %}>{{ loop.index }}</span>
+                        <span class="text-sm text-gray-700 flex-1">{{ d.description }}</span>
+                        <span class="text-sm font-bold tabular-nums text-gray-600">{{ d.count }}</span>
+                    </div>
+                    {% endfor %}
+                </div>
+                <div>
+                    {% for d in top_defects[5:10] %}
+                    <div class="flex items-center gap-3 py-2" style="border-bottom: 1px solid #f0f0f0;">
+                        <span class="inline-flex items-center justify-center w-6 h-6 rounded-full text-xs font-bold flex-shrink-0 bg-gray-200 text-gray-600">{{ loop.index + 5 }}</span>
+                        <span class="text-sm text-gray-700 flex-1">{{ d.description }}</span>
+                        <span class="text-sm font-bold tabular-nums text-gray-600">{{ d.count }}</span>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+    {% endif %}
+
+    <!-- EXPLORE LINK -->
+    <div class="text-center mb-6">
+        <a href="{{ url_for('analytics.explore', block=block) }}" class="inline-block px-6 py-3 rounded-lg text-sm font-semibold text-white hover:opacity-90" style="background: #C8963E;">
+            Explore {{ block }} &rarr; Drill down to any level
+        </a>
+    </div>
+
+    <!-- FOOTER -->
+    <div class="text-center text-xs text-gray-400 py-4" style="border-top: 1px solid #e5e5e5;">
+        Monograph Architects &middot; PPSH Phase 3 &middot; {{ block }} &middot; Generated live
+    </div>
+
+    {% endif %}
+</div>
+{% endblock %}

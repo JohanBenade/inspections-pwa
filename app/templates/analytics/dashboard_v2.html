@@ -1,109 +1,130 @@
 {% extends "base.html" %}
 
-{% block title %}Analytics (New){% endblock %}
+{% block title %}Analytics{% endblock %}
 
 {% block content %}
-<div class="space-y-6">
+<style>
+    @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;600;700&family=DM+Sans:wght@400;500;600;700&display=swap');
+    .font-display { font-family: 'Cormorant Garamond', Georgia, serif; }
+    .font-body { font-family: 'DM Sans', system-ui, sans-serif; }
+    .gold-accent { color: #C8963E; }
+    .section-num { font-family: 'Cormorant Garamond', serif; font-size: 0.75rem; font-weight: 600; letter-spacing: 0.15em; color: #C8963E; text-transform: uppercase; }
+    .divider { height: 1px; background: #0A0A0A; margin: 0.5rem 0 1.5rem 0; }
+    .kpi-card { border-left: 3px solid #C8963E; background: #FAFAF8; border-radius: 6px; padding: 1rem 1.25rem; }
+    .kpi-value { font-family: 'DM Sans', system-ui, sans-serif; font-weight: 700; font-size: 2rem; line-height: 1; letter-spacing: -0.02em; }
+    .kpi-label { font-family: 'DM Sans', system-ui, sans-serif; font-size: 0.75rem; color: #6B6B6B; margin-top: 0.25rem; }
+    .block-card { background: #FAFAF8; border: 1px solid #e5e5e5; border-radius: 8px; overflow: hidden; }
+    .block-header { padding: 1rem 1.25rem; display: flex; align-items: center; justify-content: space-between; cursor: pointer; text-decoration: none; color: inherit; }
+    .block-header:hover { background: rgba(200,150,62,0.04); }
+    .zone-row { display: flex; align-items: center; justify-content: space-between; padding: 0.75rem 1.25rem; border-top: 1px solid #f0f0f0; text-decoration: none; color: inherit; }
+    .zone-row:hover { background: rgba(200,150,62,0.04); }
+    .zone-stat { font-family: 'DM Sans', sans-serif; font-size: 0.85rem; font-weight: 600; min-width: 3.5rem; text-align: center; }
+    .explore-btn { display: inline-block; padding: 0.6rem 1.5rem; border-radius: 6px; font-size: 0.85rem; font-weight: 600; color: white; background: #C8963E; text-decoration: none; }
+    .explore-btn:hover { opacity: 0.9; }
+</style>
 
-    <!-- Header -->
-    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-        <div>
-            <h1 class="text-2xl font-bold text-gray-900">Analytics Dashboard (New)</h1>
-            <p class="text-sm text-gray-500 mt-1">Power Park Student Housing - Phase 3</p>
+<div class="font-body" style="max-width: 1280px; margin: 0 auto;">
+
+    <!-- HEADER -->
+    <div class="mb-6">
+        <div class="flex items-center justify-between">
+            <div>
+                <h1 class="font-display text-3xl lg:text-4xl font-bold text-gray-900" style="letter-spacing: -0.01em;">PPSH Phase 3</h1>
+                <div class="text-sm text-gray-400 mt-1">Power Park Student Housing &middot; Inspection Analytics</div>
+            </div>
+            <div class="flex gap-2">
+                <a href="{{ url_for('analytics.explore') }}" class="explore-btn">Explore &rarr;</a>
+                <a href="{{ url_for('analytics.dashboard_legacy') }}" class="text-xs text-gray-300 hover:text-gray-500 self-end ml-2">Legacy</a>
+            </div>
         </div>
-        <a href="{{ url_for('analytics.dashboard_legacy') }}" class="text-xs text-gray-400 hover:text-gray-600">Legacy view</a>
     </div>
 
     {% if not has_data %}
-    <div class="bg-white rounded-lg shadow p-8 text-center text-gray-500">
-        No inspection data available yet.
-    </div>
+    <div class="bg-white rounded-lg shadow p-8 text-center text-gray-500">No inspection data available yet.</div>
     {% else %}
 
-    <!-- Project Overview Card -->
-    <div class="bg-white rounded-lg shadow p-5" style="border-left: 4px solid #1e3a5f;">
-        <h2 class="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-3">Project Overview</h2>
-        <div class="grid grid-cols-2 sm:grid-cols-5 gap-4">
-            <div>
-                <div class="text-2xl font-bold text-gray-900">{{ project.total_units }}</div>
-                <div class="text-xs text-gray-500">of ~690 units</div>
-            </div>
-            <div>
-                <div class="text-2xl font-bold {% if project.open_defects > 0 %}text-red-600{% else %}text-emerald-600{% endif %}">{{ project.open_defects }}</div>
-                <div class="text-xs text-gray-500">open defects</div>
-            </div>
-            <div>
-                <div class="text-2xl font-bold text-gray-900">{{ project.avg_defects }}</div>
-                <div class="text-xs text-gray-500">avg per unit</div>
-            </div>
-            <div>
-                <div class="text-2xl font-bold text-gray-900">{{ project.defect_rate }}%</div>
-                <div class="text-xs text-gray-500">defect rate</div>
-            </div>
-            <div>
-                <div class="text-2xl font-bold {% if project.certified > 0 %}text-emerald-600{% else %}text-gray-400{% endif %}">{{ project.certified }}</div>
-                <div class="text-xs text-gray-500">certified</div>
-            </div>
+    <!-- PROJECT KPIs -->
+    <div class="grid grid-cols-2 sm:grid-cols-5 gap-3 mb-6">
+        <div class="kpi-card">
+            <div class="kpi-value text-gray-900">{{ project.total_units }}</div>
+            <div class="kpi-label">of ~690 units</div>
+        </div>
+        <div class="kpi-card">
+            <div class="kpi-value {% if project.open_defects > 0 %}text-red-600{% else %}text-emerald-600{% endif %}">{{ project.open_defects }}</div>
+            <div class="kpi-label">Open defects</div>
+        </div>
+        <div class="kpi-card">
+            <div class="kpi-value text-gray-900">{{ project.avg_defects }}</div>
+            <div class="kpi-label">Avg per unit</div>
+        </div>
+        <div class="kpi-card">
+            <div class="kpi-value text-gray-900">{{ project.defect_rate }}%</div>
+            <div class="kpi-label">Defect rate</div>
+        </div>
+        <div class="kpi-card">
+            <div class="kpi-value {% if project.certified > 0 %}text-emerald-600{% else %}text-gray-400{% endif %}">{{ project.certified }}</div>
+            <div class="kpi-label">Certified</div>
         </div>
     </div>
 
-    <!-- Block + Floor Cards -->
-    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {% for card in cards %}
-        <div class="bg-white rounded-lg shadow p-5" style="border-left: 4px solid {{ card.colour }};">
-            <!-- Card Header -->
-            <div class="flex items-center justify-between mb-3">
-                <h3 class="text-sm font-semibold text-gray-500 uppercase tracking-wide">{{ card.label }}</h3>
-                <span class="text-xs px-2 py-0.5 rounded-full
-                    {% if card.max_round > 1 %}bg-blue-100 text-blue-700{% else %}bg-gray-100 text-gray-600{% endif %}">
-                    {% if card.max_round > 1 %}Re-inspections{% else %}Round 1{% endif %}
+    <!-- BLOCKS (grouped) -->
+    {% set ns = namespace(blocks={}) %}
+    {% for card in cards %}
+        {% if card.block not in ns.blocks %}
+            {% set _ = ns.blocks.update({card.block: []}) %}
+        {% endif %}
+        {% set _ = ns.blocks[card.block].append(card) %}
+    {% endfor %}
+
+    <div class="space-y-4 mb-6">
+    {% for block_name in ns.blocks %}
+        {% set block_cards = ns.blocks[block_name] %}
+        {% set block_slug = block_name|lower|replace(' ', '-') %}
+        {% set block_units = block_cards|sum(attribute='total_units') %}
+        {% set block_defects = block_cards|sum(attribute='open_defects') %}
+        {% set block_avg = (block_defects / block_units)|round(1) if block_units > 0 else 0 %}
+
+        <div class="block-card">
+            <!-- Block header -->
+            <a href="{{ url_for('analytics.block_detail', block_slug=block_slug) }}" class="block-header">
+                <div>
+                    <span class="font-display text-xl font-bold text-gray-900">{{ block_name }}</span>
+                    <span class="text-sm text-gray-400 ml-3">{{ block_cards|length }} floor{{ 's' if block_cards|length > 1 else '' }} &middot; {{ block_units }} units &middot; {{ block_defects }} defects &middot; {{ block_avg }} avg</span>
+                </div>
+                <span class="text-sm gold-accent font-semibold">View Block &rarr;</span>
+            </a>
+
+            <!-- Column headers -->
+            <div class="flex items-center justify-between px-5 py-1.5" style="border-top: 1px solid #e5e5e5;">
+                <span class="text-xs text-gray-400 font-semibold uppercase tracking-wider flex-1">Floor</span>
+                <span class="text-xs text-gray-400 font-semibold uppercase tracking-wider zone-stat">Units</span>
+                <span class="text-xs text-gray-400 font-semibold uppercase tracking-wider zone-stat">Defects</span>
+                <span class="text-xs text-gray-400 font-semibold uppercase tracking-wider zone-stat">Avg</span>
+                <span class="text-xs text-gray-400 font-semibold uppercase tracking-wider zone-stat">Rate</span>
+                <span class="text-xs text-gray-400 font-semibold uppercase tracking-wider" style="min-width: 4.5rem; text-align: center;">Round</span>
+            </div>
+
+            {% for card in block_cards|sort(attribute='open_defects', reverse=True) %}
+            <a href="{{ url_for('analytics.block_floor_detail', block_slug=block_slug, floor=card.floor) }}" class="zone-row">
+                <span class="text-sm font-medium text-gray-800 flex-1">{{ card.floor_label }}</span>
+                <span class="zone-stat text-gray-700">{{ card.total_units }}</span>
+                <span class="zone-stat {% if card.open_defects > 0 %}text-red-600{% else %}text-emerald-600{% endif %} font-bold">{{ card.open_defects }}</span>
+                <span class="zone-stat text-gray-700">{{ card.avg_defects }}</span>
+                <span class="zone-stat text-gray-500">{{ card.defect_rate }}%</span>
+                <span style="min-width: 4.5rem; text-align: center;">
+                    <span class="inline-block px-2 py-0.5 rounded text-xs font-semibold {% if card.max_round > 1 %}bg-blue-100 text-blue-700{% else %}bg-gray-100 text-gray-600{% endif %}">R{{ card.max_round }}</span>
                 </span>
-            </div>
-
-            <!-- Stats Row -->
-            <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
-                <div>
-                    <div class="text-2xl font-bold text-gray-900">{{ card.total_units }}</div>
-                    <div class="text-xs text-gray-500">units</div>
-                </div>
-                <div>
-                    <div class="text-2xl font-bold {% if card.open_defects > 0 %}text-red-600{% else %}text-emerald-600{% endif %}">{{ card.open_defects }}</div>
-                    <div class="text-xs text-gray-500">open defects</div>
-                </div>
-                <div>
-                    <div class="text-2xl font-bold text-gray-900">{{ card.avg_defects }}</div>
-                    <div class="text-xs text-gray-500">avg per unit</div>
-                </div>
-                <div>
-                    <div class="text-2xl font-bold text-gray-900">{{ card.defect_rate }}%</div>
-                    <div class="text-xs text-gray-500">defect rate</div>
-                </div>
-            </div>
-
-            <!-- Round Progress -->
-            <div class="space-y-1 mb-4">
-                {% for round in card.rounds %}
-                <div class="flex items-center justify-between text-sm">
-                    <span class="text-gray-600">Round {{ round.round_number }}</span>
-                    <span class="text-gray-900 font-medium">{{ round.units_inspected }} inspected</span>
-                </div>
-                {% endfor %}
-            </div>
-
-            <!-- Certified + View Link -->
-            <div class="flex items-center justify-between pt-3 border-t border-gray-100">
-                <span class="text-sm {% if card.certified > 0 %}text-emerald-600 font-medium{% else %}text-gray-400{% endif %}">
-                    {{ card.certified }} certified
-                </span>
-                <a href="{{ url_for('analytics.block_floor_detail', block_slug=card.block_slug, floor=card.floor) }}"
-                   class="text-sm font-medium text-primary hover:underline">
-                    View Details &rarr;
-                </a>
-            </div>
+            </a>
+            {% endfor %}
         </div>
-        {% endfor %}
+    {% endfor %}
     </div>
 
     {% endif %}
+
+    <!-- FOOTER -->
+    <div class="text-center text-xs text-gray-400 py-4" style="border-top: 1px solid #e5e5e5;">
+        Monograph Architects &middot; PPSH Phase 3 &middot; Generated live
+    </div>
 </div>
 {% endblock %}

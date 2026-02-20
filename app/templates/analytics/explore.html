@@ -1,0 +1,148 @@
+{% extends "base.html" %}
+{% block title %}Explore: {{ title }}{% endblock %}
+
+{% block content %}
+<style>
+    @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;600;700&family=DM+Sans:wght@400;500;600;700&display=swap');
+    .font-display { font-family: 'Cormorant Garamond', Georgia, serif; }
+    .font-body { font-family: 'DM Sans', system-ui, sans-serif; }
+    .gold-accent { color: #C8963E; }
+    .section-card { background: #FAFAF8; border: 1px solid #e5e5e5; border-radius: 8px; padding: 1.5rem; }
+    .section-num { font-family: 'Cormorant Garamond', serif; font-size: 0.75rem; font-weight: 600; letter-spacing: 0.15em; color: #C8963E; text-transform: uppercase; }
+    .section-subtitle { font-family: 'DM Sans', system-ui, sans-serif; font-size: 0.8rem; color: #9A9A9A; margin-bottom: 1.25rem; }
+    .divider { height: 1px; background: #0A0A0A; margin: 0.5rem 0 1.5rem 0; }
+    .drill-row { display: flex; align-items: center; gap: 0.75rem; padding: 0.65rem 0.75rem; border-bottom: 1px solid #f0f0f0; text-decoration: none; color: inherit; transition: background 0.1s ease; }
+    .drill-row:hover { background: rgba(200,150,62,0.06); }
+    .drill-row-static { display: flex; align-items: center; gap: 0.75rem; padding: 0.65rem 0.75rem; border-bottom: 1px solid #f0f0f0; }
+    .rank-badge { width: 1.5rem; height: 1.5rem; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 0.7rem; font-weight: 700; flex-shrink: 0; }
+    .rank-gold { background: #C8963E; color: white; }
+    .rank-gray { background: #e5e5e5; color: #6B6B6B; }
+    .kpi-value { font-family: 'DM Sans', system-ui, sans-serif; font-weight: 700; font-size: 2.25rem; line-height: 1; letter-spacing: -0.02em; }
+    .kpi-label { font-family: 'DM Sans', system-ui, sans-serif; font-size: 0.8rem; color: #6B6B6B; margin-top: 0.35rem; }
+    .breadcrumb-link { color: #C8963E; text-decoration: none; font-size: 0.85rem; }
+    .breadcrumb-link:hover { text-decoration: underline; }
+    .breadcrumb-sep { color: #9A9A9A; margin: 0 0.35rem; font-size: 0.75rem; }
+    .breadcrumb-current { color: #0A0A0A; font-weight: 600; font-size: 0.85rem; }
+</style>
+
+<div class="font-body" style="max-width: 1280px; margin: 0 auto;">
+
+    <!-- BREADCRUMB TRAIL -->
+    <div class="mb-2 flex flex-wrap items-center">
+        {% for bc in breadcrumbs %}
+        {% if loop.last %}
+        <span class="breadcrumb-current">{{ bc.label }}</span>
+        {% else %}
+        <a href="{{ bc.url }}" class="breadcrumb-link">{{ bc.label }}</a>
+        <span class="breadcrumb-sep">&rsaquo;</span>
+        {% endif %}
+        {% endfor %}
+    </div>
+
+    <!-- TITLE -->
+    <div class="mb-6">
+        <h1 class="font-display text-3xl lg:text-4xl font-bold text-gray-900" style="letter-spacing: -0.01em;">{{ title }}</h1>
+        <div class="text-sm text-gray-400 mt-1">Drill-down Explorer &middot; PPSH Phase 3</div>
+    </div>
+
+    <!-- SUMMARY KPIs -->
+    <div class="grid grid-cols-3 gap-4 mb-6">
+        <div class="section-card text-center py-4">
+            <div class="kpi-value text-gray-900">{{ summary.total_defects }}</div>
+            <div class="kpi-label">Open Defects</div>
+        </div>
+        <div class="section-card text-center py-4">
+            <div class="kpi-value text-gray-900">{{ summary.total_units }}</div>
+            <div class="kpi-label">Units</div>
+        </div>
+        <div class="section-card text-center py-4">
+            <div class="kpi-value text-gray-900">{{ summary.avg_per_unit }}</div>
+            <div class="kpi-label">Avg / Unit</div>
+        </div>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+
+        <!-- LEFT: LOCATION BREAKDOWN -->
+        {% if location_data %}
+        <div class="section-card">
+            <div class="section-num">
+                {% if location_level == 'block' %}By Block
+                {% elif location_level == 'floor' %}By Floor
+                {% elif location_level == 'unit' %}By Unit
+                {% endif %}
+            </div>
+            <div class="divider"></div>
+            <div class="section-subtitle">Ranked worst-first &middot; Tap to drill down</div>
+
+            {% for loc in location_data %}
+            <a href="{{ loc.url }}" class="drill-row">
+                <span class="rank-badge {% if loop.index <= 3 %}rank-gold{% else %}rank-gray{% endif %}">{{ loop.index }}</span>
+                <span class="text-sm font-medium text-gray-800 flex-1">{{ loc.display }}</span>
+                <span class="text-sm font-bold tabular-nums text-gray-700">{{ loc.defects }}</span>
+                <span class="text-xs text-gray-400 w-12 text-right">{{ loc.pct }}%</span>
+            </a>
+            {% endfor %}
+        </div>
+        {% endif %}
+
+        <!-- RIGHT: DEFECT BREAKDOWN -->
+        {% if defect_data %}
+        <div class="section-card">
+            <div class="section-num">
+                {% if defect_level == 'area' %}By Area
+                {% elif defect_level == 'category' %}By Category
+                {% elif defect_level == 'item' %}By Defect Description
+                {% endif %}
+            </div>
+            <div class="divider"></div>
+            <div class="section-subtitle">Ranked worst-first {% if defect_level != 'item' %}&middot; Tap to drill down{% endif %}</div>
+
+            {% for dd in defect_data %}
+            {% if dd.url %}
+            <a href="{{ dd.url }}" class="drill-row">
+            {% else %}
+            <div class="drill-row-static">
+            {% endif %}
+                <span class="rank-badge {% if loop.index <= 3 %}rank-gold{% else %}rank-gray{% endif %}">{{ loop.index }}</span>
+                <div class="flex-1">
+                    <div class="flex items-center gap-2 mb-1">
+                        <span class="text-sm font-medium text-gray-800">{{ dd.name }}</span>
+                    </div>
+                    <div class="w-full rounded-full h-2" style="background: #e5e5e5;">
+                        <div class="h-2 rounded-full" style="width: {{ dd.bar_pct }}%; background: {{ dd.colour }};"></div>
+                    </div>
+                </div>
+                <div class="text-right flex-shrink-0 ml-3">
+                    <span class="text-sm font-bold tabular-nums" style="color: {{ dd.colour }};">{{ dd.defects }}</span>
+                    <div class="text-xs text-gray-400">{{ dd.pct }}%{% if dd.units is defined and dd.units %} &middot; {{ dd.units }}u{% endif %}</div>
+                </div>
+            {% if dd.url %}
+            </a>
+            {% else %}
+            </div>
+            {% endif %}
+            {% endfor %}
+        </div>
+        {% endif %}
+
+    </div>
+
+    <!-- BACK TO DASHBOARDS -->
+    <div class="flex flex-wrap gap-3 mb-6">
+        <a href="{{ url_for('analytics.dashboard') }}" class="inline-block px-4 py-2 rounded-lg text-sm font-medium text-gray-600 bg-gray-100 hover:bg-gray-200">&larr; Dashboard</a>
+        {% if filters.block %}
+        <a href="{{ url_for('analytics.block_detail', block_slug=filters.block|lower|replace(' ', '-')) }}" class="inline-block px-4 py-2 rounded-lg text-sm font-medium text-gray-600 bg-gray-100 hover:bg-gray-200">{{ filters.block }}</a>
+        {% endif %}
+        {% if filters.block and filters.floor is not none %}
+        <a href="{{ url_for('analytics.block_floor_detail', block_slug=filters.block|lower|replace(' ', '-'), floor=filters.floor) }}" class="inline-block px-4 py-2 rounded-lg text-sm font-medium text-gray-600 bg-gray-100 hover:bg-gray-200">{{ filters.block }} {{ filters.floor }}</a>
+        {% endif %}
+    </div>
+
+    <!-- FOOTER -->
+    <div class="text-center text-xs text-gray-400 py-4" style="border-top: 1px solid #e5e5e5;">
+        Monograph Architects &middot; PPSH Phase 3 &middot; Drill-down Explorer &middot; Generated live
+    </div>
+
+</div>
+{% endblock %}
