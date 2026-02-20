@@ -17,25 +17,32 @@
     .block-card { background: #FAFAF8; border: 1px solid #e5e5e5; border-radius: 8px; overflow: hidden; }
     .block-header { padding: 1rem 1.25rem; display: flex; align-items: center; justify-content: space-between; cursor: pointer; text-decoration: none; color: inherit; }
     .block-header:hover { background: rgba(200,150,62,0.04); }
-    .zone-row { display: flex; align-items: center; justify-content: space-between; padding: 0.75rem 1.25rem; border-top: 1px solid #f0f0f0; text-decoration: none; color: inherit; }
+    .col-header { display: flex; align-items: center; justify-content: space-between; padding: 0.4rem 1.25rem; border-top: 1px solid #e5e5e5; }
+    .zone-row { display: flex; align-items: center; justify-content: space-between; padding: 0.65rem 1.25rem; border-top: 1px solid #f0f0f0; text-decoration: none; color: inherit; }
     .zone-row:hover { background: rgba(200,150,62,0.04); }
-    .zone-stat { font-family: 'DM Sans', sans-serif; font-size: 0.85rem; font-weight: 600; min-width: 3.5rem; text-align: center; }
+    .zone-stat { font-family: 'DM Sans', sans-serif; font-size: 0.8rem; font-weight: 600; min-width: 3rem; text-align: center; }
+    .zone-stat-wide { font-family: 'DM Sans', sans-serif; font-size: 0.8rem; font-weight: 600; min-width: 4.5rem; text-align: center; }
+    .col-label { font-size: 0.65rem; color: #9A9A9A; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; min-width: 3rem; text-align: center; }
+    .col-label-wide { font-size: 0.65rem; color: #9A9A9A; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; min-width: 4.5rem; text-align: center; }
     .explore-btn { display: inline-block; padding: 0.6rem 1.5rem; border-radius: 6px; font-size: 0.85rem; font-weight: 600; color: white; background: #C8963E; text-decoration: none; }
     .explore-btn:hover { opacity: 0.9; }
     .progress-bar-track { height: 8px; background: #e5e5e5; border-radius: 4px; overflow: hidden; }
-    .progress-bar-fill { height: 100%; border-radius: 4px; transition: width 0.5s ease; }
+    .progress-bar-fill { height: 100%; border-radius: 4px; }
     .hotspot-panel { background: #FAFAF8; border: 1px solid #e5e5e5; border-radius: 8px; padding: 1.25rem; }
-    .area-row { display: flex; align-items: center; gap: 0.75rem; padding: 0.5rem 0; text-decoration: none; color: inherit; }
+    .area-row { display: flex; align-items: center; gap: 0.5rem; padding: 0.4rem 0; text-decoration: none; color: inherit; }
     .area-row:hover { opacity: 0.8; }
-    .area-bar { height: 22px; border-radius: 3px; min-width: 4px; transition: width 0.3s ease; }
-    .area-label { font-size: 0.8rem; font-weight: 500; min-width: 100px; color: #1A1A1A; }
-    .area-count { font-size: 0.8rem; font-weight: 700; min-width: 40px; text-align: right; color: #1A1A1A; }
-    .unit-row { display: flex; align-items: center; justify-content: space-between; padding: 0.6rem 0; border-bottom: 1px solid #f0f0f0; text-decoration: none; color: inherit; }
+    .area-bar { height: 10px; border-radius: 2px; min-width: 3px; }
+    .area-label { font-size: 0.8rem; font-weight: 500; min-width: 90px; color: #1A1A1A; }
+    .area-count { font-size: 0.8rem; font-weight: 700; min-width: 36px; text-align: right; color: #1A1A1A; }
+    .area-pct { font-size: 0.7rem; color: #9A9A9A; min-width: 36px; text-align: right; }
+    .unit-row { display: flex; align-items: center; justify-content: space-between; padding: 0.5rem 0; border-bottom: 1px solid #f0f0f0; text-decoration: none; color: inherit; }
     .unit-row:last-child { border-bottom: none; }
     .unit-row:hover { opacity: 0.8; }
     .rect-box { background: #FAFAF8; border: 1px solid #e5e5e5; border-left: 3px solid #4A7C59; border-radius: 8px; padding: 1.25rem; }
     .severity-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 4px; vertical-align: middle; }
     .awaiting-section { background: #FAFAF8; border: 1px solid #e5e5e5; border-radius: 8px; padding: 1rem 1.25rem; }
+    .legend-item { display: inline-flex; align-items: center; gap: 0.25rem; font-size: 0.7rem; color: #6B6B6B; }
+    .legend-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; }
 </style>
 
 <div class="font-body" style="max-width: 1280px; margin: 0 auto;">
@@ -49,7 +56,6 @@
             </div>
             <a href="{{ url_for('analytics.explore') }}" class="explore-btn">Explore &rarr;</a>
         </div>
-        <!-- TABS -->
         <div style="display: flex; gap: 0; margin-top: 1rem; border-bottom: 2px solid #e5e5e5;">
             <span style="padding: 0.5rem 1.25rem; font-size: 0.85rem; font-weight: 600; color: #C8963E; border-bottom: 2px solid #C8963E; margin-bottom: -2px; cursor: default;">Analytics (New)</span>
             <a href="{{ url_for('analytics.dashboard_legacy') }}" style="padding: 0.5rem 1.25rem; font-size: 0.85rem; font-weight: 500; color: #9A9A9A; text-decoration: none; border-bottom: 2px solid transparent; margin-bottom: -2px;" onmouseover="this.style.color='#6B6B6B'" onmouseout="this.style.color='#9A9A9A'">Analytics (Legacy)</a>
@@ -64,9 +70,7 @@
     <!-- LAYER 1: EXECUTIVE SUMMARY                                    -->
     <!-- ============================================================ -->
 
-    <div class="mb-2">
-        <span class="section-num">Progress</span>
-    </div>
+    <div class="mb-2"><span class="section-num">Progress</span></div>
     <div class="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-4">
         <div class="kpi-card">
             <div class="kpi-value text-gray-900">{{ project.units_inspected }} <span style="font-size: 1rem; font-weight: 400; color: #9A9A9A;">/ {{ project.project_total }}</span></div>
@@ -75,53 +79,51 @@
                 <div class="progress-bar-track">
                     <div class="progress-bar-fill" style="width: {{ project.pct_complete }}%; background: #C8963E;"></div>
                 </div>
-                <div class="kpi-sub">{{ project.pct_complete }}% complete</div>
+                <div class="kpi-sub">{{ project.pct_complete }}% of project</div>
             </div>
         </div>
         <div class="kpi-card">
-            <div class="kpi-value {% if project.open_defects > 0 %}text-red-600{% else %}text-emerald-600{% endif %}">{{ project.open_defects }}</div>
+            <div class="kpi-value {% if project.open_defects > 0 %}text-red-600{% else %}text-emerald-600{% endif %}">{{ '{:,}'.format(project.open_defects) }}</div>
             <div class="kpi-label">Open defects</div>
-            <div class="kpi-sub">across {{ project.units_inspected }} units</div>
+            <div class="kpi-sub">across {{ project.units_inspected }} inspected units</div>
         </div>
         <div class="kpi-card">
             <div class="kpi-value {% if project.certified > 0 %}text-emerald-600{% else %}text-gray-400{% endif %}">{{ project.certified }}</div>
             <div class="kpi-label">Units certified</div>
+            <div class="kpi-sub">{{ project.project_total - project.units_inspected }} awaiting first inspection</div>
         </div>
     </div>
 
-    <div class="mb-2">
-        <span class="section-num">Quality</span>
-    </div>
-    <div class="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-6">
+    <div class="mb-2"><span class="section-num">Quality (inspected units only)</span></div>
+    <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
         <div class="kpi-card">
             <div class="kpi-value text-gray-900">{{ project.avg_defects_inspected }}</div>
-            <div class="kpi-label">Avg defects per unit</div>
-            <div class="kpi-sub">inspected units only</div>
+            <div class="kpi-label">Average defects/unit</div>
+            <div class="kpi-sub">mean across {{ project.units_inspected }} units</div>
         </div>
         <div class="kpi-card">
-            <div class="kpi-value {% if project.defect_rate_inspected > 5 %}gold-accent{% else %}text-gray-900{% endif %}">{{ project.defect_rate_inspected }}%</div>
+            <div class="kpi-value text-gray-900">{{ project.median_defects }}</div>
+            <div class="kpi-label">Median defects/unit</div>
+            <div class="kpi-sub">range: {{ project.min_defects }} &ndash; {{ project.max_defects }}</div>
+        </div>
+        <div class="kpi-card">
+            <div class="kpi-value gold-accent">{{ project.defect_rate_inspected }}%</div>
             <div class="kpi-label">Defect rate</div>
             <div class="kpi-sub">{{ '{:,}'.format(project.items_inspected) }} items inspected</div>
         </div>
-        <div class="kpi-card" style="border-left-color: {% if project.defect_rate_inspected > 8 %}#C44D3F{% elif project.defect_rate_inspected > 5 %}#C8963E{% else %}#4A7C59{% endif %};">
-            <div class="kpi-value" style="font-size: 1.1rem; color: #1A1A1A;">
-                {% if project.defect_rate_inspected > 8 %}High defect density
-                {% elif project.defect_rate_inspected > 5 %}Moderate defect density
-                {% else %}Low defect density{% endif %}
-            </div>
-            <div class="kpi-label">Quality signal</div>
-            <div class="kpi-sub">thresholds: &le;5% low &middot; 5-8% moderate &middot; &gt;8% high</div>
+        <div class="kpi-card">
+            <div class="kpi-value text-gray-900">{{ project.max_defects }}</div>
+            <div class="kpi-label">Worst unit</div>
+            <div class="kpi-sub">highest open defects in single unit</div>
         </div>
     </div>
 
     <!-- ============================================================ -->
-    <!-- LAYER 1b: RECTIFICATION PULSE (if R2+ data exists)           -->
+    <!-- LAYER 1b: RECTIFICATION PULSE                                -->
     <!-- ============================================================ -->
 
     {% if rectification %}
-    <div class="mb-2">
-        <span class="section-num">Rectification</span>
-    </div>
+    <div class="mb-2"><span class="section-num">Rectification</span></div>
     <div class="divider"></div>
     <div class="rect-box mb-6">
         <div style="display: flex; flex-wrap: wrap; gap: 2rem; align-items: center; margin-bottom: 0.75rem;">
@@ -134,7 +136,7 @@
                 {{ rectification.total_reviewed }} R1 defects reviewed
             </div>
         </div>
-        <div class="progress-bar-track" style="height: 12px; margin-bottom: 0.5rem;">
+        <div class="progress-bar-track" style="height: 10px; margin-bottom: 0.5rem;">
             {% set rect_total = rectification.rectified + rectification.superseded %}
             {% if rect_total > 0 %}
             <div style="display: flex; height: 100%; border-radius: 4px; overflow: hidden;">
@@ -143,10 +145,10 @@
             </div>
             {% endif %}
         </div>
-        <div style="display: flex; flex-wrap: wrap; gap: 1.5rem; font-size: 0.8rem; color: #6B6B6B;">
-            <span><span class="severity-dot" style="background: #4A7C59;"></span>{{ rectification.rectified }} rectified</span>
-            <span><span class="severity-dot" style="background: #C8963E;"></span>{{ rectification.superseded }} superseded (re-flagged)</span>
-            <span><span class="severity-dot" style="background: #C44D3F;"></span>{{ rectification.new_defects }} new defects in R2</span>
+        <div style="display: flex; flex-wrap: wrap; gap: 1.5rem; font-size: 0.75rem; color: #6B6B6B;">
+            <span><span class="severity-dot" style="background: #4A7C59;"></span>{{ rectification.rectified }} rectified ({{ (rectification.rectified / rect_total * 100)|round(1) if rect_total > 0 else 0 }}%)</span>
+            <span><span class="severity-dot" style="background: #C8963E;"></span>{{ rectification.superseded }} superseded ({{ (rectification.superseded / rect_total * 100)|round(1) if rect_total > 0 else 0 }}%)</span>
+            <span><span class="severity-dot" style="background: #C44D3F;"></span>{{ rectification.new_defects }} new in R2</span>
         </div>
     </div>
     {% endif %}
@@ -155,111 +157,140 @@
     <!-- LAYER 2: HOT SPOTS                                           -->
     <!-- ============================================================ -->
 
-    <div class="mb-2">
-        <span class="section-num">01 &mdash; Hot Spots</span>
-    </div>
+    <div class="mb-2"><span class="section-num">01 &mdash; Hot Spots</span></div>
     <div class="divider"></div>
 
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
-        <!-- TOP PROBLEM AREAS -->
+        <!-- DEFECTS BY AREA -->
         <div class="hotspot-panel">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
                 <span style="font-size: 0.9rem; font-weight: 600; color: #1A1A1A;">Defects by Area</span>
-                <a href="{{ url_for('analytics.explore') }}" style="font-size: 0.75rem; color: #C8963E; text-decoration: none; font-weight: 500;">Explore &rarr;</a>
+                <a href="{{ url_for('analytics.explore') }}" style="font-size: 0.75rem; color: #C8963E; text-decoration: none; font-weight: 500;">Explore all &rarr;</a>
             </div>
             {% for area in area_data %}
+            {% set area_pct = (area.defect_count / project.open_defects * 100)|round(1) if project.open_defects > 0 else 0 %}
             <a href="{{ url_for('analytics.explore', area=area.area) }}" class="area-row">
                 <span class="area-label">{{ area.area|title }}</span>
                 <div style="flex: 1;">
                     <div class="area-bar" style="width: {{ (area.defect_count / area_max * 100)|round }}%; background: {{ area_colours.get(area.area, '#6B6B6B') }};"></div>
                 </div>
+                <span class="area-pct">{{ area_pct }}%</span>
                 <span class="area-count">{{ area.defect_count }}</span>
             </a>
             {% endfor %}
+            <div style="font-size: 0.7rem; color: #9A9A9A; margin-top: 0.5rem; padding-top: 0.4rem; border-top: 1px solid #f0f0f0;">Total: {{ '{:,}'.format(project.open_defects) }} open defects &middot; Tap any area to drill down</div>
         </div>
 
         <!-- WORST UNITS -->
         <div class="hotspot-panel">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
                 <span style="font-size: 0.9rem; font-weight: 600; color: #1A1A1A;">Worst Units</span>
-                <span style="font-size: 0.75rem; color: #9A9A9A;">top 5 by open defects</span>
+                <span style="font-size: 0.7rem; color: #9A9A9A;">top 5 by open defects</span>
             </div>
             {% for unit in worst_units %}
             {% set unit_block_slug = unit.block|lower|replace(' ', '-') %}
             <a href="{{ url_for('analytics.block_floor_detail', block_slug=unit_block_slug, floor=unit.floor) }}" class="unit-row">
                 <div>
-                    <span style="font-size: 0.95rem; font-weight: 700; color: #1A1A1A;">Unit {{ unit.unit_number }}</span>
-                    <span style="font-size: 0.8rem; color: #9A9A9A; margin-left: 0.5rem;">{{ unit.block }} {{ floor_labels.get(unit.floor, 'Floor ' ~ unit.floor) }}</span>
+                    <span style="font-size: 0.9rem; font-weight: 700; color: #1A1A1A;">Unit {{ unit.unit_number }}</span>
+                    <span style="font-size: 0.75rem; color: #9A9A9A; margin-left: 0.4rem;">{{ unit.block }} {{ floor_labels.get(unit.floor, 'Floor ' ~ unit.floor) }}</span>
                 </div>
-                <div style="display: flex; align-items: center; gap: 0.5rem;">
-                    <div style="width: {{ (unit.defect_count / worst_units[0].defect_count * 60)|round|int + 20 }}px; height: 6px; border-radius: 3px; background: {% if unit.defect_count > 30 %}#C44D3F{% elif unit.defect_count > 20 %}#C8963E{% else %}#4A7C59{% endif %};"></div>
-                    <span style="font-size: 0.9rem; font-weight: 700; color: {% if unit.defect_count > 30 %}#C44D3F{% elif unit.defect_count > 20 %}#C8963E{% else %}#4A7C59{% endif %};">{{ unit.defect_count }}</span>
+                <div style="display: flex; align-items: center; gap: 0.4rem;">
+                    <div style="width: {{ (unit.defect_count / worst_units[0].defect_count * 50)|round|int + 16 }}px; height: 4px; border-radius: 2px; background: {% if unit.defect_count > 30 %}#C44D3F{% elif unit.defect_count > 20 %}#C8963E{% else %}#4A7C59{% endif %};"></div>
+                    <span style="font-size: 0.85rem; font-weight: 700; color: {% if unit.defect_count > 30 %}#C44D3F{% elif unit.defect_count > 20 %}#C8963E{% else %}#4A7C59{% endif %};">{{ unit.defect_count }}</span>
                 </div>
             </a>
             {% endfor %}
+            <div style="font-size: 0.7rem; color: #9A9A9A; margin-top: 0.5rem; padding-top: 0.4rem; border-top: 1px solid #f0f0f0;">
+                <span class="legend-item"><span class="legend-dot" style="background: #C44D3F;"></span> &gt;30</span>&ensp;
+                <span class="legend-item"><span class="legend-dot" style="background: #C8963E;"></span> 21-30</span>&ensp;
+                <span class="legend-item"><span class="legend-dot" style="background: #4A7C59;"></span> &le;20</span>&ensp;
+                <span style="color: #BABABA;">&middot;</span>&ensp;
+                <span style="font-size: 0.7rem; color: #9A9A9A;">project median: {{ project.median_defects }}</span>
+            </div>
         </div>
     </div>
 
     <!-- ============================================================ -->
-    <!-- LAYER 3: BLOCK GRID                                          -->
+    <!-- LAYER 3: BLOCKS                                              -->
     <!-- ============================================================ -->
 
-    <div class="mb-2">
-        <span class="section-num">02 &mdash; Blocks</span>
-    </div>
+    <div class="mb-2"><span class="section-num">02 &mdash; Blocks</span></div>
     <div class="divider"></div>
 
-    <!-- Active blocks (have inspection data) -->
-    {% set ns = namespace(blocks={}, awaiting=[]) %}
+    <!-- Build block groups -->
+    {% set ns = namespace(active_blocks={}, awaiting_blocks={}) %}
     {% for card in cards %}
         {% if card.block in active_blocks %}
-            {% if card.block not in ns.blocks %}
-                {% set _ = ns.blocks.update({card.block: []}) %}
+            {% if card.block not in ns.active_blocks %}
+                {% set _ = ns.active_blocks.update({card.block: []}) %}
             {% endif %}
-            {% set _ = ns.blocks[card.block].append(card) %}
+            {% set _ = ns.active_blocks[card.block].append(card) %}
         {% else %}
-            {% set _ = ns.awaiting.append(card) %}
+            {% if card.block not in ns.awaiting_blocks %}
+                {% set _ = ns.awaiting_blocks.update({card.block: 0}) %}
+            {% endif %}
+            {% set _ = ns.awaiting_blocks.update({card.block: ns.awaiting_blocks[card.block] + card.total_units}) %}
         {% endif %}
     {% endfor %}
 
+    <!-- Active blocks (have inspection data) - sorted by defects desc -->
+    {% set block_order = [] %}
+    {% for block_name in ns.active_blocks %}
+        {% set block_cards = ns.active_blocks[block_name] %}
+        {% set block_defects = block_cards|sum(attribute='open_defects') %}
+        {% set _ = block_order.append((block_defects, block_name)) %}
+    {% endfor %}
+
     <div class="space-y-4 mb-6">
-    {% for block_name in ns.blocks %}
-        {% set block_cards = ns.blocks[block_name] %}
+    {% for block_name in ns.active_blocks %}
+        {% set block_cards = ns.active_blocks[block_name] %}
         {% set block_slug = block_name|lower|replace(' ', '-') %}
         {% set block_units = block_cards|sum(attribute='total_units') %}
+        {% set block_inspected = block_cards|sum(attribute='inspected') %}
         {% set block_defects = block_cards|sum(attribute='open_defects') %}
-        {% set block_avg = (block_defects / block_units)|round(1) if block_units > 0 else 0 %}
+        {% set block_avg = (block_defects / block_inspected)|round(1) if block_inspected > 0 else 0 %}
+        {% set block_items = block_inspected * 437 %}
+        {% set block_rate = (block_defects / block_items * 100)|round(1) if block_items > 0 else 0 %}
 
         <div class="block-card">
             <a href="{{ url_for('analytics.block_detail', block_slug=block_slug) }}" class="block-header">
                 <div>
                     <span class="font-display text-xl font-bold text-gray-900">{{ block_name }}</span>
-                    <span class="text-sm text-gray-400 ml-3">{{ block_cards|length }} floor{{ 's' if block_cards|length > 1 else '' }} &middot; {{ block_units }} units &middot; {{ block_defects }} defects &middot; {{ block_avg }} avg</span>
+                    <span class="text-sm text-gray-400 ml-3">
+                        {{ block_inspected }} of {{ block_units }} inspected &middot;
+                        {{ '{:,}'.format(block_defects) }} defects &middot;
+                        {{ block_avg }} avg &middot;
+                        {{ block_rate }}% rate
+                    </span>
                 </div>
                 <span class="text-sm gold-accent font-semibold">View Block &rarr;</span>
             </a>
 
-            <div class="flex items-center justify-between px-5 py-1.5" style="border-top: 1px solid #e5e5e5;">
-                <span class="text-xs text-gray-400 font-semibold uppercase tracking-wider flex-1">Floor</span>
-                <span class="text-xs text-gray-400 font-semibold uppercase tracking-wider zone-stat">Units</span>
-                <span class="text-xs text-gray-400 font-semibold uppercase tracking-wider zone-stat">Defects</span>
-                <span class="text-xs text-gray-400 font-semibold uppercase tracking-wider zone-stat">Avg</span>
-                <span class="text-xs text-gray-400 font-semibold uppercase tracking-wider zone-stat">Rate</span>
-                <span class="text-xs text-gray-400 font-semibold uppercase tracking-wider" style="min-width: 4.5rem; text-align: center;">Round</span>
+            <div class="col-header">
+                <span class="col-label" style="flex: 1; text-align: left;">Floor</span>
+                <span class="col-label-wide">Inspected</span>
+                <span class="col-label">Defects</span>
+                <span class="col-label">Avg</span>
+                <span class="col-label">Rate</span>
+                <span class="col-label-wide">Round</span>
             </div>
 
             {% for card in block_cards|sort(attribute='open_defects', reverse=True) %}
             <a href="{{ url_for('analytics.block_floor_detail', block_slug=block_slug, floor=card.floor) }}" class="zone-row">
-                <span class="text-sm font-medium text-gray-800 flex-1">
-                    <span class="severity-dot" style="background: {% if card.avg_defects > 30 %}#C44D3F{% elif card.avg_defects > 20 %}#C8963E{% elif card.open_defects > 0 %}#4A7C59{% else %}#e5e5e5{% endif %};"></span>
+                <span class="text-sm font-medium text-gray-800" style="flex: 1;">
+                    <span class="severity-dot" style="background: {% if card.avg_defects > 30 %}#C44D3F{% elif card.avg_defects > 20 %}#C8963E{% elif card.inspected > 0 %}#4A7C59{% else %}#e5e5e5{% endif %};"></span>
                     {{ card.floor_label }}
                 </span>
-                <span class="zone-stat text-gray-700">{{ card.total_units }}</span>
-                <span class="zone-stat {% if card.open_defects > 0 %}text-red-600{% else %}text-emerald-600{% endif %} font-bold">{{ card.open_defects }}</span>
+                <span class="zone-stat-wide {% if card.inspected == card.total_units %}text-emerald-600{% elif card.inspected > 0 %}gold-accent{% else %}text-gray-400{% endif %}">{{ card.inspected }}/{{ card.total_units }}</span>
+                <span class="zone-stat {% if card.open_defects > 0 %}font-bold{% endif %}" style="color: {% if card.avg_defects > 30 %}#C44D3F{% elif card.avg_defects > 20 %}#C8963E{% elif card.open_defects > 0 %}#1A1A1A{% else %}#4A7C59{% endif %};">{{ card.open_defects }}</span>
                 <span class="zone-stat text-gray-700">{{ card.avg_defects }}</span>
                 <span class="zone-stat text-gray-500">{{ card.defect_rate }}%</span>
-                <span style="min-width: 4.5rem; text-align: center;">
+                <span class="zone-stat-wide">
+                    {% if card.max_round > 0 %}
                     <span class="inline-block px-2 py-0.5 rounded text-xs font-semibold {% if card.max_round > 1 %}bg-blue-100 text-blue-700{% else %}bg-gray-100 text-gray-600{% endif %}">R{{ card.max_round }}</span>
+                    {% else %}
+                    <span class="text-xs text-gray-300">&mdash;</span>
+                    {% endif %}
                 </span>
             </a>
             {% endfor %}
@@ -268,24 +299,25 @@
     </div>
 
     <!-- Awaiting inspection (no data yet) -->
-    {% set awaiting_blocks = {} %}
-    {% for card in ns.awaiting %}
-        {% if card.block not in awaiting_blocks %}
-            {% set _ = awaiting_blocks.update({card.block: 0}) %}
-        {% endif %}
-        {% set _ = awaiting_blocks.update({card.block: awaiting_blocks[card.block] + card.total_units}) %}
-    {% endfor %}
-
-    {% if awaiting_blocks %}
-    <div class="awaiting-section mb-6">
-        <div style="font-size: 0.8rem; font-weight: 600; color: #9A9A9A; text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 0.5rem;">Awaiting Inspection</div>
-        <div style="display: flex; flex-wrap: wrap; gap: 0.75rem;">
-            {% for bname, bcount in awaiting_blocks|dictsort %}
-            <span style="font-size: 0.85rem; color: #6B6B6B; background: white; border: 1px solid #e5e5e5; border-radius: 4px; padding: 0.35rem 0.75rem;">{{ bname }} <span style="color: #9A9A9A;">({{ bcount }} units)</span></span>
+    {% if ns.awaiting_blocks %}
+    <div class="awaiting-section mb-4">
+        <div style="font-size: 0.75rem; font-weight: 600; color: #9A9A9A; text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 0.5rem;">Awaiting Inspection</div>
+        <div style="display: flex; flex-wrap: wrap; gap: 0.5rem;">
+            {% for bname, bcount in ns.awaiting_blocks|dictsort %}
+            <span style="font-size: 0.8rem; color: #6B6B6B; background: white; border: 1px solid #e5e5e5; border-radius: 4px; padding: 0.3rem 0.65rem;">{{ bname }} <span style="color: #9A9A9A;">({{ bcount }} units)</span></span>
             {% endfor %}
         </div>
     </div>
     {% endif %}
+
+    <!-- COLOUR LEGEND -->
+    <div style="padding: 0.75rem 0; border-top: 1px solid #e5e5e5; display: flex; flex-wrap: wrap; gap: 1.5rem; align-items: center;">
+        <span style="font-size: 0.7rem; font-weight: 600; color: #9A9A9A; text-transform: uppercase; letter-spacing: 0.08em;">Colour key</span>
+        <span class="legend-item"><span class="legend-dot" style="background: #C44D3F;"></span> Above average (&gt;30 defects/unit)</span>
+        <span class="legend-item"><span class="legend-dot" style="background: #C8963E;"></span> Average range (21-30)</span>
+        <span class="legend-item"><span class="legend-dot" style="background: #4A7C59;"></span> Below average (&le;20)</span>
+        <span class="legend-item"><span class="legend-dot" style="background: #e5e5e5;"></span> Not yet inspected</span>
+    </div>
 
     {% endif %}
 

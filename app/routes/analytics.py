@@ -120,6 +120,19 @@ def dashboard():
     for r in certified_raw:
         certified_map[(r['block'], r['floor'])] = r['certified']
 
+    # 4b. Inspected units per block+floor
+    inspected_zone_raw = query_db("""
+        SELECT u.block, u.floor, COUNT(DISTINCT i.unit_id) as inspected
+        FROM inspection i
+        JOIN unit u ON i.unit_id = u.id
+        WHERE i.tenant_id = ? AND i.cycle_id NOT LIKE 'test-%'
+        AND i.status NOT IN ('not_started')
+        GROUP BY u.block, u.floor
+    """, [tenant_id])
+    inspected_zone_map = {}
+    for r in inspected_zone_raw:
+        inspected_zone_map[(r['block'], r['floor'])] = r['inspected']
+
     # 5. Build cards
     cards = []
     total_units_project = 0
@@ -132,9 +145,10 @@ def dashboard():
         open_defects = defect_map.get(key, 0)
         rounds = rounds_map.get(key, [])
         certified = certified_map.get(key, 0)
-        max_round = max((r['round_number'] for r in rounds), default=1)
-        avg_defects = round(open_defects / total_units, 1) if total_units > 0 else 0
-        items_inspected = ITEMS_PER_UNIT * total_units
+        inspected = inspected_zone_map.get(key, 0)
+        max_round = max((r['round_number'] for r in rounds), default=0)
+        avg_defects = round(open_defects / inspected, 1) if inspected > 0 else 0
+        items_inspected = ITEMS_PER_UNIT * inspected
         defect_rate = round(open_defects / items_inspected * 100, 1) if items_inspected > 0 else 0
 
         floor_label = FLOOR_LABELS.get(uc['floor'], 'Floor {}'.format(uc['floor']))
@@ -146,6 +160,7 @@ def dashboard():
             'label': '{} {}'.format(uc['block'], floor_label),
             'block_slug': _block_to_slug(uc['block']),
             'total_units': total_units,
+            'inspected': inspected,
             'open_defects': open_defects,
             'avg_defects': avg_defects,
             'defect_rate': defect_rate,
@@ -184,6 +199,34 @@ def dashboard():
     project['defect_rate_inspected'] = round(total_defects_project / items_inspected * 100, 1) if items_inspected > 0 else 0
     project['items_inspected'] = items_inspected
     project['project_total'] = PROJECT_TOTAL_UNITS
+
+    # 7b. Median, min, max defects per unit (inspected only)
+    unit_defect_counts_raw = query_db("""
+        SELECT COUNT(d.id) as defect_count
+        FROM inspection i
+        JOIN unit u ON i.unit_id = u.id
+        LEFT JOIN defect d ON d.unit_id = u.id AND d.status = 'open'
+            AND d.raised_cycle_id NOT LIKE 'test-%' AND d.tenant_id = u.tenant_id
+        WHERE i.tenant_id = ? AND i.cycle_id NOT LIKE 'test-%'
+        AND i.status NOT IN ('not_started')
+        AND u.unit_number NOT LIKE 'TEST%'
+        GROUP BY u.id
+        ORDER BY defect_count
+    """, [tenant_id])
+    unit_counts_list = [r['defect_count'] for r in unit_defect_counts_raw]
+    if unit_counts_list:
+        n = len(unit_counts_list)
+        if n % 2 == 0:
+            median_val = (unit_counts_list[n // 2 - 1] + unit_counts_list[n // 2]) / 2
+        else:
+            median_val = unit_counts_list[n // 2]
+        project['median_defects'] = round(median_val, 1)
+        project['min_defects'] = unit_counts_list[0]
+        project['max_defects'] = unit_counts_list[-1]
+    else:
+        project['median_defects'] = 0
+        project['min_defects'] = 0
+        project['max_defects'] = 0
 
     # 8. Rectification pulse (R2+ data)
     rect_raw = query_db("""
@@ -257,17 +300,11 @@ def dashboard():
         LIMIT 5
     """, [tenant_id])]
 
-    # Separate active vs awaiting blocks
+    # Separate active vs awaiting blocks (a block is active if ANY zone has inspections)
     active_blocks = set()
     for card in cards:
-        if card['open_defects'] > 0 or card['max_round'] > 0:
+        if card['inspected'] > 0:
             active_blocks.add(card['block'])
-    # Check for inspections in blocks with 0 defects
-    for card in cards:
-        if card['block'] not in active_blocks:
-            key = (card['block'], card['floor'])
-            if key in rounds_map and rounds_map[key]:
-                active_blocks.add(card['block'])
 
     return render_template('analytics/dashboard_v2.html',
                            has_data=True,
