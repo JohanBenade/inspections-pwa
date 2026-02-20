@@ -39,7 +39,7 @@ BATCH_LABEL_SQL = ("(ic.block || ' ' || CASE ic.floor "
 # ============================================================
 
 ITEMS_PER_UNIT = 437
-PROJECT_TOTAL_UNITS = 690
+PROJECT_TOTAL_UNITS = 192
 CARD_COLOURS = ['#C8963E', '#3D6B8E', '#4A7C59', '#C44D3F', '#7B6B8D', '#5A8A7A', '#B07D4B']
 
 
