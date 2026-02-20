@@ -21,6 +21,10 @@
             <div class="text-right">
                 <div class="text-sm text-gray-500">Inspector</div>
                 <div class="font-medium">{{ inspection.inspector_name }}</div>
+                <div class="mt-2 flex gap-2 justify-end">
+                    <a href="{{ url_for('pdf.view_defects_html', unit_id=inspection.unit_id, cycle=inspection.cycle_id) }}" class="inline-flex items-center px-3 py-1.5 text-xs font-medium rounded bg-gray-100 text-gray-700 hover:bg-gray-200" title="View defect list">View PDF</a>
+                    <a href="{{ url_for('pdf.download_defects_pdf', unit_id=inspection.unit_id, cycle=inspection.cycle_id) }}" class="inline-flex items-center px-3 py-1.5 text-xs font-medium rounded bg-gray-100 text-gray-700 hover:bg-gray-200" title="Download PDF">Download</a>
+                </div>
             </div>
         </div>
         
