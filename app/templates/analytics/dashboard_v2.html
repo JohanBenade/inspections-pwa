@@ -157,7 +157,7 @@
     <div class="mb-2"><span class="section-num">01 &mdash; Hot Spots</span></div>
     <div class="divider"></div>
 
-    <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-2">
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
         <!-- DEFECTS BY AREA -->
         <div class="hotspot-panel">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
@@ -175,7 +175,7 @@
                 <span class="area-count">{{ area.defect_count }}</span>
             </a>
             {% endfor %}
-            <div style="font-size: 0.7rem; color: #9A9A9A; margin-top: 0.5rem; padding-top: 0.4rem; border-top: 1px solid #f0f0f0;">{{ '{:,}'.format(project.open_defects) }} open defects &middot; Tap any area to drill down</div>
+            <div style="font-size: 0.7rem; color: #9A9A9A; margin-top: 0.5rem; padding-top: 0.4rem; border-top: 1px solid #f0f0f0;">{{ '{:,}'.format(project.open_defects) }} open defects &middot; Colours identify areas &middot; Tap to drill down</div>
         </div>
 
         <!-- WORST UNITS -->
@@ -198,18 +198,14 @@
                 <span class="area-count" style="color: {{ unit_colour }};">{{ unit.defect_count }}</span>
             </a>
             {% endfor %}
-            <div style="font-size: 0.7rem; color: #9A9A9A; margin-top: 0.5rem; padding-top: 0.4rem; border-top: 1px solid #f0f0f0;">Tap any unit to drill down</div>
+            <div style="font-size: 0.7rem; color: #9A9A9A; margin-top: 0.5rem; padding-top: 0.4rem; border-top: 1px solid #f0f0f0;">
+                <span class="legend-item"><span class="legend-dot" style="background: #C44D3F;"></span> &gt;{{ (project.median_defects * 1.5)|round|int }}</span>&ensp;
+                <span class="legend-item"><span class="legend-dot" style="background: #C8963E;"></span> {{ project.median_defects|round|int }}&ndash;{{ (project.median_defects * 1.5)|round|int }}</span>&ensp;
+                <span class="legend-item"><span class="legend-dot" style="background: #4A7C59;"></span> &lt;{{ project.median_defects|round|int }}</span>&ensp;
+                <span style="color: #BABABA;">&middot;</span>&ensp;
+                median: {{ project.median_defects }} &middot; Tap to drill down
+            </div>
         </div>
-    </div>
-
-    <!-- SHARED COLOUR LEGEND FOR HOT SPOTS -->
-    <div style="padding: 0.4rem 0; margin-bottom: 1.5rem; display: flex; flex-wrap: wrap; gap: 1.25rem; align-items: center; font-size: 0.7rem; color: #6B6B6B;">
-        <span style="font-weight: 600; color: #9A9A9A;">Colour key (units)</span>
-        <span class="legend-item"><span class="legend-dot" style="background: #C44D3F;"></span> &gt;{{ (project.median_defects * 1.5)|round|int }} (&gt;1.5&times; median)</span>
-        <span class="legend-item"><span class="legend-dot" style="background: #C8963E;"></span> {{ project.median_defects|round|int }}&ndash;{{ (project.median_defects * 1.5)|round|int }} (above median)</span>
-        <span class="legend-item"><span class="legend-dot" style="background: #4A7C59;"></span> &lt;{{ project.median_defects|round|int }} (below median)</span>
-        <span style="color: #BABABA;">&middot;</span>
-        <span>project median: {{ project.median_defects }} defects/unit</span>
     </div>
 
     <!-- ============================================================ -->
@@ -311,15 +307,6 @@
         </div>
     </div>
     {% endif %}
-
-    <!-- COLOUR LEGEND -->
-    <div style="padding: 0.75rem 0; border-top: 1px solid #e5e5e5; display: flex; flex-wrap: wrap; gap: 1.5rem; align-items: center;">
-        <span style="font-size: 0.7rem; font-weight: 600; color: #9A9A9A; text-transform: uppercase; letter-spacing: 0.08em;">Colour key</span>
-        <span class="legend-item"><span class="legend-dot" style="background: #C44D3F;"></span> Above average (&gt;{{ (project.median_defects * 1.5)|round|int }} defects/unit)</span>
-        <span class="legend-item"><span class="legend-dot" style="background: #C8963E;"></span> Average range ({{ project.median_defects|round|int }}-{{ (project.median_defects * 1.5)|round|int }})</span>
-        <span class="legend-item"><span class="legend-dot" style="background: #4A7C59;"></span> Below average (&lt;{{ project.median_defects|round|int }})</span>
-        <span class="legend-item"><span class="legend-dot" style="background: #e5e5e5;"></span> Not yet inspected</span>
-    </div>
 
     {% endif %}
 
