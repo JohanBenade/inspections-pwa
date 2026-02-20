@@ -99,12 +99,12 @@
         <div class="kpi-card">
             <div class="kpi-value text-gray-900">{{ project.avg_defects_inspected }}</div>
             <div class="kpi-label">Average defects/unit</div>
-            <div class="kpi-sub">mean across {{ project.units_inspected }} units</div>
+            <div class="kpi-sub">middle unit when {{ project.units_inspected }} ranked by defects</div>
         </div>
         <div class="kpi-card">
             <div class="kpi-value text-gray-900">{{ project.median_defects }}</div>
             <div class="kpi-label">Median defects/unit</div>
-            <div class="kpi-sub">range: {{ project.min_defects }} &ndash; {{ project.max_defects }}</div>
+            <div class="kpi-sub">50th percentile</div>
         </div>
         <div class="kpi-card">
             <div class="kpi-value gold-accent">{{ project.defect_rate_inspected }}%</div>
@@ -114,7 +114,7 @@
         <div class="kpi-card">
             <div class="kpi-value text-gray-900">{{ project.max_defects }}</div>
             <div class="kpi-label">Worst unit</div>
-            <div class="kpi-sub">highest open defects in single unit</div>
+            <div class="kpi-sub">range: {{ project.min_defects }} &ndash; {{ project.max_defects }} across {{ project.units_inspected }} units</div>
         </div>
     </div>
 
