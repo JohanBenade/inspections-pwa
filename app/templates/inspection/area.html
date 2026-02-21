@@ -73,7 +73,7 @@
         {# Fully excluded categories hidden from All Items and Defects views #}
     {% else %}
     
-    {# Count active items, marked items, and defects for this category #}
+    {# Count active items, marked items, and defects (from defect table + chips) for this category #}
     {% set ns = namespace(active=0, marked=0, defects=0) %}
     {% for item in category.checklist %}
         {% if item.status != 'skipped' %}
@@ -81,9 +81,13 @@
             {% if item.status not in ['pending', 'skipped'] %}
                 {% set ns.marked = ns.marked + 1 %}
             {% endif %}
-            {% if item.status in ['not_to_standard', 'not_installed'] %}
-                {% set ns.defects = ns.defects + 1 %}
-            {% endif %}
+            {% set ns.defects = ns.defects + (item.current_defects|default([])|length) %}
+            {% for pd in item.prior_defects|default([]) %}
+                {% if pd.status == 'open' %}
+                    {% set ns.defects = ns.defects + 1 %}
+                {% endif %}
+            {% endfor %}
+            {% set ns.defects = ns.defects + (item.inspection_defects|default([])|length) %}
         {% endif %}
     {% endfor %}
     

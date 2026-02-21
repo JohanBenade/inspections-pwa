@@ -162,15 +162,19 @@ def inspect(inspection_id):
     
     defect_count = query_db("""
         SELECT COUNT(*) as defects
-        FROM inspection_item ii
-        WHERE ii.inspection_id = ?
-        AND ii.status IN ('not_to_standard', 'not_installed')
+        FROM defect d
+        WHERE d.unit_id = ? AND d.status = 'open'
+    """, [inspection['unit_id']], one=True)
+    chip_count = query_db("""
+        SELECT COUNT(*) as chips
+        FROM inspection_defect
+        WHERE inspection_id = ?
     """, [inspection_id], one=True)
     
     progress = {
         'total': progress_raw['total'] or 0,
         'completed': progress_raw['completed'] or 0,
-        'defects': defect_count['defects'] or 0,
+        'defects': (defect_count['defects'] or 0) + (chip_count['chips'] or 0),
         'skipped': progress_raw['skipped'] or 0,
         'is_followup': is_followup,
     }
@@ -220,16 +224,29 @@ def inspect(inspection_id):
     """, [inspection['unit_id']])
     
     area_defects = query_db("""
-        SELECT at.id as area_id, COUNT(*) as defect_count
-        FROM inspection_item ii
-        JOIN item_template it ON ii.item_template_id = it.id
+        SELECT at.id as area_id, COUNT(d.id) as defect_count
+        FROM defect d
+        JOIN item_template it ON d.item_template_id = it.id
         JOIN category_template ct ON it.category_id = ct.id
         JOIN area_template at ON ct.area_id = at.id
-        WHERE ii.inspection_id = ?
-        AND ii.status IN ('not_to_standard', 'not_installed')
+        WHERE d.unit_id = ? AND d.status = 'open'
+        GROUP BY at.id
+    """, [inspection['unit_id']])
+    area_defect_counts = {d['area_id']: d['defect_count'] for d in area_defects}
+
+    area_chips = query_db("""
+        SELECT at.id as area_id, COUNT(idef.id) as chip_count
+        FROM inspection_defect idef
+        JOIN item_template it ON idef.item_template_id = it.id
+        JOIN category_template ct ON it.category_id = ct.id
+        JOIN area_template at ON ct.area_id = at.id
+        WHERE idef.inspection_id = ?
         GROUP BY at.id
     """, [inspection_id])
-    area_defect_map = {d['area_id']: d['defect_count'] for d in area_defects}
+    for c in area_chips:
+        area_defect_counts[c['area_id']] = area_defect_counts.get(c['area_id'], 0) + c['chip_count']
+
+    area_defect_map = area_defect_counts
 
     area_progress = query_db("""
         SELECT at.id as area_id,
@@ -1310,15 +1327,19 @@ def get_progress(inspection_id):
     
     defect_count = query_db("""
         SELECT COUNT(*) as defects
-        FROM inspection_item ii
-        WHERE ii.inspection_id = ?
-        AND ii.status IN ('not_to_standard', 'not_installed')
+        FROM defect d
+        WHERE d.unit_id = ? AND d.status = 'open'
+    """, [inspection['unit_id']], one=True)
+    chip_count = query_db("""
+        SELECT COUNT(*) as chips
+        FROM inspection_defect
+        WHERE inspection_id = ?
     """, [inspection_id], one=True)
     
     progress = {
         'total': progress_raw['total'] or 0,
         'completed': progress_raw['completed'] or 0,
-        'defects': defect_count['defects'] or 0,
+        'defects': (defect_count['defects'] or 0) + (chip_count['chips'] or 0),
         'skipped': progress_raw['skipped'] or 0,
         'is_followup': is_followup,
     }
@@ -1402,17 +1423,32 @@ def get_defect_count(inspection_id):
 @require_auth
 def get_area_badges(inspection_id):
     """Return updated area defect badges for HTMX OOB swap."""
+    inspection = query_db("SELECT unit_id FROM inspection WHERE id = ?", [inspection_id], one=True)
+    if not inspection:
+        return ''
+
     area_defects = query_db("""
-        SELECT at.id as area_id, at.area_name, COUNT(*) as defect_count
-        FROM inspection_item ii
-        JOIN item_template it ON ii.item_template_id = it.id
+        SELECT at.id as area_id, COUNT(d.id) as defect_count
+        FROM defect d
+        JOIN item_template it ON d.item_template_id = it.id
         JOIN category_template ct ON it.category_id = ct.id
         JOIN area_template at ON ct.area_id = at.id
-        WHERE ii.inspection_id = ?
-        AND ii.status IN ('not_to_standard', 'not_installed')
+        WHERE d.unit_id = ? AND d.status = 'open'
+        GROUP BY at.id
+    """, [inspection['unit_id']])
+    badges = {d['area_id']: d['defect_count'] for d in area_defects}
+
+    area_chips = query_db("""
+        SELECT at.id as area_id, COUNT(idef.id) as chip_count
+        FROM inspection_defect idef
+        JOIN item_template it ON idef.item_template_id = it.id
+        JOIN category_template ct ON it.category_id = ct.id
+        JOIN area_template at ON ct.area_id = at.id
+        WHERE idef.inspection_id = ?
         GROUP BY at.id
     """, [inspection_id])
-    badges = {d['area_id']: d['defect_count'] for d in area_defects}
+    for c in area_chips:
+        badges[c['area_id']] = badges.get(c['area_id'], 0) + c['chip_count']
     
     # Get all areas that have items for this inspection
     all_areas = query_db("""
