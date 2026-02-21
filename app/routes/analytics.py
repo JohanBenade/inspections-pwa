@@ -562,10 +562,10 @@ def block_floor_detail(block_slug, floor):
                     'clearance_pct': total_pct,
                 }
 
-                rect_callout = 'Of {} defects raised on re-inspected units in Round {}, {} ({:.1f}%) have been rectified.'.format(
+                rect_callout = 'Of {} defects raised on re-inspected units in Cycle {}, {} ({:.1f}%) have been rectified.'.format(
                     sum_prev, max_round - 1, sum_cleared, total_pct)
                 if sum_new > 0:
-                    rect_callout += ' {} new defects identified in Round {}.'.format(sum_new, max_round)
+                    rect_callout += ' {} new defects identified in Cycle {}.'.format(sum_new, max_round)
 
     # 4. Area breakdown (all open defects in this block+floor)
     area_data_raw = [dict(r) for r in query_db("""

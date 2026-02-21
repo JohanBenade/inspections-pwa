@@ -130,7 +130,7 @@
             </div>
             <div style="font-size: 0.85rem; color: #6B6B6B;">
                 {{ rectification.r2_units }} unit{{ 's' if rectification.r2_units != 1 }} re-inspected &middot;
-                {{ rectification.total_reviewed }} R1 defects reviewed
+                {{ rectification.total_reviewed }} C1 defects reviewed
             </div>
         </div>
         <div class="progress-bar-track" style="height: 10px; margin-bottom: 0.5rem;">
@@ -145,7 +145,7 @@
         <div style="display: flex; flex-wrap: wrap; gap: 1.5rem; font-size: 0.75rem; color: #6B6B6B;">
             <span><span class="severity-dot" style="background: #4A7C59;"></span>{{ rectification.rectified }} rectified ({{ (rectification.rectified / rect_total * 100)|round(1) if rect_total > 0 else 0 }}%)</span>
             <span><span class="severity-dot" style="background: #C8963E;"></span>{{ rectification.superseded }} superseded ({{ (rectification.superseded / rect_total * 100)|round(1) if rect_total > 0 else 0 }}%)</span>
-            <span><span class="severity-dot" style="background: #C44D3F;"></span>{{ rectification.new_defects }} new in R2</span>
+            <span><span class="severity-dot" style="background: #C44D3F;"></span>{{ rectification.new_defects }} new in C2</span>
         </div>
     </div>
     {% endif %}
@@ -282,7 +282,7 @@
                 <span class="col-label">Defects</span>
                 <span class="col-label">Avg</span>
                 <span class="col-label">Defect Rate</span>
-                <span class="col-label-wide">Round</span>
+                <span class="col-label-wide">Cycle</span>
             </div>
 
             {% for card in block_cards|sort(attribute='open_defects', reverse=True) %}
@@ -297,7 +297,7 @@
                 <span class="zone-stat" style="color: #1A1A1A;">{{ "%.1f"|format(card.defect_rate) }}%</span>
                 <span class="zone-stat-wide">
                     {% if card.max_round > 0 %}
-                    <span class="inline-block px-2 py-0.5 rounded text-xs font-semibold {% if card.max_round > 1 %}bg-blue-100 text-blue-700{% else %}bg-gray-100 text-gray-600{% endif %}">R{{ card.max_round }}</span>
+                    <span class="inline-block px-2 py-0.5 rounded text-xs font-semibold {% if card.max_round > 1 %}bg-blue-100 text-blue-700{% else %}bg-gray-100 text-gray-600{% endif %}">C{{ card.max_round }}</span>
                     {% else %}
                     <span class="text-xs text-gray-300">&mdash;</span>
                     {% endif %}
