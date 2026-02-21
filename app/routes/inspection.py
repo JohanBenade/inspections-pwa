@@ -277,13 +277,19 @@ def inspect(inspection_id):
 def inspect_area(inspection_id, area_id):
     tenant_id = session['tenant_id']
     
-    # Peek at cycle number to determine default filter
+    # Peek at cycle number + status to determine default filter
     insp_peek = query_db("""
-        SELECT ic.cycle_number FROM inspection i
+        SELECT ic.cycle_number, i.status as insp_status FROM inspection i
         JOIN inspection_cycle ic ON i.cycle_id = ic.id
         WHERE i.id = ?
     """, [inspection_id], one=True)
-    default_filter = 'to_inspect' if (insp_peek and insp_peek['cycle_number'] > 1) else 'all'
+    if insp_peek and insp_peek['cycle_number'] > 1:
+        if insp_peek['insp_status'] in ('submitted', 'reviewed', 'approved'):
+            default_filter = 'defects'
+        else:
+            default_filter = 'to_inspect'
+    else:
+        default_filter = 'all'
     filter_mode = request.args.get('filter', default_filter)
     
     inspection = query_db("""
@@ -393,8 +399,9 @@ def inspect_area(inspection_id, area_id):
         for item in items_raw:
             is_defective = item['status'] in ['not_to_standard', 'not_installed']
             has_open_prior = any(d['status'] == 'open' for d in prior_defects_map.get(item['template_id'], []))
+            has_any_prior = len(prior_defects_map.get(item['template_id'], [])) > 0
             
-            if is_defective or has_open_prior:
+            if is_defective or has_any_prior:
                 defective_template_ids.add(item['template_id'])
                 if item['parent_item_id']:
                     parent_has_defective_child.add(item['parent_item_id'])
@@ -409,6 +416,7 @@ def inspect_area(inspection_id, area_id):
         for item in items_raw:
             prior_defects_list = prior_defects_map.get(item['template_id'], [])
             has_open_prior = any(d['status'] == 'open' for d in prior_defects_list)
+            has_any_prior = len(prior_defects_list) > 0
             is_defective = item['status'] in ['not_to_standard', 'not_installed']
             
             is_parent = item['parent_item_id'] is None
@@ -420,13 +428,13 @@ def inspect_area(inspection_id, area_id):
                 if not category_has_defects:
                     continue
                 
-                # Show parent if it has defective children OR is itself defective
+                # Show parent if it has defective children OR is itself defective OR has any prior
                 if is_parent:
-                    if item['template_id'] not in parent_has_defective_child and not is_defective and not has_open_prior:
+                    if item['template_id'] not in parent_has_defective_child and not is_defective and not has_any_prior:
                         continue
-                # Show child only if it's defective
+                # Show child only if it's defective or has any prior defects
                 else:
-                    if not is_defective and not has_open_prior:
+                    if not is_defective and not has_any_prior:
                         continue
             
             if filter_mode == 'excluded':
