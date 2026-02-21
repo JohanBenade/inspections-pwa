@@ -252,18 +252,23 @@ def get_defects_data(tenant_id, unit_id, cycle_id=None):
     areas_list = []
     for area_name, area_data in sorted(defects_by_area.items(), key=lambda x: x[1]['order']):
         categories_list = []
+        area_open = 0
         for cat_name, cat_data in sorted(area_data['categories'].items(), key=lambda x: x[1]['order']):
             if cat_data['defects']:
+                cat_open = sum(1 for d in cat_data['defects'] if d['display_status'] in ('not_rectified', 'new', 'open'))
+                area_open += cat_open
                 categories_list.append({
                     'name': cat_name,
                     'note': cat_data.get('note'),
-                    'defects': cat_data['defects']
+                    'defects': cat_data['defects'],
+                    'open_count': cat_open
                 })
         if categories_list or area_data.get('note'):
             areas_list.append({
                 'name': area_name,
                 'note': area_data['note'],
-                'categories': categories_list
+                'categories': categories_list,
+                'open_count': area_open
             })
     
     # Calculate grand totals across all cycles
@@ -298,13 +303,23 @@ def get_defects_data(tenant_id, unit_id, cycle_id=None):
         )
         outstanding = total_raised_to_cycle - total_rectified_to_cycle
         
+        # Compute not_rectified (prior defects still open) vs added (new this cycle)
+        raised_before = sum(
+            cycle_stats.get(c, {'raised': 0})['raised']
+            for c in range(1, insp_cycle_num)
+        )
+        not_rectified_count = max(0, raised_before - total_rectified_to_cycle)
+        added_count = stats['raised']
+
         inspection_timeline.append({
             'cycle_number': insp_cycle_num,
             'date': insp_date,
             'inspector': insp['inspector_name'],
             'raised': stats['raised'],
             'rectified': stats['rectified'],
-            'outstanding': outstanding
+            'outstanding': outstanding,
+            'not_rectified': not_rectified_count,
+            'added': added_count
         })
     
     # Calculate summary
@@ -368,7 +383,9 @@ def get_defects_data(tenant_id, unit_id, cycle_id=None):
             'rectified': total_rectified,
             'not_rectified': total_not_rectified,
             'new': total_new,
-            'excluded': excluded_count
+            'excluded': excluded_count,
+            'brought_forward': total_rectified + total_not_rectified,
+            'open_defects': total_not_rectified + total_new
         },
         'grand_totals': {
             'raised': grand_total_raised,

@@ -137,11 +137,11 @@
         }
         
         .summary-value.not-rectified {
-            color: #cc0000;
+            color: #000;
         }
         
         .summary-value.new-defects {
-            color: #cc0000;
+            color: #000;
         }
         
         .summary-divider {
@@ -480,24 +480,17 @@
     </div>
     
     {% if cycle_number == 1 %}
-    <!-- Cycle 1 Inspection Summary Box -->
+    <!-- Cycle 1 Defect Summary Box -->
     <div class="summary-box">
-        <div class="summary-title">Inspection Summary</div>
-        <div class="summary-row">
-            <span class="summary-label">Total items:</span>
-            <span class="summary-value">{{ inspection_summary.total }}</span>
-        </div>
-        <div class="summary-row">
-            <span class="summary-label">Excluded:</span>
-            <span class="summary-value">{{ inspection_summary.excluded }}</span>
-        </div>
-        <div class="summary-row">
-            <span class="summary-label">Inspected:</span>
-            <span class="summary-value">{{ inspection_summary.inspected }}</span>
-        </div>
+        <div class="summary-title">Defect Summary</div>
         <div class="summary-row">
             <span class="summary-label">Defects raised:</span>
-            <span class="summary-value not-rectified">{{ inspection_summary.defects }}</span>
+            <span class="summary-value">{{ summary.new }}</span>
+        </div>
+        <div class="summary-divider"></div>
+        <div class="summary-row">
+            <span class="summary-label" style="font-weight: bold;">Open defects:</span>
+            <span class="summary-value">{{ summary.open_defects }}</span>
         </div>
     </div>
     {% elif cycle_number > 1 %}
@@ -525,19 +518,26 @@
         <div class="summary-box">
             <div class="summary-title">Defect Summary</div>
             <div class="summary-row">
-                <span class="summary-label">Rectified this cycle:</span>
-                <span class="summary-value rectified">{{ summary.rectified }}</span>
+                <span class="summary-label">Defects brought forward:</span>
+                <span class="summary-value">{{ summary.brought_forward }}</span>
+            </div>
+            <div class="summary-row">
+                <span class="summary-label">Rectified:</span>
+                <span class="summary-value">-{{ summary.rectified }}</span>
             </div>
             <div class="summary-row">
                 <span class="summary-label">Not rectified:</span>
-                <span class="summary-value not-rectified">{{ summary.not_rectified }}</span>
+                <span class="summary-value">{{ summary.not_rectified }}</span>
             </div>
-            {% if summary.new > 0 %}
             <div class="summary-row">
-                <span class="summary-label">New defects this cycle:</span>
-                <span class="summary-value new-defects">{{ summary.new }}</span>
+                <span class="summary-label">Added:</span>
+                <span class="summary-value">+{{ summary.new }}</span>
             </div>
-            {% endif %}
+            <div class="summary-divider"></div>
+            <div class="summary-row">
+                <span class="summary-label" style="font-weight: bold;">Open defects:</span>
+                <span class="summary-value">{{ summary.open_defects }}</span>
+            </div>
         </div>
         {% endif %}
     {% endif %}
@@ -573,7 +573,7 @@
     
     {% for area in defects_by_area %}
     <div class="area-section">
-        <div class="area-title"><span>{{ area.name }}</span></div>
+        <div class="area-title"><span>{{ area.name }}{% if area.open_count is defined %} ({{ area.open_count }}){% endif %}</span></div>
         
         {% if area.note %}
         <div class="area-note">Note: {{ area.note }}</div>
@@ -582,7 +582,7 @@
         {% for category in area.categories %}
         {% if category.defects %}
         <div class="no-break">
-            <div class="category-row">- {{ category.name }}</div>
+            <div class="category-row">- {{ category.name }}{% if category.open_count is defined %} ({{ category.open_count }}){% endif %}</div>
             {% if category.note %}
             <div class="category-note">{{ category.note }}</div>
             {% endif %}
@@ -605,9 +605,9 @@
             {% if entry.cycle_number == 1 %}
             Cycle {{ entry.cycle_number }}: {{ entry.date }} - {{ entry.inspector }} ({{ entry.raised }} defects raised)
             {% elif loop.last and is_certified %}
-            Cycle {{ entry.cycle_number }}: {{ entry.date }} - {{ entry.inspector }} ({{ entry.rectified }} rectified, {{ entry.outstanding }} outstanding) - <span class="certified-marker">Certified &#10003;</span>
+            Cycle {{ entry.cycle_number }}: {{ entry.date }} - {{ entry.inspector }} ({{ entry.rectified }} rectified, {{ entry.not_rectified }} not rectified{% if entry.added > 0 %}, {{ entry.added }} added{% endif %}) - <span class="certified-marker">Certified &#10003;</span>
             {% else %}
-            Cycle {{ entry.cycle_number }}: {{ entry.date }} - {{ entry.inspector }} ({{ entry.rectified }} rectified, {{ entry.outstanding }} outstanding{% if entry.raised > 0 %}, {{ entry.raised }} new{% endif %})
+            Cycle {{ entry.cycle_number }}: {{ entry.date }} - {{ entry.inspector }} ({{ entry.rectified }} rectified, {{ entry.not_rectified }} not rectified{% if entry.added > 0 %}, {{ entry.added }} added{% endif %})
             {% endif %}
         </div>
         {% endfor %}
