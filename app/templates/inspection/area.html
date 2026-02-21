@@ -104,7 +104,7 @@
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
                 </svg>
             </div>
-            <h3 class="font-semibold text-gray-800 flex-1">{{ category.name }}</h3>
+            <h3 class="font-semibold text-gray-800 flex-1">{{ category.name }}{% if ns.defects > 0 %} <span class="bg-red-500 text-white text-xs px-1.5 py-0.5 rounded-full font-medium align-middle">{{ ns.defects }}</span>{% endif %}</h3>
             {% if category.all_skipped %}
             <span class="text-xs bg-orange-100 text-orange-600 px-2 py-0.5 rounded-full font-medium ml-2">{{ category.checklist|length }} excluded</span>
             {% else %}
@@ -114,9 +114,7 @@
                     {{ ns.marked }}/{{ ns.active }}{% if ns.marked == ns.active %} &#10003;{% endif %}
                 </span>
                 {% endif %}
-                {% if ns.defects > 0 %}
-                <span class="bg-red-500 text-white text-xs px-1.5 py-0.5 rounded-full font-medium">{{ ns.defects }}</span>
-                {% endif %}
+
             </span>
             {% endif %}
         </div>
