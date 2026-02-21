@@ -339,6 +339,24 @@ def inspect_area(inspection_id, area_id):
                 'cycle': d['raised_cycle'],
                 'status': d['defect_status'],
             })
+
+    # Get current-cycle defects from defect table (visible on submitted/reviewed inspections)
+    current_defects_map = {}
+    current_defects_raw = query_db("""
+        SELECT d.id as defect_id, d.item_template_id, d.original_comment
+        FROM defect d
+        WHERE d.unit_id = ? AND d.raised_cycle_id = ? AND d.status = 'open'
+        ORDER BY d.created_at
+    """, [inspection['unit_id'], inspection['cycle_id']])
+    for d in (current_defects_raw or []):
+        tid = d['item_template_id']
+        if tid not in current_defects_map:
+            current_defects_map[tid] = []
+        current_defects_map[tid].append({
+            'id': d['defect_id'],
+            'comment': d['original_comment'],
+        })
+
     all_inspection_defects = query_db("""
         SELECT idf.id, idf.inspection_item_id, idf.description, idf.defect_type
         FROM inspection_defect idf
@@ -400,8 +418,9 @@ def inspect_area(inspection_id, area_id):
             is_defective = item['status'] in ['not_to_standard', 'not_installed']
             has_open_prior = any(d['status'] == 'open' for d in prior_defects_map.get(item['template_id'], []))
             has_any_prior = len(prior_defects_map.get(item['template_id'], [])) > 0
+            has_current = len(current_defects_map.get(item['template_id'], [])) > 0
             
-            if is_defective or has_any_prior:
+            if is_defective or has_any_prior or has_current:
                 defective_template_ids.add(item['template_id'])
                 if item['parent_item_id']:
                     parent_has_defective_child.add(item['parent_item_id'])
@@ -417,6 +436,8 @@ def inspect_area(inspection_id, area_id):
             prior_defects_list = prior_defects_map.get(item['template_id'], [])
             has_open_prior = any(d['status'] == 'open' for d in prior_defects_list)
             has_any_prior = len(prior_defects_list) > 0
+            current_defects_list = current_defects_map.get(item['template_id'], [])
+            has_current = len(current_defects_list) > 0
             is_defective = item['status'] in ['not_to_standard', 'not_installed']
             
             is_parent = item['parent_item_id'] is None
@@ -428,13 +449,13 @@ def inspect_area(inspection_id, area_id):
                 if not category_has_defects:
                     continue
                 
-                # Show parent if it has defective children OR is itself defective OR has any prior
+                # Show parent if it has defective children OR is itself defective OR has any prior/current
                 if is_parent:
-                    if item['template_id'] not in parent_has_defective_child and not is_defective and not has_any_prior:
+                    if item['template_id'] not in parent_has_defective_child and not is_defective and not has_any_prior and not has_current:
                         continue
-                # Show child only if it's defective or has any prior defects
+                # Show child only if it's defective or has any prior/current defects
                 else:
-                    if not is_defective and not has_any_prior:
+                    if not is_defective and not has_any_prior and not has_current:
                         continue
             
             if filter_mode == 'excluded':
@@ -479,6 +500,8 @@ def inspect_area(inspection_id, area_id):
                 'prior_defects': prior_defects_list,
                 'has_prior_defects': len(prior_defects_list) > 0,
                 'has_open_prior': has_open_prior,
+                'current_defects': current_defects_list,
+                'has_current_defects': has_current,
                 'inspection_defects': item_defects,
             })
         
@@ -556,6 +579,21 @@ def _build_item_for_render(inspection_id, item_id, tenant_id, unit_id=None, cycl
 
     has_open_prior = any(d['status'] == 'open' for d in prior_defects_list)
 
+    # Get current-cycle defects from defect table
+    current_defects_list = []
+    if unit_id and cycle_id:
+        current_raw = query_db("""
+            SELECT d.id as defect_id, d.original_comment
+            FROM defect d
+            WHERE d.unit_id = ? AND d.item_template_id = ? AND d.raised_cycle_id = ? AND d.status = 'open'
+            ORDER BY d.created_at
+        """, [unit_id, item_raw['template_id'], cycle_id])
+        for d in (current_raw or []):
+            current_defects_list.append({
+                'id': d['defect_id'],
+                'comment': d['original_comment'],
+            })
+
     inspection_defects = query_db("""
         SELECT id, description, defect_type FROM inspection_defect
         WHERE inspection_item_id = ? AND tenant_id = ?
@@ -575,6 +613,8 @@ def _build_item_for_render(inspection_id, item_id, tenant_id, unit_id=None, cycl
         'prior_defects': prior_defects_list,
         'has_prior_defects': len(prior_defects_list) > 0,
         'has_open_prior': has_open_prior,
+        'current_defects': current_defects_list,
+        'has_current_defects': len(current_defects_list) > 0,
         'inspection_defects': inspection_defects,
     }
 
@@ -760,7 +800,12 @@ def add_defect(inspection_id, item_id):
     area_id = request.form.get('area_id')
     if not description:
         return '', 204
-    inspection = query_db("SELECT * FROM inspection WHERE id = ? AND tenant_id = ?", [inspection_id, tenant_id], one=True)
+    inspection = query_db("""
+        SELECT i.*, ic.cycle_number, ic.id as cycle_id
+        FROM inspection i
+        JOIN inspection_cycle ic ON i.cycle_id = ic.id
+        WHERE i.id = ? AND i.tenant_id = ?
+    """, [inspection_id, tenant_id], one=True)
     if not inspection:
         abort(404)
     item = query_db("SELECT * FROM inspection_item WHERE id = ? AND inspection_id = ?", [item_id, inspection_id], one=True)
@@ -769,20 +814,48 @@ def add_defect(inspection_id, item_id):
     now = datetime.now(timezone.utc).isoformat()
     if len(description) > 0:
         description = description[0].upper() + description[1:]
-    existing = query_db("SELECT id FROM inspection_defect WHERE inspection_item_id = ? AND tenant_id = ? AND LOWER(description) = LOWER(?)", [item_id, tenant_id, description], one=True)
-    if existing:
-        if area_id:
-            html = _render_single_item(inspection_id, item_id, tenant_id, area_id, force_expanded=True)
-            response = make_response(html)
-            response.headers['HX-Trigger'] = 'areaUpdated'
-            return response
-        return '', 204
-    if item['status'] not in ('not_to_standard', 'not_installed'):
-        db.execute("UPDATE inspection_item SET status = 'not_to_standard', marked_at = ? WHERE id = ?", [now, item_id])
-    if inspection['status'] == 'not_started':
-        db.execute("UPDATE inspection SET status = 'in_progress', started_at = ?, updated_at = ? WHERE id = ?", [now, now, inspection_id])
-    defect_id = generate_id()
-    db.execute("INSERT INTO inspection_defect (id, tenant_id, inspection_id, inspection_item_id, item_template_id, description, defect_type, created_at) VALUES (?, ?, ?, ?, ?, ?, 'not_to_standard', ?)", [defect_id, tenant_id, inspection_id, item_id, item['item_template_id'], description, now])
+
+    is_submitted = inspection['status'] in ('submitted', 'reviewed', 'approved')
+
+    if is_submitted:
+        # Write directly to defect table (submitted inspections have no inspection_defect rows)
+        existing = query_db("""
+            SELECT id FROM defect WHERE unit_id = ? AND item_template_id = ? AND raised_cycle_id = ?
+            AND LOWER(original_comment) = LOWER(?) AND status = 'open'
+        """, [inspection['unit_id'], item['item_template_id'], inspection['cycle_id'], description], one=True)
+        if existing:
+            if area_id:
+                html = _render_single_item(inspection_id, item_id, tenant_id, area_id, force_expanded=True)
+                response = make_response(html)
+                response.headers['HX-Trigger'] = 'areaUpdated'
+                return response
+            return '', 204
+        defect_id = generate_id()
+        db.execute("""
+            INSERT INTO defect (id, tenant_id, unit_id, item_template_id, raised_cycle_id,
+                defect_type, status, original_comment, created_at, updated_at)
+            VALUES (?, ?, ?, ?, ?, 'not_to_standard', 'open', ?, ?, ?)
+        """, [defect_id, tenant_id, inspection['unit_id'], item['item_template_id'],
+              inspection['cycle_id'], description, now, now])
+        if item['status'] not in ('not_to_standard', 'not_installed'):
+            db.execute("UPDATE inspection_item SET status = 'not_to_standard', marked_at = ? WHERE id = ?", [now, item_id])
+    else:
+        # In-progress: write to inspection_defect (scratchpad)
+        existing = query_db("SELECT id FROM inspection_defect WHERE inspection_item_id = ? AND tenant_id = ? AND LOWER(description) = LOWER(?)", [item_id, tenant_id, description], one=True)
+        if existing:
+            if area_id:
+                html = _render_single_item(inspection_id, item_id, tenant_id, area_id, force_expanded=True)
+                response = make_response(html)
+                response.headers['HX-Trigger'] = 'areaUpdated'
+                return response
+            return '', 204
+        if item['status'] not in ('not_to_standard', 'not_installed'):
+            db.execute("UPDATE inspection_item SET status = 'not_to_standard', marked_at = ? WHERE id = ?", [now, item_id])
+        if inspection['status'] == 'not_started':
+            db.execute("UPDATE inspection SET status = 'in_progress', started_at = ?, updated_at = ? WHERE id = ?", [now, now, inspection_id])
+        defect_id = generate_id()
+        db.execute("INSERT INTO inspection_defect (id, tenant_id, inspection_id, inspection_item_id, item_template_id, description, defect_type, created_at) VALUES (?, ?, ?, ?, ?, ?, 'not_to_standard', ?)", [defect_id, tenant_id, inspection_id, item_id, item['item_template_id'], description, now])
+
     db.commit()
     if area_id:
         html = _render_single_item(inspection_id, item_id, tenant_id, area_id, force_expanded=True)
@@ -919,12 +992,63 @@ def reopen_prior_defect(inspection_id, defect_id):
     return '', 204
 
 
+@inspection_bp.route('/<inspection_id>/current-defect/<defect_id>/delete', methods=['DELETE'])
+@require_auth
+def delete_current_defect(inspection_id, defect_id):
+    """Delete a current-cycle defect from the defect table. For review by Kevin/Alex."""
+    tenant_id = session['tenant_id']
+    db = get_db()
+    area_id = request.args.get('area_id')
+
+    inspection = query_db("""
+        SELECT i.*, ic.cycle_number, ic.id as cycle_id
+        FROM inspection i
+        JOIN inspection_cycle ic ON i.cycle_id = ic.id
+        WHERE i.id = ? AND i.tenant_id = ?
+    """, [inspection_id, tenant_id], one=True)
+    if not inspection:
+        abort(404)
+
+    defect = query_db(
+        "SELECT * FROM defect WHERE id = ? AND tenant_id = ? AND raised_cycle_id = ?",
+        [defect_id, tenant_id, inspection['cycle_id']], one=True
+    )
+    if not defect:
+        abort(404)
+
+    now = datetime.now(timezone.utc).isoformat()
+
+    # Delete the defect
+    db.execute("DELETE FROM defect WHERE id = ?", [defect_id])
+
+    # Find the inspection_item and update status
+    insp_item = query_db("""
+        SELECT ii.id FROM inspection_item ii
+        WHERE ii.inspection_id = ? AND ii.item_template_id = ?
+    """, [inspection_id, defect['item_template_id']], one=True)
+
+    if insp_item:
+        _update_item_status_from_priors(
+            db, inspection_id, insp_item['id'], defect['item_template_id'],
+            inspection['unit_id'], inspection['cycle_id'], tenant_id, now
+        )
+
+    db.commit()
+
+    if area_id and insp_item:
+        html = _render_single_item(inspection_id, insp_item['id'], tenant_id, area_id)
+        response = make_response(html)
+        response.headers['HX-Trigger'] = 'areaUpdated'
+        return response
+    return '', 204
+
+
 def _update_item_status_from_priors(db, inspection_id, item_id, item_template_id, unit_id, cycle_id, tenant_id, now):
-    """Auto-set inspection_item status based on prior defects and current chips.
+    """Auto-set inspection_item status based on all defect sources.
 
     Rules:
-    - All prior defects cleared AND no current inspection_defects -> item = 'ok'
-    - Any prior defect open OR any current inspection_defect exists -> item = 'not_to_standard'
+    - Any open prior defect OR any current-cycle defect OR any inspection_defect chip -> NTS
+    - Otherwise -> OK
     - Always set marked_at (inspector has actioned this item)
     """
     # Check remaining open prior defects for this item
@@ -934,16 +1058,24 @@ def _update_item_status_from_priors(db, inspection_id, item_id, item_template_id
         AND raised_cycle_id != ?
     """, [unit_id, item_template_id, cycle_id], one=True)
 
-    # Check current inspection defects (chips)
+    # Check current-cycle defects from defect table (for submitted inspections)
+    current_defect_count = query_db("""
+        SELECT COUNT(*) as cnt FROM defect
+        WHERE unit_id = ? AND item_template_id = ? AND status = 'open'
+        AND raised_cycle_id = ?
+    """, [unit_id, item_template_id, cycle_id], one=True)
+
+    # Check current inspection defects (chips, for in-progress inspections)
     current_chips = query_db("""
         SELECT COUNT(*) as cnt FROM inspection_defect
         WHERE inspection_item_id = ? AND tenant_id = ?
     """, [item_id, tenant_id], one=True)
 
     has_open = (open_prior_count['cnt'] or 0) > 0
+    has_current = (current_defect_count['cnt'] or 0) > 0
     has_chips = (current_chips['cnt'] or 0) > 0
 
-    if has_open or has_chips:
+    if has_open or has_current or has_chips:
         new_status = 'not_to_standard'
     else:
         new_status = 'ok'
