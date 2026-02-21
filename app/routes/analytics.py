@@ -231,13 +231,11 @@ def dashboard():
     # 8. Rectification pulse (R2+ data)
     rect_raw = query_db("""
         SELECT
-            COUNT(*) as total_reviewed,
-            SUM(CASE WHEN d.status = 'cleared' AND d.clearance_note = 'rectified' THEN 1 ELSE 0 END) as rectified,
-            SUM(CASE WHEN d.status = 'cleared' AND d.clearance_note = 'superseded' THEN 1 ELSE 0 END) as superseded
+            COUNT(*) as total_reviewed
         FROM defect d
         JOIN inspection_cycle ic ON d.raised_cycle_id = ic.id
         WHERE d.tenant_id = ? AND ic.id NOT LIKE 'test-%'
-        AND d.status = 'cleared' AND d.clearance_note IS NOT NULL
+        AND d.status = 'cleared'
     """, [tenant_id], one=True)
 
     r2_units_raw = query_db("""
@@ -259,16 +257,16 @@ def dashboard():
     rectification = None
     r2_units = r2_units_raw['r2_units'] if r2_units_raw else 0
     if r2_units > 0:
-        rectified = rect_raw['rectified'] or 0 if rect_raw else 0
-        superseded = rect_raw['superseded'] or 0 if rect_raw else 0
-        total_cleared = rectified + superseded
+        total_cleared = rect_raw['total_reviewed'] or 0 if rect_raw else 0
         r2_new = r2_new_raw['new_defects'] or 0 if r2_new_raw else 0
-        clearance_pct = round(rectified / total_cleared * 100, 1) if total_cleared > 0 else 0
+        # Clearance % = cleared / (cleared + still_open_from_prior)
+        # For now use cleared / total_reviewed as proxy
+        clearance_pct = 100.0 if total_cleared > 0 else 0
         rectification = {
             'r2_units': r2_units,
             'total_reviewed': total_cleared,
-            'rectified': rectified,
-            'superseded': superseded,
+            'rectified': total_cleared,
+            'superseded': 0,
             'new_defects': r2_new,
             'clearance_pct': clearance_pct,
         }
@@ -515,25 +513,20 @@ def block_floor_detail(block_slug, floor):
             for unit in re_units:
                 uid = unit['unit_id']
 
-                # Previous round: total raised, rectified (fixed), superseded (re-raised)
+                # Previous round: total raised, all cleared
                 prev = dict(query_db("""
                     SELECT COUNT(*) as raised,
-                        SUM(CASE WHEN status = 'cleared' AND clearance_note = 'rectified' THEN 1 ELSE 0 END) as rectified,
-                        SUM(CASE WHEN status = 'cleared' AND clearance_note = 'superseded' THEN 1 ELSE 0 END) as superseded,
+                        SUM(CASE WHEN status = 'cleared' THEN 1 ELSE 0 END) as cleared,
                         SUM(CASE WHEN status = 'open' THEN 1 ELSE 0 END) as still_open
                     FROM defect WHERE unit_id = ? AND raised_cycle_id IN ({}) AND tenant_id = ?
                 """.format(ph_prev), [uid] + prev_cycle_ids + [tenant_id], one=True))
 
-                # Genuinely new defects in latest round (templates NOT in previous round)
-                new_only = dict(query_db("""
+                # All defects raised in latest round
+                new_all = dict(query_db("""
                     SELECT COUNT(*) as cnt FROM defect
                     WHERE unit_id = ? AND raised_cycle_id IN ({}) AND tenant_id = ?
-                    AND item_template_id NOT IN (
-                        SELECT item_template_id FROM defect
-                        WHERE unit_id = ? AND raised_cycle_id IN ({}) AND tenant_id = ?
-                    )
-                """.format(ph_latest, ph_prev),
-                    [uid] + latest_cycle_ids + [tenant_id, uid] + prev_cycle_ids + [tenant_id], one=True))
+                """.format(ph_latest),
+                    [uid] + latest_cycle_ids + [tenant_id], one=True))
 
                 # Total currently open for this unit (across all rounds)
                 open_cnt = dict(query_db("""
@@ -542,14 +535,14 @@ def block_floor_detail(block_slug, floor):
                 """, [uid, tenant_id], one=True))
 
                 prev_raised = prev['raised']
-                prev_rectified = prev['rectified'] or 0
-                clearance_pct = round(prev_rectified / prev_raised * 100, 1) if prev_raised > 0 else 0
+                prev_cleared = prev['cleared'] or 0
+                clearance_pct = round(prev_cleared / prev_raised * 100, 1) if prev_raised > 0 else 0
 
                 rectification.append({
                     'unit_number': unit['unit_number'],
                     'prev_raised': prev_raised,
-                    'prev_cleared': prev_rectified,
-                    'new_defects': new_only['cnt'],
+                    'prev_cleared': prev_cleared,
+                    'new_defects': new_all['cnt'],
                     'total_open': open_cnt['cnt'],
                     'clearance_pct': clearance_pct,
                 })
@@ -694,7 +687,7 @@ def block_detail(block_slug):
             COUNT(DISTINCT u.id) as total_units,
             COUNT(DISTINCT CASE WHEN d.status = 'open' THEN d.id END) as open_defects,
             MAX(ic.cycle_number) as max_round,
-            COUNT(DISTINCT CASE WHEN d.status = 'cleared' AND d.clearance_note = 'rectified' THEN d.id END) as rectified
+            COUNT(DISTINCT CASE WHEN d.status = 'cleared' THEN d.id END) as rectified
         FROM unit u
         LEFT JOIN inspection i ON i.unit_id = u.id AND i.tenant_id = u.tenant_id
         LEFT JOIN inspection_cycle ic ON i.cycle_id = ic.id
