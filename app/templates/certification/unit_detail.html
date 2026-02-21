@@ -26,7 +26,7 @@
         <div class="flex items-center justify-between">
             <div>
                 <h1 class="text-lg font-bold text-gray-800">{{ unit.project_name }} / {{ unit.phase_name }}</h1>
-                <p class="text-sm text-gray-500">{{ unit.unit_type }} | Round {{ current_cycle or 0 }}</p>
+                <p class="text-sm text-gray-500">{{ unit.unit_type }} | Cycle {{ current_cycle or 0 }}</p>
             </div>
             
             <!-- Status + Action -->
@@ -60,7 +60,7 @@
         <div class="flex gap-6 mt-3 pt-3 border-t text-sm">
             <div><span class="font-semibold text-red-600">{{ open_defects|length }}</span> <span class="text-gray-500">open</span></div>
             <div><span class="font-semibold text-green-600">{{ cleared_defects|length }}</span> <span class="text-gray-500">cleared</span></div>
-            <div><span class="font-semibold text-gray-600">{{ current_cycle or 0 }}</span> <span class="text-gray-500">rounds</span></div>
+            <div><span class="font-semibold text-gray-600">{{ current_cycle or 0 }}</span> <span class="text-gray-500">cycles</span></div>
         </div>
     </div>
     
@@ -92,7 +92,7 @@
                     <span class="text-xs px-2 py-1 rounded {% if defect.defect_type == 'not_to_standard' %}bg-red-100 text-red-700{% else %}bg-yellow-100 text-yellow-700{% endif %}">
                         {% if defect.defect_type == 'not_to_standard' %}NTS{% else %}N/I{% endif %}
                     </span>
-                    <span class="text-xs text-gray-400">R{{ defect.raised_round }}</span>
+                    <span class="text-xs text-gray-400">C{{ defect.raised_round }}</span>
                 </div>
             </div>
             
@@ -175,7 +175,7 @@
                         <div class="text-green-600 mt-1">Cleared: {{ defect.clearance_note }}</div>
                         {% endif %}
                     </div>
-                    <span class="text-xs text-gray-400">R{{ defect.raised_round }} &rarr; R{{ defect.cleared_round or '?' }}</span>
+                    <span class="text-xs text-gray-400">C{{ defect.raised_round }} &rarr; C{{ defect.cleared_round or '?' }}</span>
                 </div>
             </div>
             {% endfor %}
@@ -194,7 +194,7 @@
             {% for insp in inspections %}
             <div class="p-3 flex justify-between items-center">
                 <div>
-                    <span class="font-medium">Round {{ insp.cycle_number }}</span>
+                    <span class="font-medium">Cycle {{ insp.cycle_number }}</span>
                     <span class="text-gray-500 ml-2">{{ insp.inspector_name }}</span>
                 </div>
                 <div class="flex items-center gap-2">
