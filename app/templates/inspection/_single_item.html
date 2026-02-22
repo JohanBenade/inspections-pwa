@@ -178,12 +178,15 @@
                 <button type="button" onclick="var inp=document.getElementById('defect-input-{{ item.id }}');var desc=inp.value.trim();if(!desc)return;htmx.ajax('POST','{{ url_for('inspection.add_defect', inspection_id=inspection.id, item_id=item.id) }}',{target:'#item-{{ item.id }}',swap:'innerHTML',values:{description:desc,area_id:'{{ area.id }}'}})" class="px-3 py-2 bg-red-500 text-white rounded text-sm font-medium hover:bg-red-600 flex-shrink-0">Add</button>
             </div>
             <div hx-get="{{ url_for('inspection.get_defect_suggestions', item_template_id=item.template_id, unit_id=inspection.unit_id) }}" hx-trigger="load" hx-swap="innerHTML"></div>
-            {% if has_chips %}
-            <a href="javascript:void(0)" onclick="document.getElementById('defect-expand-r2-{{ item.id }}').style.display='none';document.getElementById('defect-addmore-r2-{{ item.id }}').style.display='inline-block'" class="inline-block mt-2 text-sm font-medium text-blue-600" style="text-decoration:none;padding:6px 0">Done</a>
-            {% endif %}
+            <a href="javascript:void(0)" onclick="document.getElementById('defect-expand-r2-{{ item.id }}').style.display='none';document.getElementById('defect-done-r2-{{ item.id }}').style.display='block'" class="inline-block mt-2 text-sm font-medium text-blue-600" style="text-decoration:none;padding:6px 0">Done</a>
         </div>
         {% if has_chips %}
-        <a href="javascript:void(0)" id="defect-addmore-r2-{{ item.id }}" onclick="document.getElementById('defect-expand-r2-{{ item.id }}').style.display='block';this.style.display='none'" class="inline-block mt-1 text-sm font-medium text-blue-600" style="text-decoration:none;padding:6px 0">+ Add more</a>
+        <div id="defect-done-r2-{{ item.id }}" {% if not has_chips %}style="display:none"{% endif %}>
+            <div class="flex items-center gap-3 mt-2">
+                <span class="text-sm text-green-600 font-medium flex items-center gap-1"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg> Done</span>
+                <a href="javascript:void(0)" onclick="document.getElementById('defect-expand-r2-{{ item.id }}').style.display='block';document.getElementById('defect-done-r2-{{ item.id }}').style.display='none'" class="text-sm text-blue-600 font-medium" style="text-decoration:none">+ Add more</a>
+            </div>
+        </div>
         {% endif %}
     </div>
 
