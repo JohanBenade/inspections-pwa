@@ -122,8 +122,12 @@
         <button type="button" hx-post="{{ url_for('inspection.update_item', inspection_id=inspection.id, item_id=item.id) }}" hx-vals='{"status": "not_installed", "area_id": "{{ area.id }}"}' hx-target="#item-{{ item.id }}" hx-swap="innerHTML" class="px-3 py-2 rounded text-xs font-medium transition-colors {% if item.status == 'not_installed' %}bg-red-500 text-white{% else %}bg-gray-100 text-gray-600 hover:bg-red-100{% endif %}">Not Installed</button>
     </div>
 
+    {% elif is_followup and is_parent and has_children and not has_prior and item.status == 'ok' %}
+    {# C2: Parent OK in C1, no own defects - children handle themselves #}
+    <div class="text-xs text-green-600 italic">Carried forward - OK</div>
+
     {% elif is_parent and has_children %}
-    {# Parent with children: Installed / Not Installed (C1 only, C2 handled above) #}
+    {# Parent with children: Installed / Not Installed (C1 only, or C2 parent WITH defects) #}
     <div class="flex flex-wrap gap-2">
         <button type="button" hx-post="{{ url_for('inspection.update_item', inspection_id=inspection.id, item_id=item.id) }}" hx-vals='{"status": "ok", "area_id": "{{ area.id }}"}' hx-target="#item-{{ item.id }}" hx-swap="innerHTML" class="px-3 py-2 rounded text-xs font-medium transition-colors {% if item.status in ['ok', 'not_to_standard'] %}bg-green-500 text-white{% else %}bg-gray-100 text-gray-600 hover:bg-green-100{% endif %}">Installed</button>
         <button type="button" hx-post="{{ url_for('inspection.update_item', inspection_id=inspection.id, item_id=item.id) }}" hx-vals='{"status": "not_installed", "area_id": "{{ area.id }}"}' hx-target="#item-{{ item.id }}" hx-swap="innerHTML" class="px-3 py-2 rounded text-xs font-medium transition-colors {% if item.status == 'not_installed' %}bg-red-500 text-white{% else %}bg-gray-100 text-gray-600 hover:bg-red-100{% endif %}">Not Installed</button>
