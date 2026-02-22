@@ -90,7 +90,7 @@ def create_app():
             inspections = query_db("""
                 SELECT i.id AS inspection_id, i.status AS inspection_status,
                        i.inspection_date, i.started_at, i.submitted_at,
-                       u.unit_number, u.block, u.floor,
+                       u.id AS unit_id, u.unit_number, u.block, u.floor,
                        ic.cycle_number, ic.id AS cycle_id,
                        (SELECT COUNT(*) FROM inspection_item ii
                         WHERE ii.inspection_id = i.id

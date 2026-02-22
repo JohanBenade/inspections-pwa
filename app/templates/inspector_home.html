@@ -10,7 +10,7 @@
 {% if inspections %}
 <div class="space-y-3">
     {% for insp in inspections %}
-    <a href="{{ url_for('inspection.inspect', inspection_id=insp.inspection_id) }}"
+    <a href="{% if insp.inspection_status == 'not_started' %}{{ url_for('inspection.start_inspection', unit_id=insp.unit_id, cycle_id=insp.cycle_id) }}{% else %}{{ url_for('inspection.inspect', inspection_id=insp.inspection_id) }}{% endif %}"
        class="block bg-white rounded-lg shadow-sm border border-gray-200 p-4 hover:border-primary transition-colors">
         <div class="flex justify-between items-start mb-3">
             <div>
@@ -24,12 +24,19 @@
                     {% endif %}
                 </span>
             </div>
-            {% if insp.inspection_status == 'in_progress' %}
+            {% if insp.inspection_status == 'not_started' %}
+            <span class="px-2.5 py-1 text-xs font-semibold rounded-full bg-gray-100 text-gray-600">Not Started</span>
+            {% elif insp.inspection_status == 'in_progress' %}
             <span class="px-2.5 py-1 text-xs font-semibold rounded-full bg-blue-100 text-blue-700">In Progress</span>
             {% elif insp.inspection_status == 'submitted' %}
             <span class="px-2.5 py-1 text-xs font-semibold rounded-full bg-purple-100 text-purple-700">Submitted</span>
             {% endif %}
         </div>
+        {% if insp.inspection_status == 'not_started' %}
+        <div class="mb-2">
+            <div class="text-sm text-gray-400">Tap to start inspection</div>
+        </div>
+        {% else %}
         {% set pct = ((insp.completed_items / insp.total_items * 100) | round | int) if insp.total_items > 0 else 0 %}
         <div class="mb-2">
             <div class="flex justify-between text-xs text-gray-500 mb-1">
@@ -44,9 +51,12 @@
                     style="width: {{ pct }}%"></div>
             </div>
         </div>
+        {% endif %}
         <div class="flex justify-between items-center text-sm">
             <span class="text-gray-500">Cycle {{ insp.cycle_number }}</span>
-            {% if insp.defect_count > 0 %}
+            {% if insp.inspection_status == 'not_started' %}
+            <span class="text-gray-400">Ready</span>
+            {% elif insp.defect_count > 0 %}
             <span class="text-red-600 font-medium">{{ insp.defect_count }} defect{{ 's' if insp.defect_count != 1 }}</span>
             {% else %}
             <span class="text-green-600 font-medium">No defects</span>
