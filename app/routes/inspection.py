@@ -245,10 +245,10 @@ def inspect(inspection_id):
             SELECT COUNT(*) as total_to_review,
                    SUM(CASE WHEN ii.marked_at IS NOT NULL THEN 1 ELSE 0 END) as actioned
             FROM inspection_item ii
-            JOIN defect d ON d.item_template_id = ii.item_template_id
-                AND d.unit_id = ? AND d.status = 'open'
             WHERE ii.inspection_id = ?
-        """, [inspection['unit_id'], inspection_id], one=True)
+            AND ii.status != 'skipped'
+            AND NOT (ii.status = 'ok' AND ii.marked_at IS NULL)
+        """, [inspection_id], one=True)
         progress['followup_total'] = followup_raw['total_to_review'] or 0
         progress['followup_actioned'] = followup_raw['actioned'] or 0
     
@@ -1483,10 +1483,10 @@ def get_progress(inspection_id):
             SELECT COUNT(*) as total_to_review,
                    SUM(CASE WHEN ii.marked_at IS NOT NULL THEN 1 ELSE 0 END) as actioned
             FROM inspection_item ii
-            JOIN defect d ON d.item_template_id = ii.item_template_id
-                AND d.unit_id = ? AND d.status = 'open'
             WHERE ii.inspection_id = ?
-        """, [inspection['unit_id'], inspection_id], one=True)
+            AND ii.status != 'skipped'
+            AND NOT (ii.status = 'ok' AND ii.marked_at IS NULL)
+        """, [inspection_id], one=True)
         progress['followup_total'] = followup_raw['total_to_review'] or 0
         progress['followup_actioned'] = followup_raw['actioned'] or 0
     
