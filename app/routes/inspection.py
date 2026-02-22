@@ -498,6 +498,8 @@ def inspect_area(inspection_id, area_id):
         # First pass: identify which items have defects or need action
         defective_template_ids = set()
         parent_has_defective_child = set()
+        parent_has_active_child = set()
+        parent_has_pending_child = set()
         
         for item in items_raw:
             is_defective = item['status'] in ['not_to_standard', 'not_installed']
@@ -510,6 +512,12 @@ def inspect_area(inspection_id, area_id):
                 defective_template_ids.add(item['template_id'])
                 if item['parent_item_id']:
                     parent_has_defective_child.add(item['parent_item_id'])
+            # Active = still needs attention (open priors, current defects, pending, or defective)
+            if is_defective or is_pending or has_open_prior or has_current:
+                if item['parent_item_id']:
+                    parent_has_active_child.add(item['parent_item_id'])
+            if is_pending and item['parent_item_id']:
+                parent_has_pending_child.add(item['parent_item_id'])
         
         # Check if category has any defects
         category_has_defects = len(defective_template_ids) > 0
@@ -535,13 +543,13 @@ def inspect_area(inspection_id, area_id):
                 if not category_has_defects:
                     continue
                 
-                # Show parent if it has defective children OR is itself defective OR has any prior/current
+                # Show parent if it has active children OR is itself defective OR has open prior/current
                 if is_parent:
-                    if item['template_id'] not in parent_has_defective_child and not is_defective and not has_any_prior and not has_current:
+                    if item['template_id'] not in parent_has_active_child and not is_defective and not has_open_prior and not has_current:
                         continue
-                # Show child only if it's defective or has any prior/current defects
+                # Show child only if it has open priors, current defects, or is defective
                 else:
-                    if not is_defective and not has_any_prior and not has_current:
+                    if not is_defective and not has_open_prior and not has_current:
                         continue
             
             if filter_mode == 'excluded':
@@ -553,7 +561,7 @@ def inspect_area(inspection_id, area_id):
                 # C2: show only items that still need inspection (pending)
                 if item['status'] != 'pending':
                     # But show parents if they have pending children
-                    if is_parent and item['template_id'] in parent_has_defective_child:
+                    if is_parent and item['template_id'] in parent_has_pending_child:
                         pass  # Keep parent visible
                     else:
                         continue
