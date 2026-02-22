@@ -52,12 +52,35 @@ def start_inspection(unit_id):
     )
     
     if existing:
-        return redirect(url_for('inspection.inspect', inspection_id=existing['id']))
-    
-    inspection_id = generate_id()
-    now = datetime.now(timezone.utc).isoformat()
-    user_id = session['user_id']
-    user_name = session['user_name']
+        # Check if inspection already has items (may have been pre-created)
+        item_count = query_db(
+            "SELECT COUNT(*) as cnt FROM inspection_item WHERE inspection_id = ?",
+            [existing['id']], one=True
+        )
+        if item_count and item_count['cnt'] > 0:
+            return redirect(url_for('inspection.inspect', inspection_id=existing['id']))
+        # Pre-created inspection without items - reuse and populate
+        inspection_id = existing['id']
+        now = datetime.now(timezone.utc).isoformat()
+        user_id = session['user_id']
+        user_name = session['user_name']
+        db.execute("""
+            UPDATE inspection SET status = 'in_progress', started_at = ?,
+            inspector_id = ?, inspector_name = ?, updated_at = ?
+            WHERE id = ?
+        """, [now, user_id, user_name, now, inspection_id])
+    else:
+        inspection_id = generate_id()
+        now = datetime.now(timezone.utc).isoformat()
+        user_id = session['user_id']
+        user_name = session['user_name']
+        db.execute("""
+            INSERT INTO inspection
+            (id, tenant_id, unit_id, cycle_id, inspection_date,
+             inspector_id, inspector_name, status, started_at, created_at, updated_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, 'in_progress', ?, ?, ?)
+        """, [inspection_id, tenant_id, unit_id, cycle_id,
+              date.today().isoformat(), user_id, user_name, now, now, now])
     
     # Check if this is a followup cycle
     if cycle['cycle_number'] > 1:
@@ -68,14 +91,6 @@ def start_inspection(unit_id):
             WHERE i.unit_id = ? AND ic.cycle_number = ?
             AND i.tenant_id = ?
         """, [unit_id, cycle['cycle_number'] - 1, tenant_id], one=True)
-    
-    db.execute("""
-        INSERT INTO inspection
-        (id, tenant_id, unit_id, cycle_id, inspection_date,
-         inspector_id, inspector_name, status, started_at, created_at, updated_at)
-        VALUES (?, ?, ?, ?, ?, ?, ?, 'in_progress', ?, ?, ?)
-    """, [inspection_id, tenant_id, unit_id, cycle_id,
-          date.today().isoformat(), user_id, user_name, now, now, now])
     
     templates = query_db(
         "SELECT id FROM item_template WHERE tenant_id = ?", [tenant_id]
