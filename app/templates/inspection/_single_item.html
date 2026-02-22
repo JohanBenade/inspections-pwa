@@ -53,7 +53,7 @@
             {% else %}
             <div class="flex-1 mr-2">
                 <span class="text-sm text-gray-700">{{ pd.comment or 'No comment' }}</span>
-                <span class="ml-1.5 text-xs text-gray-400">R{{ pd.cycle }}</span>
+                <span class="ml-1.5 text-xs text-gray-400">C{{ pd.cycle }}</span>
             </div>
             <button type="button"
                 hx-post="{{ url_for('inspection.clear_prior_defect', inspection_id=inspection.id, defect_id=pd.id) }}"
@@ -85,20 +85,7 @@
     {# ============================================================ #}
     {# BUTTONS SECTION                                               #}
     {# ============================================================ #}
-    {% if is_parent and has_children %}
-    {# Parent with children: Installed / Not Installed #}
-    <div class="flex flex-wrap gap-2">
-        <button type="button" hx-post="{{ url_for('inspection.update_item', inspection_id=inspection.id, item_id=item.id) }}" hx-vals='{"status": "ok", "area_id": "{{ area.id }}"}' hx-target="#item-{{ item.id }}" hx-swap="innerHTML" class="px-3 py-2 rounded text-xs font-medium transition-colors {% if item.status in ['ok', 'not_to_standard'] %}bg-green-500 text-white{% else %}bg-gray-100 text-gray-600 hover:bg-green-100{% endif %}">Installed</button>
-        <button type="button" hx-post="{{ url_for('inspection.update_item', inspection_id=inspection.id, item_id=item.id) }}" hx-vals='{"status": "not_installed", "area_id": "{{ area.id }}"}' hx-target="#item-{{ item.id }}" hx-swap="innerHTML" class="px-3 py-2 rounded text-xs font-medium transition-colors {% if item.status == 'not_installed' %}bg-red-500 text-white{% else %}bg-gray-100 text-gray-600 hover:bg-red-100{% endif %}">Not Installed</button>
-    </div>
-
-    {% elif parent_not_installed %}
-    <div class="text-xs text-gray-400 italic">Parent not installed</div>
-
-    {% elif parent_pending %}
-    <div class="text-xs text-gray-400 italic">Mark parent as Installed first</div>
-
-    {% elif show_prior and not was_ni %}
+    {% if show_prior and not was_ni %}
     {# NTS items with prior defects: NO item-level buttons.
        Clearing all defects = OK. Leaving any open = NTS.
        Status summary shown when all cleared. #}
@@ -135,8 +122,21 @@
         <button type="button" hx-post="{{ url_for('inspection.update_item', inspection_id=inspection.id, item_id=item.id) }}" hx-vals='{"status": "not_installed", "area_id": "{{ area.id }}"}' hx-target="#item-{{ item.id }}" hx-swap="innerHTML" class="px-3 py-2 rounded text-xs font-medium transition-colors {% if item.status == 'not_installed' %}bg-red-500 text-white{% else %}bg-gray-100 text-gray-600 hover:bg-red-100{% endif %}">Not Installed</button>
     </div>
 
+    {% elif is_parent and has_children %}
+    {# Parent with children: Installed / Not Installed (C1 only, C2 handled above) #}
+    <div class="flex flex-wrap gap-2">
+        <button type="button" hx-post="{{ url_for('inspection.update_item', inspection_id=inspection.id, item_id=item.id) }}" hx-vals='{"status": "ok", "area_id": "{{ area.id }}"}' hx-target="#item-{{ item.id }}" hx-swap="innerHTML" class="px-3 py-2 rounded text-xs font-medium transition-colors {% if item.status in ['ok', 'not_to_standard'] %}bg-green-500 text-white{% else %}bg-gray-100 text-gray-600 hover:bg-green-100{% endif %}">Installed</button>
+        <button type="button" hx-post="{{ url_for('inspection.update_item', inspection_id=inspection.id, item_id=item.id) }}" hx-vals='{"status": "not_installed", "area_id": "{{ area.id }}"}' hx-target="#item-{{ item.id }}" hx-swap="innerHTML" class="px-3 py-2 rounded text-xs font-medium transition-colors {% if item.status == 'not_installed' %}bg-red-500 text-white{% else %}bg-gray-100 text-gray-600 hover:bg-red-100{% endif %}">Not Installed</button>
+    </div>
+
+    {% elif parent_not_installed %}
+    <div class="text-xs text-gray-400 italic">Parent not installed</div>
+
+    {% elif parent_pending %}
+    <div class="text-xs text-gray-400 italic">Mark parent as Installed first</div>
+
     {% else %}
-    {# === INSPECT-FIRST FLOW (R1 or R2 items without prior defects) === #}
+    {# === INSPECT-FIRST FLOW (C1 or C2 items without prior defects) === #}
     <div class="flex flex-wrap gap-2">
         {% if item.status == 'not_to_standard' %}
         <span class="px-3 py-2 rounded text-xs font-medium bg-red-500 text-white inline-flex items-center">N.T.S.</span>
