@@ -925,10 +925,9 @@ def add_defect(inspection_id, item_id):
     # Block adding defect matching an open prior defect on same item
     item_peek = query_db("SELECT item_template_id FROM inspection_item WHERE id = ? AND inspection_id = ?", [item_id, inspection_id], one=True)
     if item_peek:
-        insp_peek = query_db("""
-            SELECT i.unit_id, ic.cycle_id FROM inspection i
-            JOIN inspection_cycle ic ON i.cycle_id = ic.id WHERE i.id = ?
-        """, [inspection_id], one=True)
+        insp_peek = query_db(
+            "SELECT unit_id, cycle_id FROM inspection WHERE id = ?",
+            [inspection_id], one=True)
         if insp_peek:
             open_prior = query_db("""
                 SELECT id FROM defect WHERE unit_id = ? AND item_template_id = ?
