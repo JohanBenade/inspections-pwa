@@ -245,10 +245,17 @@ def inspect(inspection_id):
             SELECT COUNT(*) as total_to_review,
                    SUM(CASE WHEN ii.marked_at IS NOT NULL THEN 1 ELSE 0 END) as actioned
             FROM inspection_item ii
+            JOIN defect d ON d.item_template_id = ii.item_template_id
+                AND d.unit_id = ?
+                AND d.raised_cycle_id = (
+                    SELECT ic2.id FROM inspection_cycle ic2
+                    WHERE ic2.block = (SELECT block FROM inspection_cycle WHERE id = ?)
+                    AND ic2.floor = (SELECT floor FROM inspection_cycle WHERE id = ?)
+                    AND ic2.cycle_number = (SELECT cycle_number - 1 FROM inspection_cycle WHERE id = ?)
+                    AND ic2.tenant_id = 'MONOGRAPH'
+                )
             WHERE ii.inspection_id = ?
-            AND ii.status != 'skipped'
-            AND NOT (ii.status = 'ok' AND ii.marked_at IS NULL)
-        """, [inspection_id], one=True)
+        """, [inspection['unit_id'], inspection['cycle_id'], inspection['cycle_id'], inspection['cycle_id'], inspection_id], one=True)
         progress['followup_total'] = followup_raw['total_to_review'] or 0
         progress['followup_actioned'] = followup_raw['actioned'] or 0
     
@@ -1435,7 +1442,7 @@ def submit_inspection(inspection_id):
 @require_auth
 def get_progress(inspection_id):
     inspection = query_db("""
-        SELECT i.status, i.unit_id, ic.cycle_number
+        SELECT i.status, i.unit_id, ic.cycle_number, ic.id as cycle_id
         FROM inspection i
         JOIN inspection_cycle ic ON i.cycle_id = ic.id
         WHERE i.id = ?
@@ -1483,10 +1490,17 @@ def get_progress(inspection_id):
             SELECT COUNT(*) as total_to_review,
                    SUM(CASE WHEN ii.marked_at IS NOT NULL THEN 1 ELSE 0 END) as actioned
             FROM inspection_item ii
+            JOIN defect d ON d.item_template_id = ii.item_template_id
+                AND d.unit_id = ?
+                AND d.raised_cycle_id = (
+                    SELECT ic2.id FROM inspection_cycle ic2
+                    WHERE ic2.block = (SELECT block FROM inspection_cycle WHERE id = ?)
+                    AND ic2.floor = (SELECT floor FROM inspection_cycle WHERE id = ?)
+                    AND ic2.cycle_number = (SELECT cycle_number - 1 FROM inspection_cycle WHERE id = ?)
+                    AND ic2.tenant_id = 'MONOGRAPH'
+                )
             WHERE ii.inspection_id = ?
-            AND ii.status != 'skipped'
-            AND NOT (ii.status = 'ok' AND ii.marked_at IS NULL)
-        """, [inspection_id], one=True)
+        """, [inspection['unit_id'], inspection['cycle_id'], inspection['cycle_id'], inspection['cycle_id'], inspection_id], one=True)
         progress['followup_total'] = followup_raw['total_to_review'] or 0
         progress['followup_actioned'] = followup_raw['actioned'] or 0
     
