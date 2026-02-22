@@ -100,7 +100,17 @@ def create_app():
                         AND ii.status NOT IN ('skipped', 'pending')) AS completed_items,
                        (SELECT COUNT(*) FROM inspection_item ii2
                         WHERE ii2.inspection_id = i.id
-                        AND ii2.status IN ('not_to_standard', 'not_installed')) AS defect_count
+                        AND ii2.status IN ('not_to_standard', 'not_installed')) AS defect_count,
+                       (SELECT COUNT(*) FROM defect d2
+                        JOIN inspection_cycle ic2 ON d2.raised_cycle_id = ic2.id
+                        WHERE d2.unit_id = u.id AND d2.status = 'open'
+                        AND ic2.cycle_number < ic.cycle_number
+                        AND d2.tenant_id = i.tenant_id) AS prior_open_defects,
+                       (SELECT COUNT(*) FROM defect d3
+                        JOIN inspection_cycle ic3 ON d3.raised_cycle_id = ic3.id
+                        WHERE d3.unit_id = u.id
+                        AND ic3.cycle_number < ic.cycle_number
+                        AND d3.tenant_id = i.tenant_id) AS prior_defects_total
                 FROM inspection i
                 JOIN unit u ON i.unit_id = u.id
                 JOIN inspection_cycle ic ON i.cycle_id = ic.id

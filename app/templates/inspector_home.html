@@ -36,6 +36,22 @@
         <div class="mb-2">
             <div class="text-sm text-gray-400">Tap to start inspection</div>
         </div>
+        {% elif insp.cycle_number > 1 %}
+        {% set reviewed = insp.prior_defects_total - insp.prior_open_defects %}
+        {% set pct = ((reviewed / insp.prior_defects_total * 100) | round | int) if insp.prior_defects_total > 0 else 0 %}
+        <div class="mb-2">
+            <div class="flex justify-between text-xs text-gray-500 mb-1">
+                <span>Defect Review</span>
+                <span>{{ reviewed }} / {{ insp.prior_defects_total }} reviewed</span>
+            </div>
+            <div class="w-full bg-gray-200 rounded-full h-2.5">
+                <div class="h-2.5 rounded-full transition-all duration-300
+                    {% if pct == 100 %}bg-green-500
+                    {% elif pct >= 50 %}bg-blue-500
+                    {% else %}bg-amber-500{% endif %}"
+                    style="width: {{ pct }}%"></div>
+            </div>
+        </div>
         {% else %}
         {% set pct = ((insp.completed_items / insp.total_items * 100) | round | int) if insp.total_items > 0 else 0 %}
         <div class="mb-2">
@@ -56,6 +72,10 @@
             <span class="text-gray-500">Cycle {{ insp.cycle_number }}</span>
             {% if insp.inspection_status == 'not_started' %}
             <span class="text-gray-400">Ready</span>
+            {% elif insp.cycle_number > 1 and insp.prior_open_defects > 0 %}
+            <span class="text-red-600 font-medium">{{ insp.prior_open_defects }} open defect{{ 's' if insp.prior_open_defects != 1 }}</span>
+            {% elif insp.cycle_number > 1 and insp.prior_open_defects == 0 %}
+            <span class="text-green-600 font-medium">All cleared</span>
             {% elif insp.defect_count > 0 %}
             <span class="text-red-600 font-medium">{{ insp.defect_count }} defect{{ 's' if insp.defect_count != 1 }}</span>
             {% else %}
