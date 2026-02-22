@@ -500,6 +500,7 @@ def inspect_area(inspection_id, area_id):
         parent_has_defective_child = set()
         parent_has_active_child = set()
         parent_has_pending_child = set()
+        parent_has_inspected_child = set()
         
         for item in items_raw:
             is_defective = item['status'] in ['not_to_standard', 'not_installed']
@@ -518,6 +519,8 @@ def inspect_area(inspection_id, area_id):
                     parent_has_active_child.add(item['parent_item_id'])
             if is_pending and item['parent_item_id']:
                 parent_has_pending_child.add(item['parent_item_id'])
+            if item['marked_at'] is not None and item['parent_item_id']:
+                parent_has_inspected_child.add(item['parent_item_id'])
         
         # Check if category has any defects
         category_has_defects = len(defective_template_ids) > 0
@@ -569,7 +572,7 @@ def inspect_area(inspection_id, area_id):
             if filter_mode == 'inspected':
                 # Show items actioned this cycle (marked_at set, not carried-forward ok)
                 if item['marked_at'] is None:
-                    if is_parent and item['template_id'] in parent_has_defective_child:
+                    if is_parent and item['template_id'] in parent_has_inspected_child:
                         pass  # Keep parent if it has actioned children
                     else:
                         continue
