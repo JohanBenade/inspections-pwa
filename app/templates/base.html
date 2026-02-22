@@ -213,6 +213,29 @@
     <!-- Spacer for bottom nav on mobile -->
     <div class="h-16 md:hidden"></div>
     
+    <!-- Custom confirm dialog -->
+    <div id="confirm-modal" style="display:none" class="fixed inset-0 z-[999] flex items-center justify-center">
+        <div class="absolute inset-0 bg-black/50" onclick="window._confirmReject()"></div>
+        <div class="relative bg-white rounded-xl shadow-2xl p-6 mx-4 max-w-sm w-full">
+            <p id="confirm-msg" class="text-gray-800 text-base font-medium mb-6"></p>
+            <div class="flex gap-3 justify-end">
+                <button onclick="window._confirmReject()" class="px-4 py-2.5 rounded-lg text-sm font-medium text-gray-600 bg-gray-100 hover:bg-gray-200 transition-colors">Cancel</button>
+                <button onclick="window._confirmResolve()" class="px-4 py-2.5 rounded-lg text-sm font-medium text-white bg-red-500 hover:bg-red-600 transition-colors">Confirm</button>
+            </div>
+        </div>
+    </div>
+    <script>
+    document.body.addEventListener('htmx:confirm', function(e) {
+        if (!e.detail.question) return;
+        e.preventDefault();
+        var m = document.getElementById('confirm-modal');
+        document.getElementById('confirm-msg').textContent = e.detail.question;
+        m.style.display = 'flex';
+        window._confirmResolve = function() { m.style.display='none'; e.detail.issueRequest(); };
+        window._confirmReject = function() { m.style.display='none'; };
+    });
+    </script>
+
     <!-- PWA wake recovery: detect when app returns from background and verify connectivity -->
     <script>
     (function() {
@@ -236,6 +259,29 @@
     })();
     </script>
     
+    <!-- Custom confirm dialog -->
+    <div id="confirm-modal" style="display:none" class="fixed inset-0 z-[999] flex items-center justify-center">
+        <div class="absolute inset-0 bg-black/50" onclick="window._confirmReject()"></div>
+        <div class="relative bg-white rounded-xl shadow-2xl p-6 mx-4 max-w-sm w-full">
+            <p id="confirm-msg" class="text-gray-800 text-base font-medium mb-6"></p>
+            <div class="flex gap-3 justify-end">
+                <button onclick="window._confirmReject()" class="px-4 py-2.5 rounded-lg text-sm font-medium text-gray-600 bg-gray-100 hover:bg-gray-200 transition-colors">Cancel</button>
+                <button onclick="window._confirmResolve()" class="px-4 py-2.5 rounded-lg text-sm font-medium text-white bg-red-500 hover:bg-red-600 transition-colors">Confirm</button>
+            </div>
+        </div>
+    </div>
+    <script>
+    document.body.addEventListener('htmx:confirm', function(e) {
+        if (!e.detail.question) return;
+        e.preventDefault();
+        var m = document.getElementById('confirm-modal');
+        document.getElementById('confirm-msg').textContent = e.detail.question;
+        m.style.display = 'flex';
+        window._confirmResolve = function() { m.style.display='none'; e.detail.issueRequest(); };
+        window._confirmReject = function() { m.style.display='none'; };
+    });
+    </script>
+
     <!-- PWA wake recovery -->
     <script>
     (function() {

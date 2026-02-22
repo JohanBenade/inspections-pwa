@@ -921,6 +921,28 @@ def add_defect(inspection_id, item_id):
     area_id = request.form.get('area_id')
     if not description:
         return '', 204
+
+    # Block adding defect matching an open prior defect on same item
+    item_peek = query_db("SELECT item_template_id FROM inspection_item WHERE id = ? AND inspection_id = ?", [item_id, inspection_id], one=True)
+    if item_peek:
+        insp_peek = query_db("""
+            SELECT i.unit_id, ic.cycle_id FROM inspection i
+            JOIN inspection_cycle ic ON i.cycle_id = ic.id WHERE i.id = ?
+        """, [inspection_id], one=True)
+        if insp_peek:
+            open_prior = query_db("""
+                SELECT id FROM defect WHERE unit_id = ? AND item_template_id = ?
+                AND status = 'open' AND LOWER(original_comment) = LOWER(?)
+                AND raised_cycle_id != (SELECT cycle_id FROM inspection WHERE id = ?)
+            """, [insp_peek['unit_id'], item_peek['item_template_id'], description, inspection_id], one=True)
+            if open_prior:
+                if area_id:
+                    html = _render_single_item(inspection_id, item_id, tenant_id, area_id, force_expanded=True)
+                    response = make_response(html)
+                    response.headers['HX-Trigger'] = 'areaUpdated'
+                    return response
+                return '', 204
+
     inspection = query_db("""
         SELECT i.*, ic.cycle_number, ic.id as cycle_id
         FROM inspection i
@@ -1648,7 +1670,17 @@ def get_area_badges(inspection_id):
 def get_defect_suggestions(item_template_id):
     tenant_id = session['tenant_id']
     mode = request.args.get('mode', 'active')
-    
+    unit_id = request.args.get('unit_id')
+
+    # Build set of open prior defect descriptions to exclude
+    exclude_descs = set()
+    if unit_id:
+        open_priors = query_db("""
+            SELECT LOWER(original_comment) as lc FROM defect
+            WHERE unit_id = ? AND item_template_id = ? AND status = 'open'
+        """, [unit_id, item_template_id])
+        exclude_descs = set(r['lc'] for r in (open_priors or []))
+
     # Get item-specific suggestions
     suggestions = query_db("""
         SELECT description, usage_count FROM defect_library
@@ -1674,6 +1706,12 @@ def get_defect_suggestions(item_template_id):
                 LIMIT 5
             """, [tenant_id, cat['category_name']])
     
+    if not suggestions:
+        return ''
+
+    # Filter out open prior defect descriptions
+    if exclude_descs:
+        suggestions = [s for s in suggestions if s['description'].lower() not in exclude_descs]
     if not suggestions:
         return ''
     

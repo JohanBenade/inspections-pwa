@@ -176,7 +176,7 @@
             <input type="text" id="defect-input-{{ item.id }}" placeholder="Add new defect found..." autocomplete="off" class="flex-1 px-3 py-2 border-2 border-gray-300 rounded text-sm focus:ring-2 focus:ring-red-500 auto-caps" onkeydown="if(event.key==='Enter'){event.preventDefault();this.nextElementSibling.click()}">
             <button type="button" onclick="var inp=document.getElementById('defect-input-{{ item.id }}');var desc=inp.value.trim();if(!desc)return;htmx.ajax('POST','{{ url_for('inspection.add_defect', inspection_id=inspection.id, item_id=item.id) }}',{target:'#item-{{ item.id }}',swap:'innerHTML',values:{description:desc,area_id:'{{ area.id }}'}})" class="px-3 py-2 bg-red-500 text-white rounded text-sm font-medium hover:bg-red-600 flex-shrink-0">Add</button>
         </div>
-        <div hx-get="{{ url_for('inspection.get_defect_suggestions', item_template_id=item.template_id) }}" hx-trigger="load" hx-swap="innerHTML"></div>
+        <div hx-get="{{ url_for('inspection.get_defect_suggestions', item_template_id=item.template_id, unit_id=inspection.unit_id) }}" hx-trigger="load" hx-swap="innerHTML"></div>
     </div>
 
     {# NTS items (non-followup, no prior/current defects): chips + expandable input with Done/Add more #}
@@ -194,7 +194,7 @@
                 <input type="text" id="defect-input-{{ item.id }}" placeholder="Describe the defect..." autocomplete="off" class="flex-1 px-3 py-2 border-2 border-red-300 rounded text-sm focus:ring-2 focus:ring-red-500 auto-caps" onkeydown="if(event.key==='Enter'){event.preventDefault();this.nextElementSibling.click()}">
                 <button type="button" onclick="var inp=document.getElementById('defect-input-{{ item.id }}');var desc=inp.value.trim();if(!desc)return;htmx.ajax('POST','{{ url_for('inspection.add_defect', inspection_id=inspection.id, item_id=item.id) }}',{target:'#item-{{ item.id }}',swap:'innerHTML',values:{description:desc,area_id:'{{ area.id }}'}})" class="px-3 py-2 bg-red-500 text-white rounded text-sm font-medium hover:bg-red-600 flex-shrink-0">Add</button>
             </div>
-            <div hx-get="{{ url_for('inspection.get_defect_suggestions', item_template_id=item.template_id) }}" hx-trigger="load" hx-swap="innerHTML"></div>
+            <div hx-get="{{ url_for('inspection.get_defect_suggestions', item_template_id=item.template_id, unit_id=inspection.unit_id) }}" hx-trigger="load" hx-swap="innerHTML"></div>
             {% if has_chips %}
             <a href="javascript:void(0)" onclick="document.getElementById('defect-expand-{{ item.id }}').style.display='none';document.getElementById('defect-addmore-{{ item.id }}').style.display='inline-block'" class="inline-block mt-2 text-sm font-medium text-blue-600" style="text-decoration:none;padding:6px 0">Done</a>
             {% endif %}
@@ -208,7 +208,7 @@
     {% elif not show_prior and not has_current and item.status != 'not_to_standard' %}
     <div id="inspect-panel-{{ item.id }}" style="display:none" class="mt-2 defect-input-wrapper" data-add-url="{{ url_for('inspection.add_defect', inspection_id=inspection.id, item_id=item.id) }}" data-area-id="{{ area.id }}" data-item-id="item-{{ item.id }}">
         <div class="text-xs font-medium text-gray-500 uppercase tracking-wide mb-2">What to look for</div>
-        <div hx-get="{{ url_for('inspection.get_defect_suggestions', item_template_id=item.template_id) }}" hx-trigger="loadPills once" hx-swap="innerHTML"></div>
+        <div hx-get="{{ url_for('inspection.get_defect_suggestions', item_template_id=item.template_id, unit_id=inspection.unit_id) }}" hx-trigger="loadPills once" hx-swap="innerHTML"></div>
         <div class="flex gap-2 mt-2">
             <input type="text" id="defect-input-{{ item.id }}" placeholder="Describe the defect..." autocomplete="off" class="flex-1 px-3 py-2 border-2 border-red-300 rounded text-sm focus:ring-2 focus:ring-red-500 auto-caps" onkeydown="if(event.key==='Enter'){event.preventDefault();this.nextElementSibling.click()}">
             <button type="button" onclick="var inp=document.getElementById('defect-input-{{ item.id }}');var desc=inp.value.trim();if(!desc)return;htmx.ajax('POST','{{ url_for('inspection.add_defect', inspection_id=inspection.id, item_id=item.id) }}',{target:'#item-{{ item.id }}',swap:'innerHTML',values:{description:desc,area_id:'{{ area.id }}'}})" class="px-3 py-2 bg-red-500 text-white rounded text-sm font-medium hover:bg-red-600 flex-shrink-0">Add</button>
