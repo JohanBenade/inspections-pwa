@@ -11,6 +11,7 @@
 {% set is_skipped = item.status == 'skipped' %}
 {% set has_prior = item.has_prior_defects|default(false) %}
 {% set has_open_prior = item.has_open_prior|default(false) %}
+{% set was_ni = item.was_not_installed|default(false) %}
 {% set show_prior = is_followup and has_prior %}
 {% set has_chips = item.inspection_defects|length > 0 %}
 {% set has_current = item.current_defects|default([])|length > 0 %}
@@ -97,8 +98,8 @@
     {% elif parent_pending %}
     <div class="text-xs text-gray-400 italic">Mark parent as Installed first</div>
 
-    {% elif show_prior %}
-    {# Followup item with prior defects: NO item-level buttons.
+    {% elif show_prior and not was_ni %}
+    {# NTS items with prior defects: NO item-level buttons.
        Clearing all defects = OK. Leaving any open = NTS.
        Status summary shown when all cleared. #}
     {% if not has_open_prior and not has_chips and not has_current %}
@@ -106,7 +107,33 @@
         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
         All prior defects cleared
     </div>
+    {% elif has_open_prior and item.status == 'pending' %}
+    {# Inspector hasn't actioned yet - show confirm button #}
+    <div class="mt-2">
+        <button type="button"
+            hx-post="{{ url_for('inspection.confirm_defects_remain', inspection_id=inspection.id, item_id=item.id) }}"
+            hx-vals='{"area_id": "{{ area.id }}"}'
+            hx-target="#item-{{ item.id }}"
+            hx-swap="innerHTML"
+            class="px-3 py-2 rounded text-xs font-medium bg-red-100 text-red-700 hover:bg-red-200 transition-colors">
+            Defects Remain
+        </button>
+    </div>
+    {% elif has_open_prior and item.status == 'not_to_standard' %}
+    <div class="flex items-center gap-1.5 text-sm text-red-600 font-medium mt-1">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+        Defects confirmed open
+    </div>
     {% endif %}
+
+    {% elif show_prior and was_ni %}
+    {# NI items: show Installed/Not Installed buttons.
+       Installed = auto-clears NI defects, opens inspect panel for quality check.
+       Not Installed = stays NI. #}
+    <div class="flex flex-wrap gap-2 mt-2">
+        <button type="button" hx-post="{{ url_for('inspection.update_item', inspection_id=inspection.id, item_id=item.id) }}" hx-vals='{"status": "ok", "area_id": "{{ area.id }}", "clear_ni_defects": "1"}' hx-target="#item-{{ item.id }}" hx-swap="innerHTML" class="px-3 py-2 rounded text-xs font-medium transition-colors {% if item.status in ['ok', 'not_to_standard'] %}bg-green-500 text-white{% else %}bg-gray-100 text-gray-600 hover:bg-green-100{% endif %}">Installed</button>
+        <button type="button" hx-post="{{ url_for('inspection.update_item', inspection_id=inspection.id, item_id=item.id) }}" hx-vals='{"status": "not_installed", "area_id": "{{ area.id }}"}' hx-target="#item-{{ item.id }}" hx-swap="innerHTML" class="px-3 py-2 rounded text-xs font-medium transition-colors {% if item.status == 'not_installed' %}bg-red-500 text-white{% else %}bg-gray-100 text-gray-600 hover:bg-red-100{% endif %}">Not Installed</button>
+    </div>
 
     {% else %}
     {# === INSPECT-FIRST FLOW (R1 or R2 items without prior defects) === #}

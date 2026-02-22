@@ -81,6 +81,15 @@ def start_inspection(unit_id):
         "SELECT id FROM item_template WHERE tenant_id = ?", [tenant_id]
     )
     
+    # Get current cycle exclusions
+    current_exclusions = set()
+    excluded_rows = query_db("""
+        SELECT item_template_id FROM cycle_excluded_item
+        WHERE cycle_id = ? AND tenant_id = ?
+    """, [cycle_id, tenant_id])
+    if excluded_rows:
+        current_exclusions = set(r['item_template_id'] for r in excluded_rows)
+    
     # If followup cycle, carry forward statuses from previous inspection
     prev_item_map = {}
     if cycle['cycle_number'] > 1 and prev_inspection:
@@ -92,19 +101,48 @@ def start_inspection(unit_id):
         prev_item_map = {item['item_template_id']: item for item in prev_items}
     
     for t in templates:
-        prev = prev_item_map.get(t['id'])
-        if prev:
-            status = prev['status']
-            comment = prev['comment'] if status in ('not_to_standard', 'not_installed') else None
-        else:
-            status = 'pending'
+        template_id = t['id']
+        
+        # Scenario 6: Current exclusion wins over everything
+        if template_id in current_exclusions:
+            status = 'skipped'
             comment = None
+        elif cycle['cycle_number'] > 1 and prev_item_map:
+            prev = prev_item_map.get(template_id)
+            if not prev or prev['status'] == 'pending':
+                # No previous data or import bug (never marked) - treat as ok
+                status = 'ok'
+                comment = None
+            elif prev['status'] == 'ok':
+                # Scenario 1: Passed in previous cycle, no action needed
+                status = 'ok'
+                comment = None
+            elif prev['status'] in ('not_to_standard', 'not_installed'):
+                # Scenario 2/3: Had defects or was missing - must re-inspect
+                status = 'pending'
+                comment = None
+            elif prev['status'] == 'skipped':
+                # Scenario 5: Was excluded, now unexcluded - must inspect fresh
+                status = 'pending'
+                comment = None
+            else:
+                status = 'pending'
+                comment = None
+        else:
+            # C1 or no previous inspection data - start fresh
+            prev = prev_item_map.get(template_id)
+            if prev:
+                status = prev['status']
+                comment = prev['comment'] if status in ('not_to_standard', 'not_installed') else None
+            else:
+                status = 'pending'
+                comment = None
         
         db.execute("""
             INSERT INTO inspection_item
             (id, tenant_id, inspection_id, item_template_id, status, comment, marked_at)
             VALUES (?, ?, ?, ?, ?, ?, NULL)
-        """, [generate_id(), tenant_id, inspection_id, t['id'], status, comment])
+        """, [generate_id(), tenant_id, inspection_id, template_id, status, comment])
     
     db.commit()
     
@@ -137,7 +175,8 @@ def inspect(inspection_id):
     is_followup = not is_initial
     template = get_inspection_template(tenant_id, inspection['unit_type'])
     
-    # Filter template to only show areas that have inspection items for this unit
+    # Filter template to only show areas that have actionable items
+    # In C2: exclude areas where all items are ok-from-C1 (marked_at IS NULL) or skipped
     active_area_ids = set(r['area_id'] for r in query_db("""
         SELECT DISTINCT at.id AS area_id
         FROM inspection_item ii
@@ -146,6 +185,7 @@ def inspect(inspection_id):
         JOIN area_template at ON ct.area_id = at.id
         WHERE ii.inspection_id = ?
         AND ii.status != 'skipped'
+        AND NOT (ii.status = 'ok' AND ii.marked_at IS NULL)
     """, [inspection_id]))
     template = [a for a in template if a['id'] in active_area_ids]
     
@@ -153,7 +193,8 @@ def inspect(inspection_id):
         SELECT 
             COUNT(*) as total,
             SUM(CASE WHEN ii.status NOT IN ('pending', 'skipped') THEN 1 ELSE 0 END) as completed,
-            SUM(CASE WHEN ii.status = 'skipped' THEN 1 ELSE 0 END) as skipped
+            SUM(CASE WHEN ii.status = 'skipped' THEN 1 ELSE 0 END) as skipped,
+            SUM(CASE WHEN ii.status = 'ok' AND ii.marked_at IS NULL THEN 1 ELSE 0 END) as carried_ok
         FROM inspection_item ii
         JOIN item_template it ON ii.item_template_id = it.id
         WHERE ii.inspection_id = ?
@@ -171,14 +212,17 @@ def inspect(inspection_id):
         WHERE inspection_id = ?
     """, [inspection_id], one=True)
     
+    carried_ok = progress_raw['carried_ok'] or 0
+    
     progress = {
         'total': progress_raw['total'] or 0,
-        'completed': progress_raw['completed'] or 0,
+        'completed': (progress_raw['completed'] or 0) - carried_ok,
         'defects': (defect_count['defects'] or 0) + (chip_count['chips'] or 0),
         'skipped': progress_raw['skipped'] or 0,
+        'carried_ok': carried_ok,
         'is_followup': is_followup,
     }
-    progress['active'] = progress['total'] - progress['skipped']
+    progress['active'] = progress['total'] - progress['skipped'] - carried_ok
     
     # Followup cycle: calculate defect review progress
     if is_followup:
@@ -250,13 +294,14 @@ def inspect(inspection_id):
 
     area_progress = query_db("""
         SELECT at.id as area_id,
-            COUNT(CASE WHEN ii.status NOT IN ('pending') THEN 1 END) as marked,
+            COUNT(CASE WHEN ii.status NOT IN ('pending') AND NOT (ii.status = 'ok' AND ii.marked_at IS NULL) THEN 1 END) as marked,
             COUNT(*) as total
         FROM inspection_item ii
         JOIN item_template it ON ii.item_template_id = it.id
         JOIN category_template ct ON it.category_id = ct.id
         JOIN area_template at ON ct.area_id = at.id
         WHERE ii.inspection_id = ? AND ii.status != 'skipped'
+        AND NOT (ii.status = 'ok' AND ii.marked_at IS NULL)
         GROUP BY at.id
     """, [inspection_id])
     area_progress_map = {p['area_id']: {'marked': p['marked'], 'total': p['total']} for p in area_progress}
@@ -340,7 +385,7 @@ def inspect_area(inspection_id, area_id):
     if is_followup:
         prior_defects_raw = query_db("""
             SELECT d.id as defect_id, d.item_template_id, d.original_comment,
-                   d.status as defect_status, ic.cycle_number as raised_cycle
+                   d.status as defect_status, d.defect_type, ic.cycle_number as raised_cycle
             FROM defect d
             JOIN inspection_cycle ic ON d.raised_cycle_id = ic.id
             WHERE d.unit_id = ? AND d.raised_cycle_id != ?
@@ -355,6 +400,7 @@ def inspect_area(inspection_id, area_id):
                 'comment': d['original_comment'],
                 'cycle': d['raised_cycle'],
                 'status': d['defect_status'],
+                'defect_type': d['defect_type'],
             })
 
     # Get current-cycle defects from defect table (visible on submitted/reviewed inspections)
@@ -427,17 +473,18 @@ def inspect_area(inspection_id, area_id):
                 parent_status_map[i['template_id']] = i['status']
                 parent_items[i['template_id']] = i
         
-        # First pass: identify which items have defects
+        # First pass: identify which items have defects or need action
         defective_template_ids = set()
         parent_has_defective_child = set()
         
         for item in items_raw:
             is_defective = item['status'] in ['not_to_standard', 'not_installed']
+            is_pending = item['status'] == 'pending'
             has_open_prior = any(d['status'] == 'open' for d in prior_defects_map.get(item['template_id'], []))
             has_any_prior = len(prior_defects_map.get(item['template_id'], [])) > 0
             has_current = len(current_defects_map.get(item['template_id'], [])) > 0
             
-            if is_defective or has_any_prior or has_current:
+            if is_defective or is_pending or has_any_prior or has_current:
                 defective_template_ids.add(item['template_id'])
                 if item['parent_item_id']:
                     parent_has_defective_child.add(item['parent_item_id'])
@@ -481,20 +528,21 @@ def inspect_area(inspection_id, area_id):
                     continue
             
             if filter_mode == 'to_inspect':
-                # Show only defective items NOT yet actioned this session
-                if not has_open_prior:
-                    if not is_parent or item['template_id'] not in parent_has_defective_child:
+                # C2: show only items that still need inspection (pending)
+                if item['status'] != 'pending':
+                    # But show parents if they have pending children
+                    if is_parent and item['template_id'] in parent_has_defective_child:
+                        pass  # Keep parent visible
+                    else:
                         continue
-                if item['marked_at'] is not None:
-                    continue
             
             if filter_mode == 'inspected':
-                # Show only defective items already actioned this session
-                if not has_open_prior:
-                    if not is_parent or item['template_id'] not in parent_has_defective_child:
-                        continue
+                # Show items actioned this cycle (marked_at set, not carried-forward ok)
                 if item['marked_at'] is None:
-                    continue
+                    if is_parent and item['template_id'] in parent_has_defective_child:
+                        pass  # Keep parent if it has actioned children
+                    else:
+                        continue
             
             parent_status = None
             if is_child:
@@ -504,6 +552,10 @@ def inspect_area(inspection_id, area_id):
                 all_skipped = False
             
             item_defects = inspection_defects_map.get(item['id'], [])
+            # Determine if item was NI in previous cycle (all open priors are not_installed type)
+            open_priors = [p for p in prior_defects_list if p['status'] == 'open']
+            was_not_installed = (len(open_priors) > 0 and
+                all(p.get('defect_type') == 'not_installed' for p in open_priors))
             checklist.append({
                 'id': item['id'],
                 'template_id': item['template_id'],
@@ -517,6 +569,7 @@ def inspect_area(inspection_id, area_id):
                 'prior_defects': prior_defects_list,
                 'has_prior_defects': len(prior_defects_list) > 0,
                 'has_open_prior': has_open_prior,
+                'was_not_installed': was_not_installed,
                 'current_defects': current_defects_list,
                 'has_current_defects': has_current,
                 'inspection_defects': item_defects,
@@ -580,7 +633,7 @@ def _build_item_for_render(inspection_id, item_id, tenant_id, unit_id=None, cycl
     if unit_id and cycle_number and cycle_number > 1 and cycle_id:
         prior_raw = query_db("""
             SELECT d.id as defect_id, d.original_comment, d.status as defect_status,
-                   ic.cycle_number as raised_cycle
+                   d.defect_type, ic.cycle_number as raised_cycle
             FROM defect d
             JOIN inspection_cycle ic ON d.raised_cycle_id = ic.id
             WHERE d.unit_id = ? AND d.item_template_id = ? AND d.raised_cycle_id != ?
@@ -592,9 +645,13 @@ def _build_item_for_render(inspection_id, item_id, tenant_id, unit_id=None, cycl
                 'comment': d['original_comment'],
                 'cycle': d['raised_cycle'],
                 'status': d['defect_status'],
+                'defect_type': d['defect_type'],
             })
 
     has_open_prior = any(d['status'] == 'open' for d in prior_defects_list)
+    open_priors = [p for p in prior_defects_list if p['status'] == 'open']
+    was_not_installed = (len(open_priors) > 0 and
+        all(p.get('defect_type') == 'not_installed' for p in open_priors))
 
     # Get current-cycle defects from defect table
     current_defects_list = []
@@ -630,6 +687,7 @@ def _build_item_for_render(inspection_id, item_id, tenant_id, unit_id=None, cycl
         'prior_defects': prior_defects_list,
         'has_prior_defects': len(prior_defects_list) > 0,
         'has_open_prior': has_open_prior,
+        'was_not_installed': was_not_installed,
         'current_defects': current_defects_list,
         'has_current_defects': len(current_defects_list) > 0,
         'inspection_defects': inspection_defects,
@@ -764,6 +822,22 @@ def update_item(inspection_id, item_id):
             db.execute("""
                 DELETE FROM inspection_defect WHERE inspection_item_id = ?
             """, [item_id])
+        
+        # Auto-clear prior NI defects when NI item marked as Installed
+        clear_ni = request.form.get('clear_ni_defects')
+        if clear_ni and status == 'ok':
+            cycle = query_db(
+                "SELECT * FROM inspection_cycle WHERE id = (SELECT cycle_id FROM inspection WHERE id = ?)",
+                [inspection_id], one=True
+            )
+            if cycle:
+                db.execute("""
+                    UPDATE defect SET status = 'cleared', cleared_cycle_id = ?,
+                           cleared_at = ?, clearance_note = 'rectified', updated_at = ?
+                    WHERE unit_id = ? AND item_template_id = ? AND status = 'open'
+                    AND defect_type = 'not_installed' AND raised_cycle_id != ?
+                """, [cycle['id'], now, now, inspection['unit_id'],
+                      item['item_template_id'], cycle['id']])
         
         # Clear children inspection defects when parent cascades to not_installed
         if template and template['parent_item_id'] is None and status == 'not_installed':
@@ -1009,6 +1083,48 @@ def reopen_prior_defect(inspection_id, defect_id):
     return '', 204
 
 
+@inspection_bp.route('/<inspection_id>/item/<item_id>/confirm-defects-remain', methods=['POST'])
+@require_auth
+def confirm_defects_remain(inspection_id, item_id):
+    """Mark an NTS item as reviewed with defects still open. HTMX endpoint."""
+    tenant_id = session['tenant_id']
+    db = get_db()
+    area_id = request.form.get('area_id')
+
+    inspection = query_db("""
+        SELECT i.*, ic.cycle_number, ic.id as cycle_id
+        FROM inspection i
+        JOIN inspection_cycle ic ON i.cycle_id = ic.id
+        WHERE i.id = ? AND i.tenant_id = ?
+    """, [inspection_id, tenant_id], one=True)
+    if not inspection:
+        abort(404)
+
+    item = query_db(
+        "SELECT * FROM inspection_item WHERE id = ? AND inspection_id = ?",
+        [item_id, inspection_id], one=True
+    )
+    if not item:
+        abort(404)
+
+    now = datetime.now(timezone.utc).isoformat()
+
+    # Set status to NTS and mark as actioned
+    db.execute("""
+        UPDATE inspection_item SET status = 'not_to_standard', marked_at = ?
+        WHERE id = ?
+    """, [now, item_id])
+
+    db.commit()
+
+    if area_id:
+        html = _render_single_item(inspection_id, item_id, tenant_id, area_id)
+        response = make_response(html)
+        response.headers['HX-Trigger'] = 'areaUpdated'
+        return response
+    return '', 204
+
+
 @inspection_bp.route('/<inspection_id>/current-defect/<defect_id>/delete', methods=['DELETE'])
 @require_auth
 def delete_current_defect(inspection_id, defect_id):
@@ -1205,19 +1321,17 @@ def submit_inspection(inspection_id):
                 flash(f"Missing comment: {item['item_description']}", 'error')
             return redirect(url_for('inspection.inspect', inspection_id=inspection_id))
     else:
-        # Cycle 2+: ensure all carried-forward defects have been actioned
-        unactioned = query_db("""
+        # Cycle 2+: ensure all actionable items have been reviewed
+        pending_items = query_db("""
             SELECT COUNT(*) as count
             FROM inspection_item ii
-            JOIN defect d ON d.item_template_id = ii.item_template_id
-                AND d.unit_id = ? AND d.status = 'open'
             WHERE ii.inspection_id = ?
-            AND ii.marked_at IS NULL
-        """, [inspection['unit_id'], inspection_id], one=True)
+            AND ii.status = 'pending'
+        """, [inspection_id], one=True)
         
-        if unactioned['count'] > 0:
+        if pending_items['count'] > 0:
             from flask import flash
-            flash(f"{unactioned['count']} defects not yet reviewed", 'error')
+            flash(f"{pending_items['count']} items not yet inspected", 'error')
             return redirect(url_for('inspection.inspect', inspection_id=inspection_id))
     
     defect_items = query_db("""
@@ -1318,7 +1432,8 @@ def get_progress(inspection_id):
         SELECT 
             COUNT(*) as total,
             SUM(CASE WHEN ii.status NOT IN ('pending', 'skipped') THEN 1 ELSE 0 END) as completed,
-            SUM(CASE WHEN ii.status = 'skipped' THEN 1 ELSE 0 END) as skipped
+            SUM(CASE WHEN ii.status = 'skipped' THEN 1 ELSE 0 END) as skipped,
+            SUM(CASE WHEN ii.status = 'ok' AND ii.marked_at IS NULL THEN 1 ELSE 0 END) as carried_ok
         FROM inspection_item ii
         JOIN item_template it ON ii.item_template_id = it.id
         WHERE ii.inspection_id = ?
@@ -1336,14 +1451,17 @@ def get_progress(inspection_id):
         WHERE inspection_id = ?
     """, [inspection_id], one=True)
     
+    carried_ok = progress_raw['carried_ok'] or 0
+    
     progress = {
         'total': progress_raw['total'] or 0,
-        'completed': progress_raw['completed'] or 0,
+        'completed': (progress_raw['completed'] or 0) - carried_ok,
         'defects': (defect_count['defects'] or 0) + (chip_count['chips'] or 0),
         'skipped': progress_raw['skipped'] or 0,
+        'carried_ok': carried_ok,
         'is_followup': is_followup,
     }
-    progress['active'] = progress['total'] - progress['skipped']
+    progress['active'] = progress['total'] - progress['skipped'] - carried_ok
     
     if is_followup:
         followup_raw = query_db("""
@@ -1462,13 +1580,14 @@ def get_area_badges(inspection_id):
     
     area_progress = query_db("""
         SELECT at.id as area_id,
-            COUNT(CASE WHEN ii.status NOT IN ('pending') THEN 1 END) as marked,
+            COUNT(CASE WHEN ii.status NOT IN ('pending') AND NOT (ii.status = 'ok' AND ii.marked_at IS NULL) THEN 1 END) as marked,
             COUNT(*) as total
         FROM inspection_item ii
         JOIN item_template it ON ii.item_template_id = it.id
         JOIN category_template ct ON it.category_id = ct.id
         JOIN area_template at ON ct.area_id = at.id
         WHERE ii.inspection_id = ? AND ii.status != 'skipped'
+        AND NOT (ii.status = 'ok' AND ii.marked_at IS NULL)
         GROUP BY at.id
     """, [inspection_id])
     progress_map = {p['area_id']: (p['marked'], p['total']) for p in area_progress}
