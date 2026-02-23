@@ -1470,8 +1470,10 @@ def submit_inspection(inspection_id):
     role = session.get('role', 'inspector')
     if role in ('manager', 'admin'):
         return redirect(url_for('certification.dashboard'))
-    else:
+    elif role == 'team_lead':
         return redirect(url_for('projects.view_unit', unit_id=inspection['unit_id']))
+    else:
+        return redirect(url_for('main.index'))
 
 
 @inspection_bp.route('/<inspection_id>/progress')
