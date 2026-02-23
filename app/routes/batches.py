@@ -231,11 +231,11 @@ def detail(batch_id):
     batch = dict(batch)
 
     units_raw = query_db("""
-        SELECT bu.id AS bu_id, bu.status AS bu_status, bu.inspector_id,
+        SELECT bu.id AS bu_id, bu.status AS bu_status, COALESCE(bu.inspector_id, i.inspector_id) AS inspector_id,
             bu.cycle_id, u.id AS unit_id, u.unit_number, u.block, u.floor,
             ic.cycle_number,
             i.id AS inspection_id, i.status AS inspection_status,
-            insp.name AS inspector_name
+            COALESCE(insp.name, i.inspector_name) AS inspector_name
         FROM batch_unit bu
         JOIN unit u ON bu.unit_id = u.id
         JOIN inspection_cycle ic ON bu.cycle_id = ic.id
