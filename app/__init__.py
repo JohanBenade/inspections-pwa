@@ -146,7 +146,7 @@ def create_app():
             return render_template('inspector_home.html', inspections=inspections, submitted_inspections=submitted_inspections)
         
         # All other roles go to cycles
-        return redirect(url_for('cycles.list_cycles'))
+        return redirect(url_for('batches.list_batches'))
     
     # Simple auth (magic link style - to be enhanced)
     @app.route('/login', methods=['GET', 'POST'])

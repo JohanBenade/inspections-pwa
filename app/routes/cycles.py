@@ -5,7 +5,7 @@ Create cycles, set exclusions, add general notes, assign inspectors.
 import re
 from datetime import date, datetime, timezone
 from flask import Blueprint, render_template, session, redirect, url_for, abort, request, flash
-from app.auth import require_team_lead, require_manager
+from app.auth import require_team_lead, require_manager, require_admin
 from app.utils import generate_id
 from app.utils.audit import log_audit
 from app.services.db import get_db, query_db
@@ -54,7 +54,7 @@ def clean_notes(value):
 # --- Routes ---
 
 @cycles_bp.route('/')
-@require_team_lead
+@require_admin
 def list_cycles():
     """List all inspection cycles for current phase."""
     tenant_id = session['tenant_id']
