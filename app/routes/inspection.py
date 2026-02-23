@@ -1415,11 +1415,24 @@ def submit_inspection(inspection_id):
     for item in defect_items:
         item_defects = query_db("SELECT id, description, defect_type FROM inspection_defect WHERE inspection_item_id = ? AND tenant_id = ? ORDER BY created_at", [item['id'], tenant_id])
         item_defects = [dict(d) for d in item_defects] if item_defects else []
+
+        # Check for existing open defects on this template (prior cycle defects)
+        all_existing = query_db("SELECT * FROM defect WHERE unit_id = ? AND item_template_id = ? AND status = 'open' ORDER BY created_at", [inspection['unit_id'], item['template_id']])
+        all_existing = [dict(e) for e in all_existing] if all_existing else []
+
+        # C2 Defects Remain: no chips, no comment, but prior defects exist - just log history
+        if not item_defects and not item['comment'] and all_existing:
+            for ex in all_existing:
+                history_id = generate_id()
+                db.execute("INSERT INTO defect_history (id, tenant_id, defect_id, cycle_id, comment, status) VALUES (?, ?, ?, ?, ?, 'open')", [history_id, tenant_id, ex['id'], inspection['cycle_id'], ex['original_comment'] or 'Not rectified'])
+            continue
+
         if not item_defects and item['comment']:
             item_defects = [{'description': item['comment'], 'defect_type': item['status']}]
         elif not item_defects:
             item_defects = [{'description': 'Defect noted', 'defect_type': item['status']}]
-        existing = query_db("SELECT * FROM defect WHERE unit_id = ? AND item_template_id = ? AND status = 'open' ORDER BY created_at DESC LIMIT 1", [inspection['unit_id'], item['template_id']], one=True)
+
+        existing = all_existing[0] if all_existing else None
         for idx, idef in enumerate(item_defects):
             desc_raw = idef['description']
             if idx == 0 and existing:
