@@ -1,0 +1,64 @@
+152|team-lead|Alex Nataniel|2026-02-20
+KITCHEN|Walls|Peeling paint near double light switch
+KITCHEN|Walls|Tile trim near W1a has hole in grout as indicated
+KITCHEN|Walls|Wrap at sink not applied well on left side
+KITCHEN|Walls|Tiles under eye level pack does not have grout
+KITCHEN|Floor|Soft joint cross sealant not applied consistently
+KITCHEN|Floor|Inconsistent grout colour
+KITCHEN|Floor|Grout missing in between tile skirting and floor
+KITCHEN|Electrical|Fridge double plug feels loose
+KITCHEN|Floor|Grout missing between tile skirting and floor
+KITCHEN|Electrical|Stove isolator switch is not flushed
+KITCHEN|Electrical|Stove top is loose
+KITCHEN|Sink Pack|Back wall not painted and looks damp
+KITCHEN|Sink Pack|Hinges are rusted
+KITCHEN|Bin drawer|Runners have sand
+KITCHEN|Drawer pack|Layout is not straight
+KITCHEN|Counter Seating|Fixing to wall not done well
+KITCHEN|Counter Seating|Leg support is loose
+KITCHEN|Lockable pack 1&2|Whole on back board not done well
+KITCHEN|Eye level pack|Gap in middle shelf bottom as indicated
+KITCHEN|Eye level pack|Plastic to be removed on handles
+LOUNGE|Wall|Orchid bay paint has dirt as indicated
+LOUNGE|Floor|Grout has inconsistent colour
+LOUNGE|Floor|Grout missing in between tile skirting and floor
+BEDROOM A|Walls|Mark on wall as indicated
+BEDROOM A|Walls|Not painted well above floating shelf
+BEDROOM A|Floor|Gap between tile skirting and floor as indicated
+BEDROOM A|B.I.C|Paint marks on the board as indicated
+BEDROOM B|Frame|Damaged finish as indicated
+BEDROOM B|Window|Handle is loose as indicated
+BEDROOM B|Floor|Gap between tile skirting and floor as indicated
+BEDROOM B|Floor|Skirting not straight under B.I.C
+BEDROOM B|Floating Shelf|Loose edge as indicated
+BEDROOM C|Door|Not finished well around the handle
+BEDROOM C|Frame|Finish damaged as indicated
+BEDROOM C|Floor|Gap between tile skirting and floor as indicated
+BEDROOM C|B.I.C|Gap between wall as indicated
+BEDROOM C|B.I.C|Back wall is not painted well all round
+BEDROOM C|B.I.C|Paint mark as indicated
+BEDROOM C|Floating Shelf|Loose edge as indicated
+BEDROOM C|Study Desk|Screw not all the way in as indicated
+BEDROOM D|Door|Damaged paint as indicated
+BEDROOM D|Door|White paint marks as indicated
+BEDROOM D|Frame|Uneven paint application as indicated
+BEDROOM D|Ironmongery|Screw is loose as indicated
+BEDROOM D|Window|No screw covers
+BEDROOM D|Floor|Missing grout as indicated
+BEDROOM D|Floor|Poor tile work throughout bedroom
+BEDROOM D|Floating Shelf|Loose edge as indicated
+BEDROOM D|Study desk|1 screw missing to wall
+BATHROOM|Door|Holes in door and cracked near lockset as indicated
+BATHROOM|Frame|Paint is damaged as indicated
+BATHROOM|D3|Magnet strip on the bottom right holds door when opening
+BATHROOM|Walls|Tile duct trim has hole as indicated
+BATHROOM|Walls|Tile into window sill has gap in the sealant as indicated
+BATHROOM|Walls|Top left edge of the tile trim on window is missing grout as indicated
+BATHROOM|Walls|Broken tile near WC pipe
+BATHROOM|Window|Gasket not cut at the edge as indicated
+BATHROOM|Floor|Chipped tile near door stopper
+BATHROOM|Floor|Grout in shower does not look dark
+BATHROOM|Electrical|Only has one bulb
+BATHROOM|WC|Not flushed to wall
+BATHROOM|Shut off valve Cold|Cannot be turned
+BATHROOM|Shut of valve Hot|Cannot be turned

@@ -615,7 +615,14 @@ def main():
 
     if inline_mode:
         cycle_id = sys.argv[sys.argv.index('--inline') + 1]
-        lines = [l.strip() for l in sys.stdin if l.strip()]
+        # Check if next arg after cycle_id is a file path
+        ci = sys.argv.index('--inline')
+        txt_file = sys.argv[ci + 2] if len(sys.argv) > ci + 2 and not sys.argv[ci + 2].startswith('-') else None
+        if txt_file and os.path.exists(txt_file):
+            with open(txt_file) as f:
+                lines = [l.strip() for l in f if l.strip()]
+        else:
+            lines = [l.strip() for l in sys.stdin if l.strip()]
         if not lines:
             print("ERROR: No data on stdin")
             sys.exit(1)
