@@ -61,20 +61,22 @@
                     {% endif %}
                 </td>
                 <td class="px-4 py-3">
-                    {% if u.bu_status == 'pending' %}
-                    <span class="text-xs text-gray-400">Pending</span>
-                    {% elif u.bu_status == 'assigned' %}
+                    {% if u.bu_status == "not_started" and u.inspector_id %}
                     <span class="text-xs text-blue-600">Assigned</span>
-                    {% elif u.bu_status == 'inspecting' %}
+                    {% elif u.bu_status == "not_started" %}
+                    <span class="text-xs text-gray-400">Pending</span>
+                    {% elif u.bu_status == "in_progress" %}
                     <span class="text-xs text-blue-700 font-medium">Inspecting</span>
-                    {% elif u.bu_status == 'submitted' %}
+                    {% elif u.bu_status == "submitted" %}
                     <span class="text-xs text-purple-600">Submitted</span>
-                    {% elif u.bu_status == 'reviewed' %}
+                    {% elif u.bu_status == "reviewed" %}
                     <span class="text-xs text-indigo-600">Reviewed</span>
-                    {% elif u.bu_status == 'approved' %}
+                    {% elif u.bu_status in ("pending_followup", "approved") %}
                     <span class="text-xs text-green-600">Approved</span>
-                    {% elif u.bu_status == 'signed' %}
-                    <span class="text-xs text-green-700 font-medium">Signed</span>
+                    {% elif u.bu_status in ("certified", "closed") %}
+                    <span class="text-xs text-green-700 font-medium">Certified</span>
+                    {% else %}
+                    <span class="text-xs text-gray-400">{{ u.bu_status }}</span>
                     {% endif %}
                 </td>
                 <td class="px-4 py-3" id="assign-{{ u.bu_id }}">

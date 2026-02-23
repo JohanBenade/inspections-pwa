@@ -81,17 +81,29 @@ def list_batches():
     batches_raw = query_db("""
         SELECT ib.id, ib.name, ib.status, ib.notes, ib.created_at,
             COUNT(bu.id) AS total_units,
-            SUM(CASE WHEN bu.status IN ('submitted','reviewed','approved','signed')
+            SUM(CASE WHEN i.status IN ('submitted','reviewed','pending_followup','approved','certified','closed')
                 THEN 1 ELSE 0 END) AS completed,
-            SUM(CASE WHEN bu.status = 'inspecting' THEN 1 ELSE 0 END) AS in_progress,
-            SUM(CASE WHEN bu.status IN ('pending','assigned') THEN 1 ELSE 0 END) AS pending
+            SUM(CASE WHEN i.status = 'in_progress' THEN 1 ELSE 0 END) AS in_progress,
+            SUM(CASE WHEN i.status IS NULL OR i.status = 'not_started' THEN 1 ELSE 0 END) AS pending
         FROM inspection_batch ib
         LEFT JOIN batch_unit bu ON bu.batch_id = ib.id
+        LEFT JOIN inspection i ON i.unit_id = bu.unit_id AND i.cycle_id = bu.cycle_id
         WHERE ib.tenant_id = ?
         GROUP BY ib.id
         ORDER BY ib.created_at DESC
     """, [tenant_id])
     batches = [dict(r) for r in batches_raw]
+
+    # Derive batch status from inspection progress
+    for b in batches:
+        if b["total_units"] == 0:
+            b["status"] = "open"
+        elif b["completed"] == b["total_units"]:
+            b["status"] = "complete"
+        elif b["in_progress"] > 0 or b["completed"] > 0:
+            b["status"] = "in_progress"
+        else:
+            b["status"] = "open"
 
     return render_template('batches/list.html', batches=batches)
 
@@ -231,7 +243,7 @@ def detail(batch_id):
     batch = dict(batch)
 
     units_raw = query_db("""
-        SELECT bu.id AS bu_id, bu.status AS bu_status, COALESCE(bu.inspector_id, i.inspector_id) AS inspector_id,
+        SELECT bu.id AS bu_id, COALESCE(i.status, 'not_started') AS bu_status, COALESCE(bu.inspector_id, i.inspector_id) AS inspector_id,
             bu.cycle_id, u.id AS unit_id, u.unit_number, u.block, u.floor,
             ic.cycle_number,
             i.id AS inspection_id, i.status AS inspection_status,
