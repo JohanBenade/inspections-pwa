@@ -191,7 +191,7 @@
         <!-- WORST UNITS -->
         <div class="hotspot-panel">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
-                <span style="font-size: 0.9rem; font-weight: 600; color: #1A1A1A;">5 Worst Units by Open Defects</span>
+                <span style="font-size: 0.9rem; font-weight: 600; color: #1A1A1A;">Top 5 Units by Defect Count</span>
             </div>
             {% for unit in worst_units %}
             {% set unit_block_slug = unit.block|lower|replace(' ', '-') %}
