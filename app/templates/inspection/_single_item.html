@@ -112,9 +112,6 @@
         Defects confirmed open
     </div>
     {% endif %}
-    {% if item.status != 'pending' %}
-    <button type="button" onclick="var w=this.closest('[id^=item-]').querySelector('.defect-input-wrapper');if(w){w.style.display='none'}this.style.display='none'" class="mt-2 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded hover:bg-blue-700 transition-colors">Done</button>
-    {% endif %}
 
     {% elif show_prior and was_ni %}
     {# NI items: show Installed/Not Installed buttons.
