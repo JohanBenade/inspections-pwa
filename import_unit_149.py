@@ -85,6 +85,8 @@ def resolve_template(cur, area, category, parent_kw, item_kw):
 TEMPLATE_OVERRIDES = {
     ('KITCHEN', 'WALLS', 'paint'): '16e941da',
     ('KITCHEN', 'ELECTRICAL', 'DB'): '7414ad92',
+    ('KITCHEN', 'FLOOR', 'Soft joint'): 'bdafda18',          # Soft joint cross (root item)
+    ('BEDROOM C', 'WALLS', 'Wall', 'finish'): '5628303a',    # paint-orchid bay
     ('BEDROOM B', 'ELECTRICAL', 'study desk light'): 'e2fd6318',
     ('BEDROOM A', 'JOINERY', 'Floating shelf', 'finish'): '468ece9d',
     ('BEDROOM B', 'JOINERY', 'Floating shelf', 'finish'): '262bfbeb',
