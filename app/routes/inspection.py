@@ -605,6 +605,7 @@ def inspect_area(inspection_id, area_id):
                 'was_not_installed': was_not_installed,
                 'current_defects': current_defects_list,
                 'has_current_defects': has_current,
+                'children_have_defects': is_parent and item['template_id'] in parent_has_active_child,
                 'inspection_defects': item_defects,
             })
         

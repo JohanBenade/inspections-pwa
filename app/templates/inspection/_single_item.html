@@ -124,7 +124,11 @@
 
     {% elif is_followup and is_parent and has_children and not has_prior and item.status == 'ok' %}
     {# C2: Parent OK in C1, no own defects - children handle themselves #}
+    {% if item.children_have_defects %}
+    <div class="text-xs text-amber-600 italic">Has defects below</div>
+    {% else %}
     <div class="text-xs text-green-600 italic">Carried forward - OK</div>
+    {% endif %}
 
     {% elif is_parent and has_children %}
     {# Parent with children: Installed / Not Installed (C1 only, or C2 parent WITH defects) #}
