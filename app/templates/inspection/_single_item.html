@@ -113,7 +113,7 @@
     </div>
     {% endif %}
     {% if item.status != 'pending' %}
-    <a href="javascript:void(0)" onclick="document.getElementById('defect-expand-r2-{{ item.id }}').style.display='none';document.getElementById('defect-addmore-r2-{{ item.id }}').style.display='inline-block'" class="inline-block mt-2 text-sm font-medium text-blue-600" style="text-decoration:none;padding:6px 0">Done</a>
+    <button type="button" onclick="var w=this.closest('[id^=item-]').querySelector('.defect-input-wrapper');if(w){w.style.display='none'}this.style.display='none'" class="mt-2 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded hover:bg-blue-700 transition-colors">Done</button>
     {% endif %}
 
     {% elif show_prior and was_ni %}
