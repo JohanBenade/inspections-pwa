@@ -89,19 +89,35 @@ def resolve_template(cur, area, category, parent_kw, item_kw):
 # DEFECT LIST - mapped from Word doc parse
 # (area, category, parent_keyword, item_keyword, raw_description, type)
 # ============================================================
+# Hardcoded overrides for items the fuzzy resolver cannot find
+# (area, category, parent_kw, item_kw) -> template_id
+TEMPLATE_OVERRIDES = {
+    ('KITCHEN', 'WALLS', 'paint'): '16e941da',           # paint-orchid bay (root item)
+    ('KITCHEN', 'ELECTRICAL', 'DB'): '7414ad92',          # DB (root item)
+    ('BEDROOM B', 'ELECTRICAL', 'study desk light'): 'e2fd6318',  # study desk light x 1 bulb
+    ('BEDROOM A', 'JOINERY', 'Floating shelf', 'finish'): '468ece9d',
+    ('BEDROOM B', 'JOINERY', 'Floating shelf', 'finish'): '262bfbeb',
+    ('BEDROOM C', 'JOINERY', 'Floating shelf', 'finish'): '2f006892',
+    ('BEDROOM D', 'JOINERY', 'Floating shelf', 'finish'): '135828f3',
+    ('BEDROOM A', 'JOINERY', 'Floating shelf', 'installed'): '519d4580',
+    ('BEDROOM B', 'JOINERY', 'Floating shelf', 'installed'): '7b3e816b',
+    ('BEDROOM C', 'JOINERY', 'Floating shelf', 'installed'): '0b929eb3',
+    ('BEDROOM D', 'JOINERY', 'Floating shelf', 'installed'): 'f653cf83',
+}
+
 DEFECTS = [
-    # KITCHEN (3 door/frame items will be caught by exclusion check)
-    ('KITCHEN', 'WALLS', 'Wall tile', 'finish', 'Paint chipped as indicated', 'NTS'),
+    # KITCHEN
+    ('KITCHEN', 'WALLS', 'paint', 'orchid bay', 'Paint chipped as indicated', 'NTS'),
     ('KITCHEN', 'WINDOWS', 'W1', 'glass', 'Glass to be cleaned', 'NTS'),
     ('KITCHEN', 'WINDOWS', 'W1', 'sill', 'Sill to be cleaned and painted', 'NTS'),
     ('KITCHEN', 'WINDOWS', 'W1a', 'glass', 'Glass and sill to be cleaned', 'NTS'),
     ('KITCHEN', 'FLOOR', 'Floor tile', 'grout', 'Grout missing/inconsistent near door as indicated', 'NTS'),
-    ('KITCHEN', 'ELECTRICAL', 'DB board', 'screws', 'DB has missing screws', 'NTS'),
+    ('KITCHEN', 'ELECTRICAL', 'DB', 'DB', 'DB has missing screws', 'NTS'),
     ('KITCHEN', 'JOINERY', 'Bin drawer', 'runner', 'Sand in the runners', 'NTS'),
     ('KITCHEN', 'JOINERY', 'Lockable pack 3&4', 'locks', 'Left lock is loose', 'NTS'),
     ('KITCHEN', 'JOINERY', 'Counter seating', 'leg support', 'Leg support is loose', 'NTS'),
     ('KITCHEN', 'JOINERY', 'Lockable pack 1&2', 'locks', 'Left lock loose', 'NTS'),
-    ('KITCHEN', 'JOINERY', 'Towel rail', 'installation', 'Towel rail loose to wall', 'NTS'),
+    # Towel rail DROPPED - FF&E exclusion in kitchen
     # LOUNGE
     ('LOUNGE', 'ELECTRICAL', 'Ceiling light', 'bulb', 'Ceiling mounted light only has one bulb', 'NTS'),
     # BATHROOM
@@ -129,7 +145,7 @@ DEFECTS = [
     ('BEDROOM B', 'WINDOWS', 'W3', 'handle', 'Handles missing screw covers', 'NTS'),
     ('BEDROOM B', 'WINDOWS', 'W3', 'sill', 'Sill to be cleaned', 'NTS'),
     ('BEDROOM B', 'CEILING', 'Ceiling', 'finish', 'Hole on ceiling as indicated', 'NTS'),
-    ('BEDROOM B', 'ELECTRICAL', 'Study desk light', 'screws', 'Screw loose by study desk light', 'NTS'),
+    ('BEDROOM B', 'ELECTRICAL', 'study desk light', 'bulb', 'Screw loose by study desk light', 'NTS'),
     ('BEDROOM B', 'JOINERY', 'Study desk', 'screws', 'Screw not all the way in', 'NTS'),
     # BEDROOM C
     ('BEDROOM C', 'DOORS', 'Frame', 'hinges', 'Hinges to be repainted', 'NTS'),
@@ -140,7 +156,7 @@ DEFECTS = [
     ('BEDROOM D', 'DOORS', 'D3', 'finished all round', 'Paint not well done', 'NTS'),
     ('BEDROOM D', 'DOORS', 'Frame', 'finish', 'Paint work not consistent', 'NTS'),
     ('BEDROOM D', 'DOORS', 'Ironmongery', 'handle', 'Lock handle missing screws', 'NTS'),
-    ('BEDROOM D', 'WALLS', 'Floating shelf', 'finish', 'Paint not consistent by floating shelf', 'NTS'),
+    ('BEDROOM D', 'JOINERY', 'Floating shelf', 'finish', 'Paint not consistent by floating shelf', 'NTS'),
     ('BEDROOM D', 'WALLS', 'Wall', 'finish', 'Chipped wall by combination plug', 'NTS'),
     ('BEDROOM D', 'WINDOWS', 'W4', 'frame', 'Frame chipped as indicated', 'NTS'),
     ('BEDROOM D', 'JOINERY', 'B.I.C', 'doors', 'Right door does not open well', 'NTS'),
@@ -164,6 +180,15 @@ def main():
     resolved = []
     failed = []
     for area, cat, parent_kw, item_kw, desc, dtype in DEFECTS:
+        # Check overrides first (3-key and 4-key)
+        override = TEMPLATE_OVERRIDES.get((area, cat, parent_kw, item_kw))
+        if not override:
+            override = TEMPLATE_OVERRIDES.get((area, cat, parent_kw))
+        if override:
+            resolved.append((override, desc, dtype))
+            print(f"  OVERRIDE [{override}] {area}>{cat}>{parent_kw}>{item_kw} -> {desc}")
+            continue
+        # Fuzzy resolve
         tid, score, info = resolve_template(cur, area, cat, parent_kw, item_kw)
         if tid and score >= 0.35:
             resolved.append((tid, desc, dtype))

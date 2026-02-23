@@ -82,15 +82,30 @@ def resolve_template(cur, area, category, parent_kw, item_kw):
     return best, best_score, best_info
 
 
+TEMPLATE_OVERRIDES = {
+    ('KITCHEN', 'WALLS', 'paint'): '16e941da',
+    ('KITCHEN', 'ELECTRICAL', 'DB'): '7414ad92',
+    ('BEDROOM B', 'ELECTRICAL', 'study desk light'): 'e2fd6318',
+    ('BEDROOM A', 'JOINERY', 'Floating shelf', 'finish'): '468ece9d',
+    ('BEDROOM B', 'JOINERY', 'Floating shelf', 'finish'): '262bfbeb',
+    ('BEDROOM C', 'JOINERY', 'Floating shelf', 'finish'): '2f006892',
+    ('BEDROOM D', 'JOINERY', 'Floating shelf', 'finish'): '135828f3',
+    ('BEDROOM A', 'JOINERY', 'Floating shelf', 'installed'): '519d4580',
+    ('BEDROOM B', 'JOINERY', 'Floating shelf', 'installed'): '7b3e816b',
+    ('BEDROOM C', 'JOINERY', 'Floating shelf', 'installed'): '0b929eb3',
+    ('BEDROOM D', 'JOINERY', 'Floating shelf', 'installed'): 'f653cf83',
+}
+
+
 DEFECTS = [
-    # KITCHEN (door/frame/ironmongery items will be caught by exclusion check)
+    # KITCHEN
     ('KITCHEN', 'WALLS', 'Wall tile', 'grout', 'Tile into window sill has missing grout', 'NTS'),
     ('KITCHEN', 'WALLS', 'Wall tile', 'grout', 'Inconsistent grout application as indicated', 'NTS'),
-    ('KITCHEN', 'WALLS', 'Wall tile', 'finish', 'Paint work not done well as indicated', 'NTS'),
+    ('KITCHEN', 'WALLS', 'paint', 'orchid bay', 'Paint work not done well as indicated', 'NTS'),
     ('KITCHEN', 'WINDOWS', 'W1', 'glass', 'Glass needs to be cleaned', 'NTS'),
     ('KITCHEN', 'WINDOWS', 'W1', 'sill', 'Sill needs to be cleaned', 'NTS'),
     ('KITCHEN', 'FLOOR', 'Soft joint', 'finish', 'Soft joint cross needs to be cleaned', 'NTS'),
-    ('KITCHEN', 'ELECTRICAL', 'DB board', 'screws', 'DB has missing screws', 'NTS'),
+    ('KITCHEN', 'ELECTRICAL', 'DB', 'DB', 'DB has missing screws', 'NTS'),
     ('KITCHEN', 'JOINERY', 'Drawer pack', 'runner', 'Drawer pack to be cleaned inside', 'NTS'),
     ('KITCHEN', 'JOINERY', 'Lockable pack 3&4', 'locks', 'Left lock is loose', 'NTS'),
     ('KITCHEN', 'JOINERY', 'Counter seating', 'leg support', 'Leg support is loose', 'NTS'),
@@ -108,7 +123,7 @@ DEFECTS = [
     ('BEDROOM A', 'DOORS', 'Frame', 'finish', 'Paint to be cleaned', 'NTS'),
     ('BEDROOM A', 'WALLS', 'Wall', 'finish', 'Paint overlaps near window', 'NTS'),
     ('BEDROOM A', 'WALLS', 'Wall', 'finish', 'Unpainted patch under study desk as indicated', 'NTS'),
-    ('BEDROOM A', 'WALLS', 'Floating shelf', 'finish', 'Paint overlaps near floating shelf', 'NTS'),
+    ('BEDROOM A', 'JOINERY', 'Floating shelf', 'finish', 'Paint overlaps near floating shelf', 'NTS'),
     ('BEDROOM A', 'WINDOWS', 'W2', 'frame', 'Frame has paint marks', 'NTS'),
     ('BEDROOM A', 'WINDOWS', 'W2', 'glass', 'Glass needs to be cleaned', 'NTS'),
     ('BEDROOM A', 'WINDOWS', 'W2', 'sill', 'Window sill to be cleaned', 'NTS'),
@@ -150,6 +165,14 @@ def main():
     resolved = []
     failed = []
     for area, cat, parent_kw, item_kw, desc, dtype in DEFECTS:
+        # Check overrides first (4-key and 3-key)
+        override = TEMPLATE_OVERRIDES.get((area, cat, parent_kw, item_kw))
+        if not override:
+            override = TEMPLATE_OVERRIDES.get((area, cat, parent_kw))
+        if override:
+            resolved.append((override, desc, dtype))
+            print(f"  OVERRIDE [{override}] {area}>{cat}>{parent_kw}>{item_kw} -> {desc}")
+            continue
         tid, score, info = resolve_template(cur, area, cat, parent_kw, item_kw)
         if tid and score >= 0.35:
             resolved.append((tid, desc, dtype))
