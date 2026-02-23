@@ -1473,7 +1473,7 @@ def submit_inspection(inspection_id):
     elif role == 'team_lead':
         return redirect(url_for('projects.view_unit', unit_id=inspection['unit_id']))
     else:
-        return redirect(url_for('main.index'))
+        return redirect(url_for('home'))
 
 
 @inspection_bp.route('/<inspection_id>/progress')
