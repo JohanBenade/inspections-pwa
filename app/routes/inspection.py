@@ -1367,6 +1367,10 @@ def submit_inspection(inspection_id):
             WHERE ii.inspection_id = ?
             AND ii.status IN ('not_to_standard', 'not_installed')
             AND (ii.comment IS NULL OR ii.comment = '')
+            AND NOT EXISTS (
+                SELECT 1 FROM inspection_defect id2
+                WHERE id2.inspection_item_id = ii.id AND id2.tenant_id = ii.tenant_id
+            )
         """, [inspection_id])
         
         if missing_comments:
