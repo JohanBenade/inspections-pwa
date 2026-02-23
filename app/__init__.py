@@ -115,14 +115,31 @@ def create_app():
                 JOIN unit u ON i.unit_id = u.id
                 JOIN inspection_cycle ic ON i.cycle_id = ic.id
                 WHERE i.inspector_id = ? AND i.tenant_id = ?
-                AND i.status IN ('not_started', 'in_progress', 'submitted')
+                AND i.status IN ('not_started', 'in_progress')
                 ORDER BY
                     CASE i.status WHEN 'in_progress' THEN 0 ELSE 1 END,
                     u.unit_number
             """, [user_id, tenant_id])
             
             inspections = [dict(r) for r in inspections]
-            return render_template('inspector_home.html', inspections=inspections)
+
+            submitted_inspections = query_db("""
+                SELECT i.id AS inspection_id, i.unit_id, i.cycle_id,
+                    i.status AS inspection_status, i.submitted_at,
+                    u.unit_number, u.block, u.floor,
+                    ic.cycle_number,
+                    (SELECT COUNT(*) FROM defect d WHERE d.unit_id = u.id
+                     AND d.raised_cycle_id = i.cycle_id AND d.status = 'open') AS defect_count
+                FROM inspection i
+                JOIN unit u ON i.unit_id = u.id
+                JOIN inspection_cycle ic ON i.cycle_id = ic.id
+                WHERE i.inspector_id = ? AND i.tenant_id = ?
+                AND i.status = 'submitted'
+                ORDER BY i.submitted_at DESC
+            """, [user_id, tenant_id])
+            submitted_inspections = [dict(r) for r in submitted_inspections]
+
+            return render_template('inspector_home.html', inspections=inspections, submitted_inspections=submitted_inspections)
         
         # All other roles go to cycles
         return redirect(url_for('cycles.list_cycles'))
