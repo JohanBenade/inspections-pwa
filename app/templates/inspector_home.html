@@ -69,7 +69,7 @@
         </div>
         {% endif %}
         <div class="flex justify-between items-center text-sm">
-            <span class="text-gray-500">Cycle {{ insp.cycle_number }}</span>
+            <span class="text-gray-500">Round {{ insp.cycle_number }}</span>
             {% if insp.inspection_status == 'not_started' %}
             <span class="text-gray-400">Ready</span>
             {% elif insp.cycle_number > 1 and insp.prior_open_defects > 0 %}
@@ -87,41 +87,7 @@
 </div>
 {% endif %}
 
-{% if submitted_inspections %}
-<div class="mt-8 mb-6">
-    <h2 class="text-lg font-semibold text-gray-500">Completed</h2>
-</div>
-<div class="space-y-3">
-    {% for insp in submitted_inspections %}
-    <div class="block bg-gray-50 rounded-lg border border-gray-200 p-4 opacity-75">
-        <div class="flex justify-between items-start">
-            <div>
-                <span class="text-lg font-bold text-gray-600">Unit {{ insp.unit_number }}</span>
-                <span class="text-sm text-gray-400 ml-2">
-                    Block {{ insp.block }}
-                    {% if insp.floor == 0 %}Ground Floor
-                    {% elif insp.floor == 1 %}1st Floor
-                    {% elif insp.floor == 2 %}2nd Floor
-                    {% else %}Floor {{ insp.floor }}
-                    {% endif %}
-                </span>
-            </div>
-            <span class="px-2.5 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-700">Submitted</span>
-        </div>
-        <div class="flex justify-between items-center text-sm mt-2">
-            <span class="text-gray-400">Cycle {{ insp.cycle_number }}</span>
-            {% if insp.defect_count > 0 %}
-            <span class="text-gray-500">{{ insp.defect_count }} defect{{ "s" if insp.defect_count != 1 }}</span>
-            {% else %}
-            <span class="text-gray-400">No defects</span>
-            {% endif %}
-        </div>
-    </div>
-    {% endfor %}
-</div>
-{% endif %}
-
-{% if not inspections and not submitted_inspections %}
+{% if not inspections %}
 <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-8 text-center">
     <svg class="w-16 h-16 text-gray-300 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
