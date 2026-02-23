@@ -112,6 +112,11 @@
         Defects confirmed open
     </div>
     {% endif %}
+    {% if item.status != 'pending' %}
+    <div class="mt-3">
+        <a href="javascript:void(0)" onclick="document.getElementById('defect-expand-r2-{{ item.id }}').style.display='none';document.getElementById('defect-addmore-r2-{{ item.id }}').style.display='inline-block'" class="inline-block text-sm font-medium text-white bg-blue-600 rounded px-4 py-2" style="text-decoration:none">Done</a>
+    </div>
+    {% endif %}
 
     {% elif show_prior and was_ni %}
     {# NI items: show Installed/Not Installed buttons.
