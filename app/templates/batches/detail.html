@@ -1,6 +1,12 @@
 {% extends "base.html" %}
 {% block title %}{{ batch.name }}{% endblock %}
 
+{% block breadcrumb %}
+<div class="max-w-7xl mx-auto px-4 pt-3">
+    <a href="{{ url_for('batches.list_batches') }}" class="text-sm text-gray-500 hover:text-gray-700">&larr; Batches</a>
+</div>
+{% endblock %}
+
 {% block content %}
 <div class="flex justify-between items-start mb-6">
     <div>
@@ -103,8 +109,5 @@
 </div>
 {% endif %}
 
-<div class="mt-4">
     <a href="{{ url_for('batches.list_batches') }}"
-       class="text-sm text-gray-500 hover:text-gray-700">&larr; Back to Batches</a>
-</div>
 {% endblock %}
