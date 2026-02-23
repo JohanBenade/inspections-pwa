@@ -81,6 +81,7 @@
                         {% endif %}
                         {% if current_user.role in ['team_lead', 'manager', 'admin'] %}
                         <a href="{{ url_for('cycles.list_cycles') }}" class="text-sm text-gray-300 hover:text-white">Cycles</a>
+                        <a href="{{ url_for('batches.list_batches') }}" class="text-sm text-gray-300 hover:text-white">Batches</a>
                         <a href="{{ url_for('defects.register') }}" class="text-sm text-gray-300 hover:text-white">Defects</a>
                         {% if current_user.role in ['manager', 'admin'] %}
                         <a href="{{ url_for('approvals.pipeline') }}" class="text-sm text-gray-300 hover:text-white">Approvals</a>

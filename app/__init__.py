@@ -52,6 +52,10 @@ def create_app():
     app.register_blueprint(certification_bp)
     app.register_blueprint(cycles_bp)
 
+    # Batches blueprint (team_lead + admin)
+    from app.routes.batches import batches_bp
+    app.register_blueprint(batches_bp)
+
     # Approvals blueprint (manager + admin)
     from app.routes.approvals import approvals_bp
     app.register_blueprint(approvals_bp)

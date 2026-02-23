@@ -1,0 +1,75 @@
+{% extends "base.html" %}
+{% block title %}Batches{% endblock %}
+
+{% block content %}
+<div class="flex justify-between items-center mb-6">
+    <div>
+        <h1 class="text-2xl font-bold text-gray-800">Batches</h1>
+        <p class="text-gray-500 mt-1">Operational containers for inspection work</p>
+    </div>
+    <a href="{{ url_for('batches.create_batch') }}"
+       class="px-4 py-2.5 bg-primary text-white rounded-lg text-sm font-medium hover:bg-opacity-90 transition-colors tap-target">
+        + New Batch
+    </a>
+</div>
+
+{% if batches %}
+<div class="space-y-3">
+    {% for batch in batches %}
+    <a href="{{ url_for('batches.detail', batch_id=batch.id) }}"
+       class="block bg-white rounded-lg shadow-sm border border-gray-200 p-4 hover:border-primary transition-colors">
+        <div class="flex justify-between items-start mb-2">
+            <div>
+                <span class="text-lg font-bold text-gray-800">{{ batch.name }}</span>
+                {% if batch.notes %}
+                <span class="text-sm text-gray-400 ml-2">{{ batch.notes }}</span>
+                {% endif %}
+            </div>
+            {% if batch.status == 'open' %}
+            <span class="px-2.5 py-1 text-xs font-semibold rounded-full bg-gray-100 text-gray-600">Open</span>
+            {% elif batch.status == 'in_progress' %}
+            <span class="px-2.5 py-1 text-xs font-semibold rounded-full bg-blue-100 text-blue-700">In Progress</span>
+            {% elif batch.status == 'review' %}
+            <span class="px-2.5 py-1 text-xs font-semibold rounded-full bg-purple-100 text-purple-700">Review</span>
+            {% elif batch.status == 'complete' %}
+            <span class="px-2.5 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-700">Complete</span>
+            {% endif %}
+        </div>
+        <div class="flex items-center space-x-4 text-sm text-gray-500">
+            <span>{{ batch.total_units }} unit{{ 's' if batch.total_units != 1 }}</span>
+            {% if batch.completed > 0 %}
+            <span class="text-green-600">{{ batch.completed }} done</span>
+            {% endif %}
+            {% if batch.in_progress > 0 %}
+            <span class="text-blue-600">{{ batch.in_progress }} active</span>
+            {% endif %}
+            {% if batch.pending > 0 %}
+            <span class="text-gray-400">{{ batch.pending }} pending</span>
+            {% endif %}
+        </div>
+        {% if batch.total_units > 0 %}
+        {% set pct = ((batch.completed / batch.total_units * 100) | round | int) %}
+        <div class="mt-2">
+            <div class="w-full bg-gray-200 rounded-full h-2">
+                <div class="h-2 rounded-full transition-all duration-300
+                    {% if pct == 100 %}bg-green-500
+                    {% elif pct >= 50 %}bg-blue-500
+                    {% else %}bg-gray-400{% endif %}"
+                    style="width: {{ pct }}%"></div>
+            </div>
+        </div>
+        {% endif %}
+    </a>
+    {% endfor %}
+</div>
+{% else %}
+<div class="bg-white rounded-lg shadow-sm border border-gray-200 p-8 text-center">
+    <h2 class="text-lg font-semibold text-gray-600 mb-2">No batches yet</h2>
+    <p class="text-gray-400 mb-4">Create your first batch to start organising inspections.</p>
+    <a href="{{ url_for('batches.create_batch') }}"
+       class="inline-block px-4 py-2.5 bg-primary text-white rounded-lg text-sm font-medium">
+        + New Batch
+    </a>
+</div>
+{% endif %}
+{% endblock %}

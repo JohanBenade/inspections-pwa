@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+{% block title %}New Batch{% endblock %}
+
+{% block content %}
+<div class="mb-6">
+    <h1 class="text-2xl font-bold text-gray-800">New Batch</h1>
+    <p class="text-gray-500 mt-1">Enter unit numbers to auto-route to the correct cycles</p>
+</div>
+
+<form method="POST" class="bg-white rounded-lg shadow-sm border border-gray-200 p-4 space-y-4">
+    <div>
+        <label class="block text-sm font-medium text-gray-700 mb-1">Batch Name</label>
+        <input type="text" name="name" value="{{ name }}"
+               class="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary focus:border-primary"
+               placeholder="e.g. Raubex 2026-02-23">
+    </div>
+
+    <div>
+        <label class="block text-sm font-medium text-gray-700 mb-1">Unit Numbers</label>
+        <textarea name="units" rows="4"
+                  class="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary focus:border-primary font-mono"
+                  placeholder="029, 030, 046, 054, 055, 056&#10;148, 149, 150, 151, 152">{{ request.form.get('units', '') }}</textarea>
+        <p class="text-xs text-gray-400 mt-1">Comma, space, or newline separated. Leading zeros added automatically.</p>
+    </div>
+
+    <div>
+        <label class="block text-sm font-medium text-gray-700 mb-1">Notes (optional)</label>
+        <input type="text" name="notes" value="{{ notes }}"
+               class="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary focus:border-primary"
+               placeholder="e.g. Re-inspection request from Raubex">
+    </div>
+
+    <div class="flex space-x-3 pt-2">
+        <button type="submit"
+                class="px-6 py-2.5 bg-primary text-white rounded-lg text-sm font-medium hover:bg-opacity-90 transition-colors tap-target">
+            Create Batch
+        </button>
+        <a href="{{ url_for('batches.list_batches') }}"
+           class="px-4 py-2.5 text-gray-600 bg-gray-100 rounded-lg text-sm font-medium hover:bg-gray-200 transition-colors tap-target">
+            Cancel
+        </a>
+    </div>
+</form>
+{% endblock %}

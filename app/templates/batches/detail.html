@@ -1,0 +1,110 @@
+{% extends "base.html" %}
+{% block title %}{{ batch.name }}{% endblock %}
+
+{% block content %}
+<div class="flex justify-between items-start mb-6">
+    <div>
+        <h1 class="text-2xl font-bold text-gray-800">{{ batch.name }}</h1>
+        <p class="text-gray-500 mt-1">
+            {{ units | length }} unit{{ 's' if units | length != 1 }}
+            {% if batch.notes %} &middot; {{ batch.notes }}{% endif %}
+        </p>
+    </div>
+    {% if batch.status == 'open' %}
+    <span class="px-2.5 py-1 text-xs font-semibold rounded-full bg-gray-100 text-gray-600">Open</span>
+    {% elif batch.status == 'in_progress' %}
+    <span class="px-2.5 py-1 text-xs font-semibold rounded-full bg-blue-100 text-blue-700">In Progress</span>
+    {% elif batch.status == 'review' %}
+    <span class="px-2.5 py-1 text-xs font-semibold rounded-full bg-purple-100 text-purple-700">Review</span>
+    {% elif batch.status == 'complete' %}
+    <span class="px-2.5 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-700">Complete</span>
+    {% endif %}
+</div>
+
+{% if units %}
+<div class="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+    <table class="w-full text-sm">
+        <thead class="bg-gray-50 border-b border-gray-200">
+            <tr>
+                <th class="px-4 py-3 text-left font-medium text-gray-600">Unit</th>
+                <th class="px-4 py-3 text-left font-medium text-gray-600 hidden sm:table-cell">Block / Floor</th>
+                <th class="px-4 py-3 text-left font-medium text-gray-600">Round</th>
+                <th class="px-4 py-3 text-left font-medium text-gray-600">Status</th>
+                <th class="px-4 py-3 text-left font-medium text-gray-600">Inspector</th>
+            </tr>
+        </thead>
+        <tbody class="divide-y divide-gray-100">
+            {% for u in units %}
+            <tr class="hover:bg-gray-50">
+                <td class="px-4 py-3 font-medium text-gray-800">
+                    {{ u.unit_number }}
+                    <span class="sm:hidden text-xs text-gray-400 block">
+                        {{ u.block }} {{ floor_labels.get(u.floor, u.floor) }}
+                    </span>
+                </td>
+                <td class="px-4 py-3 text-gray-500 hidden sm:table-cell">
+                    {{ u.block }} {{ floor_labels.get(u.floor, u.floor) }}
+                </td>
+                <td class="px-4 py-3">
+                    {% if u.cycle_number > 1 %}
+                    <span class="px-2 py-0.5 text-xs font-semibold rounded-full bg-amber-100 text-amber-700">
+                        C{{ u.cycle_number }} (re)
+                    </span>
+                    {% else %}
+                    <span class="text-gray-500">C{{ u.cycle_number }}</span>
+                    {% endif %}
+                </td>
+                <td class="px-4 py-3">
+                    {% if u.bu_status == 'pending' %}
+                    <span class="text-xs text-gray-400">Pending</span>
+                    {% elif u.bu_status == 'assigned' %}
+                    <span class="text-xs text-blue-600">Assigned</span>
+                    {% elif u.bu_status == 'inspecting' %}
+                    <span class="text-xs text-blue-700 font-medium">Inspecting</span>
+                    {% elif u.bu_status == 'submitted' %}
+                    <span class="text-xs text-purple-600">Submitted</span>
+                    {% elif u.bu_status == 'reviewed' %}
+                    <span class="text-xs text-indigo-600">Reviewed</span>
+                    {% elif u.bu_status == 'approved' %}
+                    <span class="text-xs text-green-600">Approved</span>
+                    {% elif u.bu_status == 'signed' %}
+                    <span class="text-xs text-green-700 font-medium">Signed</span>
+                    {% endif %}
+                </td>
+                <td class="px-4 py-3" id="assign-{{ u.bu_id }}">
+                    <select name="inspector_id"
+                            class="text-xs border border-gray-200 rounded px-2 py-1.5 w-full max-w-[160px] tap-target"
+                            hx-post="{{ url_for('batches.assign_inspector', batch_id=batch.id) }}"
+                            hx-vals='{"bu_id": "{{ u.bu_id }}"}'
+                            hx-target="#status-{{ u.bu_id }}"
+                            hx-swap="innerHTML">
+                        <option value="">-- Select --</option>
+                        {% for insp in inspectors %}
+                        <option value="{{ insp.id }}"
+                            {% if u.inspector_id == insp.id %}selected{% endif %}>
+                            {{ insp.name }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                    <span id="status-{{ u.bu_id }}" class="ml-1">
+                        {% if u.inspector_name %}
+                        <span class="text-xs text-green-600">{{ u.inspector_name }}</span>
+                        {% endif %}
+                    </span>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% else %}
+<div class="bg-white rounded-lg shadow-sm border border-gray-200 p-8 text-center">
+    <p class="text-gray-400">No units in this batch.</p>
+</div>
+{% endif %}
+
+<div class="mt-4">
+    <a href="{{ url_for('batches.list_batches') }}"
+       class="text-sm text-gray-500 hover:text-gray-700">&larr; Back to Batches</a>
+</div>
+{% endblock %}
