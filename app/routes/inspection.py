@@ -1662,7 +1662,8 @@ def get_area_badges(inspection_id):
         else:
             html_parts.append(f'<span id="area-badge-{aid}" hx-swap-oob="true"></span>')
         marked, total = progress_map.get(aid, (0, 0))
-        html_parts.append(f'<span id="area-progress-{aid}" hx-swap-oob="true" class="text-xs text-gray-500">{marked}/{total}</span>')
+        complete_class = "text-xs bg-green-100 text-green-700 px-1.5 py-0.5 rounded font-semibold" if (marked == total and total > 0) else "text-xs text-gray-500"
+        html_parts.append(f'<span id="area-progress-{aid}" hx-swap-oob="true" class="{complete_class}">{marked}/{total}</span>')
     
     return '\n'.join(html_parts)
 

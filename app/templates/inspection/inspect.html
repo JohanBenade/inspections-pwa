@@ -63,7 +63,7 @@
                             {% endif %}
                         </span>
                         {% set prog = area_progress_map.get(area.id, {}) %}
-                        <span id="area-progress-{{ area.id }}" class="text-xs {% if prog.get('marked', 0) == prog.get('total', 0) and prog.get('total', 0) > 0 %}text-green-600 font-semibold{% else %}text-gray-500{% endif %}">{{ prog.get('marked', 0) }}/{{ prog.get('total', 0) }}</span>
+                        <span id="area-progress-{{ area.id }}" class="text-xs {% if prog.get('marked', 0) == prog.get('total', 0) and prog.get('total', 0) > 0 %}bg-green-100 text-green-700 px-1.5 py-0.5 rounded font-semibold{% else %}text-gray-500{% endif %}">{{ prog.get('marked', 0) }}/{{ prog.get('total', 0) }}</span>
                     </span>
                 </button>
                 {% endfor %}
