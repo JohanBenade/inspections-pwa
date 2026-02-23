@@ -48,104 +48,13 @@
                     </a>
                 </div>
 
-                {% if cycle.status == 'active' and user_role in ['manager', 'admin'] %}
-                <!-- Manager workflow status -->
-                <div class="mt-4 pt-3 border-t border-gray-100">
-                    {% if is_issued %}
-                    <!-- STATE 3: Issued to Contractor -->
-                    <div class="flex items-center gap-2 mb-2">
-                        <span class="w-2.5 h-2.5 rounded-full bg-green-500 inline-block"></span>
-                        <span class="text-sm font-semibold text-green-700">Defect Lists Issued to Contractor</span>
-                    </div>
-                    <p class="text-xs text-gray-500 mb-3">PDFs delivered to Raubex SharePoint. Contractor is responsible for rectifying defects before the next inspection cycle.</p>
-                    <div class="flex flex-wrap gap-3 text-xs text-gray-500">
-                        <span class="inline-flex items-center gap-1">
-                            <svg class="w-3.5 h-3.5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
-                            Signed off by {{ cycle.approved_by }} &middot; {{ cycle.approved_at[:10] }}
-                        </span>
-                        <span class="inline-flex items-center gap-1">
-                            <svg class="w-3.5 h-3.5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
-                            Issued {{ cycle.pdfs_pushed_at[:10] }}
-                        </span>
-                    </div>
 
-                    {% elif is_approved %}
-                    <!-- STATE 2: Signed Off -->
-                    <div class="flex items-center gap-2 mb-2">
-                        <span class="w-2.5 h-2.5 rounded-full bg-blue-500 inline-block"></span>
-                        <span class="text-sm font-semibold text-blue-700">Defect Lists Signed Off</span>
-                    </div>
-                    <p class="text-xs text-gray-500 mb-3">Defect lists confirmed as accurate. Generate unit PDFs and push to Raubex SharePoint for contractor rectification.</p>
-                    <div class="flex flex-wrap items-center gap-3">
-                        <span class="inline-flex items-center gap-1 text-xs text-gray-500">
-                            <svg class="w-3.5 h-3.5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
-                            Signed off by {{ cycle.approved_by }} &middot; {{ cycle.approved_at[:10] }}
-                        </span>
-                        <form method="POST" action="{{ url_for('cycles.push_pdfs', cycle_id=cycle.id) }}"
-                              onsubmit="return handlePushSubmit(this, {{ cycle.inspected_count }}, '{{ cycle.block }}')">
-                            <button type="submit"
-                                    class="push-btn px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700">
-                                Push PDFs to Raubex
-                            </button>
-                        </form>
-                        <div class="push-status hidden w-full mt-3 p-3 bg-blue-50 border border-blue-200 rounded-lg">
-                            <div class="flex items-center gap-2">
-                                <svg class="animate-spin w-4 h-4 text-blue-600" fill="none" viewBox="0 0 24 24">
-                                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                                </svg>
-                                <span class="push-status-text text-sm font-medium text-blue-700">Generating PDFs...</span>
-                            </div>
-                            <p class="text-xs text-blue-600 mt-1">Generating and delivering {{ cycle.inspected_count }} PDFs to Raubex SharePoint. This may take up to a minute. Do not close this page.</p>
-                        </div>
-                    </div>
-
-                    {% else %}
-                    <!-- STATE 1: Awaiting Sign-off -->
-                    <div class="flex items-center gap-2 mb-2">
-                        <span class="w-2.5 h-2.5 rounded-full bg-amber-500 inline-block"></span>
-                        <span class="text-sm font-semibold text-amber-700">Defect Lists Awaiting Sign-off</span>
-                    </div>
-                    <p class="text-xs text-gray-500 mb-3">Spot check units on the Approvals page to verify defect lists are accurate. Once satisfied, sign off this cycle to unlock PDF delivery.</p>
-                    <div class="flex flex-wrap items-center gap-4 mb-3">
-                        <div class="flex items-center gap-2">
-                            <span class="text-xs text-gray-500">Spot checked:</span>
-                            <span class="text-sm font-semibold" style="color: {{ color }};">{{ cycle.spot_checked }}/{{ cycle.inspected_count }}</span>
-                        </div>
-                        <div class="flex-1 max-w-xs">
-                            {% set sc_pct = ((cycle.spot_checked / cycle.inspected_count) * 100) | int if cycle.inspected_count > 0 else 0 %}
-                            <div class="w-full bg-gray-100 rounded-full h-1.5">
-                                <div class="h-1.5 rounded-full" style="width: {{ sc_pct }}%; background-color: {{ color }};"></div>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="flex flex-wrap items-center gap-3">
-                        <form method="POST" action="{{ url_for('cycles.approve_cycle', cycle_id=cycle.id) }}"
-                              onsubmit="return handleSignoffSubmit(this, '{{ cycle.block or "this cycle" }}', {{ cycle.defect_count }}, {{ cycle.inspected_count }})">
-                            <button type="submit"
-                                    class="signoff-btn px-4 py-2 text-sm font-medium text-white rounded-lg hover:opacity-90"
-                                    style="background-color: {{ color }};">
-                                Sign Off All {{ cycle.inspected_count }} Units
-                            </button>
-                        </form>
-                        <button disabled
-                                class="px-4 py-2 text-sm font-medium text-gray-400 bg-gray-100 rounded-lg cursor-not-allowed">
-                            Push PDFs to Raubex
-                        </button>
-                    </div>
-                    {% endif %}
-                </div>
-                {% else %}
-                <!-- Non-manager or closed cycle: simple progress -->
+                <!-- Progress bar -->
                 <div class="mt-3 h-2 bg-gray-200 rounded-full overflow-hidden">
                     {% set pct = (cycle.units_submitted / cycle.total_units * 100) if cycle.total_units > 0 else 0 %}
                     <div class="h-full" style="width: {{ pct }}%; background-color: {{ color }};"></div>
                 </div>
                 <p class="text-xs text-gray-400 mt-1">{{ cycle.units_submitted }}/{{ cycle.total_units }} units submitted</p>
-                {% endif %}
-            </div>
-        </div>
-        {% endfor %}
     </div>
     {% else %}
     <div class="bg-white rounded-lg shadow p-8 text-center">
@@ -156,35 +65,4 @@
     {% endif %}
 </div>
 
-<script>
-function handleSignoffSubmit(form, blockName, defectCount, unitCount) {
-    if (!confirm('Sign off defect lists for ' + blockName + '?\n\nThis confirms ' + defectCount + ' defects across ' + unitCount + ' units are accurate and will unlock PDF delivery to Raubex.')) {
-        return false;
-    }
-    var btn = form.querySelector('.signoff-btn');
-    btn.disabled = true;
-    btn.style.opacity = '0.6';
-    btn.innerHTML = '<span style="display:inline-flex;align-items:center;gap:6px;"><svg class="animate-spin" style="width:16px;height:16px;" fill="none" viewBox="0 0 24 24"><circle style="opacity:0.25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path style="opacity:0.75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg> Signing off...</span>';
-    return true;
-}
-
-function handlePushSubmit(form, unitCount, blockName) {
-    if (!confirm('Push ' + unitCount + ' PDFs to Raubex SharePoint for ' + blockName + '?\n\nThis will generate and deliver defect list PDFs for all units.')) {
-        return false;
-    }
-    var btn = form.querySelector('.push-btn');
-    btn.disabled = true;
-    btn.style.opacity = '0.6';
-    btn.innerHTML = '<span style="display:inline-flex;align-items:center;gap:6px;"><svg class="animate-spin" style="width:16px;height:16px;" fill="none" viewBox="0 0 24 24"><circle style="opacity:0.25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path style="opacity:0.75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg> Generating PDFs...</span>';
-    var statusDiv = form.parentElement.querySelector('.push-status');
-    if (statusDiv) {
-        statusDiv.classList.remove('hidden');
-    }
-    var card = form.closest('.bg-white');
-    if (card) {
-        card.style.opacity = '0.85';
-    }
-    return true;
-}
-</script>
 {% endblock %}
