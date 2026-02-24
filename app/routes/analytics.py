@@ -370,8 +370,32 @@ def dashboard():
         GROUP BY d.original_comment, ct.category_name
         HAVING unit_count >= 3
         ORDER BY cnt DESC
+        LIMIT 10
     """, [tenant_id])
     recurring = [dict(r) for r in recurring_raw]
+
+    # 14. Build density grid from cards
+    grid_blocks = sorted(set(c['block'] for c in cards if c['inspected'] > 0))
+    grid_floors = sorted(set(c['floor'] for c in cards if c['inspected'] > 0))
+    block_floor_grid = {}
+    grid_avgs = []
+    for c in cards:
+        if c['inspected'] > 0:
+            if c['block'] not in block_floor_grid:
+                block_floor_grid[c['block']] = {}
+            block_floor_grid[c['block']][c['floor']] = {
+                'avg': c['avg_defects'],
+                'defects': c['open_defects'],
+                'units': c['inspected'],
+                'defect_rate': c['defect_rate'],
+            }
+            grid_avgs.append(c['avg_defects'])
+    if grid_avgs:
+        grid_avgs.sort()
+        mid = len(grid_avgs) // 2
+        grid_median = grid_avgs[mid] if len(grid_avgs) % 2 else round((grid_avgs[mid - 1] + grid_avgs[mid]) / 2, 1)
+    else:
+        grid_median = 0
 
     # Separate active vs awaiting blocks (a block is active if ANY zone has inspections)
     active_blocks = set()
@@ -400,7 +424,11 @@ def dashboard():
                            td_median=td_median,
                            category_data=category_data,
                            cat_median=cat_median,
-                           recurring=recurring)
+                           recurring=recurring,
+                           grid_blocks=grid_blocks,
+                           grid_floors=grid_floors,
+                           block_floor_grid=block_floor_grid,
+                           grid_median=grid_median)
 
 
 @analytics_bp.route('/<block_slug>/<int:floor>')
@@ -2489,6 +2517,7 @@ def _build_combined_report_data():
         GROUP BY d.original_comment
         HAVING COUNT(DISTINCT u.id) >= 3
         ORDER BY cnt DESC
+        LIMIT 10
     """, [tenant_id])
     recurring = [dict(r) for r in recurring_raw] if recurring_raw else []
 
