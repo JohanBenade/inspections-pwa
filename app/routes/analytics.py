@@ -686,12 +686,14 @@ def block_floor_detail(block_slug, floor):
                 sum_open = sum(r['total_open'] for r in rectification)
                 total_pct = round(sum_cleared / sum_prev * 100, 1) if sum_prev > 0 else 0
 
+                net_imp = sum_cleared - sum_new
                 rect_totals = {
                     'prev_raised': sum_prev,
                     'prev_cleared': sum_cleared,
                     'new_defects': sum_new,
                     'total_open': sum_open,
                     'clearance_pct': total_pct,
+                    'net_improvement': net_imp,
                 }
 
                 rect_callout = 'Of {} defects raised on re-inspected units in Cycle {}, {} ({:.1f}%) have been rectified.'.format(

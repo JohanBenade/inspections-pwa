@@ -45,25 +45,32 @@
     <div class="section-card text-center py-12"><p class="text-gray-400 font-display text-xl">No inspection data yet.</p></div>
     {% else %}
 
-    <!-- ==================== VERDICT BAR ==================== -->
+    <!-- ==================== RECTIFICATION PROGRESS ==================== -->
     {% if rectification %}
-    {% set pct = rect_totals.clearance_pct if rect_totals else 0 %}
-    <div class="{% if pct >= 75 %}verdict-bar-good{% elif pct >= 25 %}verdict-bar-wait{% elif pct == 0 and rect_totals.new_defects > 0 %}verdict-bar-warn{% else %}verdict-bar-wait{% endif %} rounded-lg px-6 py-5 mb-6">
-        <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3">
-            <div>
-                <div class="text-white text-xs font-semibold tracking-widest uppercase mb-1" style="opacity: 0.7;">Rectification Status</div>
-                <div class="font-display text-white text-2xl lg:text-3xl font-bold">
-                    {% if pct == 0 and rect_totals.new_defects > 0 %}Rectification Stalled
-                    {% elif pct == 0 %}Awaiting Rectification
-                    {% elif pct < 50 %}Rectification In Progress
-                    {% elif pct < 100 %}Rectification On Track
-                    {% else %}Fully Rectified{% endif %}
-                </div>
+    {% set net = rect_totals.net_improvement if rect_totals.net_improvement is defined else (rect_totals.prev_cleared - rect_totals.new_defects) %}
+    {% set re_pct = (rectification|length / summary.total_units * 100)|round|int if summary.total_units > 0 else 0 %}
+    <div class="rounded-lg mb-6" style="border: 1px solid #e5e5e5; overflow: hidden;">
+        <div style="padding: 1rem 1.5rem; background: #FAFAF8; border-bottom: 1px solid #e5e5e5;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+                <span style="font-size: 0.7rem; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; color: #6B6B6B;">Re-inspection Progress</span>
+                <span style="font-size: 0.8rem; font-weight: 600; color: #1A1A1A;">{{ rectification|length }} of {{ summary.total_units }} units ({{ re_pct }}%)</span>
             </div>
-            <div class="flex flex-wrap gap-6 text-white">
-                <div class="text-center"><div class="text-2xl font-bold">{{ rect_totals.prev_cleared }}</div><div class="text-xs uppercase tracking-wider" style="opacity: 0.6;">of {{ rect_totals.prev_raised }} resolved</div></div>
-                <div class="text-center"><div class="text-2xl font-bold" style="{% if rect_totals.new_defects > 0 %}color: #fbbf24;{% endif %}">{{ rect_totals.new_defects }}</div><div class="text-xs uppercase tracking-wider" style="opacity: 0.6;">new defects</div></div>
-                <div class="text-center"><div class="text-2xl font-bold">{{ rectification|length }}</div><div class="text-xs uppercase tracking-wider" style="opacity: 0.6;">of {{ summary.total_units }} re-inspected</div></div>
+            <div style="height: 6px; background: #e5e5e5; border-radius: 3px; overflow: hidden;">
+                <div style="width: {{ re_pct }}%; height: 100%; background: #3D6B8E; border-radius: 3px;"></div>
+            </div>
+        </div>
+        <div style="display: flex; padding: 0;">
+            <div style="flex: 1; padding: 1rem 1.5rem; border-right: 1px solid #e5e5e5; border-left: 3px solid #4A7C59;">
+                <div style="font-size: 1.5rem; font-weight: 700; color: #4A7C59;">{{ rect_totals.prev_cleared }}</div>
+                <div style="font-size: 0.75rem; color: #6B6B6B;">Rectified of {{ rect_totals.prev_raised }} flagged</div>
+            </div>
+            <div style="flex: 1; padding: 1rem 1.5rem; border-right: 1px solid #e5e5e5; border-left: 3px solid #C8963E;">
+                <div style="font-size: 1.5rem; font-weight: 700; color: #C8963E;">{{ rect_totals.new_defects }}</div>
+                <div style="font-size: 0.75rem; color: #6B6B6B;">New defects in re-inspection</div>
+            </div>
+            <div style="flex: 1; padding: 1rem 1.5rem; border-left: 3px solid {% if net > 0 %}#4A7C59{% elif net < 0 %}#C44D3F{% else %}#6B6B6B{% endif %};">
+                <div style="font-size: 1.5rem; font-weight: 700; color: {% if net > 0 %}#4A7C59{% elif net < 0 %}#C44D3F{% else %}#6B6B6B{% endif %};">{% if net > 0 %}+{% endif %}{{ net }}</div>
+                <div style="font-size: 0.75rem; color: #6B6B6B;">Net improvement</div>
             </div>
         </div>
     </div>
