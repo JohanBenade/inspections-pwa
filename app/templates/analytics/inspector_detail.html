@@ -1,0 +1,57 @@
+{% extends "base.html" %}
+{% block title %}{{ inspector_name }} | Inspector{% endblock %}
+{% block content %}
+<div class="max-w-3xl mx-auto px-4 py-6">
+    <a href="{{ url_for('analytics.dashboard') }}" class="inline-block text-xs text-blue-600 hover:text-blue-800 mb-2">&larr; Back to Analytics</a>
+
+    <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 1.5rem;">
+        <div>
+            <h1 style="font-size: 1.4rem; font-weight: 800; color: #0A0A0A; margin: 0;">{{ inspector_name }}</h1>
+            <div style="font-size: 0.82rem; color: #6B6B6B; margin-top: 0.2rem;">{{ total_units }} units inspected &middot; {{ total_defects }} total defects &middot; {{ raw_avg }} avg/unit</div>
+        </div>
+        {% if has_data %}
+        <div style="text-align: right;">
+            <div style="font-size: 1.8rem; font-weight: 800; color: {{ colour }};">{% if zone_score > 0 %}+{% endif %}{{ zone_score }}%</div>
+            <div style="font-size: 0.7rem; color: #9A9A9A;">vs zone avg</div>
+        </div>
+        {% endif %}
+    </div>
+
+    {% if not has_data %}
+    <div style="text-align: center; padding: 3rem; color: #9A9A9A;">No inspection data found.</div>
+    {% else %}
+
+    <div style="background: #F5F3EE; border-radius: 10px; overflow: hidden;">
+        <table style="width: 100%; border-collapse: collapse; font-size: 0.82rem;">
+            <thead>
+                <tr style="background: #e9e7e2;">
+                    <th style="text-align: left; padding: 0.6rem 0.75rem; font-weight: 700; color: #1A1A1A;">Unit</th>
+                    <th style="text-align: left; padding: 0.6rem 0.5rem; font-weight: 700; color: #1A1A1A;">Zone</th>
+                    <th style="text-align: center; padding: 0.6rem 0.5rem; font-weight: 700; color: #1A1A1A;">Defects</th>
+                    <th style="text-align: center; padding: 0.6rem 0.5rem; font-weight: 700; color: #1A1A1A;">Zone Avg</th>
+                    <th style="text-align: center; padding: 0.6rem 0.5rem; font-weight: 700; color: #1A1A1A;">Variance</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for u in units %}
+                <tr style="border-bottom: 1px solid #e5e5e5; cursor: pointer;"
+                    onclick="window.location='{{ url_for('certification.view_unit', unit_id=u.unit_id, **{'from': 'inspector'}) }}'">
+                    <td style="padding: 0.6rem 0.75rem; font-weight: 700;">
+                        <span style="text-decoration: underline; text-underline-offset: 2px;">{{ u.unit_number }}</span>
+                        <span style="font-size: 0.68rem; color: #9A9A9A; margin-left: 0.2rem;">C{{ u.round_number }}</span>
+                    </td>
+                    <td style="padding: 0.6rem 0.5rem; color: #6B6B6B;">{{ u.block|replace('Block ', 'B') }} {{ u.floor_label }}</td>
+                    <td style="text-align: center; padding: 0.6rem 0.5rem; font-weight: 700;">{{ u.defect_count }}</td>
+                    <td style="text-align: center; padding: 0.6rem 0.5rem; color: #9A9A9A;">{{ u.zone_avg }}</td>
+                    <td style="text-align: center; padding: 0.6rem 0.5rem; font-weight: 700; color: {{ u.var_colour }};">
+                        {% if u.variance > 0 %}+{% endif %}{{ u.variance }}%
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    {% endif %}
+</div>
+{% endblock %}

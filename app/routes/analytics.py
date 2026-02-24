@@ -3241,3 +3241,72 @@ def _build_report_data(cycle_id):
         'area_colours': report_area_colours,
         'report_date': __import__('datetime').datetime.utcnow().strftime('%d %B %Y'),
     }
+
+@analytics_bp.route('/inspector/<inspector_name>')
+@require_manager
+def inspector_detail(inspector_name):
+    tenant_id = session.get('tenant_id', 'MONOGRAPH')
+    FLOOR_LABELS = {0: 'Ground', 1: '1st Floor', 2: '2nd Floor'}
+
+    # Get all units this inspector inspected with zone info
+    units = [dict(r) for r in query_db("""
+        SELECT i.inspector_name, u.id as unit_id, u.unit_number, u.block, u.floor,
+            i.id as inspection_id, i.cycle_id, i.status as insp_status,
+            ic.cycle_number as round_number,
+            COUNT(d.id) as defect_count
+        FROM inspection i
+        JOIN unit u ON i.unit_id = u.id
+        JOIN inspection_cycle ic ON i.cycle_id = ic.id
+        LEFT JOIN defect d ON d.unit_id = u.id AND d.raised_cycle_id = i.cycle_id
+            AND d.status = 'open' AND d.tenant_id = u.tenant_id
+        WHERE i.tenant_id = ? AND i.inspector_name = ?
+            AND i.status NOT IN ('not_started')
+            AND u.unit_number NOT LIKE 'TEST%'
+        GROUP BY u.unit_number, i.cycle_id
+        ORDER BY defect_count DESC
+    """, [tenant_id, inspector_name])]
+
+    if not units:
+        return render_template('analytics/inspector_detail.html',
+                               inspector_name=inspector_name, has_data=False,
+                               units=[], zone_score=0, total_defects=0,
+                               total_units=0, raw_avg=0, colour='#6B6B6B')
+
+    # Zone averages
+    zone_avgs = {}
+    zone_data = [dict(r) for r in query_db("""
+        SELECT u.block, u.floor,
+            ROUND(COUNT(d.id) * 1.0 / NULLIF(COUNT(DISTINCT u.id), 0), 1) as avg_defects
+        FROM unit u
+        LEFT JOIN inspection i ON i.unit_id = u.id AND i.tenant_id = u.tenant_id
+            AND i.status NOT IN ('not_started')
+        LEFT JOIN defect d ON d.unit_id = u.id AND d.status = 'open' AND d.tenant_id = u.tenant_id
+        WHERE u.tenant_id = ? AND u.unit_number NOT LIKE 'TEST%'
+        GROUP BY u.block, u.floor
+        HAVING COUNT(DISTINCT CASE WHEN i.id IS NOT NULL THEN u.id END) > 0
+    """, [tenant_id])]
+    for z in zone_data:
+        zone_avgs[(z['block'], z['floor'])] = z['avg_defects']
+
+    # Enrich units
+    variances = []
+    total_defects = 0
+    for u in units:
+        zone_avg = zone_avgs.get((u['block'], u['floor']), 0)
+        u['zone_avg'] = zone_avg
+        u['variance'] = round((u['defect_count'] - zone_avg) / zone_avg * 100, 1) if zone_avg > 0 else 0
+        u['floor_label'] = FLOOR_LABELS.get(u['floor'], 'Floor ' + str(u['floor']))
+        u['var_colour'] = '#4A7C59' if u['variance'] >= 0 else '#C44D3F'
+        variances.append(u['variance'])
+        total_defects += u['defect_count']
+
+    total_units = len(units)
+    raw_avg = round(total_defects / total_units, 1) if total_units > 0 else 0
+    zone_score = round(sum(variances) / len(variances), 1) if variances else 0
+    colour = '#C44D3F' if abs(zone_score) > 30 else '#C8963E' if abs(zone_score) > 15 else '#4A7C59'
+
+    return render_template('analytics/inspector_detail.html',
+                           inspector_name=inspector_name, has_data=True,
+                           units=units, zone_score=zone_score,
+                           total_defects=total_defects, total_units=total_units,
+                           raw_avg=raw_avg, colour=colour)

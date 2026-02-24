@@ -579,19 +579,27 @@
         <div style="font-weight: 700; font-size: 0.9rem; color: #1A1A1A; margin-bottom: 0.75rem;">Zone-Adjusted Ranking</div>
         <p style="font-size: 0.72rem; color: #9A9A9A; margin-bottom: 0.75rem;">How many defects each inspector finds compared to the average for the zones they worked. Positive = more thorough. Negative = finding fewer than expected.</p>
         {% for insp in inspector_cards %}
-        <div style="display: flex; align-items: center; margin-bottom: 0.5rem;">
-            <div style="width: 130px; font-size: 0.78rem; font-weight: 600; color: #1A1A1A; text-align: right; padding-right: 0.5rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{{ insp.name }}</div>
-            <div style="flex: 1; position: relative; height: 22px; background: #e9e7e2; border-radius: 4px; overflow: visible;">
-                <div style="position: absolute; left: 50%; top: 0; width: 1px; height: 22px; background: #6B6B6B; z-index: 2;"></div>
+        <a href="{{ url_for('analytics.inspector_detail', inspector_name=insp.name) }}" style="display: flex; align-items: center; margin-bottom: 0.5rem; text-decoration: none; padding: 2px 0; border-radius: 4px; cursor: pointer;" onmouseover="this.style.background='rgba(0,0,0,0.03)'" onmouseout="this.style.background='transparent'">
+            <div style="width: 130px; font-size: 0.78rem; font-weight: 600; color: #1A1A1A; text-align: right; padding-right: 0.5rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-decoration: underline; text-underline-offset: 2px;">{{ insp.name }}</div>
+            <div style="flex: 1; position: relative; height: 26px; background: #e9e7e2; border-radius: 4px; overflow: visible;">
+                <div style="position: absolute; left: 50%; top: 0; width: 1px; height: 26px; background: #6B6B6B; z-index: 2;"></div>
                 {% if insp.zone_score >= 0 %}
-                <div style="position: absolute; left: 50%; top: 2px; height: 18px; width: {{ [insp.zone_score * 0.4, 48]|min }}%; background: {{ insp.colour }}; border-radius: 0 4px 4px 0; z-index: 1;"></div>
+                <div style="position: absolute; left: 50%; top: 3px; height: 20px; width: {{ [insp.zone_score * 0.4, 48]|min }}%; background: {{ insp.colour }}; border-radius: 0 4px 4px 0; z-index: 1; display: flex; align-items: center; justify-content: flex-end; padding-right: 4px;">
+                    <span style="font-size: 0.68rem; font-weight: 700; color: white;">{% if insp.zone_score > 5 %}+{{ insp.zone_score }}%{% endif %}</span>
+                </div>
+                {% if insp.zone_score <= 5 %}<div style="position: absolute; left: calc(50% + {{ [insp.zone_score * 0.4, 48]|min }}% + 4px); top: 3px; height: 20px; display: flex; align-items: center; z-index: 3;"><span style="font-size: 0.7rem; font-weight: 700; color: {{ insp.colour }};">+{{ insp.zone_score }}%</span></div>{% endif %}
                 {% else %}
-                <div style="position: absolute; right: 50%; top: 2px; height: 18px; width: {{ [insp.zone_score|abs * 0.4, 48]|min }}%; background: {{ insp.colour }}; border-radius: 4px 0 0 4px; z-index: 1;"></div>
+                <div style="position: absolute; right: 50%; top: 3px; height: 20px; width: {{ [insp.zone_score|abs * 0.4, 48]|min }}%; background: {{ insp.colour }}; border-radius: 4px 0 0 4px; z-index: 1; display: flex; align-items: center; padding-left: 4px;">
+                    <span style="font-size: 0.68rem; font-weight: 700; color: white;">{% if insp.zone_score|abs > 5 %}{{ insp.zone_score }}%{% endif %}</span>
+                </div>
+                {% if insp.zone_score|abs <= 5 %}<div style="position: absolute; right: calc(50% + {{ [insp.zone_score|abs * 0.4, 48]|min }}% + 4px); top: 3px; height: 20px; display: flex; align-items: center; z-index: 3;"><span style="font-size: 0.7rem; font-weight: 700; color: {{ insp.colour }};">{{ insp.zone_score }}%</span></div>{% endif %}
                 {% endif %}
             </div>
-            <div style="width: 65px; font-size: 0.78rem; font-weight: 700; color: {{ insp.colour }}; text-align: right; padding-left: 0.4rem;">{% if insp.zone_score > 0 %}+{% endif %}{{ insp.zone_score }}%</div>
-            <div style="width: 45px; font-size: 0.68rem; color: #9A9A9A; text-align: right;">{{ insp.units }}u</div>
-        </div>
+            <div style="width: 70px; text-align: right; padding-left: 0.5rem;">
+                <span style="font-size: 0.82rem; font-weight: 700; color: #1A1A1A;">{{ insp.units }}</span>
+                <span style="font-size: 0.7rem; color: #6B6B6B;"> units</span>
+            </div>
+        </a>
         {% endfor %}
         <div style="display: flex; font-size: 0.65rem; color: #9A9A9A; margin-top: 0.3rem;">
             <div style="width: 130px;"></div>
