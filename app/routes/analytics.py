@@ -440,6 +440,62 @@ def dashboard():
             grid_avgs.append(c['avg_defects'])
     # grid_median is set earlier (line ~204) to project avg_defects_inspected
 
+
+    # 15. Inspector analytics (zone-adjusted scores)
+    inspector_raw = [dict(r) for r in query_db("""
+        SELECT i.inspector_name,
+            u.unit_number, u.block, u.floor,
+            COUNT(d.id) as defect_count
+        FROM inspection i
+        JOIN unit u ON i.unit_id = u.id
+        LEFT JOIN defect d ON d.unit_id = u.id AND d.raised_cycle_id = i.cycle_id
+            AND d.status = 'open' AND d.tenant_id = u.tenant_id
+        WHERE i.tenant_id = ? AND i.status NOT IN ('not_started')
+            AND i.inspector_name IS NOT NULL
+            AND u.unit_number NOT LIKE 'TEST%'
+        GROUP BY i.inspector_name, u.unit_number, u.block, u.floor
+        ORDER BY i.inspector_name
+    """, [tenant_id])]
+
+    # Build zone averages from cards
+    zone_avgs = {}
+    for c in cards:
+        if c['inspected'] > 0:
+            zone_avgs[(c['block'], c['floor'])] = c['avg_defects']
+
+    # Calculate per-inspector zone-adjusted scores
+    from collections import defaultdict
+    insp_data = defaultdict(lambda: {'units': 0, 'total_defects': 0, 'variances': [], 'areas': defaultdict(int), 'unit_list': []})
+    for r in inspector_raw:
+        name = r['inspector_name']
+        zone_key = (r['block'], r['floor'])
+        zone_avg = zone_avgs.get(zone_key, 0)
+        variance_pct = round((r['defect_count'] - zone_avg) / zone_avg * 100, 1) if zone_avg > 0 else 0
+        insp_data[name]['units'] += 1
+        insp_data[name]['total_defects'] += r['defect_count']
+        insp_data[name]['variances'].append(variance_pct)
+        insp_data[name]['unit_list'].append({
+            'unit': r['unit_number'], 'block': r['block'], 'floor': r['floor'],
+            'defects': r['defect_count'], 'zone_avg': zone_avg, 'variance': variance_pct
+        })
+
+    import statistics
+    inspector_cards = []
+    for name, d in insp_data.items():
+        avg_variance = round(sum(d['variances']) / len(d['variances']), 1) if d['variances'] else 0
+        consistency = round(statistics.stdev(d['variances']), 1) if len(d['variances']) > 1 else 0
+        raw_avg = round(d['total_defects'] / d['units'], 1) if d['units'] > 0 else 0
+        inspector_cards.append({
+            'name': name,
+            'units': d['units'],
+            'total_defects': d['total_defects'],
+            'raw_avg': raw_avg,
+            'zone_score': avg_variance,
+            'consistency': consistency,
+            'colour': '#C44D3F' if abs(avg_variance) > 30 else '#C8963E' if abs(avg_variance) > 15 else '#4A7C59',
+        })
+    inspector_cards.sort(key=lambda x: x['zone_score'], reverse=True)
+
     # Separate active vs awaiting blocks (a block is active if ANY zone has inspections)
     active_blocks = set()
     for card in cards:
@@ -473,7 +529,8 @@ def dashboard():
                            grid_blocks=grid_blocks,
                            grid_floors=grid_floors,
                            block_floor_grid=block_floor_grid,
-                           grid_median=grid_median)
+                           grid_median=grid_median,
+                           inspector_cards=inspector_cards)
 
 
 @analytics_bp.route('/<block_slug>/<int:floor>')
