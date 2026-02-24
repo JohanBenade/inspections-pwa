@@ -124,32 +124,26 @@
     <div class="divider"></div>
     <a href="{{ url_for('analytics.rectification') }}" style="text-decoration: none; color: inherit; display: block;">
     <div class="rect-box mb-6" style="cursor: pointer;">
-        <div style="display: flex; flex-wrap: wrap; gap: 2rem; align-items: center; margin-bottom: 0.75rem;">
-            <div>
-                <span style="font-size: 2rem; font-weight: 700; color: {% if rectification.net_improvement > 0 %}#4A7C59{% elif rectification.net_improvement == 0 %}#C8963E{% else %}#C44D3F{% endif %};">{{ '+' if rectification.net_improvement > 0 }}{{ rectification.net_improvement }}</span>
-                <span style="font-size: 0.85rem; color: #6B6B6B; margin-left: 0.5rem;">net improvement</span>
-            </div>
+        <div style="display: flex; flex-wrap: wrap; gap: 1rem; align-items: center; margin-bottom: 0.75rem;">
             <div style="font-size: 0.85rem; color: #6B6B6B;">
-                {{ rectification.total_reviewed }} fixed &middot;
-                {{ rectification.new_defects }} new &middot;
                 {{ rectification.r2_units }} unit{{ 's' if rectification.r2_units != 1 }} re-inspected
             </div>
             <div style="margin-left: auto; font-size: 0.75rem; color: #C8963E; font-weight: 600;">View details &rarr;</div>
         </div>
-        <div class="progress-bar-track" style="height: 10px; margin-bottom: 0.5rem;">
-            {% set rect_total = rectification.rectified + rectification.superseded %}
-            {% if rect_total > 0 %}
-            <div style="display: flex; height: 100%; border-radius: 4px; overflow: hidden;">
-                <div style="width: {{ (rectification.rectified / rect_total * 100)|round }}%; background: #4A7C59;" title="Rectified: {{ rectification.rectified }}"></div>
-                <div style="width: {{ (rectification.superseded / rect_total * 100)|round }}%; background: #C8963E;" title="Superseded: {{ rectification.superseded }}"></div>
+        {% set bar_total = rectification.rectified + rectification.new_defects %}
+        {% if bar_total > 0 %}
+        <div style="display: grid; grid-template-columns: 1fr auto; gap: 0.75rem; align-items: center;">
+            <div style="display: flex; height: 22px; border-radius: 4px; overflow: hidden;">
+                <div style="width: {{ (rectification.rectified / bar_total * 100)|round }}%; background: #4A7C59;" title="Fixed: {{ rectification.rectified }}"></div>
+                <div style="width: {{ (rectification.new_defects / bar_total * 100)|round }}%; background: #C8963E;" title="New: {{ rectification.new_defects }}"></div>
             </div>
-            {% endif %}
+            <div style="font-size: 0.7rem; white-space: nowrap;">
+                <span style="color: #4A7C59; font-weight: 600;">{{ rectification.rectified }} fixed</span>
+                <span style="color: #9A9A9A;"> &middot; </span>
+                <span style="color: #C8963E; font-weight: 600;">{{ rectification.new_defects }} new</span>
+            </div>
         </div>
-        <div style="display: flex; flex-wrap: wrap; gap: 1.5rem; font-size: 0.75rem; color: #6B6B6B;">
-            <span><span class="severity-dot" style="background: #4A7C59;"></span>{{ rectification.rectified }} rectified ({{ (rectification.rectified / rect_total * 100)|round(1) if rect_total > 0 else 0 }}%)</span>
-            <span><span class="severity-dot" style="background: #C8963E;"></span>{{ rectification.superseded }} superseded ({{ (rectification.superseded / rect_total * 100)|round(1) if rect_total > 0 else 0 }}%)</span>
-            <span><span class="severity-dot" style="background: #C44D3F;"></span>{{ rectification.new_defects }} new in C2</span>
-        </div>
+        {% endif %}
     </div>
     </a>
     {% endif %}
