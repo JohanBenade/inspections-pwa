@@ -200,6 +200,9 @@ def dashboard():
     project['items_inspected'] = items_inspected
     project['project_total'] = PROJECT_TOTAL_UNITS
 
+    # Set heatmap benchmark to project average
+    grid_median = project['avg_defects_inspected']
+
     # 7b. Median, min, max defects per unit (inspected only)
     unit_defect_counts_raw = query_db("""
         SELECT COUNT(d.id) as defect_count
@@ -390,12 +393,9 @@ def dashboard():
                 'defect_rate': c['defect_rate'],
             }
             grid_avgs.append(c['avg_defects'])
-    if grid_avgs:
-        grid_avgs.sort()
-        mid = len(grid_avgs) // 2
-        grid_median = grid_avgs[mid] if len(grid_avgs) % 2 else round((grid_avgs[mid - 1] + grid_avgs[mid]) / 2, 1)
-    else:
-        grid_median = 0
+    # grid_median = project avg defects/unit (benchmark for heatmap colouring)
+    # Computed after project dict is built, so use a placeholder here
+    grid_median = 0  # will be set after project metrics
 
     # Separate active vs awaiting blocks (a block is active if ANY zone has inspections)
     active_blocks = set()
