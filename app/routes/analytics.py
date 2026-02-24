@@ -299,7 +299,7 @@ def dashboard():
 
     # 10. Worst units (top 5)
     worst_units = [dict(r) for r in query_db("""
-        SELECT u.unit_number, u.block, u.floor,
+        SELECT u.id as unit_id, u.unit_number, u.block, u.floor,
                COUNT(d.id) as defect_count
         FROM defect d
         JOIN unit u ON d.unit_id = u.id
