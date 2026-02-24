@@ -126,12 +126,13 @@
     <div class="rect-box mb-6" style="cursor: pointer;">
         <div style="display: flex; flex-wrap: wrap; gap: 2rem; align-items: center; margin-bottom: 0.75rem;">
             <div>
-                <span style="font-size: 2rem; font-weight: 700; color: #4A7C59;">{{ rectification.clearance_pct }}%</span>
-                <span style="font-size: 0.85rem; color: #6B6B6B; margin-left: 0.5rem;">clearance rate</span>
+                <span style="font-size: 2rem; font-weight: 700; color: {% if rectification.net_improvement > 0 %}#4A7C59{% elif rectification.net_improvement == 0 %}#C8963E{% else %}#C44D3F{% endif %};">{{ '+' if rectification.net_improvement > 0 }}{{ rectification.net_improvement }}</span>
+                <span style="font-size: 0.85rem; color: #6B6B6B; margin-left: 0.5rem;">net improvement</span>
             </div>
             <div style="font-size: 0.85rem; color: #6B6B6B;">
-                {{ rectification.r2_units }} unit{{ 's' if rectification.r2_units != 1 }} re-inspected &middot;
-                {{ rectification.total_reviewed }} C1 defects reviewed
+                {{ rectification.total_reviewed }} fixed &middot;
+                {{ rectification.new_defects }} new &middot;
+                {{ rectification.r2_units }} unit{{ 's' if rectification.r2_units != 1 }} re-inspected
             </div>
             <div style="margin-left: auto; font-size: 0.75rem; color: #C8963E; font-weight: 600;">View details &rarr;</div>
         </div>

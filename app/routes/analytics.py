@@ -265,6 +265,7 @@ def dashboard():
         # Clearance % = cleared / (cleared + still_open_from_prior)
         # For now use cleared / total_reviewed as proxy
         clearance_pct = 100.0 if total_cleared > 0 else 0
+        net_imp = total_cleared - r2_new
         rectification = {
             'r2_units': r2_units,
             'total_reviewed': total_cleared,
@@ -272,6 +273,7 @@ def dashboard():
             'superseded': 0,
             'new_defects': r2_new,
             'clearance_pct': clearance_pct,
+            'net_improvement': net_imp,
         }
 
     # 9. Area breakdown (top problem areas)

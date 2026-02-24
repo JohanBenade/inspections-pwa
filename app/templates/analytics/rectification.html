@@ -81,7 +81,7 @@
 
     <div class="mb-2"><span class="section-num">01 &mdash; Rectification Scorecard</span></div>
     <div class="divider"></div>
-    <p style="font-size: 0.8rem; color: #6B6B6B; margin-bottom: 1rem;">Performance by block + floor zone. <strong>Net</strong> = fixed minus new defects (the real improvement). Click a zone to drill down.</p>
+    <p style="font-size: 0.8rem; color: #6B6B6B; margin-bottom: 1rem;">Performance by block + floor zone. <strong>Net Improvement</strong> = fixed minus new defects (the real improvement). Click a zone to drill down.</p>
 
     <div class="rect-panel mb-6">
         <div style="display: grid; grid-template-columns: 2fr 1fr 1fr 1fr 1fr 1fr; gap: 0.5rem; padding: 0.5rem 0.75rem; font-size: 0.65rem; color: #9A9A9A; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; border-bottom: 1px solid #e5e5e5;">
@@ -90,7 +90,7 @@
             <div style="text-align: center;">Cleared</div>
             <div style="text-align: center;">Open</div>
             <div style="text-align: center;">New C2</div>
-            <div style="text-align: center;">Net</div>
+            <div style="text-align: center;">Net Improvement</div>
         </div>
         {% for z in zones %}
         <a href="{{ url_for('analytics.block_floor_detail', block_slug=z.slug, floor=z.floor) }}" class="zone-link"
