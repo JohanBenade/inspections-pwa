@@ -430,7 +430,7 @@ def review_unit(unit_id):
     unit_num = query_db('SELECT unit_number FROM unit WHERE id = ?', [unit_id], one=True)['unit_number']
     reviewer = session.get('user_name', 'Team Lead')
     flash(f"Unit {unit_num} reviewed by {reviewer} - now awaiting Architect approval", 'success')
-    return redirect(url_for('certification.dashboard'))
+    return redirect(url_for('certification.my_reviews'))
 
 
 
@@ -829,3 +829,75 @@ def update_category_note(unit_id):
     db.commit()
     
     return redirect(url_for('certification.view_unit', unit_id=unit_id))
+
+
+# ============================================================
+# TEAM LEAD: MY REVIEWS + MY INSPECTIONS
+# ============================================================
+
+@certification_bp.route('/my-reviews')
+@require_team_lead
+def my_reviews():
+    """Team Lead review queue - submitted inspections awaiting review."""
+    tenant_id = session['tenant_id']
+
+    inspections = [dict(r) for r in query_db("""
+        SELECT i.id AS inspection_id, i.status AS inspection_status,
+               i.submitted_at, i.inspector_name,
+               u.id AS unit_id, u.unit_number, u.block, u.floor,
+               ic.cycle_number, ic.id AS cycle_id,
+               (SELECT COUNT(*) FROM defect d
+                WHERE d.unit_id = u.id AND d.raised_cycle_id = ic.id
+                AND d.status = 'open' AND d.tenant_id = i.tenant_id) AS defect_count
+        FROM inspection i
+        JOIN unit u ON i.unit_id = u.id
+        JOIN inspection_cycle ic ON i.cycle_id = ic.id
+        WHERE i.tenant_id = ? AND i.status = 'submitted'
+        ORDER BY u.block, u.floor, u.unit_number
+    """, [tenant_id])]
+
+    return render_template('certification/my_reviews.html', inspections=inspections)
+
+
+@certification_bp.route('/my-inspections')
+@require_team_lead
+def my_inspections():
+    """Team Lead own inspection assignments - same view as inspector home."""
+    tenant_id = session['tenant_id']
+    user_id = session['user_id']
+
+    inspections = [dict(r) for r in query_db("""
+        SELECT i.id AS inspection_id, i.status AS inspection_status,
+               i.inspection_date, i.started_at, i.submitted_at,
+               u.id AS unit_id, u.unit_number, u.block, u.floor,
+               ic.cycle_number, ic.id AS cycle_id,
+               (SELECT COUNT(*) FROM inspection_item ii
+                WHERE ii.inspection_id = i.id
+                AND ii.status != 'skipped') AS total_items,
+               (SELECT COUNT(*) FROM inspection_item ii
+                WHERE ii.inspection_id = i.id
+                AND ii.status NOT IN ('skipped', 'pending')) AS completed_items,
+               (SELECT COUNT(*) FROM inspection_item ii2
+                WHERE ii2.inspection_id = i.id
+                AND ii2.status IN ('not_to_standard', 'not_installed')) AS defect_count,
+               (SELECT COUNT(*) FROM defect d2
+                JOIN inspection_cycle ic2 ON d2.raised_cycle_id = ic2.id
+                WHERE d2.unit_id = u.id AND d2.status = 'open'
+                AND ic2.cycle_number < ic.cycle_number
+                AND d2.tenant_id = i.tenant_id) AS prior_open_defects,
+               (SELECT COUNT(*) FROM defect d3
+                JOIN inspection_cycle ic3 ON d3.raised_cycle_id = ic3.id
+                WHERE d3.unit_id = u.id
+                AND ic3.cycle_number < ic.cycle_number
+                AND d3.tenant_id = i.tenant_id) AS prior_defects_total
+        FROM inspection i
+        JOIN unit u ON i.unit_id = u.id
+        JOIN inspection_cycle ic ON i.cycle_id = ic.id
+        WHERE i.inspector_id = ? AND i.tenant_id = ?
+        AND i.status IN ('not_started', 'in_progress')
+        ORDER BY
+            CASE i.status WHEN 'in_progress' THEN 0 ELSE 1 END,
+            u.unit_number
+    """, [user_id, tenant_id])]
+
+    return render_template('inspector_home.html', inspections=inspections)

@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+
+{% block title %}My Reviews{% endblock %}
+
+{% block content %}
+<div class="mb-6">
+    <h1 class="text-2xl font-bold text-gray-900">My Reviews</h1>
+    <p class="text-sm text-gray-500 mt-1">
+        {% if inspections %}
+        {{ inspections|length }} unit{{ 's' if inspections|length != 1 }} waiting for review
+        {% else %}
+        No units waiting for review
+        {% endif %}
+    </p>
+</div>
+
+{% if inspections %}
+<div class="space-y-3">
+    {% for insp in inspections %}
+    {% set floor_name = 'Ground' if insp.floor == 0 else ('1st' if insp.floor == 1 else '2nd') %}
+    <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-4">
+        <div class="flex justify-between items-start mb-1">
+            <div>
+                <div class="flex items-center space-x-2">
+                    <span class="text-lg font-bold text-gray-900">Unit {{ insp.unit_number }}</span>
+                    <span class="text-xs px-2 py-0.5 rounded-full bg-purple-100 text-purple-700">Submitted</span>
+                </div>
+                <p class="text-sm text-gray-500 mt-1">{{ insp.block }} {{ floor_name }} Floor &middot; Round {{ insp.cycle_number }}</p>
+                <p class="text-sm text-gray-500">{{ insp.inspector_name }} &middot; <span class="font-medium text-gray-700">{{ insp.defect_count }} defects</span></p>
+            </div>
+        </div>
+
+        <div class="flex gap-3 mt-4">
+            <a href="{{ url_for('certification.view_unit', unit_id=insp.unit_id) }}"
+               class="flex-1 text-center py-2.5 px-4 rounded-lg bg-primary text-white text-sm font-medium tap-target">
+                View Defects
+            </a>
+            <form method="POST" action="{{ url_for('certification.review_unit', unit_id=insp.unit_id) }}"
+                  class="flex-1">
+                <button type="submit"
+                        class="w-full py-2.5 px-4 rounded-lg bg-green-600 text-white text-sm font-medium tap-target">
+                    Mark Reviewed
+                </button>
+            </form>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% else %}
+<div class="bg-white rounded-xl shadow-sm border border-gray-200 p-8 text-center">
+    <svg class="w-12 h-12 text-green-500 mx-auto mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+    </svg>
+    <p class="text-gray-500 text-lg">All caught up!</p>
+    <p class="text-gray-400 text-sm mt-1">No units waiting for review</p>
+</div>
+{% endif %}
+{% endblock %}

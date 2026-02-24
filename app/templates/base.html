@@ -77,18 +77,18 @@
                     <div class="hidden md:flex items-center space-x-4">
                         <a href="{{ url_for('home') }}" class="text-sm text-gray-300 hover:text-white">Home</a>
                         {% if current_user.role in ['team_lead', 'manager', 'admin'] %}
-                        <a href="{{ url_for('projects.list_projects') }}" class="text-sm text-gray-300 hover:text-white">Projects</a>
-                        {% endif %}
-                        {% if current_user.role in ['team_lead', 'manager', 'admin'] %}
                         <a href="{{ url_for('batches.list_batches') }}" class="text-sm text-gray-300 hover:text-white">Batches</a>
-                        <a href="{{ url_for('defects.register') }}" class="text-sm text-gray-300 hover:text-white">Defects</a>
+                        {% endif %}
+                        {% if current_user.role == 'team_lead' %}
+                        <a href="{{ url_for('certification.my_reviews') }}" class="text-sm text-gray-300 hover:text-white">My Reviews</a>
+                        <a href="{{ url_for('certification.my_inspections') }}" class="text-sm text-gray-300 hover:text-white">My Inspections</a>
+                        {% endif %}
                         {% if current_user.role in ['manager', 'admin'] %}
                         <a href="{{ url_for('approvals.pipeline') }}" class="text-sm text-gray-300 hover:text-white">Approvals</a>
                         <a href="{{ url_for('analytics.dashboard') }}" class="text-sm text-gray-300 hover:text-white">Analytics</a>
                         <a href="{{ url_for('analytics.reports') }}" class="text-sm text-gray-300 hover:text-white">Reports</a>
                         {% if current_user.role == 'admin' %}
                         <a href="{{ url_for('data_quality.descriptions') }}" class="text-sm text-gray-300 hover:text-white">Data Quality</a>
-                        {% endif %}
                         {% endif %}
                         {% endif %}
                     </div>
@@ -131,7 +131,7 @@
     {% if current_user %}
     <nav class="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 md:hidden">
         <div class="flex justify-around items-center h-16">
-            <!-- Home -->
+            <!-- Home - all roles -->
             <a href="{{ url_for('home') }}" 
                class="flex flex-col items-center text-gray-600 hover:text-primary tap-target">
                 <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -140,19 +140,7 @@
                 </svg>
                 <span class="text-xs mt-1">Home</span>
             </a>
-            
-            <!-- Projects - team_lead, manager, admin -->
-            {% if current_user.role in ['team_lead', 'manager', 'admin'] %}
-            <a href="{{ url_for('projects.list_projects') }}" 
-               class="flex flex-col items-center text-gray-600 hover:text-primary tap-target">
-                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
-                          d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/>
-                </svg>
-                <span class="text-xs mt-1">Projects</span>
-            </a>
-            {% endif %}
-            
+
             {% if current_user.role in ['team_lead', 'manager', 'admin'] %}
             <!-- Batches - team_lead and above -->
             <a href="{{ url_for('batches.list_batches') }}" 
@@ -163,17 +151,29 @@
                 </svg>
                 <span class="text-xs mt-1">Batches</span>
             </a>
-            
-            <!-- Defects - team_lead and above -->
-            <a href="{{ url_for('defects.register') }}" 
+            {% endif %}
+
+            {% if current_user.role == 'team_lead' %}
+            <!-- My Reviews - team_lead only -->
+            <a href="{{ url_for('certification.my_reviews') }}" 
+               class="flex flex-col items-center text-gray-600 hover:text-primary tap-target">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
+                          d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"/>
+                </svg>
+                <span class="text-xs mt-1">Reviews</span>
+            </a>
+            <!-- My Inspections - team_lead only -->
+            <a href="{{ url_for('certification.my_inspections') }}" 
                class="flex flex-col items-center text-gray-600 hover:text-primary tap-target">
                 <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
                           d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
                 </svg>
-                <span class="text-xs mt-1">Defects</span>
+                <span class="text-xs mt-1">Inspect</span>
             </a>
-            
+            {% endif %}
+
             {% if current_user.role in ['manager', 'admin'] %}
             <!-- Approvals - manager and above -->
             <a href="{{ url_for('approvals.pipeline') }}" 
@@ -184,18 +184,18 @@
                 </svg>
                 <span class="text-xs mt-1">Approvals</span>
             </a>
+            <!-- Analytics -->
             <a href="{{ url_for('analytics.dashboard') }}" 
-               class="flex flex-col items-center text-gray-600 hover:text-primary tap-target"
-               ontouchend="">
+               class="flex flex-col items-center text-gray-600 hover:text-primary tap-target">
                 <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
                           d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
                 </svg>
                 <span class="text-xs mt-1">Analytics</span>
             </a>
+            <!-- Reports -->
             <a href="{{ url_for('analytics.reports') }}" 
-               class="flex flex-col items-center text-gray-600 hover:text-primary tap-target"
-               ontouchend="">
+               class="flex flex-col items-center text-gray-600 hover:text-primary tap-target">
                 <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
                           d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
@@ -203,9 +203,6 @@
                 <span class="text-xs mt-1">Reports</span>
             </a>
             {% endif %}
-            {% endif %}
-            
-            </a>
         </div>
     </nav>
     {% endif %}
@@ -259,47 +256,6 @@
     })();
     </script>
     
-    <!-- Custom confirm dialog -->
-    <div id="confirm-modal" style="display:none" class="fixed inset-0 z-[999] flex items-center justify-center">
-        <div class="absolute inset-0 bg-black/50" onclick="window._confirmReject()"></div>
-        <div class="relative bg-white rounded-xl shadow-2xl p-6 mx-4 max-w-sm w-full">
-            <p id="confirm-msg" class="text-gray-800 text-base font-medium mb-6"></p>
-            <div class="flex gap-3 justify-end">
-                <button onclick="window._confirmReject()" class="px-4 py-2.5 rounded-lg text-sm font-medium text-gray-600 bg-gray-100 hover:bg-gray-200 transition-colors">Cancel</button>
-                <button onclick="window._confirmResolve()" class="px-4 py-2.5 rounded-lg text-sm font-medium text-white bg-red-500 hover:bg-red-600 transition-colors">Confirm</button>
-            </div>
-        </div>
-    </div>
-    <script>
-    document.body.addEventListener('htmx:confirm', function(e) {
-        if (!e.detail.question) return;
-        e.preventDefault();
-        var m = document.getElementById('confirm-modal');
-        document.getElementById('confirm-msg').textContent = e.detail.question;
-        m.style.display = 'flex';
-        window._confirmResolve = function() { m.style.display='none'; e.detail.issueRequest(); };
-        window._confirmReject = function() { m.style.display='none'; };
-    });
-    </script>
-
-    <!-- PWA wake recovery -->
-    <script>
-    (function() {
-        var lastHidden = 0;
-        document.addEventListener('visibilitychange', function() {
-            if (document.hidden) {
-                lastHidden = Date.now();
-            } else {
-                var elapsed = Date.now() - lastHidden;
-                if (elapsed > 30000) {
-                    fetch(window.location.href, {method: 'HEAD', cache: 'no-store'})
-                        .then(function(r) { if (!r.ok) window.location.reload(); })
-                        .catch(function() { window.location.reload(); });
-                }
-            }
-        });
-    })();
-    </script>
     
     {% block extra_scripts %}{% endblock %}
 </body>
