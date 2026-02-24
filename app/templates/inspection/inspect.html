@@ -9,7 +9,7 @@
         <div class="flex justify-between items-start">
             <div>
                 {% set back_from = request.args.get('from', '') %}
-                {% set readonly = request.args.get('readonly', '') == '1' %}
+                {% set readonly = back_from in ('analytics', 'block-detail', 'inspector', 'rectification') %}
                 {% if back_from == 'analytics' %}
                 <a href="{{ url_for('analytics.dashboard') }}" class="inline-block text-xs text-blue-600 hover:text-blue-800 mb-1">&larr; Back to Analytics</a>
                 {% elif back_from == 'approvals' %}
