@@ -127,7 +127,7 @@
                     {% for u in units if u.round_number > 1 %}
                     {% set r = rect_lookup.get(u.unit_number, {}) %}
                     <tr>
-                        <td class="font-semibold">{{ u.unit_number }}</td>
+                        <td class="font-semibold"><a href="{{ url_for('certification.view_unit', unit_id=u.unit_id, **{'from': 'block-detail'}) }}" style="color: #1A1A1A; text-decoration: underline; text-underline-offset: 2px;">{{ u.unit_number }}</a></td>
                         <td class="text-center"><span class="inline-block px-2 py-0.5 rounded text-xs font-semibold bg-blue-100 text-blue-700">C{{ u.round_number }}</span></td>
                         <td class="text-center"><span class="inline-block px-2 py-0.5 rounded text-xs font-semibold {{ u.status_colour }}">{{ u.status_label }}</span></td>
                         <td class="text-center">{{ r.get('prev_raised', '-') }}</td>
@@ -151,7 +151,7 @@
                     {% set max_defects = units[0].defect_count if units else 1 %}
                     {% for u in units if (not rectification or u.round_number == 1) %}
                     <tr>
-                        <td class="font-semibold">{{ u.unit_number }}</td>
+                        <td class="font-semibold"><a href="{{ url_for('certification.view_unit', unit_id=u.unit_id, **{'from': 'block-detail'}) }}" style="color: #1A1A1A; text-decoration: underline; text-underline-offset: 2px;">{{ u.unit_number }}</a></td>
                         <td class="text-center"><span class="inline-block px-2 py-0.5 rounded text-xs font-semibold bg-gray-100 text-gray-600">C{{ u.round_number }}</span></td>
                         <td class="text-center"><span class="inline-block px-2 py-0.5 rounded text-xs font-semibold {{ u.status_colour }}">{{ u.status_label }}</span></td>
                         {% if rectification %}
