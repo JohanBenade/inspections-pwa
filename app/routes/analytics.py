@@ -558,6 +558,7 @@ def block_floor_detail(block_slug, floor):
         r = unit_latest[un]
         u_defect_rate = round(r['defect_count'] / ITEMS_PER_UNIT * 100, 1) if ITEMS_PER_UNIT > 0 else 0
         units.append({
+            'unit_id': r['unit_id'],
             'unit_number': un,
             'round_number': r['round_number'],
             'insp_status': r['insp_status'],
