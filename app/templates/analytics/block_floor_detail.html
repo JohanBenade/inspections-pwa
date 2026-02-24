@@ -36,7 +36,7 @@
 
     <!-- BREADCRUMB + TITLE -->
     <div class="mb-6">
-        <a href="{{ url_for('analytics.dashboard') }}" class="text-sm gold-accent hover:underline">&larr; Dashboard</a>
+        <a href="javascript:history.back()" class="text-sm text-amber-700 hover:text-amber-900 inline-flex items-center gap-1" style="text-decoration:none">&larr; Back</a>
         <h1 class="font-display text-3xl lg:text-4xl font-bold text-gray-900 mt-2" style="letter-spacing: -0.01em;">{{ label }}</h1>
         <div class="text-sm text-gray-400 mt-1">Inspection Analytics &middot; PPSH Phase 3 &middot; {{ summary.total_units }} units &middot; {{ summary.total_defects }} open defects &middot; {{ summary.avg_defects }} avg per unit &middot; {{ summary.defect_rate }}% defect rate</div>
     </div>

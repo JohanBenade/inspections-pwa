@@ -12,7 +12,7 @@
                 {% set readonly = back_from in ('analytics', 'block-detail', 'inspector', 'rectification') %}
                 <a href="javascript:history.back()" class="inline-block text-xs text-blue-600 hover:text-blue-800 mb-1">&larr; Back</a>
                 <div class="text-sm text-gray-500">
-                    {{ inspection.project_name }} / {{ inspection.phase_name }}
+                    {% if inspection.project_name %}{{ inspection.project_name }}{% if inspection.phase_name %} / {{ inspection.phase_name }}{% endif %}{% endif %}
                 </div>
                 <h1 class="text-xl font-bold text-gray-900">
                     Unit {{ inspection.unit_number }}
@@ -231,15 +231,44 @@
 </script>
 {% if readonly %}
 <style>
-    .area-card a[href*="area/"] { pointer-events: none; }
-    #save-changes-btn, button[type="submit"], .mark-btn, .submit-btn,
-    [hx-post], [hx-put], [hx-delete] { display: none !important; }
     .readonly-banner {
         background: #3D6B8E; color: white; text-align: center;
         padding: 0.5rem; font-size: 0.8rem; font-weight: 600;
-        position: sticky; top: 0; z-index: 50;
+        position: fixed; top: 0; left: 0; right: 0; z-index: 9999;
     }
+    body { padding-top: 2rem; }
+    #save-changes-btn, button[type="submit"], .mark-btn, .submit-btn,
+    [hx-post], [hx-put], [hx-delete] { display: none !important; }
+    form[method="POST"] { display: none !important; }
+    #submit-modal { display: none !important; }
 </style>
-<script>document.body.insertAdjacentHTML('afterbegin', '<div class="readonly-banner">View Only &mdash; opened from Analytics</div>');</script>
+<script>
+(function() {
+    document.body.insertAdjacentHTML('afterbegin',
+        '<div class="readonly-banner">View Only — opened from Analytics</div>');
+    function enforceReadonly(root) {
+        root.querySelectorAll('[hx-post],[hx-put],[hx-delete],button[type="submit"]').forEach(function(el) {
+            el.style.display = 'none';
+        });
+        root.querySelectorAll('a[onclick*="inspect-panel"],a[onclick*="defect-expand"],a[onclick*="defect-addmore"],input.auto-caps').forEach(function(el) {
+            el.style.display = 'none';
+        });
+        root.querySelectorAll('button[onclick*="add_defect"],button[onclick*="htmx.ajax"]').forEach(function(el) {
+            el.style.display = 'none';
+        });
+    }
+    enforceReadonly(document);
+    document.body.addEventListener('htmx:afterSwap', function(e) {
+        enforceReadonly(e.detail.target);
+    });
+    document.body.addEventListener('htmx:beforeRequest', function(e) {
+        if (e.detail.requestConfig.verb !== 'get') {
+            e.preventDefault();
+            return false;
+        }
+    });
+    document.addEventListener('submit', function(e) { e.preventDefault(); });
+})();
+</script>
 {% endif %}
 {% endblock %}
