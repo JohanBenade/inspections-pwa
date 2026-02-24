@@ -393,9 +393,7 @@ def dashboard():
                 'defect_rate': c['defect_rate'],
             }
             grid_avgs.append(c['avg_defects'])
-    # grid_median = project avg defects/unit (benchmark for heatmap colouring)
-    # Computed after project dict is built, so use a placeholder here
-    grid_median = 0  # will be set after project metrics
+    # grid_median is set earlier (line ~204) to project avg_defects_inspected
 
     # Separate active vs awaiting blocks (a block is active if ANY zone has inspections)
     active_blocks = set()

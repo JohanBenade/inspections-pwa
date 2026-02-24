@@ -167,22 +167,22 @@
             <table style="width: 100%; border-collapse: collapse; font-size: 0.85rem;">
                 <thead>
                     <tr>
-                        <th style="text-align: left; padding: 0.5rem; color: #9A9A9A; font-weight: 600; font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.08em; width: 100px;">Floor</th>
-                        {% for blk in grid_blocks %}
-                        <th style="text-align: center; padding: 0.5rem; color: #1A1A1A; font-weight: 600;">{{ blk }}</th>
+                        <th style="text-align: left; padding: 0.5rem; color: #9A9A9A; font-weight: 600; font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.08em; width: 120px;">Block</th>
+                        {% for flr in grid_floors %}
+                        <th style="text-align: center; padding: 0.5rem; color: #1A1A1A; font-weight: 600;">{{ floor_labels.get(flr, 'Floor ' ~ flr) }}</th>
                         {% endfor %}
                     </tr>
                 </thead>
                 <tbody>
-                    {% for flr in grid_floors %}
+                    {% for blk in grid_blocks %}
+                    {% set blk_slug = blk|lower|replace(' ', '-') %}
                     <tr style="border-top: 1px solid #e5e5e5;">
-                        <td style="padding: 0.75rem 0.5rem; font-weight: 500; color: #6B6B6B;">{{ floor_labels.get(flr, 'Floor ' ~ flr) }}</td>
-                        {% for blk in grid_blocks %}
+                        <td style="padding: 0.75rem 0.5rem; font-weight: 600; color: #1A1A1A;">{{ blk }}</td>
+                        {% for flr in grid_floors %}
                         {% if block_floor_grid.get(blk, {}).get(flr) %}
                         {% set cell = block_floor_grid[blk][flr] %}
-                        {% set cell_slug = blk|lower|replace(' ', '-') %}
                         <td style="text-align: center; padding: 0;">
-                            <a href="{{ url_for('analytics.block_floor_detail', block_slug=cell_slug, floor=flr) }}" style="display: block; padding: 0.75rem 0.5rem; text-decoration: none; color: inherit; background: {% if cell.avg > grid_median %}rgba(196,77,63,0.10){% elif cell.avg == grid_median %}rgba(200,150,62,0.10){% else %}rgba(74,124,89,0.10){% endif %};">
+                            <a href="{{ url_for('analytics.block_floor_detail', block_slug=blk_slug, floor=flr) }}" style="display: block; padding: 0.75rem 0.5rem; text-decoration: none; color: inherit; background: {% if cell.avg > grid_median %}rgba(196,77,63,0.10){% elif cell.avg == grid_median %}rgba(200,150,62,0.10){% else %}rgba(74,124,89,0.10){% endif %};">
                                 <div style="font-size: 1.25rem; font-weight: 700; color: {% if cell.avg > grid_median %}#C44D3F{% elif cell.avg == grid_median %}#C8963E{% else %}#4A7C59{% endif %};">{{ cell.avg }} <span style="font-size: 0.65rem; font-weight: 500; color: #9A9A9A;">avg/unit</span></div>
                                 <div style="font-size: 0.7rem; color: #6B6B6B;">{{ cell.defects }} defects</div>
                                 <div style="font-size: 0.65rem; color: #9A9A9A;">{{ cell.units }} units &middot; {{ cell.defect_rate }}%</div>
@@ -201,9 +201,9 @@
             </table>
         </div>
         <div style="font-size: 0.7rem; color: #9A9A9A; margin-top: 0.5rem; padding-top: 0.4rem; border-top: 1px solid #f0f0f0;">
-            <span class="legend-item"><span class="legend-dot" style="background: rgba(74,124,89,0.25);"></span> Below median</span>&ensp;
-            <span class="legend-item"><span class="legend-dot" style="background: rgba(200,150,62,0.25);"></span> At median</span>&ensp;
-            <span class="legend-item"><span class="legend-dot" style="background: rgba(196,77,63,0.25);"></span> Above median</span>&ensp;
+            <span class="legend-item"><span class="legend-dot" style="background: rgba(74,124,89,0.25);"></span> Below avg</span>&ensp;
+            <span class="legend-item"><span class="legend-dot" style="background: rgba(200,150,62,0.25);"></span> At avg</span>&ensp;
+            <span class="legend-item"><span class="legend-dot" style="background: rgba(196,77,63,0.25);"></span> Above avg</span>&ensp;
             <span style="color: #BABABA;">&middot;</span>&ensp;
             <span style="font-size: 0.7rem; color: #9A9A9A;">project avg: {{ grid_median }} defects/unit</span>
         </div>
