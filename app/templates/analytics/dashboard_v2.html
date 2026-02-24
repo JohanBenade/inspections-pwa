@@ -320,6 +320,105 @@
     </div>
     {% endif %}
 
+    <!-- ============================================================ -->
+    <!-- LAYER 4: TOP DEFECT TYPES                                    -->
+    <!-- ============================================================ -->
+
+    {% if top_defects %}
+    <div class="mb-2"><span class="section-num">03 &mdash; Top Defect Types</span></div>
+    <div class="divider"></div>
+
+    <div class="hotspot-panel mb-6">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem;">
+            <span style="font-size: 0.9rem; font-weight: 600; color: #1A1A1A;">Most common defect descriptions</span>
+            <span style="font-size: 0.7rem; color: #9A9A9A;">median: {{ td_median|round|int }}</span>
+        </div>
+        {% set td_max = top_defects[0].cnt if top_defects else 1 %}
+        {% for d in top_defects %}
+        {% set td_pct = (d.cnt / project.open_defects * 100)|round(1) if project.open_defects > 0 else 0 %}
+        <a href="{{ url_for('analytics.explore', q=d.description) }}" class="area-row">
+            <span style="font-size: 0.8rem; font-weight: 500; color: #1A1A1A; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+                <span style="display: inline-block; width: 18px; height: 18px; line-height: 18px; border-radius: 50%; text-align: center; font-size: 0.65rem; font-weight: 700; color: white; background: {% if d.cnt > td_median %}#C44D3F{% elif d.cnt == td_median %}#C8963E{% else %}#4A7C59{% endif %}; margin-right: 0.4rem; vertical-align: middle;">{{ loop.index }}</span>
+                {{ d.description }}
+            </span>
+            <div style="width: 80px; flex-shrink: 0;">
+                <div class="area-bar" style="width: {{ (d.cnt / td_max * 100)|round }}%; background: {% if d.cnt > td_median %}#C44D3F{% elif d.cnt == td_median %}#C8963E{% else %}#4A7C59{% endif %};"></div>
+            </div>
+            <span class="area-pct">{{ td_pct }}%</span>
+            <span class="area-count" style="color: {% if d.cnt > td_median %}#C44D3F{% elif d.cnt == td_median %}#C8963E{% else %}#4A7C59{% endif %};">{{ d.cnt }}</span>
+        </a>
+        {% endfor %}
+        <div style="font-size: 0.7rem; color: #9A9A9A; margin-top: 0.5rem; padding-top: 0.4rem; border-top: 1px solid #f0f0f0;">
+            {% set top3_sum = top_defects[:3]|sum(attribute='cnt') %}
+            {% set top3_pct = (top3_sum / project.open_defects * 100)|round|int if project.open_defects > 0 else 0 %}
+            Top 3 defect types account for {{ top3_pct }}% of all open defects &middot; Tap any row to explore &rarr;
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- ============================================================ -->
+    <!-- LAYER 5: DEFECTS BY TRADE                                    -->
+    <!-- ============================================================ -->
+
+    {% if category_data %}
+    <div class="mb-2"><span class="section-num">04 &mdash; Defects by Trade</span></div>
+    <div class="divider"></div>
+
+    <div class="hotspot-panel mb-6">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem;">
+            <span style="font-size: 0.9rem; font-weight: 600; color: #1A1A1A;">Construction trade breakdown</span>
+            <span style="font-size: 0.7rem; color: #9A9A9A;">median: {{ cat_median|round|int }}</span>
+        </div>
+        {% set cat_max = category_data[0].count if category_data else 1 %}
+        {% for c in category_data %}
+        {% set cat_pct = (c.count / project.open_defects * 100)|round(1) if project.open_defects > 0 else 0 %}
+        <div class="area-row">
+            <span class="area-label">{{ c.category }}</span>
+            <div style="flex: 1;">
+                <div class="area-bar" style="width: {{ (c.count / cat_max * 100)|round }}%; background: {% if c.count > cat_median %}#C44D3F{% elif c.count == cat_median %}#C8963E{% else %}#4A7C59{% endif %};"></div>
+            </div>
+            <span class="area-pct">{{ cat_pct }}%</span>
+            <span class="area-count" style="color: {% if c.count > cat_median %}#C44D3F{% elif c.count == cat_median %}#C8963E{% else %}#4A7C59{% endif %};">{{ c.count }}</span>
+        </div>
+        {% endfor %}
+        <div style="font-size: 0.7rem; color: #9A9A9A; margin-top: 0.5rem; padding-top: 0.4rem; border-top: 1px solid #f0f0f0;">
+            <span class="legend-item"><span class="legend-dot" style="background: #4A7C59;"></span> &lt;{{ cat_median|round|int }}</span>&ensp;
+            <span class="legend-item"><span class="legend-dot" style="background: #C8963E;"></span> {{ cat_median|round|int }}</span>&ensp;
+            <span class="legend-item"><span class="legend-dot" style="background: #C44D3F;"></span> &gt;{{ cat_median|round|int }}</span>&ensp;
+            <span style="color: #BABABA;">&middot;</span>&ensp;
+            median: {{ cat_median|round|int }}
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- ============================================================ -->
+    <!-- LAYER 6: SYSTEMIC ISSUES                                     -->
+    <!-- ============================================================ -->
+
+    {% if recurring %}
+    <div class="mb-2"><span class="section-num">05 &mdash; Systemic Issues</span></div>
+    <div class="divider"></div>
+
+    <div class="hotspot-panel mb-6" style="border-left: 3px solid #C44D3F;">
+        <div style="margin-bottom: 0.75rem;">
+            <span style="font-size: 0.9rem; font-weight: 600; color: #1A1A1A;">Recurring defects (3+ units)</span>
+            <div style="font-size: 0.75rem; color: #6B6B6B; margin-top: 0.15rem;">Address these project-wide, not unit-by-unit</div>
+        </div>
+        {% for r in recurring %}
+        <div style="display: flex; align-items: flex-start; gap: 0.75rem; padding: 0.6rem 0; {% if not loop.last %}border-bottom: 1px solid #f0f0f0;{% endif %}">
+            <span style="display: inline-block; min-width: 32px; height: 24px; line-height: 24px; text-align: center; font-size: 0.8rem; font-weight: 700; color: #C44D3F; background: rgba(196,77,63,0.1); border-radius: 4px;">{{ r.cnt }}</span>
+            <div style="flex: 1; min-width: 0;">
+                <div style="font-size: 0.8rem; font-weight: 500; color: #1A1A1A;">{{ r.original_comment }}</div>
+                <div style="font-size: 0.7rem; color: #9A9A9A; margin-top: 0.15rem;">{{ r.category_name }} &middot; {{ r.unit_count }} units: {{ r.affected_units }}</div>
+            </div>
+        </div>
+        {% endfor %}
+        <div style="font-size: 0.7rem; color: #9A9A9A; margin-top: 0.5rem; padding-top: 0.4rem; border-top: 1px solid #f0f0f0;">
+            {{ recurring|length }} defect type{{ 's' if recurring|length != 1 }} found across 3 or more units &middot; {{ recurring|sum(attribute='cnt') }} total occurrences
+        </div>
+    </div>
+    {% endif %}
+
     {% endif %}
 
     <!-- FOOTER -->

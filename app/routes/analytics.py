@@ -319,6 +319,60 @@ def dashboard():
         worst_blocks[key] = worst_blocks.get(key, 0) + 1
     worst_dominant = max(worst_blocks.items(), key=lambda x: x[1]) if worst_blocks else ('', 0)
 
+    # 11. Top 10 defect types (project-wide)
+    top_defects_raw = query_db("""
+        SELECT original_comment AS description, COUNT(*) AS cnt
+        FROM defect
+        WHERE tenant_id = ? AND status = 'open'
+        AND raised_cycle_id NOT LIKE 'test-%'
+        GROUP BY original_comment
+        ORDER BY cnt DESC
+        LIMIT 10
+    """, [tenant_id])
+    top_defects = [dict(r) for r in top_defects_raw]
+    td_counts = sorted([d['cnt'] for d in top_defects])
+    if td_counts:
+        mid = len(td_counts) // 2
+        td_median = td_counts[mid] if len(td_counts) % 2 else (td_counts[mid - 1] + td_counts[mid]) / 2
+    else:
+        td_median = 0
+
+    # 12. Defects by category/trade (project-wide)
+    category_raw = query_db("""
+        SELECT ct.category_name AS category, COUNT(d.id) AS count
+        FROM defect d
+        JOIN item_template it ON d.item_template_id = it.id
+        JOIN category_template ct ON it.category_id = ct.id
+        WHERE d.tenant_id = ? AND d.status = 'open'
+        AND d.raised_cycle_id NOT LIKE 'test-%'
+        GROUP BY ct.category_name
+        ORDER BY count DESC
+    """, [tenant_id])
+    category_data = [dict(r) for r in category_raw]
+    cat_counts = sorted([c['count'] for c in category_data])
+    if cat_counts:
+        mid = len(cat_counts) // 2
+        cat_median = cat_counts[mid] if len(cat_counts) % 2 else (cat_counts[mid - 1] + cat_counts[mid]) / 2
+    else:
+        cat_median = 0
+
+    # 13. Systemic/recurring defects (3+ units)
+    recurring_raw = query_db("""
+        SELECT d.original_comment, ct.category_name,
+            COUNT(d.id) AS cnt, COUNT(DISTINCT d.unit_id) AS unit_count,
+            GROUP_CONCAT(DISTINCT u.unit_number) AS affected_units
+        FROM defect d
+        JOIN unit u ON d.unit_id = u.id
+        JOIN item_template it ON d.item_template_id = it.id
+        JOIN category_template ct ON it.category_id = ct.id
+        WHERE d.tenant_id = ? AND d.status = 'open'
+        AND d.raised_cycle_id NOT LIKE 'test-%'
+        GROUP BY d.original_comment, ct.category_name
+        HAVING unit_count >= 3
+        ORDER BY cnt DESC
+    """, [tenant_id])
+    recurring = [dict(r) for r in recurring_raw]
+
     # Separate active vs awaiting blocks (a block is active if ANY zone has inspections)
     active_blocks = set()
     for card in cards:
@@ -341,7 +395,12 @@ def dashboard():
                            worst_dominant_count=worst_dominant[1],
                            worst_units=worst_units,
                            active_blocks=active_blocks,
-                           floor_labels=FLOOR_LABELS)
+                           floor_labels=FLOOR_LABELS,
+                           top_defects=top_defects,
+                           td_median=td_median,
+                           category_data=category_data,
+                           cat_median=cat_median,
+                           recurring=recurring)
 
 
 @analytics_bp.route('/<block_slug>/<int:floor>')
