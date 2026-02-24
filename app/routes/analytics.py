@@ -302,6 +302,47 @@ def dashboard():
     area_top2_pct = round(area_top2_sum / project['open_defects'] * 100) if project['open_defects'] > 0 else 0
     area_top2_names = [a['area'].title() for a in area_data[:2]] if len(area_data) >= 2 else []
 
+    # Area Deep Dive - top 3 defects in top 2 areas (project-wide)
+    area_deep_dive = []
+    dd_colours = ['#C8963E', '#3D6B8E']
+    for idx, area_row in enumerate(area_data[:2]):
+        area_name = area_row['area']
+        area_defects = [dict(r) for r in query_db("""
+            SELECT d.original_comment AS description, COUNT(*) AS count
+            FROM defect d
+            JOIN item_template it ON d.item_template_id = it.id
+            JOIN category_template ct ON it.category_id = ct.id
+            JOIN area_template at2 ON ct.area_id = at2.id
+            WHERE d.tenant_id = ? AND d.status = 'open'
+            AND d.raised_cycle_id NOT LIKE 'test-%'
+            AND at2.area_name = ?
+            GROUP BY d.original_comment
+            ORDER BY count DESC
+            LIMIT 3
+        """, [tenant_id, area_name])]
+        max_dd = area_defects[0]['count'] if area_defects else 1
+        for d in area_defects:
+            d['bar_pct'] = round(d['count'] / max_dd * 100)
+        area_deep_dive.append({
+            'area': area_name,
+            'total': area_row['defect_count'],
+            'colour': dd_colours[idx],
+            'defects': area_defects,
+        })
+
+    dd_callout = ''
+    if len(area_deep_dive) >= 1 and area_deep_dive[0]['defects']:
+        a1 = area_deep_dive[0]
+        d1 = a1['defects'][0]
+        dd_callout = 'The most frequent defect in {} is {} ({} occurrences).'.format(
+            a1['area'].title(), d1['description'].lower(), d1['count'])
+        if len(area_deep_dive) >= 2 and area_deep_dive[1]['defects']:
+            a2 = area_deep_dive[1]
+            d2 = a2['defects'][0]
+            dd_callout += ' In {}, {} leads with {} occurrences.'.format(
+                a2['area'].title(), d2['description'].lower(), d2['count'])
+
+
     # 10. Worst units (top 5)
     worst_units = [dict(r) for r in query_db("""
         SELECT u.id as unit_id, u.unit_number, u.block, u.floor,
@@ -414,6 +455,8 @@ def dashboard():
                            area_median=area_median,
                            area_top2_pct=area_top2_pct,
                            area_top2_names=area_top2_names,
+                           area_deep_dive=area_deep_dive,
+                           dd_callout=dd_callout,
                            worst_pct=worst_pct,
                            worst_dominant_zone=worst_dominant[0],
                            worst_dominant_count=worst_dominant[1],
