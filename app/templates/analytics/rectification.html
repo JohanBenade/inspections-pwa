@@ -137,12 +137,7 @@
                 <span style="color: #9A9A9A;">/</span>
                 <span style="color: #1A1A1A; font-weight: 600;">{{ a.c1_total }}</span>
             </div>
-            <div style="text-align: right;">
-                <span class="clearance-pill" style="font-size: 0.65rem;
-                    background: {% if a.effective_pct >= 50 %}rgba(74,124,89,0.15); color: #4A7C59;{% elif a.effective_pct >= 20 %}rgba(200,150,62,0.15); color: #C8963E;{% else %}rgba(196,77,63,0.15); color: #C44D3F;{% endif %}">
-                    {{ a.effective_pct }}%
-                </span>
-            </div>
+
         </div>
         {% endfor %}
     </div>
@@ -172,12 +167,7 @@
                 <span style="color: #9A9A9A;">/</span>
                 <span style="color: #1A1A1A; font-weight: 600;">{{ t.c1_total }}</span>
             </div>
-            <div style="text-align: right;">
-                <span class="clearance-pill" style="font-size: 0.65rem;
-                    background: {% if t.effective_pct >= 50 %}rgba(74,124,89,0.15); color: #4A7C59;{% elif t.effective_pct >= 20 %}rgba(200,150,62,0.15); color: #C8963E;{% else %}rgba(196,77,63,0.15); color: #C44D3F;{% endif %}">
-                    {{ t.effective_pct }}%
-                </span>
-            </div>
+
         </div>
         {% endfor %}
     </div>
