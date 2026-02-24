@@ -154,6 +154,11 @@ def _build_review_data(tenant_id, cycle_id):
         ORDER BY u.unit_number
     """, [cycle_id, tenant_id])]
 
+    # Compute unit range for display
+    unit_numbers = sorted([insp['unit_number'] for insp in inspections])
+    cycle['unit_start'] = unit_numbers[0] if unit_numbers else ''
+    cycle['unit_end'] = unit_numbers[-1] if unit_numbers else ''
+
     if not inspections:
         return {'cycle': cycle, 'units': [], 'stats': {
             'total': 0, 'reviewed': 0, 'defects': 0, 'to_fix': 0}}

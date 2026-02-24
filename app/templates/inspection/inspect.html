@@ -10,6 +10,8 @@
             <div>
                 {% if current_user.role == 'team_lead' and inspection.status == 'submitted' %}
                 <a href="{{ url_for('certification.my_reviews') }}" class="inline-block text-xs text-blue-600 hover:text-blue-800 mb-1">&larr; Back to My Reviews</a>
+                {% elif current_user.role in ['manager', 'admin'] %}
+                <a href="{{ url_for('approvals.pipeline') }}" class="inline-block text-xs text-blue-600 hover:text-blue-800 mb-1">&larr; Back to Approvals</a>
                 {% endif %}
                 <div class="text-sm text-gray-500">
                     {{ inspection.project_name }} / {{ inspection.phase_name }}
