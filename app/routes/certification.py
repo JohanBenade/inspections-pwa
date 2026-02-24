@@ -339,10 +339,13 @@ def view_unit(unit_id):
             ORDER BY ic.cycle_number DESC LIMIT 1
         """, [unit_id], one=True)
     
+    back_from = request.args.get('from', '')
+    suffix = f'?from={back_from}' if back_from else ''
+    
     if inspection:
-        return redirect(url_for('inspection.inspect', inspection_id=inspection['id']))
+        return redirect(url_for('inspection.inspect', inspection_id=inspection['id']) + suffix)
     else:
-        return redirect(url_for('inspection.start_inspection', unit_id=unit_id))
+        return redirect(url_for('inspection.start_inspection', unit_id=unit_id) + suffix)
 
 
 @certification_bp.route('/unit/<unit_id>/start-review', methods=['POST'])

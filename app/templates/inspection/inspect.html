@@ -8,7 +8,12 @@
     <div class="bg-white rounded-lg shadow p-4 mb-4 sticky top-0 z-10">
         <div class="flex justify-between items-start">
             <div>
-                {% if current_user.role == 'team_lead' and inspection.status == 'submitted' %}
+                {% set back_from = request.args.get('from', '') %}
+                {% if back_from == 'analytics' %}
+                <a href="{{ url_for('analytics.dashboard') }}" class="inline-block text-xs text-blue-600 hover:text-blue-800 mb-1">&larr; Back to Analytics</a>
+                {% elif back_from == 'approvals' %}
+                <a href="{{ url_for('approvals.pipeline') }}" class="inline-block text-xs text-blue-600 hover:text-blue-800 mb-1">&larr; Back to Approvals</a>
+                {% elif current_user.role == 'team_lead' and inspection.status == 'submitted' %}
                 <a href="{{ url_for('certification.my_reviews') }}" class="inline-block text-xs text-blue-600 hover:text-blue-800 mb-1">&larr; Back to My Reviews</a>
                 {% elif current_user.role in ['manager', 'admin'] %}
                 <a href="{{ url_for('approvals.pipeline') }}" class="inline-block text-xs text-blue-600 hover:text-blue-800 mb-1">&larr; Back to Approvals</a>
