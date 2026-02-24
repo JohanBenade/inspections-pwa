@@ -1246,7 +1246,11 @@ def rectification():
     clearance_pct = round(c1_cleared / c1_total * 100, 1) if c1_total > 0 else 0
     net_improvement = c1_cleared - c2_new_count
     net_pct = round(net_improvement / c1_total * 100, 1) if c1_total > 0 else 0
+    total_inspected = query_db("SELECT COUNT(DISTINCT unit_id) AS cnt FROM inspection WHERE tenant_id = ? AND status != 'not_started'", [tenant_id], one=True)
+    total_inspected_count = dict(total_inspected)['cnt'] if total_inspected else 0
+
     kpis = {
+        'total_inspected': total_inspected_count,
         'clearance_rate': clearance_pct,
         'units_reinspected': len(reinspected_units),
         'c1_reviewed': c1_total,
