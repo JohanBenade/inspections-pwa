@@ -8,6 +8,9 @@
     <div class="bg-white rounded-lg shadow p-4 mb-4 sticky top-0 z-10">
         <div class="flex justify-between items-start">
             <div>
+                {% if current_user.role == 'team_lead' and inspection.status == 'submitted' %}
+                <a href="{{ url_for('certification.my_reviews') }}" class="inline-block text-xs text-blue-600 hover:text-blue-800 mb-1">&larr; Back to My Reviews</a>
+                {% endif %}
                 <div class="text-sm text-gray-500">
                     {{ inspection.project_name }} / {{ inspection.phase_name }}
                 </div>
@@ -25,6 +28,11 @@
                     {% if current_user.role != 'inspector' %}
                     <a href="{{ url_for('pdf.view_defects_html', unit_id=inspection.unit_id, cycle=inspection.cycle_id) }}" class="inline-flex items-center px-3 py-1.5 text-xs font-medium rounded bg-gray-100 text-gray-700 hover:bg-gray-200" title="View defect list">View PDF</a>
                     <a href="{{ url_for('pdf.download_defects_pdf', unit_id=inspection.unit_id, cycle=inspection.cycle_id) }}" class="inline-flex items-center px-3 py-1.5 text-xs font-medium rounded bg-gray-100 text-gray-700 hover:bg-gray-200" title="Download PDF">Download</a>
+                    {% endif %}
+                    {% if current_user.role in ['team_lead', 'manager', 'admin'] and inspection.status == 'submitted' %}
+                    <form method="POST" action="{{ url_for('certification.review_unit', unit_id=inspection.unit_id) }}" class="inline">
+                        <button type="submit" class="inline-flex items-center px-3 py-1.5 text-xs font-medium rounded bg-green-600 text-white hover:bg-green-700">Mark Reviewed</button>
+                    </form>
                     {% endif %}
                 </div>
             </div>
