@@ -108,11 +108,11 @@
 
     <div class="mb-2"><span class="section-num">02 &mdash; Rectification by Area</span></div>
     <div class="divider"></div>
-    <p style="font-size: 0.8rem; color: #6B6B6B; margin-bottom: 1rem;">Which areas are actually improving? Net shows cleared minus new. Effective rate measures real progress.</p>
+    <p style="font-size: 0.8rem; color: #6B6B6B; margin-bottom: 1rem;">Which areas are being fixed vs creating new problems? Numbers match bar colours: <span style="color:#4A7C59;font-weight:600;">green</span> = fixed, <span style="color:#C8963E;font-weight:600;">gold</span> = new defects found.</p>
 
     <div class="rect-panel mb-6">
         {% for a in areas %}
-        <div style="display: grid; grid-template-columns: 100px 1fr 60px 50px; gap: 0.75rem; align-items: center; padding: 0.5rem 0; {% if not loop.last %}border-bottom: 1px solid #f0f0f0;{% endif %}">
+        <div style="display: grid; grid-template-columns: 100px 1fr auto; gap: 0.75rem; align-items: center; padding: 0.5rem 0; {% if not loop.last %}border-bottom: 1px solid #f0f0f0;{% endif %}">
             <div style="font-size: 0.8rem; font-weight: 500; color: #1A1A1A;">{{ a.area|title }}</div>
             <div>
                 {% set total = a.cleared + a.still_open + a.new %}
@@ -126,23 +126,20 @@
                 </div>
                 {% endif %}
             </div>
-            <div style="font-size: 0.75rem; text-align: right;">
-                <span style="color: {% if a.net > 0 %}#4A7C59{% elif a.net == 0 %}#C8963E{% else %}#C44D3F{% endif %}; font-weight: 700;">{{ '+' if a.net > 0 }}{{ a.net }}</span>
-                <span style="color: #9A9A9A;">/</span>
-                <span style="color: #1A1A1A; font-weight: 600;">{{ a.c1_total }}</span>
+            <div style="font-size: 0.7rem; text-align: right; white-space: nowrap;">
+                <span style="color: #4A7C59; font-weight: 600;">{{ a.cleared }} fixed</span>{% if a.still_open > 0 %}<span style="color: #9A9A9A;"> &middot; </span><span style="color: #C44D3F; font-weight: 600;">{{ a.still_open }} open</span>{% endif %}<span style="color: #9A9A9A;"> &middot; </span><span style="color: #C8963E; font-weight: 600;">{{ a.new }} new</span>
             </div>
-
         </div>
         {% endfor %}
     </div>
 
     <div class="mb-2"><span class="section-num">03 &mdash; Rectification by Trade</span></div>
     <div class="divider"></div>
-    <p style="font-size: 0.8rem; color: #6B6B6B; margin-bottom: 1rem;">Subcontractor accountability. Which trades are clearing defects vs leaving them open?</p>
+    <p style="font-size: 0.8rem; color: #6B6B6B; margin-bottom: 1rem;">Subcontractor accountability. Numbers match bar colours: <span style="color:#4A7C59;font-weight:600;">green</span> = fixed, <span style="color:#C8963E;font-weight:600;">gold</span> = new defects found.</p>
 
     <div class="rect-panel mb-6">
         {% for t in trades %}
-        <div style="display: grid; grid-template-columns: 140px 1fr 60px 50px; gap: 0.75rem; align-items: center; padding: 0.5rem 0; {% if not loop.last %}border-bottom: 1px solid #f0f0f0;{% endif %}">
+        <div style="display: grid; grid-template-columns: 120px 1fr auto; gap: 0.75rem; align-items: center; padding: 0.5rem 0; {% if not loop.last %}border-bottom: 1px solid #f0f0f0;{% endif %}">
             <div style="font-size: 0.78rem; font-weight: 500; color: #1A1A1A; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="{{ t.trade }}">{{ t.trade }}</div>
             <div>
                 {% set t_total = t.cleared + t.still_open + t.new %}
@@ -156,12 +153,9 @@
                 </div>
                 {% endif %}
             </div>
-            <div style="font-size: 0.75rem; text-align: right;">
-                <span style="color: {% if t.net > 0 %}#4A7C59{% elif t.net == 0 %}#C8963E{% else %}#C44D3F{% endif %}; font-weight: 700;">{{ '+' if t.net > 0 }}{{ t.net }}</span>
-                <span style="color: #9A9A9A;">/</span>
-                <span style="color: #1A1A1A; font-weight: 600;">{{ t.c1_total }}</span>
+            <div style="font-size: 0.7rem; text-align: right; white-space: nowrap;">
+                <span style="color: #4A7C59; font-weight: 600;">{{ t.cleared }} fixed</span>{% if t.still_open > 0 %}<span style="color: #9A9A9A;"> &middot; </span><span style="color: #C44D3F; font-weight: 600;">{{ t.still_open }} open</span>{% endif %}<span style="color: #9A9A9A;"> &middot; </span><span style="color: #C8963E; font-weight: 600;">{{ t.new }} new</span>
             </div>
-
         </div>
         {% endfor %}
     </div>
