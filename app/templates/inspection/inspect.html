@@ -14,7 +14,7 @@
                 {% elif back_from == 'approvals' %}
                 <a href="{{ url_for('approvals.pipeline') }}" class="inline-block text-xs text-blue-600 hover:text-blue-800 mb-1">&larr; Back to Approvals</a>
                 {% elif back_from == 'block-detail' %}
-                <a href="{{ url_for('analytics.dashboard') }}" class="inline-block text-xs text-blue-600 hover:text-blue-800 mb-1">&larr; Back to Analytics</a>
+                <a href="javascript:history.back()" class="inline-block text-xs text-blue-600 hover:text-blue-800 mb-1">&larr; Back to Block Detail</a>
                 {% elif back_from == 'rectification' %}
                 <a href="{{ url_for('analytics.rectification') }}" class="inline-block text-xs text-blue-600 hover:text-blue-800 mb-1">&larr; Back to Rectification</a>
                 {% elif current_user.role == 'team_lead' and inspection.status == 'submitted' %}
