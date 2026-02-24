@@ -122,7 +122,8 @@
     {% if rectification %}
     <div class="mb-2"><span class="section-num">Rectification</span></div>
     <div class="divider"></div>
-    <div class="rect-box mb-6">
+    <a href="{{ url_for('analytics.rectification') }}" style="text-decoration: none; color: inherit; display: block;">
+    <div class="rect-box mb-6" style="cursor: pointer;">
         <div style="display: flex; flex-wrap: wrap; gap: 2rem; align-items: center; margin-bottom: 0.75rem;">
             <div>
                 <span style="font-size: 2rem; font-weight: 700; color: #4A7C59;">{{ rectification.clearance_pct }}%</span>
@@ -132,6 +133,7 @@
                 {{ rectification.r2_units }} unit{{ 's' if rectification.r2_units != 1 }} re-inspected &middot;
                 {{ rectification.total_reviewed }} C1 defects reviewed
             </div>
+            <div style="margin-left: auto; font-size: 0.75rem; color: #C8963E; font-weight: 600;">View details &rarr;</div>
         </div>
         <div class="progress-bar-track" style="height: 10px; margin-bottom: 0.5rem;">
             {% set rect_total = rectification.rectified + rectification.superseded %}
@@ -148,6 +150,7 @@
             <span><span class="severity-dot" style="background: #C44D3F;"></span>{{ rectification.new_defects }} new in C2</span>
         </div>
     </div>
+    </a>
     {% endif %}
 
 

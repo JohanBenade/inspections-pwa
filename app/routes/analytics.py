@@ -1110,6 +1110,302 @@ def explore():
 
 
 
+
+
+# ============================================================
+# RECTIFICATION ANALYTICS
+# ============================================================
+
+@analytics_bp.route('/rectification')
+@require_manager
+def rectification():
+    """Rectification Command Centre - deep analytics on C2+ re-inspection data."""
+    tenant_id = session.get('tenant_id', 'MONOGRAPH')
+
+    # 1. Identify re-inspected units (units with inspection in C2+ cycle)
+    reinspected_units = [dict(r) for r in query_db("""
+        SELECT DISTINCT i.unit_id, u.unit_number, u.block, u.floor
+        FROM inspection i
+        JOIN unit u ON i.unit_id = u.id
+        JOIN inspection_cycle ic ON i.cycle_id = ic.id
+        WHERE i.tenant_id = ? AND ic.cycle_number > 1
+        AND ic.id NOT LIKE 'test-%'
+        AND i.status NOT IN ('not_started')
+    """, [tenant_id])]
+
+    if not reinspected_units:
+        return render_template('analytics/rectification.html',
+                               has_data=False, kpis={}, zones=[], areas=[],
+                               area_max=1, trades=[], trade_max=1,
+                               stubborn=[], new_defects=[], c2_new_count=0,
+                               units=[], turnaround={})
+
+    reinspected_unit_ids = [u['unit_id'] for u in reinspected_units]
+    ph = ','.join(['?'] * len(reinspected_unit_ids))
+
+    # 2. C1 defects on re-inspected units
+    c1_defects = [dict(r) for r in query_db("""
+        SELECT d.id, d.unit_id, d.item_template_id, d.status,
+            d.original_comment, d.created_at, d.cleared_at,
+            d.raised_cycle_id, d.cleared_cycle_id,
+            ic.block, ic.floor
+        FROM defect d
+        JOIN inspection_cycle ic ON d.raised_cycle_id = ic.id
+        WHERE d.tenant_id = ? AND ic.cycle_number = 1
+        AND d.unit_id IN ({ph})
+        AND ic.id NOT LIKE 'test-%'
+    """.format(ph=ph), [tenant_id] + reinspected_unit_ids)]
+
+    c1_total = len(c1_defects)
+    c1_cleared = sum(1 for d in c1_defects if d['status'] == 'cleared')
+    c1_still_open = sum(1 for d in c1_defects if d['status'] == 'open')
+
+    # 3. New defects raised in C2+ cycles
+    c2_new_defects = [dict(r) for r in query_db("""
+        SELECT d.id, d.unit_id, d.item_template_id, d.original_comment,
+            d.status, d.created_at, d.defect_type,
+            u.unit_number, u.block, u.floor,
+            at2.area_name, ct.category_name
+        FROM defect d
+        JOIN unit u ON d.unit_id = u.id
+        JOIN inspection_cycle ic ON d.raised_cycle_id = ic.id
+        JOIN item_template it ON d.item_template_id = it.id
+        JOIN category_template ct ON it.category_id = ct.id
+        JOIN area_template at2 ON ct.area_id = at2.id
+        WHERE d.tenant_id = ? AND ic.cycle_number > 1
+        AND d.unit_id IN ({ph})
+        AND ic.id NOT LIKE 'test-%'
+    """.format(ph=ph), [tenant_id] + reinspected_unit_ids)]
+
+    c2_new_count = len(c2_new_defects)
+
+    # 4. Turnaround time
+    turnaround_raw = query_db("""
+        SELECT
+            ROUND(AVG(julianday(d.cleared_at) - julianday(d.created_at)), 1) AS avg_days,
+            ROUND(MIN(julianday(d.cleared_at) - julianday(d.created_at)), 1) AS min_days,
+            ROUND(MAX(julianday(d.cleared_at) - julianday(d.created_at)), 1) AS max_days,
+            COUNT(*) as sample_size
+        FROM defect d
+        WHERE d.tenant_id = ? AND d.status = 'cleared'
+        AND d.cleared_at IS NOT NULL AND d.created_at IS NOT NULL
+        AND d.unit_id IN ({ph})
+    """.format(ph=ph), [tenant_id] + reinspected_unit_ids, one=True)
+    turnaround = dict(turnaround_raw) if turnaround_raw else {}
+
+    # 5. KPI strip
+    clearance_pct = round(c1_cleared / c1_total * 100, 1) if c1_total > 0 else 0
+    kpis = {
+        'clearance_rate': clearance_pct,
+        'units_reinspected': len(reinspected_units),
+        'c1_reviewed': c1_total,
+        'c1_cleared': c1_cleared,
+        'c1_still_open': c1_still_open,
+        'new_in_c2': c2_new_count,
+        'avg_rect_days': turnaround.get('avg_days') or 0,
+        'avg_rect_days_available': bool(turnaround.get('avg_days')),
+    }
+
+    # 6. Scorecard by zone
+    zone_map = {}
+    for d in c1_defects:
+        key = (d['block'], d['floor'])
+        if key not in zone_map:
+            zone_map[key] = {'block': d['block'], 'floor': d['floor'],
+                             'c1_total': 0, 'cleared': 0, 'still_open': 0, 'new_c2': 0}
+        zone_map[key]['c1_total'] += 1
+        if d['status'] == 'cleared':
+            zone_map[key]['cleared'] += 1
+        else:
+            zone_map[key]['still_open'] += 1
+
+    for d in c2_new_defects:
+        key = (d['block'], d['floor'])
+        if key not in zone_map:
+            zone_map[key] = {'block': d['block'], 'floor': d['floor'],
+                             'c1_total': 0, 'cleared': 0, 'still_open': 0, 'new_c2': 0}
+        zone_map[key]['new_c2'] += 1
+
+    zones = sorted(zone_map.values(), key=lambda z: (z['block'], z['floor']))
+    for z in zones:
+        z['clearance_pct'] = round(z['cleared'] / z['c1_total'] * 100, 1) if z['c1_total'] > 0 else 0
+        z['floor_label'] = FLOOR_LABELS.get(z['floor'], 'Floor {}'.format(z['floor']))
+        z['slug'] = _block_to_slug(z['block'])
+
+    # 7. Rectification by area
+    area_c1 = [dict(r) for r in query_db("""
+        SELECT at2.area_name AS area,
+            SUM(CASE WHEN d.status = 'cleared' THEN 1 ELSE 0 END) as cleared,
+            SUM(CASE WHEN d.status = 'open' THEN 1 ELSE 0 END) as still_open
+        FROM defect d
+        JOIN item_template it ON d.item_template_id = it.id
+        JOIN category_template ct ON it.category_id = ct.id
+        JOIN area_template at2 ON ct.area_id = at2.id
+        JOIN inspection_cycle ic ON d.raised_cycle_id = ic.id
+        WHERE d.tenant_id = ? AND ic.cycle_number = 1
+        AND d.unit_id IN ({ph})
+        AND ic.id NOT LIKE 'test-%'
+        GROUP BY at2.area_name
+        ORDER BY (SUM(CASE WHEN d.status = 'cleared' THEN 1 ELSE 0 END)
+                 + SUM(CASE WHEN d.status = 'open' THEN 1 ELSE 0 END)) DESC
+    """.format(ph=ph), [tenant_id] + reinspected_unit_ids)]
+
+    area_new = [dict(r) for r in query_db("""
+        SELECT at2.area_name AS area, COUNT(d.id) as new_count
+        FROM defect d
+        JOIN item_template it ON d.item_template_id = it.id
+        JOIN category_template ct ON it.category_id = ct.id
+        JOIN area_template at2 ON ct.area_id = at2.id
+        JOIN inspection_cycle ic ON d.raised_cycle_id = ic.id
+        WHERE d.tenant_id = ? AND ic.cycle_number > 1
+        AND d.unit_id IN ({ph})
+        AND ic.id NOT LIKE 'test-%'
+        GROUP BY at2.area_name
+    """.format(ph=ph), [tenant_id] + reinspected_unit_ids)]
+    area_new_map = {r['area']: r['new_count'] for r in area_new}
+
+    areas = []
+    for a in area_c1:
+        total_c1 = a['cleared'] + a['still_open']
+        new = area_new_map.get(a['area'], 0)
+        areas.append({
+            'area': a['area'], 'c1_total': total_c1,
+            'cleared': a['cleared'], 'still_open': a['still_open'], 'new': new,
+            'clearance_pct': round(a['cleared'] / total_c1 * 100, 1) if total_c1 > 0 else 0,
+            'colour': AREA_COLOURS.get(a['area'], '#6B6B6B'),
+        })
+    area_max = max((a['c1_total'] + a['new'] for a in areas), default=1)
+
+    # 8. Rectification by trade/category
+    trade_c1 = [dict(r) for r in query_db("""
+        SELECT ct.category_name AS trade,
+            SUM(CASE WHEN d.status = 'cleared' THEN 1 ELSE 0 END) as cleared,
+            SUM(CASE WHEN d.status = 'open' THEN 1 ELSE 0 END) as still_open
+        FROM defect d
+        JOIN item_template it ON d.item_template_id = it.id
+        JOIN category_template ct ON it.category_id = ct.id
+        JOIN inspection_cycle ic ON d.raised_cycle_id = ic.id
+        WHERE d.tenant_id = ? AND ic.cycle_number = 1
+        AND d.unit_id IN ({ph})
+        AND ic.id NOT LIKE 'test-%'
+        GROUP BY ct.category_name
+        ORDER BY (SUM(CASE WHEN d.status = 'cleared' THEN 1 ELSE 0 END)
+                 + SUM(CASE WHEN d.status = 'open' THEN 1 ELSE 0 END)) DESC
+    """.format(ph=ph), [tenant_id] + reinspected_unit_ids)]
+
+    trade_new = [dict(r) for r in query_db("""
+        SELECT ct.category_name AS trade, COUNT(d.id) as new_count
+        FROM defect d
+        JOIN item_template it ON d.item_template_id = it.id
+        JOIN category_template ct ON it.category_id = ct.id
+        JOIN inspection_cycle ic ON d.raised_cycle_id = ic.id
+        WHERE d.tenant_id = ? AND ic.cycle_number > 1
+        AND d.unit_id IN ({ph})
+        AND ic.id NOT LIKE 'test-%'
+        GROUP BY ct.category_name
+    """.format(ph=ph), [tenant_id] + reinspected_unit_ids)]
+    trade_new_map = {r['trade']: r['new_count'] for r in trade_new}
+
+    trades = []
+    for t in trade_c1:
+        total_c1 = t['cleared'] + t['still_open']
+        new = trade_new_map.get(t['trade'], 0)
+        trades.append({
+            'trade': t['trade'], 'c1_total': total_c1,
+            'cleared': t['cleared'], 'still_open': t['still_open'], 'new': new,
+            'clearance_pct': round(t['cleared'] / total_c1 * 100, 1) if total_c1 > 0 else 0,
+        })
+    trade_max = max((t['c1_total'] + t['new'] for t in trades), default=1)
+
+    # 9. Stubborn defects (C1 open despite re-inspection)
+    stubborn_raw = [dict(r) for r in query_db("""
+        SELECT d.original_comment AS description,
+            at2.area_name AS area, ct.category_name AS category,
+            u.unit_number,
+            CAST(julianday('now') - julianday(d.created_at) AS INTEGER) AS age_days
+        FROM defect d
+        JOIN unit u ON d.unit_id = u.id
+        JOIN item_template it ON d.item_template_id = it.id
+        JOIN category_template ct ON it.category_id = ct.id
+        JOIN area_template at2 ON ct.area_id = at2.id
+        JOIN inspection_cycle ic ON d.raised_cycle_id = ic.id
+        WHERE d.tenant_id = ? AND d.status = 'open'
+        AND ic.cycle_number = 1
+        AND d.unit_id IN ({ph})
+        AND ic.id NOT LIKE 'test-%'
+        ORDER BY age_days DESC
+    """.format(ph=ph), [tenant_id] + reinspected_unit_ids)]
+
+    stubborn_grouped = {}
+    for s in stubborn_raw:
+        desc = s['description']
+        if desc not in stubborn_grouped:
+            stubborn_grouped[desc] = {
+                'description': desc, 'area': s['area'], 'category': s['category'],
+                'units': [], 'max_age': 0
+            }
+        stubborn_grouped[desc]['units'].append(s['unit_number'])
+        if s['age_days'] > stubborn_grouped[desc]['max_age']:
+            stubborn_grouped[desc]['max_age'] = s['age_days']
+
+    stubborn = sorted(stubborn_grouped.values(), key=lambda x: len(x['units']), reverse=True)
+
+    # 10. New defects in C2 grouped by area
+    new_by_area = {}
+    for d in c2_new_defects:
+        area = d['area_name']
+        if area not in new_by_area:
+            new_by_area[area] = []
+        new_by_area[area].append({
+            'description': d['original_comment'],
+            'unit': d['unit_number'],
+            'category': d['category_name'],
+        })
+    new_defects_grouped = [{'area': a, 'items': items, 'count': len(items)}
+                           for a, items in sorted(new_by_area.items(),
+                                                  key=lambda x: len(x[1]), reverse=True)]
+
+    # 11. Unit drill-down table
+    unit_map = {}
+    for d in c1_defects:
+        uid = d['unit_id']
+        if uid not in unit_map:
+            uinfo = next((u for u in reinspected_units if u['unit_id'] == uid), None)
+            unit_map[uid] = {
+                'unit_id': uid,
+                'unit_number': uinfo['unit_number'] if uinfo else '?',
+                'block': uinfo['block'] if uinfo else '?',
+                'floor': uinfo['floor'] if uinfo else 0,
+                'c1_raised': 0, 'cleared': 0, 'still_open': 0, 'new_c2': 0,
+            }
+        unit_map[uid]['c1_raised'] += 1
+        if d['status'] == 'cleared':
+            unit_map[uid]['cleared'] += 1
+        else:
+            unit_map[uid]['still_open'] += 1
+
+    for d in c2_new_defects:
+        uid = d['unit_id']
+        if uid in unit_map:
+            unit_map[uid]['new_c2'] += 1
+
+    units_table = sorted(unit_map.values(), key=lambda u: u['unit_number'])
+    for u in units_table:
+        u['clearance_pct'] = round(u['cleared'] / u['c1_raised'] * 100, 1) if u['c1_raised'] > 0 else 0
+        u['floor_label'] = FLOOR_LABELS.get(u['floor'], 'Floor {}'.format(u['floor']))
+
+    return render_template('analytics/rectification.html',
+                           has_data=True,
+                           kpis=kpis,
+                           zones=zones,
+                           areas=areas, area_max=area_max,
+                           trades=trades, trade_max=trade_max,
+                           stubborn=stubborn,
+                           new_defects=new_defects_grouped, c2_new_count=c2_new_count,
+                           units=units_table,
+                           turnaround=turnaround)
+
+
 @analytics_bp.route('/legacy')
 @require_manager
 def dashboard_legacy():

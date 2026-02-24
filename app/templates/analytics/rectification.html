@@ -1,0 +1,339 @@
+{% extends "base.html" %}
+
+{% block title %}Rectification Analytics{% endblock %}
+
+{% block content %}
+<style>
+    @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;600;700&family=DM+Sans:wght@400;500;600;700&display=swap');
+    .font-display { font-family: 'Cormorant Garamond', Georgia, serif; }
+    .font-body { font-family: 'DM Sans', system-ui, sans-serif; }
+    .gold-accent { color: #C8963E; }
+    .section-num { font-family: 'Cormorant Garamond', serif; font-size: 0.75rem; font-weight: 600; letter-spacing: 0.15em; color: #C8963E; text-transform: uppercase; }
+    .divider { height: 1px; background: #e5e5e5; margin: 0.25rem 0 1rem 0; }
+    .kpi-card { border-left: 3px solid #C8963E; background: #FAFAF8; border-radius: 6px; padding: 1rem 1.25rem; }
+    .kpi-value { font-family: 'DM Sans', system-ui, sans-serif; font-weight: 700; font-size: 2rem; line-height: 1; letter-spacing: -0.02em; }
+    .kpi-label { font-family: 'DM Sans', system-ui, sans-serif; font-size: 0.75rem; color: #6B6B6B; margin-top: 0.25rem; }
+    .kpi-sub { font-family: 'DM Sans', system-ui, sans-serif; font-size: 0.7rem; color: #9A9A9A; margin-top: 0.15rem; }
+    .rect-panel { background: #FAFAF8; border: 1px solid #e5e5e5; border-radius: 8px; padding: 1.25rem; }
+    .severity-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 4px; vertical-align: middle; }
+    .progress-bar-track { height: 10px; background: #e5e5e5; border-radius: 4px; overflow: hidden; }
+    .zone-link { text-decoration: none; color: inherit; display: block; transition: background 0.15s; }
+    .zone-link:hover { background: rgba(200,150,62,0.06); }
+    .clearance-pill { display: inline-block; padding: 0.15rem 0.5rem; border-radius: 999px; font-size: 0.7rem; font-weight: 700; }
+    .stubborn-row { border-left: 3px solid #C44D3F; background: rgba(196,77,63,0.04); border-radius: 0 6px 6px 0; padding: 0.75rem 1rem; margin-bottom: 0.5rem; }
+    .new-row { border-left: 3px solid #C8963E; background: rgba(200,150,62,0.04); border-radius: 0 6px 6px 0; padding: 0.75rem 1rem; margin-bottom: 0.5rem; }
+    .stacked-bar { display: flex; height: 14px; border-radius: 3px; overflow: hidden; }
+    .stacked-bar > div { min-width: 2px; }
+    .badge-count { display: inline-block; background: #C44D3F; color: white; font-size: 0.65rem; font-weight: 700; padding: 0.1rem 0.4rem; border-radius: 999px; }
+    .badge-new { display: inline-block; background: #C8963E; color: white; font-size: 0.65rem; font-weight: 700; padding: 0.1rem 0.4rem; border-radius: 999px; }
+</style>
+
+<div class="font-body" style="max-width: 1280px; margin: 0 auto;">
+
+    <div class="mb-6">
+        <div class="flex items-center justify-between flex-wrap gap-2">
+            <div>
+                <h1 class="font-display" style="font-size: 2rem; font-weight: 400; letter-spacing: -0.02em; color: #0A0A0A; margin: 0;">
+                    Rectification Analytics
+                </h1>
+                <p style="color: #9A9A9A; font-size: 0.85rem; margin: 0.25rem 0 0 0;">
+                    Power Park Student Housing &middot; Re-inspection Performance
+                </p>
+            </div>
+            <a href="{{ url_for('analytics.dashboard') }}" class="inline-block px-4 py-2 rounded-lg text-sm font-semibold"
+               style="color: #C8963E; border: 1px solid #C8963E; text-decoration: none;">
+                &larr; Dashboard
+            </a>
+        </div>
+    </div>
+
+    {% if not has_data %}
+    <div class="rect-panel" style="text-align: center; padding: 3rem;">
+        <p style="font-size: 1.1rem; color: #6B6B6B; margin-bottom: 0.5rem;">No re-inspection data yet</p>
+        <p style="font-size: 0.85rem; color: #9A9A9A;">Rectification analytics appear once units have been through a second inspection cycle (C2+).</p>
+    </div>
+    {% else %}
+
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 0.75rem;" class="mb-6">
+        <div class="kpi-card" style="border-left-color: #4A7C59;">
+            <div class="kpi-value" style="color: {% if kpis.clearance_rate >= 80 %}#4A7C59{% elif kpis.clearance_rate >= 50 %}#C8963E{% else %}#C44D3F{% endif %};">{{ kpis.clearance_rate }}%</div>
+            <div class="kpi-label">Clearance Rate</div>
+            <div class="kpi-sub">{{ kpis.c1_cleared }} of {{ kpis.c1_reviewed }} cleared</div>
+        </div>
+        <div class="kpi-card">
+            <div class="kpi-value">{{ kpis.units_reinspected }}</div>
+            <div class="kpi-label">Units Re-inspected</div>
+            <div class="kpi-sub">through C2+ cycles</div>
+        </div>
+        <div class="kpi-card">
+            {% if kpis.avg_rect_days_available %}
+            <div class="kpi-value">{{ kpis.avg_rect_days }}</div>
+            <div class="kpi-label">Avg Rectification Days</div>
+            <div class="kpi-sub">defect raised to cleared</div>
+            {% else %}
+            <div class="kpi-value" style="color: #9A9A9A;">&mdash;</div>
+            <div class="kpi-label">Avg Rectification Days</div>
+            <div class="kpi-sub">timestamps not yet available</div>
+            {% endif %}
+        </div>
+        <div class="kpi-card" style="border-left-color: {% if kpis.new_in_c2 > 0 %}#C44D3F{% else %}#4A7C59{% endif %};">
+            <div class="kpi-value" style="color: {% if kpis.new_in_c2 > 0 %}#C44D3F{% else %}#4A7C59{% endif %};">{{ kpis.new_in_c2 }}</div>
+            <div class="kpi-label">New Defects in C2</div>
+            <div class="kpi-sub">quality regression indicator</div>
+        </div>
+    </div>
+
+    <div style="display: flex; flex-wrap: wrap; gap: 1.5rem; font-size: 0.7rem; color: #6B6B6B; margin-bottom: 1.5rem;">
+        <span><span class="severity-dot" style="background: #4A7C59;"></span> Cleared (fixed)</span>
+        <span><span class="severity-dot" style="background: #C44D3F;"></span> Still Open (unfixed)</span>
+        <span><span class="severity-dot" style="background: #C8963E;"></span> New in C2 (regression)</span>
+    </div>
+
+    <div class="mb-2"><span class="section-num">01 &mdash; Rectification Scorecard</span></div>
+    <div class="divider"></div>
+    <p style="font-size: 0.8rem; color: #6B6B6B; margin-bottom: 1rem;">Performance by block + floor zone. Click a zone to drill down.</p>
+
+    <div class="rect-panel mb-6">
+        <div style="display: grid; grid-template-columns: 2fr 1fr 1fr 1fr 1fr 1.2fr; gap: 0.5rem; padding: 0.5rem 0.75rem; font-size: 0.65rem; color: #9A9A9A; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; border-bottom: 1px solid #e5e5e5;">
+            <div>Zone</div>
+            <div style="text-align: center;">C1 Raised</div>
+            <div style="text-align: center;">Cleared</div>
+            <div style="text-align: center;">Open</div>
+            <div style="text-align: center;">New C2</div>
+            <div style="text-align: center;">Clearance</div>
+        </div>
+        {% for z in zones %}
+        <a href="{{ url_for('analytics.block_floor_detail', block_slug=z.slug, floor=z.floor) }}" class="zone-link"
+           style="display: grid; grid-template-columns: 2fr 1fr 1fr 1fr 1fr 1.2fr; gap: 0.5rem; padding: 0.65rem 0.75rem; align-items: center; border-bottom: 1px solid #f0f0f0;">
+            <div style="font-weight: 600; font-size: 0.85rem;">{{ z.block }} {{ z.floor_label }}</div>
+            <div style="text-align: center; font-size: 0.85rem; font-weight: 600;">{{ z.c1_total }}</div>
+            <div style="text-align: center; font-size: 0.85rem; font-weight: 600; color: #4A7C59;">{{ z.cleared }}</div>
+            <div style="text-align: center; font-size: 0.85rem; font-weight: 600; color: #C44D3F;">{{ z.still_open }}</div>
+            <div style="text-align: center; font-size: 0.85rem; font-weight: 600; color: #C8963E;">{{ z.new_c2 }}</div>
+            <div style="text-align: center;">
+                <span class="clearance-pill"
+                      style="background: {% if z.clearance_pct >= 80 %}rgba(74,124,89,0.15); color: #4A7C59;{% elif z.clearance_pct >= 50 %}rgba(200,150,62,0.15); color: #C8963E;{% else %}rgba(196,77,63,0.15); color: #C44D3F;{% endif %}">
+                    {{ z.clearance_pct }}%
+                </span>
+            </div>
+        </a>
+        {% endfor %}
+    </div>
+
+    <div class="mb-2"><span class="section-num">02 &mdash; Rectification by Area</span></div>
+    <div class="divider"></div>
+    <p style="font-size: 0.8rem; color: #6B6B6B; margin-bottom: 1rem;">Which areas are being fixed vs ignored? Stacked bars show cleared (green), still open (red), and new in C2 (gold).</p>
+
+    <div class="rect-panel mb-6">
+        {% for a in areas %}
+        <div style="display: grid; grid-template-columns: 100px 1fr 60px 50px; gap: 0.75rem; align-items: center; padding: 0.5rem 0; {% if not loop.last %}border-bottom: 1px solid #f0f0f0;{% endif %}">
+            <div style="font-size: 0.8rem; font-weight: 500; color: #1A1A1A;">{{ a.area|title }}</div>
+            <div>
+                {% set total = a.cleared + a.still_open + a.new %}
+                {% if total > 0 %}
+                <div class="stacked-bar">
+                    <div style="width: {{ (a.cleared / area_max * 100)|round }}%; background: #4A7C59;" title="Cleared: {{ a.cleared }}"></div>
+                    <div style="width: {{ (a.still_open / area_max * 100)|round }}%; background: #C44D3F;" title="Still Open: {{ a.still_open }}"></div>
+                    {% if a.new > 0 %}
+                    <div style="width: {{ (a.new / area_max * 100)|round }}%; background: #C8963E;" title="New in C2: {{ a.new }}"></div>
+                    {% endif %}
+                </div>
+                {% endif %}
+            </div>
+            <div style="font-size: 0.75rem; text-align: right;">
+                <span style="color: #4A7C59; font-weight: 700;">{{ a.cleared }}</span>
+                <span style="color: #9A9A9A;">/</span>
+                <span style="color: #1A1A1A; font-weight: 600;">{{ a.c1_total }}</span>
+            </div>
+            <div style="text-align: right;">
+                <span class="clearance-pill" style="font-size: 0.65rem;
+                    background: {% if a.clearance_pct >= 80 %}rgba(74,124,89,0.15); color: #4A7C59;{% elif a.clearance_pct >= 50 %}rgba(200,150,62,0.15); color: #C8963E;{% else %}rgba(196,77,63,0.15); color: #C44D3F;{% endif %}">
+                    {{ a.clearance_pct }}%
+                </span>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+
+    <div class="mb-2"><span class="section-num">03 &mdash; Rectification by Trade</span></div>
+    <div class="divider"></div>
+    <p style="font-size: 0.8rem; color: #6B6B6B; margin-bottom: 1rem;">Subcontractor accountability. Which trades are clearing defects vs leaving them open?</p>
+
+    <div class="rect-panel mb-6">
+        {% for t in trades %}
+        <div style="display: grid; grid-template-columns: 140px 1fr 60px 50px; gap: 0.75rem; align-items: center; padding: 0.5rem 0; {% if not loop.last %}border-bottom: 1px solid #f0f0f0;{% endif %}">
+            <div style="font-size: 0.78rem; font-weight: 500; color: #1A1A1A; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="{{ t.trade }}">{{ t.trade }}</div>
+            <div>
+                {% set t_total = t.cleared + t.still_open + t.new %}
+                {% if t_total > 0 %}
+                <div class="stacked-bar">
+                    <div style="width: {{ (t.cleared / trade_max * 100)|round }}%; background: #4A7C59;" title="Cleared: {{ t.cleared }}"></div>
+                    <div style="width: {{ (t.still_open / trade_max * 100)|round }}%; background: #C44D3F;" title="Still Open: {{ t.still_open }}"></div>
+                    {% if t.new > 0 %}
+                    <div style="width: {{ (t.new / trade_max * 100)|round }}%; background: #C8963E;" title="New in C2: {{ t.new }}"></div>
+                    {% endif %}
+                </div>
+                {% endif %}
+            </div>
+            <div style="font-size: 0.75rem; text-align: right;">
+                <span style="color: #4A7C59; font-weight: 700;">{{ t.cleared }}</span>
+                <span style="color: #9A9A9A;">/</span>
+                <span style="color: #1A1A1A; font-weight: 600;">{{ t.c1_total }}</span>
+            </div>
+            <div style="text-align: right;">
+                <span class="clearance-pill" style="font-size: 0.65rem;
+                    background: {% if t.clearance_pct >= 80 %}rgba(74,124,89,0.15); color: #4A7C59;{% elif t.clearance_pct >= 50 %}rgba(200,150,62,0.15); color: #C8963E;{% else %}rgba(196,77,63,0.15); color: #C44D3F;{% endif %}">
+                    {{ t.clearance_pct }}%
+                </span>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+
+    <div class="mb-2"><span class="section-num">04 &mdash; Stubborn Defects</span></div>
+    <div class="divider"></div>
+    <p style="font-size: 0.8rem; color: #6B6B6B; margin-bottom: 1rem;">C1 defects that survived re-inspection. Flagged twice, still unfixed.</p>
+
+    {% if stubborn %}
+    <div class="mb-6">
+        {% for s in stubborn[:15] %}
+        <div class="stubborn-row">
+            <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 0.5rem;">
+                <div style="flex: 1; min-width: 200px;">
+                    <div style="font-size: 0.85rem; font-weight: 600; color: #1A1A1A;">{{ s.description }}</div>
+                    <div style="font-size: 0.7rem; color: #6B6B6B; margin-top: 0.2rem;">
+                        {{ s.area|title }} &middot; {{ s.category }}
+                    </div>
+                </div>
+                <div style="text-align: right;">
+                    <span class="badge-count">{{ s.units|length }} unit{{ 's' if s.units|length != 1 }}</span>
+                    <div style="font-size: 0.65rem; color: #9A9A9A; margin-top: 0.2rem;">
+                        Units: {{ s.units|join(', ') }}
+                    </div>
+                    <div style="font-size: 0.65rem; color: #C44D3F; margin-top: 0.1rem;">
+                        {{ s.max_age }} days old
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+        {% if stubborn|length > 15 %}
+        <p style="font-size: 0.75rem; color: #9A9A9A; text-align: center; margin-top: 0.5rem;">
+            Showing 15 of {{ stubborn|length }} stubborn defects
+        </p>
+        {% endif %}
+    </div>
+    {% else %}
+    <div class="rect-panel mb-6" style="text-align: center; padding: 2rem; border-left: 3px solid #4A7C59;">
+        <p style="font-size: 0.9rem; color: #4A7C59; font-weight: 600;">All C1 defects cleared on re-inspection</p>
+        <p style="font-size: 0.8rem; color: #6B6B6B;">No stubborn defects found. Raubex cleared everything flagged.</p>
+    </div>
+    {% endif %}
+
+    <div class="mb-2"><span class="section-num">05 &mdash; New Defects in Re-inspection</span></div>
+    <div class="divider"></div>
+    <p style="font-size: 0.8rem; color: #6B6B6B; margin-bottom: 1rem;">
+        Defects found during C2 that did not exist in C1. Quality regression &mdash; fixing one thing, breaking another.
+        {% if c2_new_count > 0 %}<strong style="color: #C44D3F;">{{ c2_new_count }} new defect{{ 's' if c2_new_count != 1 }} found.</strong>{% endif %}
+    </p>
+
+    {% if new_defects %}
+    <div class="mb-6">
+        {% for group in new_defects %}
+        <div class="new-row">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.4rem;">
+                <span style="font-size: 0.85rem; font-weight: 600; color: #1A1A1A;">{{ group.area|title }}</span>
+                <span class="badge-new">{{ group.count }} new</span>
+            </div>
+            {% for item in group.items %}
+            <div style="font-size: 0.78rem; color: #6B6B6B; padding: 0.15rem 0; {% if not loop.last %}border-bottom: 1px solid rgba(200,150,62,0.1);{% endif %}">
+                <span style="color: #1A1A1A;">{{ item.description }}</span>
+                <span style="color: #9A9A9A;">&middot; Unit {{ item.unit }} &middot; {{ item.category }}</span>
+            </div>
+            {% endfor %}
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="rect-panel mb-6" style="text-align: center; padding: 2rem; border-left: 3px solid #4A7C59;">
+        <p style="font-size: 0.9rem; color: #4A7C59; font-weight: 600;">No quality regression detected</p>
+        <p style="font-size: 0.8rem; color: #6B6B6B;">No new defects were introduced during re-inspection.</p>
+    </div>
+    {% endif %}
+
+    <div class="mb-2"><span class="section-num">06 &mdash; Unit Breakdown</span></div>
+    <div class="divider"></div>
+    <p style="font-size: 0.8rem; color: #6B6B6B; margin-bottom: 1rem;">Per-unit rectification performance. Click a unit to view its full defect list.</p>
+
+    <div class="rect-panel mb-6" style="overflow-x: auto;">
+        <table style="width: 100%; border-collapse: collapse; font-size: 0.8rem;">
+            <thead>
+                <tr style="border-bottom: 2px solid #e5e5e5;">
+                    <th style="text-align: left; padding: 0.5rem; font-size: 0.65rem; color: #9A9A9A; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em;">Unit</th>
+                    <th style="text-align: left; padding: 0.5rem; font-size: 0.65rem; color: #9A9A9A; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em;">Zone</th>
+                    <th style="text-align: center; padding: 0.5rem; font-size: 0.65rem; color: #9A9A9A; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em;">C1</th>
+                    <th style="text-align: center; padding: 0.5rem; font-size: 0.65rem; color: #4A7C59; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em;">Cleared</th>
+                    <th style="text-align: center; padding: 0.5rem; font-size: 0.65rem; color: #C44D3F; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em;">Open</th>
+                    <th style="text-align: center; padding: 0.5rem; font-size: 0.65rem; color: #C8963E; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em;">New C2</th>
+                    <th style="text-align: center; padding: 0.5rem; font-size: 0.65rem; color: #9A9A9A; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em;">Progress</th>
+                    <th style="text-align: center; padding: 0.5rem; font-size: 0.65rem; color: #9A9A9A; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em;">Rate</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for u in units %}
+                <tr style="border-bottom: 1px solid #f0f0f0; cursor: pointer;"
+                    onclick="window.location='/certification/unit/{{ u.unit_id }}?from=rectification'">
+                    <td style="padding: 0.6rem 0.5rem; font-weight: 700;">{{ u.unit_number }}</td>
+                    <td style="padding: 0.6rem 0.5rem; color: #6B6B6B;">{{ u.block }} {{ u.floor_label }}</td>
+                    <td style="text-align: center; padding: 0.6rem 0.5rem; font-weight: 600;">{{ u.c1_raised }}</td>
+                    <td style="text-align: center; padding: 0.6rem 0.5rem; font-weight: 600; color: #4A7C59;">{{ u.cleared }}</td>
+                    <td style="text-align: center; padding: 0.6rem 0.5rem; font-weight: 600; color: #C44D3F;">{{ u.still_open }}</td>
+                    <td style="text-align: center; padding: 0.6rem 0.5rem; font-weight: 600; color: {% if u.new_c2 > 0 %}#C8963E{% else %}#9A9A9A{% endif %};">{{ u.new_c2 }}</td>
+                    <td style="padding: 0.6rem 0.5rem; width: 120px;">
+                        {% if u.c1_raised > 0 %}
+                        <div style="height: 8px; background: #e5e5e5; border-radius: 4px; overflow: hidden;">
+                            <div style="height: 100%; width: {{ u.clearance_pct }}%; background: #4A7C59; border-radius: 4px;"></div>
+                        </div>
+                        {% endif %}
+                    </td>
+                    <td style="text-align: center; padding: 0.6rem 0.5rem;">
+                        <span class="clearance-pill"
+                              style="background: {% if u.clearance_pct >= 80 %}rgba(74,124,89,0.15); color: #4A7C59;{% elif u.clearance_pct >= 50 %}rgba(200,150,62,0.15); color: #C8963E;{% else %}rgba(196,77,63,0.15); color: #C44D3F;{% endif %}">
+                            {{ u.clearance_pct }}%
+                        </span>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    {% if turnaround and turnaround.avg_days %}
+    <div class="mb-2"><span class="section-num">07 &mdash; Turnaround Time</span></div>
+    <div class="divider"></div>
+    <p style="font-size: 0.8rem; color: #6B6B6B; margin-bottom: 1rem;">How long does Raubex take to fix defects? Measured from defect raised to cleared.</p>
+
+    <div class="rect-panel mb-6" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 1rem;">
+        <div style="text-align: center;">
+            <div style="font-size: 2rem; font-weight: 700; color: #1A1A1A;">{{ turnaround.avg_days }}</div>
+            <div style="font-size: 0.75rem; color: #6B6B6B;">Avg Days</div>
+        </div>
+        <div style="text-align: center;">
+            <div style="font-size: 2rem; font-weight: 700; color: #4A7C59;">{{ turnaround.min_days }}</div>
+            <div style="font-size: 0.75rem; color: #6B6B6B;">Fastest</div>
+        </div>
+        <div style="text-align: center;">
+            <div style="font-size: 2rem; font-weight: 700; color: #C44D3F;">{{ turnaround.max_days }}</div>
+            <div style="font-size: 0.75rem; color: #6B6B6B;">Slowest</div>
+        </div>
+        <div style="text-align: center;">
+            <div style="font-size: 2rem; font-weight: 700; color: #6B6B6B;">{{ turnaround.sample_size }}</div>
+            <div style="font-size: 0.75rem; color: #6B6B6B;">Defects Measured</div>
+        </div>
+    </div>
+    {% endif %}
+
+    {% endif %}
+
+</div>
+{% endblock %}
