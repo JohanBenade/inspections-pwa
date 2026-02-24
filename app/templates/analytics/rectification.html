@@ -58,16 +58,10 @@
             <div class="kpi-label">Units Re-inspected</div>
             <div class="kpi-sub">through C2+ cycles</div>
         </div>
-        <div class="kpi-card">
-            {% if kpis.avg_rect_days_available %}
-            <div class="kpi-value">{{ kpis.avg_rect_days }}</div>
-            <div class="kpi-label">Avg Rectification Days</div>
-            <div class="kpi-sub">defect raised to cleared</div>
-            {% else %}
-            <div class="kpi-value" style="color: #9A9A9A;">&mdash;</div>
-            <div class="kpi-label">Avg Rectification Days</div>
-            <div class="kpi-sub">timestamps not yet available</div>
-            {% endif %}
+        <div class="kpi-card" style="border-left-color: {% if kpis.net_improvement > 0 %}#4A7C59{% elif kpis.net_improvement == 0 %}#C8963E{% else %}#C44D3F{% endif %};">
+            <div class="kpi-value" style="color: {% if kpis.net_improvement > 0 %}#4A7C59{% elif kpis.net_improvement == 0 %}#C8963E{% else %}#C44D3F{% endif %};">{{ '+' if kpis.net_improvement > 0 }}{{ kpis.net_improvement }}</div>
+            <div class="kpi-label">Net Improvement</div>
+            <div class="kpi-sub">{{ kpis.c1_cleared }} cleared &minus; {{ kpis.new_in_c2 }} new</div>
         </div>
         <div class="kpi-card" style="border-left-color: {% if kpis.new_in_c2 > 0 %}#C44D3F{% else %}#4A7C59{% endif %};">
             <div class="kpi-value" style="color: {% if kpis.new_in_c2 > 0 %}#C44D3F{% else %}#4A7C59{% endif %};">{{ kpis.new_in_c2 }}</div>
@@ -76,10 +70,13 @@
         </div>
     </div>
 
-    <div style="display: flex; flex-wrap: wrap; gap: 1.5rem; font-size: 0.7rem; color: #6B6B6B; margin-bottom: 1.5rem;">
+    <div style="display: flex; flex-wrap: wrap; gap: 1.5rem; font-size: 0.7rem; color: #6B6B6B; margin-bottom: 0.5rem;">
         <span><span class="severity-dot" style="background: #4A7C59;"></span> Cleared (fixed)</span>
         <span><span class="severity-dot" style="background: #C44D3F;"></span> Still Open (unfixed)</span>
         <span><span class="severity-dot" style="background: #C8963E;"></span> New in C2 (regression)</span>
+    </div>
+    <div style="font-size: 0.7rem; color: #9A9A9A; margin-bottom: 1.5rem;">
+        <strong>Effective Rate</strong> = (cleared &minus; new defects) / C1 raised &mdash; the honest measure of net progress
     </div>
 
     <div class="mb-2"><span class="section-num">01 &mdash; Rectification Scorecard</span></div>
@@ -87,26 +84,28 @@
     <p style="font-size: 0.8rem; color: #6B6B6B; margin-bottom: 1rem;">Performance by block + floor zone. Click a zone to drill down.</p>
 
     <div class="rect-panel mb-6">
-        <div style="display: grid; grid-template-columns: 2fr 1fr 1fr 1fr 1fr 1.2fr; gap: 0.5rem; padding: 0.5rem 0.75rem; font-size: 0.65rem; color: #9A9A9A; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; border-bottom: 1px solid #e5e5e5;">
+        <div style="display: grid; grid-template-columns: 2fr 1fr 1fr 1fr 1fr 1fr 1.2fr; gap: 0.5rem; padding: 0.5rem 0.75rem; font-size: 0.65rem; color: #9A9A9A; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; border-bottom: 1px solid #e5e5e5;">
             <div>Zone</div>
             <div style="text-align: center;">C1 Raised</div>
             <div style="text-align: center;">Cleared</div>
             <div style="text-align: center;">Open</div>
             <div style="text-align: center;">New C2</div>
-            <div style="text-align: center;">Clearance</div>
+            <div style="text-align: center;">Net</div>
+            <div style="text-align: center;">Effective</div>
         </div>
         {% for z in zones %}
         <a href="{{ url_for('analytics.block_floor_detail', block_slug=z.slug, floor=z.floor) }}" class="zone-link"
-           style="display: grid; grid-template-columns: 2fr 1fr 1fr 1fr 1fr 1.2fr; gap: 0.5rem; padding: 0.65rem 0.75rem; align-items: center; border-bottom: 1px solid #f0f0f0;">
+           style="display: grid; grid-template-columns: 2fr 1fr 1fr 1fr 1fr 1fr 1.2fr; gap: 0.5rem; padding: 0.65rem 0.75rem; align-items: center; border-bottom: 1px solid #f0f0f0;">
             <div style="font-weight: 600; font-size: 0.85rem;">{{ z.block }} {{ z.floor_label }}</div>
             <div style="text-align: center; font-size: 0.85rem; font-weight: 600;">{{ z.c1_total }}</div>
             <div style="text-align: center; font-size: 0.85rem; font-weight: 600; color: #4A7C59;">{{ z.cleared }}</div>
             <div style="text-align: center; font-size: 0.85rem; font-weight: 600; color: #C44D3F;">{{ z.still_open }}</div>
             <div style="text-align: center; font-size: 0.85rem; font-weight: 600; color: #C8963E;">{{ z.new_c2 }}</div>
+            <div style="text-align: center; font-size: 0.85rem; font-weight: 700; color: {% if z.net > 0 %}#4A7C59{% elif z.net == 0 %}#C8963E{% else %}#C44D3F{% endif %};">{{ '+' if z.net > 0 }}{{ z.net }}</div>
             <div style="text-align: center;">
                 <span class="clearance-pill"
-                      style="background: {% if z.clearance_pct >= 80 %}rgba(74,124,89,0.15); color: #4A7C59;{% elif z.clearance_pct >= 50 %}rgba(200,150,62,0.15); color: #C8963E;{% else %}rgba(196,77,63,0.15); color: #C44D3F;{% endif %}">
-                    {{ z.clearance_pct }}%
+                      style="background: {% if z.effective_pct >= 50 %}rgba(74,124,89,0.15); color: #4A7C59;{% elif z.effective_pct >= 20 %}rgba(200,150,62,0.15); color: #C8963E;{% else %}rgba(196,77,63,0.15); color: #C44D3F;{% endif %}">
+                    {{ z.effective_pct }}%
                 </span>
             </div>
         </a>
@@ -115,7 +114,7 @@
 
     <div class="mb-2"><span class="section-num">02 &mdash; Rectification by Area</span></div>
     <div class="divider"></div>
-    <p style="font-size: 0.8rem; color: #6B6B6B; margin-bottom: 1rem;">Which areas are being fixed vs ignored? Stacked bars show cleared (green), still open (red), and new in C2 (gold).</p>
+    <p style="font-size: 0.8rem; color: #6B6B6B; margin-bottom: 1rem;">Which areas are actually improving? Net shows cleared minus new. Effective rate measures real progress.</p>
 
     <div class="rect-panel mb-6">
         {% for a in areas %}
@@ -134,14 +133,14 @@
                 {% endif %}
             </div>
             <div style="font-size: 0.75rem; text-align: right;">
-                <span style="color: #4A7C59; font-weight: 700;">{{ a.cleared }}</span>
+                <span style="color: {% if a.net > 0 %}#4A7C59{% elif a.net == 0 %}#C8963E{% else %}#C44D3F{% endif %}; font-weight: 700;">{{ '+' if a.net > 0 }}{{ a.net }}</span>
                 <span style="color: #9A9A9A;">/</span>
                 <span style="color: #1A1A1A; font-weight: 600;">{{ a.c1_total }}</span>
             </div>
             <div style="text-align: right;">
                 <span class="clearance-pill" style="font-size: 0.65rem;
-                    background: {% if a.clearance_pct >= 80 %}rgba(74,124,89,0.15); color: #4A7C59;{% elif a.clearance_pct >= 50 %}rgba(200,150,62,0.15); color: #C8963E;{% else %}rgba(196,77,63,0.15); color: #C44D3F;{% endif %}">
-                    {{ a.clearance_pct }}%
+                    background: {% if a.effective_pct >= 50 %}rgba(74,124,89,0.15); color: #4A7C59;{% elif a.effective_pct >= 20 %}rgba(200,150,62,0.15); color: #C8963E;{% else %}rgba(196,77,63,0.15); color: #C44D3F;{% endif %}">
+                    {{ a.effective_pct }}%
                 </span>
             </div>
         </div>
@@ -169,14 +168,14 @@
                 {% endif %}
             </div>
             <div style="font-size: 0.75rem; text-align: right;">
-                <span style="color: #4A7C59; font-weight: 700;">{{ t.cleared }}</span>
+                <span style="color: {% if t.net > 0 %}#4A7C59{% elif t.net == 0 %}#C8963E{% else %}#C44D3F{% endif %}; font-weight: 700;">{{ '+' if t.net > 0 }}{{ t.net }}</span>
                 <span style="color: #9A9A9A;">/</span>
                 <span style="color: #1A1A1A; font-weight: 600;">{{ t.c1_total }}</span>
             </div>
             <div style="text-align: right;">
                 <span class="clearance-pill" style="font-size: 0.65rem;
-                    background: {% if t.clearance_pct >= 80 %}rgba(74,124,89,0.15); color: #4A7C59;{% elif t.clearance_pct >= 50 %}rgba(200,150,62,0.15); color: #C8963E;{% else %}rgba(196,77,63,0.15); color: #C44D3F;{% endif %}">
-                    {{ t.clearance_pct }}%
+                    background: {% if t.effective_pct >= 50 %}rgba(74,124,89,0.15); color: #4A7C59;{% elif t.effective_pct >= 20 %}rgba(200,150,62,0.15); color: #C8963E;{% else %}rgba(196,77,63,0.15); color: #C44D3F;{% endif %}">
+                    {{ t.effective_pct }}%
                 </span>
             </div>
         </div>
@@ -269,7 +268,7 @@
                     <th style="text-align: center; padding: 0.5rem; font-size: 0.65rem; color: #C44D3F; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em;">Open</th>
                     <th style="text-align: center; padding: 0.5rem; font-size: 0.65rem; color: #C8963E; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em;">New C2</th>
                     <th style="text-align: center; padding: 0.5rem; font-size: 0.65rem; color: #9A9A9A; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em;">Progress</th>
-                    <th style="text-align: center; padding: 0.5rem; font-size: 0.65rem; color: #9A9A9A; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em;">Rate</th>
+                    <th style="text-align: center; padding: 0.5rem; font-size: 0.65rem; color: #9A9A9A; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em;">Effective</th>
                 </tr>
             </thead>
             <tbody>
@@ -284,15 +283,16 @@
                     <td style="text-align: center; padding: 0.6rem 0.5rem; font-weight: 600; color: {% if u.new_c2 > 0 %}#C8963E{% else %}#9A9A9A{% endif %};">{{ u.new_c2 }}</td>
                     <td style="padding: 0.6rem 0.5rem; width: 120px;">
                         {% if u.c1_raised > 0 %}
+                        {% set bar_pct = [u.effective_pct, 0]|max %}
                         <div style="height: 8px; background: #e5e5e5; border-radius: 4px; overflow: hidden;">
-                            <div style="height: 100%; width: {{ u.clearance_pct }}%; background: #4A7C59; border-radius: 4px;"></div>
+                            <div style="height: 100%; width: {{ bar_pct }}%; background: {% if u.effective_pct >= 50 %}#4A7C59{% elif u.effective_pct >= 20 %}#C8963E{% else %}#C44D3F{% endif %}; border-radius: 4px;"></div>
                         </div>
                         {% endif %}
                     </td>
                     <td style="text-align: center; padding: 0.6rem 0.5rem;">
                         <span class="clearance-pill"
-                              style="background: {% if u.clearance_pct >= 80 %}rgba(74,124,89,0.15); color: #4A7C59;{% elif u.clearance_pct >= 50 %}rgba(200,150,62,0.15); color: #C8963E;{% else %}rgba(196,77,63,0.15); color: #C44D3F;{% endif %}">
-                            {{ u.clearance_pct }}%
+                              style="background: {% if u.effective_pct >= 50 %}rgba(74,124,89,0.15); color: #4A7C59;{% elif u.effective_pct >= 20 %}rgba(200,150,62,0.15); color: #C8963E;{% else %}rgba(196,77,63,0.15); color: #C44D3F;{% endif %}">
+                            {{ u.effective_pct }}%
                         </span>
                     </td>
                 </tr>

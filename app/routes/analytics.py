@@ -1195,6 +1195,8 @@ def rectification():
 
     # 5. KPI strip
     clearance_pct = round(c1_cleared / c1_total * 100, 1) if c1_total > 0 else 0
+    net_improvement = c1_cleared - c2_new_count
+    net_pct = round(net_improvement / c1_total * 100, 1) if c1_total > 0 else 0
     kpis = {
         'clearance_rate': clearance_pct,
         'units_reinspected': len(reinspected_units),
@@ -1202,6 +1204,8 @@ def rectification():
         'c1_cleared': c1_cleared,
         'c1_still_open': c1_still_open,
         'new_in_c2': c2_new_count,
+        'net_improvement': net_improvement,
+        'net_pct': net_pct,
         'avg_rect_days': turnaround.get('avg_days') or 0,
         'avg_rect_days_available': bool(turnaround.get('avg_days')),
     }
@@ -1229,6 +1233,8 @@ def rectification():
     zones = sorted(zone_map.values(), key=lambda z: (z['block'], z['floor']))
     for z in zones:
         z['clearance_pct'] = round(z['cleared'] / z['c1_total'] * 100, 1) if z['c1_total'] > 0 else 0
+        z['net'] = z['cleared'] - z['new_c2']
+        z['effective_pct'] = round(z['net'] / z['c1_total'] * 100, 1) if z['c1_total'] > 0 else 0
         z['floor_label'] = FLOOR_LABELS.get(z['floor'], 'Floor {}'.format(z['floor']))
         z['slug'] = _block_to_slug(z['block'])
 
@@ -1268,10 +1274,13 @@ def rectification():
     for a in area_c1:
         total_c1 = a['cleared'] + a['still_open']
         new = area_new_map.get(a['area'], 0)
+        eff = a['cleared'] - new
+        eff_pct = round(eff / total_c1 * 100, 1) if total_c1 > 0 else 0
         areas.append({
             'area': a['area'], 'c1_total': total_c1,
             'cleared': a['cleared'], 'still_open': a['still_open'], 'new': new,
             'clearance_pct': round(a['cleared'] / total_c1 * 100, 1) if total_c1 > 0 else 0,
+            'effective_pct': eff_pct, 'net': eff,
             'colour': AREA_COLOURS.get(a['area'], '#6B6B6B'),
         })
     area_max = max((a['c1_total'] + a['new'] for a in areas), default=1)
@@ -1310,10 +1319,13 @@ def rectification():
     for t in trade_c1:
         total_c1 = t['cleared'] + t['still_open']
         new = trade_new_map.get(t['trade'], 0)
+        t_eff = t['cleared'] - new
+        t_eff_pct = round(t_eff / total_c1 * 100, 1) if total_c1 > 0 else 0
         trades.append({
             'trade': t['trade'], 'c1_total': total_c1,
             'cleared': t['cleared'], 'still_open': t['still_open'], 'new': new,
             'clearance_pct': round(t['cleared'] / total_c1 * 100, 1) if total_c1 > 0 else 0,
+            'effective_pct': t_eff_pct, 'net': t_eff,
         })
     trade_max = max((t['c1_total'] + t['new'] for t in trades), default=1)
 
@@ -1392,6 +1404,8 @@ def rectification():
     units_table = sorted(unit_map.values(), key=lambda u: u['unit_number'])
     for u in units_table:
         u['clearance_pct'] = round(u['cleared'] / u['c1_raised'] * 100, 1) if u['c1_raised'] > 0 else 0
+        u['net'] = u['cleared'] - u['new_c2']
+        u['effective_pct'] = round(u['net'] / u['c1_raised'] * 100, 1) if u['c1_raised'] > 0 else 0
         u['floor_label'] = FLOOR_LABELS.get(u['floor'], 'Floor {}'.format(u['floor']))
 
     return render_template('analytics/rectification.html',
