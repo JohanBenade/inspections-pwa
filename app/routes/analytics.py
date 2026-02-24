@@ -323,9 +323,11 @@ def dashboard():
         max_dd = area_defects[0]['count'] if area_defects else 1
         for d in area_defects:
             d['bar_pct'] = round(d['count'] / max_dd * 100)
+        area_pct = round(area_row['defect_count'] / project['open_defects'] * 100, 1) if project['open_defects'] > 0 else 0
         area_deep_dive.append({
             'area': area_name,
             'total': area_row['defect_count'],
+            'pct': area_pct,
             'colour': dd_colours[idx],
             'defects': area_defects,
         })

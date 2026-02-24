@@ -294,7 +294,7 @@
         <div class="hotspot-panel" style="border-left: 3px solid {{ area.colour }};">
             <div style="display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 0.75rem;">
                 <span style="font-size: 0.95rem; font-weight: 700; color: #1A1A1A;">{{ area.area }}</span>
-                <span style="font-size: 0.75rem; color: #6B6B6B;">{{ area.total }} defects</span>
+                <span style="font-size: 0.75rem; color: #6B6B6B;">{{ area.total }} defects ({{ area.pct }}%)</span>
             </div>
             {% for d in area.defects %}
             <div style="margin-bottom: 0.6rem;">
@@ -303,8 +303,8 @@
                     <span style="font-size: 0.8rem; color: #1A1A1A;">{{ d.description }}</span>
                     <span style="margin-left: auto; font-size: 0.8rem; font-weight: 700; color: #1A1A1A;">{{ d.count }}</span>
                 </div>
-                <div style="height: 6px; background: #f0ede8; border-radius: 3px; overflow: hidden;">
-                    <div style="width: {{ d.bar_pct }}%%; height: 100%%; background: {{ area.colour }}; border-radius: 3px;"></div>
+                <div style="height: 10px; background: #f0ede8; border-radius: 4px; overflow: hidden;">
+                    <div style="width: {{ d.bar_pct }}%; height: 100%; background: {{ area.colour }}; border-radius: 4px;"></div>
                 </div>
             </div>
             {% endfor %}
