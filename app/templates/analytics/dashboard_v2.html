@@ -160,9 +160,8 @@
     <div class="divider"></div>
 
     <div class="hotspot-panel mb-6">
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem;">
+        <div style="margin-bottom: 0.75rem;">
             <span style="font-size: 0.9rem; font-weight: 600; color: #1A1A1A;">Block &times; Floor</span>
-            <span style="font-size: 0.7rem; color: #9A9A9A;">avg defects/unit &middot; median: {{ grid_median }}</span>
         </div>
         <div style="overflow-x: auto;">
             <table style="width: 100%; border-collapse: collapse; font-size: 0.85rem;">
@@ -204,7 +203,9 @@
         <div style="font-size: 0.7rem; color: #9A9A9A; margin-top: 0.5rem; padding-top: 0.4rem; border-top: 1px solid #f0f0f0;">
             <span class="legend-item"><span class="legend-dot" style="background: rgba(74,124,89,0.25);"></span> Below median</span>&ensp;
             <span class="legend-item"><span class="legend-dot" style="background: rgba(200,150,62,0.25);"></span> At median</span>&ensp;
-            <span class="legend-item"><span class="legend-dot" style="background: rgba(196,77,63,0.25);"></span> Above median</span>
+            <span class="legend-item"><span class="legend-dot" style="background: rgba(196,77,63,0.25);"></span> Above median</span>&ensp;
+            <span style="color: #BABABA;">&middot;</span>&ensp;
+            <span style="font-size: 0.7rem; color: #9A9A9A;">median: {{ grid_median }} avg defects/unit</span>
         </div>
     </div>
     {% endif %}
