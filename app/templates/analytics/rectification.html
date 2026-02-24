@@ -245,7 +245,7 @@
                 <span style="font-size: 0.85rem; font-weight: 600; color: #1A1A1A;">{{ group.area|title }}</span>
                 <span class="badge-new">{{ group.count }} new</span>
             </div>
-            {% for item in group.items %}
+            {% for item in group.defect_list %}
             <div style="font-size: 0.78rem; color: #6B6B6B; padding: 0.15rem 0; {% if not loop.last %}border-bottom: 1px solid rgba(200,150,62,0.1);{% endif %}">
                 <span style="color: #1A1A1A;">{{ item.description }}</span>
                 <span style="color: #9A9A9A;">&middot; Unit {{ item.unit }} &middot; {{ item.category }}</span>

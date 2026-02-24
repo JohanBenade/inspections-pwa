@@ -1361,7 +1361,7 @@ def rectification():
             'unit': d['unit_number'],
             'category': d['category_name'],
         })
-    new_defects_grouped = [{'area': a, 'items': items, 'count': len(items)}
+    new_defects_grouped = [{'area': a, 'defect_list': items, 'count': len(items)}
                            for a, items in sorted(new_by_area.items(),
                                                   key=lambda x: len(x[1]), reverse=True)]
 
