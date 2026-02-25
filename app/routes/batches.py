@@ -449,6 +449,16 @@ def _build_live_monitor_data(batch_id, tenant_id):
                 'pct': pct,
             })
 
+    # Sort areas: Kitchen, Bathroom, Lounge, then Bedrooms
+    area_order = {'KITCHEN': 0, 'BATHROOM': 1, 'LOUNGE': 2}
+    for uid in area_progress:
+        area_progress[uid].sort(key=lambda a: (area_order.get(a['area'], 10), a['area']))
+
+    # Sort areas: Kitchen, Bathroom, Lounge, then Bedrooms
+    area_order = {'KITCHEN': 0, 'BATHROOM': 1, 'LOUNGE': 2}
+    for uid in area_progress:
+        area_progress[uid].sort(key=lambda a: (area_order.get(a['area'], 10), a['area']))
+
     # Attach area data + compute unit-level stats
     for u in units:
         u['areas'] = area_progress.get(u['unit_id'], [])

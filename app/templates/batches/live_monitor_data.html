@@ -58,16 +58,18 @@
                     {% endif %}
                 </div>
                 <div class="unit-header-right">
+                    {% if u.total_items > 0 %}
                     <span class="unit-pct {% if is_done %}green{% elif is_active %}gold{% else %}dim{% endif %}">{{ u.pct }}%</span>
                     <span class="unit-counts">{{ u.total_marked }}/{{ u.total_items }}</span>
                     {% if u.total_defects > 0 %}
                     <span class="unit-defects">{{ u.total_defects }} defect{{ 's' if u.total_defects != 1 }}</span>
                     {% endif %}
+                    {% endif %}
                 </div>
             </div>
 
             <!-- AREA BARS -->
-            {% if u.areas %}
+            {% if u.areas and not is_waiting %}
             <div class="area-bars">
                 {% for a in u.areas %}
                 <div class="area-row">
@@ -87,7 +89,7 @@
                 {% endfor %}
             </div>
             {% elif is_waiting %}
-            <div class="unit-empty">Inspection not started</div>
+            <div class="unit-empty">Not started</div>
             {% endif %}
         </div>
         {% endfor %}
