@@ -3313,12 +3313,9 @@ def inspector_detail(inspector_name):
 
 
 @analytics_bp.route('/audit')
-@login_required
+@require_manager
 def inspector_audit():
     """Inspector Audit Trail - payment verification page."""
-    if current_user.role not in ('manager', 'admin'):
-        abort(403)
-
     tenant_id = session['tenant_id']
     from_date = request.args.get('from_date', '')
     to_date = request.args.get('to_date', '')
