@@ -3,7 +3,7 @@
 {% block content %}
 <div style="max-width: 800px; margin: 0 auto; padding: 1rem;">
     <h1 style="font-size: 1.5rem; font-weight: 700; margin-bottom: 0.25rem;">Inspector Login Status</h1>
-    <p style="color: #6B7280; font-size: 0.875rem; margin-bottom: 1.5rem;">{{ logged_in }} of {{ total }} inspectors have logged in</p>
+    <p style="color: #6B7280; font-size: 0.875rem; margin-bottom: 1.5rem;">{{ logged_in }} of {{ total }} team members have logged in</p>
 
     <!-- Progress bar -->
     <div style="background: #E5E7EB; border-radius: 9999px; height: 8px; margin-bottom: 1.5rem;">
@@ -15,6 +15,7 @@
         <thead>
             <tr style="border-bottom: 2px solid #E5E7EB;">
                 <th style="text-align: left; padding: 0.5rem; font-size: 0.75rem; text-transform: uppercase; color: #6B7280;">Inspector</th>
+                <th style="text-align: left; padding: 0.5rem; font-size: 0.75rem; text-transform: uppercase; color: #6B7280;">Role</th>
                 <th style="text-align: left; padding: 0.5rem; font-size: 0.75rem; text-transform: uppercase; color: #6B7280;">Units</th>
                 <th style="text-align: left; padding: 0.5rem; font-size: 0.75rem; text-transform: uppercase; color: #6B7280;">Last Login</th>
                 <th style="text-align: center; padding: 0.5rem; font-size: 0.75rem; text-transform: uppercase; color: #6B7280;">Status</th>
@@ -27,6 +28,7 @@
                     <div style="font-weight: 600; font-size: 0.9rem;">{{ insp.name }}</div>
                     <div style="font-size: 0.75rem; color: #9CA3AF;">{{ insp.email or 'No email' }}</div>
                 </td>
+                <td style="padding: 0.75rem 0.5rem; font-size: 0.85rem; color: #6B7280;">{{ insp.role | replace('_', ' ') | title }}</td>
                 <td style="padding: 0.75rem 0.5rem; font-size: 0.85rem;">{{ insp.units }}</td>
                 <td style="padding: 0.75rem 0.5rem; font-size: 0.85rem; color: {% if insp.has_logged_in %}#1A1A1A{% else %}#DC2626{% endif %};">
                     {{ insp.login_display }}

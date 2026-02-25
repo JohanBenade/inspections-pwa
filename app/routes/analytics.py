@@ -3532,7 +3532,7 @@ def login_status():
     inspectors = [dict(r) for r in query_db("""
         SELECT id, name, email, role, last_login, active
         FROM inspector
-        WHERE tenant_id = ? AND role = 'inspector' AND active = 1
+        WHERE tenant_id = ? AND active = 1
         ORDER BY last_login DESC NULLS LAST, name
     """, [tenant_id])]
 
