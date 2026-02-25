@@ -365,15 +365,17 @@ def _build_live_monitor_data(batch_id, tenant_id):
         return None
     batch = dict(batch)
 
-    # --- KPI: Unit statuses ---
+    # --- Units in batch ---
     units_raw = query_db("""
-        SELECT bu.id, bu.inspector_id, bu.unit_id, bu.cycle_id,
+        SELECT bu.id AS bu_id, bu.inspector_id, bu.unit_id, bu.cycle_id,
                u.unit_number, u.block, u.floor,
                COALESCE(i.status, 'not_started') AS insp_status,
                i.id AS inspection_id,
+               ic.cycle_number,
                insp.name AS inspector_name
         FROM batch_unit bu
         JOIN unit u ON bu.unit_id = u.id
+        JOIN inspection_cycle ic ON bu.cycle_id = ic.id
         LEFT JOIN inspection i ON i.unit_id = u.id AND i.cycle_id = bu.cycle_id
         LEFT JOIN inspector insp ON bu.inspector_id = insp.id
         WHERE bu.batch_id = ? AND bu.tenant_id = ?
@@ -386,7 +388,7 @@ def _build_live_monitor_data(batch_id, tenant_id):
     units_in_progress = sum(1 for u in units if u['insp_status'] == 'in_progress')
     units_not_started = sum(1 for u in units if u['insp_status'] == 'not_started')
 
-    # --- KPI: Items marked + defects (across whole batch) ---
+    # --- KPI totals ---
     inspection_ids = [u['inspection_id'] for u in units if u['inspection_id']]
     items_marked = 0
     total_items = 0
@@ -401,8 +403,8 @@ def _build_live_monitor_data(batch_id, tenant_id):
         """, inspection_ids, one=True)
         if row:
             row = dict(row)
-            total_items = row['total']
-            items_marked = row['marked']
+            total_items = row['total'] or 0
+            items_marked = row['marked'] or 0
 
         unit_ids = [u['unit_id'] for u in units]
         cycle_ids = list(set(u['cycle_id'] for u in units))
@@ -415,7 +417,52 @@ def _build_live_monitor_data(batch_id, tenant_id):
         """, unit_ids + cycle_ids + [tenant_id], one=True)
         defects_found = dict(d_row)['cnt'] if d_row else 0
 
-    # --- Inspector cards ---
+    # --- Area progress per unit (single batch query) ---
+    area_progress = {}
+    if inspection_ids:
+        ph = ','.join('?' * len(inspection_ids))
+        area_raw = query_db(f"""
+            SELECT i.unit_id, at2.area_name,
+                   COUNT(ii.id) AS total,
+                   SUM(CASE WHEN ii.status NOT IN ('pending','skipped') THEN 1 ELSE 0 END) AS marked,
+                   SUM(CASE WHEN ii.status IN ('not_to_standard','not_installed') THEN 1 ELSE 0 END) AS defects
+            FROM inspection_item ii
+            JOIN inspection i ON ii.inspection_id = i.id
+            JOIN item_template it ON ii.item_template_id = it.id
+            JOIN category_template ct ON it.category_id = ct.id
+            JOIN area_template at2 ON ct.area_id = at2.id
+            WHERE ii.inspection_id IN ({ph})
+            AND ii.status != 'skipped'
+            GROUP BY i.unit_id, at2.area_name
+            ORDER BY at2.area_name
+        """, inspection_ids)
+        for r in [dict(x) for x in area_raw]:
+            uid = r['unit_id']
+            if uid not in area_progress:
+                area_progress[uid] = []
+            pct = round(r['marked'] / r['total'] * 100) if r['total'] else 0
+            area_progress[uid].append({
+                'area': r['area_name'],
+                'total': r['total'],
+                'marked': r['marked'] or 0,
+                'defects': r['defects'] or 0,
+                'pct': pct,
+            })
+
+    # Attach area data + compute unit-level stats
+    for u in units:
+        u['areas'] = area_progress.get(u['unit_id'], [])
+        u['total_marked'] = sum(a['marked'] for a in u['areas'])
+        u['total_items'] = sum(a['total'] for a in u['areas'])
+        u['total_defects'] = sum(a['defects'] for a in u['areas'])
+        u['pct'] = round(u['total_marked'] / u['total_items'] * 100) if u['total_items'] else 0
+        u['floor_label'] = FLOOR_LABELS.get(u['floor'], u['floor'])
+
+    # Sort: in_progress first, then not_started, then completed
+    status_order = {'in_progress': 0, 'not_started': 1}
+    units.sort(key=lambda u: (status_order.get(u['insp_status'], 2), u['unit_number']))
+
+    # --- Inspector summary strip ---
     inspector_map = {}
     for u in units:
         iid = u['inspector_id']
@@ -423,72 +470,35 @@ def _build_live_monitor_data(batch_id, tenant_id):
             continue
         if iid not in inspector_map:
             inspector_map[iid] = {
-                'id': iid,
                 'name': u['inspector_name'] or iid,
-                'units': [],
-                'total_marked': 0,
-                'total_items': 0,
+                'units_total': 0,
+                'units_done': 0,
                 'last_activity': None,
-                'current_area': None,
-                'current_category': None,
-                'current_unit': None,
-                'defects': 0
             }
-        inspector_map[iid]['units'].append(u)
+        inspector_map[iid]['units_total'] += 1
+        if u['insp_status'] in ('submitted', 'reviewed', 'approved'):
+            inspector_map[iid]['units_done'] += 1
 
-    for iid, insp_data in inspector_map.items():
-        insp_ids = [u['inspection_id'] for u in insp_data['units'] if u['inspection_id']]
-        if not insp_ids:
+    # Last activity per inspector
+    for u in units:
+        iid = u['inspector_id']
+        if not iid or not u['inspection_id']:
             continue
-        ph = ','.join('?' * len(insp_ids))
-
-        # Progress
-        prog = query_db(f"""
-            SELECT COUNT(*) AS total,
-                   SUM(CASE WHEN status NOT IN ('pending','skipped') THEN 1 ELSE 0 END) AS marked
-            FROM inspection_item WHERE inspection_id IN ({ph})
-        """, insp_ids, one=True)
-        if prog:
-            prog = dict(prog)
-            insp_data['total_items'] = prog['total']
-            insp_data['total_marked'] = prog['marked']
-
-        # Last activity + current area
-        last = query_db(f"""
-            SELECT ii.marked_at, ii.status AS item_status, u.unit_number,
-                   at2.area_name, ct.category_name, it.item_description
-            FROM inspection_item ii
-            JOIN inspection i ON ii.inspection_id = i.id
-            JOIN unit u ON i.unit_id = u.id
-            JOIN item_template it ON ii.item_template_id = it.id
-            JOIN category_template ct ON it.category_id = ct.id
-            JOIN area_template at2 ON ct.area_id = at2.id
-            WHERE ii.inspection_id IN ({ph})
-            AND ii.marked_at IS NOT NULL AND ii.status NOT IN ('pending','skipped')
-            ORDER BY ii.marked_at DESC LIMIT 1
-        """, insp_ids, one=True)
+        last = query_db("""
+            SELECT MAX(marked_at) AS last_mark
+            FROM inspection_item
+            WHERE inspection_id = ? AND marked_at IS NOT NULL AND status NOT IN ('pending','skipped')
+        """, [u['inspection_id']], one=True)
         if last:
             last = dict(last)
-            insp_data['last_activity'] = last['marked_at']
-            insp_data['current_area'] = last['area_name']
-            insp_data['current_category'] = last['category_name']
-            insp_data['current_unit'] = last['unit_number']
-
-        # Defects for this inspector
-        unit_ids = [u['unit_id'] for u in insp_data['units']]
-        cycle_ids = list(set(u['cycle_id'] for u in insp_data['units']))
-        ph_u = ','.join('?' * len(unit_ids))
-        ph_c = ','.join('?' * len(cycle_ids))
-        d = query_db(f"""
-            SELECT COUNT(*) AS cnt FROM defect
-            WHERE unit_id IN ({ph_u}) AND raised_cycle_id IN ({ph_c})
-            AND tenant_id = ? AND status = 'open'
-        """, unit_ids + cycle_ids + [tenant_id], one=True)
-        insp_data['defects'] = dict(d)['cnt'] if d else 0
+            lm = last['last_mark']
+            if lm and (not inspector_map[iid]['last_activity'] or lm > inspector_map[iid]['last_activity']):
+                inspector_map[iid]['last_activity'] = lm
 
     inspectors = sorted(inspector_map.values(), key=lambda x: x['name'])
 
     # --- Activity feed (last 20) ---
+    feed = []
     if inspection_ids:
         ph = ','.join('?' * len(inspection_ids))
         feed_raw = query_db(f"""
@@ -506,8 +516,6 @@ def _build_live_monitor_data(batch_id, tenant_id):
             ORDER BY ii.marked_at DESC LIMIT 20
         """, inspection_ids)
         feed = [dict(r) for r in feed_raw]
-    else:
-        feed = []
 
     return {
         'batch': batch,
