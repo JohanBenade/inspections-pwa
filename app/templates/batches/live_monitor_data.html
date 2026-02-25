@@ -1,37 +1,93 @@
-<!-- KPI STRIP -->
-<div class="kpi-strip">
-    <div class="kpi-card">
-        <div class="kpi-value green">{{ units_complete }}</div>
-        <div class="kpi-label">Units Complete</div>
+<!-- BATCH PULSE STRIP -->
+<div class="pulse-strip">
+    <div class="ring-cell">
+        <div class="ring-container">
+            <svg class="ring-svg" viewBox="0 0 120 120">
+                <circle class="ring-bg" cx="60" cy="60" r="52"/>
+                <circle class="ring-fill {% if completion_pct >= 100 %}green{% else %}gold{% endif %}" cx="60" cy="60" r="52"
+                    stroke-dasharray="326.7"
+                    stroke-dashoffset="{{ (326.7 * (100 - completion_pct) / 100)|round(1) }}"/>
+            </svg>
+            <div class="ring-center">
+                <div class="ring-pct" id="batch-pct">{{ completion_pct }}%</div>
+                <div class="ring-label">Complete</div>
+            </div>
+        </div>
     </div>
-    <div class="kpi-card">
-        <div class="kpi-value blue">{{ units_in_progress }}</div>
-        <div class="kpi-label">In Progress</div>
-    </div>
-    <div class="kpi-card">
-        <div class="kpi-value gold">{{ items_marked }}</div>
-        <div class="kpi-label">Items Marked</div>
-    </div>
-    <div class="kpi-card">
-        <div class="kpi-value red">{{ defects_found }}</div>
-        <div class="kpi-label">Defects Found</div>
+    <div class="kpi-grid">
+        <div class="kpi-card">
+            <div class="kpi-value green">{{ units_complete }}</div>
+            <div class="kpi-label">Units Done</div>
+            <div class="kpi-sub">of {{ total_units }}</div>
+        </div>
+        <div class="kpi-card">
+            <div class="kpi-value gold">{{ units_in_progress }}</div>
+            <div class="kpi-label">In Progress</div>
+            <div class="kpi-sub">{{ units_not_started }} waiting</div>
+        </div>
+        <div class="kpi-card">
+            <div class="kpi-value red">{{ defects_found }}</div>
+            <div class="kpi-label">Defects Found</div>
+            <div class="kpi-sub">{{ avg_defects }} avg/unit</div>
+        </div>
+        <div class="kpi-card">
+            <div class="kpi-value white">{{ defect_rate }}%</div>
+            <div class="kpi-label">Defect Rate</div>
+            <div class="kpi-sub">items inspected: {{ total_items_inspected|default(0) }}</div>
+        </div>
+        <div class="elapsed-cell">
+            <div class="kpi-label">Elapsed</div>
+            <div class="elapsed-value" id="batch-elapsed">--:--:--</div>
+            {% if batch_started_hhmm %}
+            <div class="elapsed-started">Started {{ batch_started_hhmm }}</div>
+            {% endif %}
+            <div class="kpi-sub" id="batch-eta" style="margin-top: 0.3rem; color: #C8963E; display: none;"></div>
+        </div>
     </div>
 </div>
 
-<!-- INSPECTOR STRIP -->
-<div class="inspector-strip">
+<!-- LEGEND STRIP -->
+<div class="legend-strip">
+    <span class="legend-title">Defect Thresholds</span>
+    <div class="legend-item"><span class="legend-dot green"></span> &le;{{ threshold_low }} Low</div>
+    <div class="legend-item"><span class="legend-dot gold"></span> {{ threshold_low + 1 }}-{{ threshold_high }} Average</div>
+    <div class="legend-item"><span class="legend-dot red"></span> &gt;{{ threshold_high }} High</div>
+    <div class="legend-sep"></div>
+    <div class="legend-item-idle"><span class="legend-ring-demo"></span> Inspector idle &gt;10min</div>
+</div>
+
+<!-- INSPECTOR RACE STRIP -->
+{% if inspectors %}
+<div class="race-strip">
+    <div class="race-title">Inspector Progress</div>
     {% for insp in inspectors %}
-    <div class="insp-chip {% if insp.last_activity %}active{% endif %}">
-        <span class="insp-chip-name">{{ insp.name }}</span>
-        <span class="insp-chip-count">{{ insp.units_done }}/{{ insp.units_total }}</span>
-        {% if insp.last_activity %}
-        <span data-timestamp="{{ insp.last_activity }}" class="time-ago insp-chip-time">...</span>
-        {% else %}
-        <span class="insp-chip-time" style="color: #6B6B6B;">idle</span>
-        {% endif %}
+    {% set bar_pct = (insp.units_done / insp.units_total * 100)|round|int if insp.units_total else 0 %}
+    <div class="race-row">
+        <div class="race-avatar {% if insp.is_idle %}idle{% endif %}">{{ insp.initials }}</div>
+        <div class="race-name {% if insp.is_idle %}idle{% endif %}">{{ insp.name }}</div>
+        <div class="race-bar-track">
+            <div class="race-bar-fill {% if insp.is_idle %}race-bar-idle{% else %}race-bar-neutral{% if insp.current_unit %} active{% endif %}{% endif %}"
+                 style="width: {{ bar_pct }}%;"></div>
+        </div>
+        <div class="race-stats">
+            <div class="race-stat">
+                <div class="race-stat-value">{{ insp.units_done }}/{{ insp.units_total }}</div>
+                <div class="race-stat-label">Units</div>
+            </div>
+            <div class="race-stat">
+                <div class="race-stat-value">{% if insp.avg_pace %}{{ insp.avg_pace }}m{% else %}--{% endif %}</div>
+                <div class="race-stat-label">Avg/Unit</div>
+            </div>
+            {% if insp.is_idle %}
+            <span class="race-idle-tag">IDLE {{ insp.idle_minutes }}m</span>
+            {% elif insp.current_unit %}
+            <span class="race-current">Unit {{ insp.current_unit }}</span>
+            {% endif %}
+        </div>
     </div>
     {% endfor %}
 </div>
+{% endif %}
 
 <!-- MAIN CONTENT -->
 <div class="main-area">
@@ -43,55 +99,137 @@
         {% set is_done = u.insp_status in ['submitted','reviewed','approved'] %}
         {% set is_waiting = u.insp_status == 'not_started' %}
 
-        <div class="unit-card {% if is_active %}active{% elif is_done %}done{% elif is_waiting %}waiting{% endif %}">
-            <!-- UNIT HEADER -->
+        {% if is_active %}
+        <!-- IN PROGRESS CARD -->
+        <div class="unit-card active {% if u.is_idle %}idle-unit{% endif %}"
+             {% if u.last_activity %}data-last-activity="{{ u.last_activity }}"{% endif %}>
             <div class="unit-header">
                 <div class="unit-header-left">
                     <span class="unit-number">{{ u.unit_number }}</span>
                     <span class="unit-meta">{{ u.block }} {{ u.floor_label }} &middot; C{{ u.cycle_number }}</span>
                 </div>
-                <div class="unit-header-mid">
+                <div style="flex: 1;">
+                    {% if u.inspector_name %}
+                    <span class="unit-inspector">{{ u.inspector_name }}</span>
+                    {% else %}
+                    <span class="unit-inspector" style="color: #7A7A7A;">Unassigned</span>
+                    {% endif %}
+                    {% if u.started_iso %}
+                    <span class="unit-elapsed {% if u.is_idle %}idle-timer{% endif %}"
+                          data-unit-started="{{ u.started_iso }}">...</span>
+                    {% endif %}
+                </div>
+                <div class="unit-header-right">
+                    <span class="unit-pct gold">{{ u.pct }}%</span>
+                    <span class="unit-counts">{{ u.total_marked }}/{{ u.total_items }}</span>
+                    {% if u.total_defects > 0 %}
+                    <span class="unit-defects-small">{{ u.total_defects }} defect{{ 's' if u.total_defects != 1 }}</span>
+                    {% endif %}
+                </div>
+            </div>
+            {% if u.areas %}
+            <div class="area-bars">
+                {% for a in u.areas %}
+                <div class="area-row">
+                    <div class="area-label">{{ a.area }}</div>
+                    <div class="area-bar-track">
+                        <div class="area-bar-fill {% if a.pct >= 100 %}bar-green{% elif a.pct > 0 %}bar-gold{% endif %}"
+                             style="width: {{ a.pct }}%;"></div>
+                    </div>
+                    <div class="area-stats">
+                        <span class="area-count">{{ a.marked }}/{{ a.total }}</span>
+                        {% if a.defects > 0 %}
+                        <span class="area-defects-badge">{{ a.defects }}</span>
+                        {% endif %}
+                        {% if a.duration %}
+                        <span class="area-time">{{ a.duration }}m</span>
+                        {% endif %}
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            {% endif %}
+        </div>
+
+        {% elif is_done %}
+        <!-- COMPLETED CARD -->
+        <div class="unit-card done severity-{{ u.severity }}">
+            <div class="unit-header">
+                <div class="unit-header-left">
+                    <span class="unit-number">{{ u.unit_number }}</span>
+                    <span class="complete-badge severity-{{ u.severity }}">&#10003; Complete</span>
+                    <span class="unit-meta">{{ u.block }} {{ u.floor_label }} &middot; C{{ u.cycle_number }}</span>
+                </div>
+                <div style="flex: 1;">
+                    {% if u.inspector_name %}
+                    <span class="unit-inspector">{{ u.inspector_name }}</span>
+                    {% else %}
+                    <span class="unit-inspector" style="color: #7A7A7A;">Unassigned</span>
+                    {% endif %}
+                    {% if u.start_time %}
+                    <div class="unit-timing">
+                        <span class="timing-item">Start <span class="timing-value">{{ u.start_time }}</span></span>
+                        {% if u.end_time %}
+                        <span class="timing-item">End <span class="timing-value">{{ u.end_time }}</span></span>
+                        {% endif %}
+                        {% if u.duration_minutes %}
+                        <span class="timing-item">Duration <span class="timing-value">{{ u.duration_minutes }}m</span></span>
+                        {% endif %}
+                    </div>
+                    {% endif %}
+                </div>
+                <div class="unit-header-right" style="flex-direction: column; align-items: flex-end; gap: 0;">
+                    <span class="defect-hero severity-{{ u.severity }}">{{ u.total_defects }}</span>
+                    <span class="defect-hero-label">defects</span>
+                </div>
+            </div>
+            {% if u.areas and u.total_defects > 0 %}
+            {% set max_area_defects = u.areas|map(attribute='defects')|max %}
+            <div class="defect-bars">
+                {% for a in u.areas %}
+                {% if a.defects > 0 %}
+                {% set bar_width = (a.defects / max_area_defects * 100)|round(1) if max_area_defects else 0 %}
+                <div class="defect-row">
+                    <div class="defect-area-label">{{ a.area }}</div>
+                    <div class="defect-bar-track">
+                        <div class="defect-bar-fill {% if u.severity == 'red' %}bar-red{% elif u.severity == 'gold' %}bar-amber{% else %}bar-low{% endif %}"
+                             style="width: {{ bar_width }}%;"></div>
+                    </div>
+                    <div class="defect-count">{{ a.defects }}</div>
+                    {% if a.duration %}
+                    <div class="defect-time">{{ a.duration }}m</div>
+                    {% else %}
+                    <div class="defect-time"></div>
+                    {% endif %}
+                </div>
+                {% endif %}
+                {% endfor %}
+            </div>
+            {% elif u.areas and u.total_defects == 0 %}
+            <div class="unit-empty" style="color: #4A7C59;">No defects found</div>
+            {% endif %}
+        </div>
+
+        {% elif is_waiting %}
+        <!-- WAITING CARD -->
+        <div class="unit-card waiting">
+            <div class="unit-header">
+                <div class="unit-header-left">
+                    <span class="unit-number">{{ u.unit_number }}</span>
+                    <span class="unit-meta">{{ u.block }} {{ u.floor_label }} &middot; C{{ u.cycle_number }}</span>
+                </div>
+                <div style="flex: 1;">
                     {% if u.inspector_name %}
                     <span class="unit-inspector">{{ u.inspector_name }}</span>
                     {% else %}
                     <span class="unit-inspector" style="color: #7A7A7A;">Unassigned</span>
                     {% endif %}
                 </div>
-                <div class="unit-header-right">
-                    {% if u.total_items > 0 %}
-                    <span class="unit-pct {% if is_done %}green{% elif is_active %}gold{% else %}dim{% endif %}">{{ u.pct }}%</span>
-                    <span class="unit-counts">{{ u.total_marked }}/{{ u.total_items }}</span>
-                    {% if u.total_defects > 0 %}
-                    <span class="unit-defects">{{ u.total_defects }} defect{{ 's' if u.total_defects != 1 }}</span>
-                    {% endif %}
-                    {% endif %}
-                </div>
             </div>
-
-            <!-- AREA BARS -->
-            {% if u.areas and not is_waiting %}
-            <div class="area-bars">
-                {% for a in u.areas %}
-                <div class="area-row">
-                    <div class="area-label">{{ a.area }}</div>
-                    <div class="area-bar-track">
-                        <div class="area-bar-fill {% if a.pct >= 100 %}bar-green{% elif a.pct > 0 %}bar-gold{% else %}bar-empty{% endif %}"
-                             style="width: {{ a.pct }}%;">
-                        </div>
-                    </div>
-                    <div class="area-stats">
-                        <span class="area-count">{{ a.marked }}/{{ a.total }}</span>
-                        {% if a.defects > 0 %}
-                        <span class="area-defects">{{ a.defects }}</span>
-                        {% endif %}
-                    </div>
-                </div>
-                {% endfor %}
-            </div>
-            {% elif is_waiting %}
             <div class="unit-empty">Not started</div>
-            {% endif %}
         </div>
+        {% endif %}
+
         {% endfor %}
 
         {% if not units %}
@@ -104,20 +242,25 @@
         <div class="feed-title">Activity Feed</div>
         {% if feed %}
         {% for f in feed %}
-        <div class="feed-item">
-            <div class="feed-inspector">{{ f.inspector_name }}</div>
-            <div class="feed-detail">
-                Unit {{ f.unit_number }} &rsaquo; {{ f.area_name }} &rsaquo; {{ f.category_name }}
-                {% if f.item_status == 'not_to_standard' %}
-                <span class="feed-status-nts">NTS</span>
-                {% elif f.item_status == 'not_installed' %}
-                <span class="feed-status-ni">NI</span>
-                {% else %}
-                <span class="feed-status-ok">OK</span>
-                {% endif %}
+        <div class="feed-item {% if f.item_status in ['not_to_standard','not_installed'] %}defect-flash{% endif %}">
+            <div class="feed-avatar">{{ f.initials }}</div>
+            <div class="feed-content">
+                <div class="feed-top">
+                    <span class="feed-inspector">{{ f.inspector_name }}</span>
+                    <span class="feed-time" data-timestamp="{{ f.marked_at }}">...</span>
+                </div>
+                <div class="feed-detail">
+                    Unit {{ f.unit_number }} &rsaquo; {{ f.area_name }} &rsaquo; {{ f.category_name }}
+                    {% if f.item_status == 'not_to_standard' %}
+                    <span class="feed-badge-nts">NTS</span>
+                    {% elif f.item_status == 'not_installed' %}
+                    <span class="feed-badge-ni">NI</span>
+                    {% else %}
+                    <span class="feed-badge-ok">OK</span>
+                    {% endif %}
+                </div>
+                <div class="feed-detail"><span class="feed-desc">{{ f.item_description }}</span></div>
             </div>
-            <div class="feed-detail"><span class="feed-item-desc">{{ f.item_description }}</span></div>
-            <div class="feed-time" data-timestamp="{{ f.marked_at }}">...</div>
         </div>
         {% endfor %}
         {% else %}

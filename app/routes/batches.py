@@ -3,7 +3,7 @@ Batch routes - Operational batch management.
 Create batches with unit numbers, auto-route to cycles, assign inspectors.
 Access: Team Lead + Admin.
 """
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from flask import Blueprint, render_template, session, redirect, url_for, abort, request, flash, make_response
 from app.auth import require_team_lead
 from app.utils import generate_id
@@ -353,17 +353,94 @@ def assign_inspector(batch_id):
 
 
 # ============================================================
-# LIVE MONITOR
+# LIVE MONITOR V2
 # ============================================================
 
+# SAST offset: South Africa is always UTC+2, no DST
+SAST_OFFSET = timedelta(hours=2)
+
+
+def _get_defect_thresholds(tenant_id):
+    """Calculate Q1/Q3 defect thresholds from all completed inspections."""
+    rows = query_db("""
+        SELECT COUNT(d.id) AS defect_count
+        FROM inspection i
+        JOIN unit u ON i.unit_id = u.id
+        LEFT JOIN defect d ON d.unit_id = u.id AND d.raised_cycle_id = i.cycle_id
+            AND d.status = 'open' AND d.tenant_id = i.tenant_id
+        WHERE i.tenant_id = ? AND i.status IN ('submitted','reviewed','approved')
+        GROUP BY u.id
+        ORDER BY defect_count
+    """, [tenant_id])
+    counts = [dict(r)['defect_count'] for r in rows]
+    if len(counts) < 4:
+        return 20, 47
+    q1 = counts[len(counts) // 4]
+    q3 = counts[3 * len(counts) // 4]
+    return q1, q3
+
+
+def _get_initials(name):
+    """Get 2-letter initials from a full name."""
+    if not name:
+        return '??'
+    parts = name.strip().split()
+    if len(parts) >= 2:
+        return (parts[0][0] + parts[-1][0]).upper()
+    return name[:2].upper()
+
+
+def _get_severity(defect_count, threshold_low, threshold_high):
+    """Assign severity color key based on defect count."""
+    if defect_count <= threshold_low:
+        return 'green'
+    elif defect_count <= threshold_high:
+        return 'gold'
+    else:
+        return 'red'
+
+
+def _parse_iso(ts):
+    """Parse ISO timestamp string to timezone-aware datetime. Returns None on failure."""
+    if not ts:
+        return None
+    try:
+        s = ts.replace('Z', '+00:00')
+        return datetime.fromisoformat(s)
+    except (ValueError, AttributeError, TypeError):
+        return None
+
+
+def _minutes_between(start_iso, end_iso):
+    """Calculate whole minutes between two ISO timestamp strings."""
+    start = _parse_iso(start_iso)
+    end = _parse_iso(end_iso)
+    if not start or not end:
+        return None
+    secs = (end - start).total_seconds()
+    return max(1, int(secs / 60))
+
+
+def _format_local_hhmm(iso_str):
+    """Format ISO timestamp as HH:MM in SAST (UTC+2)."""
+    dt = _parse_iso(iso_str)
+    if not dt:
+        return None
+    local = dt + SAST_OFFSET
+    return local.strftime('%H:%M')
+
+
 def _build_live_monitor_data(batch_id, tenant_id):
-    """Build all data needed for live monitor display."""
+    """Build all data needed for Live Monitor V2 display."""
     batch = query_db(
         "SELECT * FROM inspection_batch WHERE id = ? AND tenant_id = ?",
         [batch_id, tenant_id], one=True)
     if not batch:
         return None
     batch = dict(batch)
+
+    # --- Defect thresholds from historical data ---
+    threshold_low, threshold_high = _get_defect_thresholds(tenant_id)
 
     # --- Units in batch ---
     units_raw = query_db("""
@@ -388,73 +465,111 @@ def _build_live_monitor_data(batch_id, tenant_id):
     units_in_progress = sum(1 for u in units if u['insp_status'] == 'in_progress')
     units_not_started = sum(1 for u in units if u['insp_status'] == 'not_started')
 
-    # --- KPI totals ---
+    # --- Collect all inspection_ids for batch queries ---
     inspection_ids = [u['inspection_id'] for u in units if u['inspection_id']]
+
     items_marked = 0
     total_items = 0
     defects_found = 0
 
+    # Lookup dicts built from batch queries
+    unit_timing_map = {}      # inspection_id -> {started, ended}
+    last_activity_map = {}    # inspection_id -> last_mark ISO string
+    area_progress = {}        # unit_id -> [area dicts]
+
     if inspection_ids:
         ph = ','.join('?' * len(inspection_ids))
-        row = query_db(f"""
+
+        # --- Items marked / total ---
+        row = query_db("""
             SELECT COUNT(*) AS total,
                    SUM(CASE WHEN status NOT IN ('pending','skipped') THEN 1 ELSE 0 END) AS marked
-            FROM inspection_item WHERE inspection_id IN ({ph})
-        """, inspection_ids, one=True)
+            FROM inspection_item WHERE inspection_id IN ({})
+        """.format(ph), inspection_ids, one=True)
         if row:
             row = dict(row)
             total_items = row['total'] or 0
             items_marked = row['marked'] or 0
 
+        # --- Defects from defect table (batch KPI) ---
         unit_ids = [u['unit_id'] for u in units]
         cycle_ids = list(set(u['cycle_id'] for u in units))
         ph_u = ','.join('?' * len(unit_ids))
         ph_c = ','.join('?' * len(cycle_ids))
-        d_row = query_db(f"""
+        d_row = query_db("""
             SELECT COUNT(*) AS cnt FROM defect
-            WHERE unit_id IN ({ph_u}) AND raised_cycle_id IN ({ph_c})
+            WHERE unit_id IN ({}) AND raised_cycle_id IN ({})
             AND tenant_id = ? AND status = 'open'
-        """, unit_ids + cycle_ids + [tenant_id], one=True)
+        """.format(ph_u, ph_c), unit_ids + cycle_ids + [tenant_id], one=True)
         defects_found = dict(d_row)['cnt'] if d_row else 0
 
-    # --- Area progress per unit (single batch query) ---
-    area_progress = {}
-    if inspection_ids:
-        ph = ','.join('?' * len(inspection_ids))
-        area_raw = query_db(f"""
+        # --- Per-unit timing (batch query, no N+1) ---
+        timing_raw = query_db("""
+            SELECT inspection_id,
+                   MIN(marked_at) AS started,
+                   MAX(marked_at) AS ended
+            FROM inspection_item
+            WHERE inspection_id IN ({})
+            AND marked_at IS NOT NULL AND status NOT IN ('pending','skipped')
+            GROUP BY inspection_id
+        """.format(ph), inspection_ids)
+        for r in [dict(x) for x in timing_raw]:
+            unit_timing_map[r['inspection_id']] = {
+                'started': r['started'],
+                'ended': r['ended'],
+            }
+            # Also populate last_activity per inspection
+            last_activity_map[r['inspection_id']] = r['ended']
+
+        # --- Area progress with timing (enhanced) ---
+        area_raw = query_db("""
             SELECT i.unit_id, at2.area_name,
                    COUNT(ii.id) AS total,
                    SUM(CASE WHEN ii.status NOT IN ('pending','skipped') THEN 1 ELSE 0 END) AS marked,
-                   SUM(CASE WHEN ii.status IN ('not_to_standard','not_installed') THEN 1 ELSE 0 END) AS defects
+                   SUM(CASE WHEN ii.status IN ('not_to_standard','not_installed') THEN 1 ELSE 0 END) AS defects,
+                   MIN(CASE WHEN ii.status NOT IN ('pending','skipped') THEN ii.marked_at END) AS area_started,
+                   MAX(CASE WHEN ii.status NOT IN ('pending','skipped') THEN ii.marked_at END) AS area_ended
             FROM inspection_item ii
             JOIN inspection i ON ii.inspection_id = i.id
             JOIN item_template it ON ii.item_template_id = it.id
             JOIN category_template ct ON it.category_id = ct.id
             JOIN area_template at2 ON ct.area_id = at2.id
-            WHERE ii.inspection_id IN ({ph})
+            WHERE ii.inspection_id IN ({})
             AND ii.status != 'skipped'
             GROUP BY i.unit_id, at2.area_name
             ORDER BY at2.area_name
-        """, inspection_ids)
+        """.format(ph), inspection_ids)
         for r in [dict(x) for x in area_raw]:
             uid = r['unit_id']
             if uid not in area_progress:
                 area_progress[uid] = []
             pct = round(r['marked'] / r['total'] * 100) if r['total'] else 0
+            area_dur = None
+            if pct >= 100 and r['area_started'] and r['area_ended']:
+                area_dur = _minutes_between(r['area_started'], r['area_ended'])
             area_progress[uid].append({
                 'area': r['area_name'],
                 'total': r['total'],
                 'marked': r['marked'] or 0,
                 'defects': r['defects'] or 0,
                 'pct': pct,
+                'duration': area_dur,
             })
 
-    # Sort areas: Kitchen, Bathroom, Lounge, then Bedrooms
+    # Sort areas: Kitchen, Lounge, Bathroom, then Bedrooms
     area_order = {'KITCHEN': 0, 'LOUNGE': 1, 'BATHROOM': 2}
     for uid in area_progress:
         area_progress[uid].sort(key=lambda a: (area_order.get(a['area'], 10), a['area']))
 
-    # Attach area data + compute unit-level stats
+    # --- Batch started (earliest mark in entire batch) ---
+    batch_started = None
+    if unit_timing_map:
+        all_starts = [v['started'] for v in unit_timing_map.values() if v['started']]
+        if all_starts:
+            batch_started = min(all_starts)
+
+    # --- Attach enriched data to each unit ---
+    now_utc = datetime.now(timezone.utc)
     for u in units:
         u['areas'] = area_progress.get(u['unit_id'], [])
         u['total_marked'] = sum(a['marked'] for a in u['areas'])
@@ -463,42 +578,78 @@ def _build_live_monitor_data(batch_id, tenant_id):
         u['pct'] = round(u['total_marked'] / u['total_items'] * 100) if u['total_items'] else 0
         u['floor_label'] = FLOOR_LABELS.get(u['floor'], u['floor'])
 
+        # Timing
+        timing = unit_timing_map.get(u['inspection_id'], {})
+        u['started_iso'] = timing.get('started')
+        u['ended_iso'] = timing.get('ended')
+        u['start_time'] = _format_local_hhmm(u['started_iso'])
+        u['end_time'] = _format_local_hhmm(u['ended_iso'])
+        u['duration_minutes'] = _minutes_between(u['started_iso'], u['ended_iso'])
+
+        # Last activity + idle detection
+        u['last_activity'] = last_activity_map.get(u['inspection_id'])
+        u['is_idle'] = False
+        if u['last_activity'] and u['insp_status'] == 'in_progress':
+            last_dt = _parse_iso(u['last_activity'])
+            if last_dt:
+                idle_secs = (now_utc - last_dt).total_seconds()
+                u['is_idle'] = idle_secs > 600
+
+        # Severity (only meaningful for completed units, but calculate for all)
+        u['severity'] = _get_severity(u['total_defects'], threshold_low, threshold_high)
+
     # Sort: in_progress first, then not_started, then completed
     status_order = {'in_progress': 0, 'not_started': 1}
     units.sort(key=lambda u: (status_order.get(u['insp_status'], 2), u['unit_number']))
 
-    # --- Inspector summary strip ---
+    # --- Inspector data with pace, idle, initials, current_unit ---
     inspector_map = {}
     for u in units:
-        iid = u['inspector_id']
+        iid = u.get('inspector_id')
         if not iid:
             continue
         if iid not in inspector_map:
             inspector_map[iid] = {
+                'id': iid,
                 'name': u['inspector_name'] or iid,
+                'initials': _get_initials(u['inspector_name']),
                 'units_total': 0,
                 'units_done': 0,
+                'durations': [],
+                'current_unit': None,
                 'last_activity': None,
+                'is_idle': False,
+                'idle_minutes': 0,
+                'avg_pace': None,
             }
-        inspector_map[iid]['units_total'] += 1
-        if u['insp_status'] in ('submitted', 'reviewed', 'approved'):
-            inspector_map[iid]['units_done'] += 1
+        im = inspector_map[iid]
+        im['units_total'] += 1
 
-    # Last activity per inspector
-    for u in units:
-        iid = u['inspector_id']
-        if not iid or not u['inspection_id']:
-            continue
-        last = query_db("""
-            SELECT MAX(marked_at) AS last_mark
-            FROM inspection_item
-            WHERE inspection_id = ? AND marked_at IS NOT NULL AND status NOT IN ('pending','skipped')
-        """, [u['inspection_id']], one=True)
-        if last:
-            last = dict(last)
-            lm = last['last_mark']
-            if lm and (not inspector_map[iid]['last_activity'] or lm > inspector_map[iid]['last_activity']):
-                inspector_map[iid]['last_activity'] = lm
+        if u['insp_status'] in ('submitted', 'reviewed', 'approved'):
+            im['units_done'] += 1
+            if u['duration_minutes']:
+                im['durations'].append(u['duration_minutes'])
+
+        if u['insp_status'] == 'in_progress':
+            im['current_unit'] = u['unit_number']
+
+        # Track latest activity across all units for this inspector
+        if u.get('last_activity'):
+            if not im['last_activity'] or u['last_activity'] > im['last_activity']:
+                im['last_activity'] = u['last_activity']
+
+    # Calculate derived inspector fields
+    for iid, im in inspector_map.items():
+        if im['durations']:
+            im['avg_pace'] = round(sum(im['durations']) / len(im['durations']))
+        del im['durations']
+
+        if im['last_activity']:
+            last_dt = _parse_iso(im['last_activity'])
+            if last_dt:
+                idle_secs = (now_utc - last_dt).total_seconds()
+                im['is_idle'] = idle_secs > 600
+                im['idle_minutes'] = int(idle_secs / 60) if im['is_idle'] else 0
 
     inspectors = sorted(inspector_map.values(), key=lambda x: x['name'])
 
@@ -506,9 +657,10 @@ def _build_live_monitor_data(batch_id, tenant_id):
     feed = []
     if inspection_ids:
         ph = ','.join('?' * len(inspection_ids))
-        feed_raw = query_db(f"""
+        feed_raw = query_db("""
             SELECT ii.marked_at, ii.status AS item_status, ii.comment,
-                   i.inspector_name, u.unit_number,
+                   COALESCE(insp.name, i.inspector_name) AS inspector_name,
+                   u.unit_number,
                    at2.area_name, ct.category_name, it.item_description
             FROM inspection_item ii
             JOIN inspection i ON ii.inspection_id = i.id
@@ -516,11 +668,20 @@ def _build_live_monitor_data(batch_id, tenant_id):
             JOIN item_template it ON ii.item_template_id = it.id
             JOIN category_template ct ON it.category_id = ct.id
             JOIN area_template at2 ON ct.area_id = at2.id
-            WHERE ii.inspection_id IN ({ph})
+            LEFT JOIN inspector insp ON i.inspector_id = insp.id
+            WHERE ii.inspection_id IN ({})
             AND ii.marked_at IS NOT NULL AND ii.status NOT IN ('pending','skipped')
             ORDER BY ii.marked_at DESC LIMIT 20
-        """, inspection_ids)
+        """.format(ph), inspection_ids)
         feed = [dict(r) for r in feed_raw]
+        for f in feed:
+            f['initials'] = _get_initials(f['inspector_name'])
+
+    # --- Computed KPIs ---
+    completion_pct = round(units_complete / total_units * 100) if total_units else 0
+    total_non_skipped = items_marked  # items that have been marked (not pending/skipped)
+    defect_rate = round(defects_found / total_non_skipped * 100, 1) if total_non_skipped else 0
+    avg_defects = round(defects_found / units_complete, 1) if units_complete else 0
 
     return {
         'batch': batch,
@@ -535,13 +696,22 @@ def _build_live_monitor_data(batch_id, tenant_id):
         'inspectors': inspectors,
         'feed': feed,
         'floor_labels': FLOOR_LABELS,
+        # V2 additions
+        'threshold_low': threshold_low,
+        'threshold_high': threshold_high,
+        'batch_started': batch_started,
+        'batch_started_hhmm': _format_local_hhmm(batch_started),
+        'completion_pct': completion_pct,
+        'defect_rate': defect_rate,
+        'avg_defects': avg_defects,
+        'total_items_inspected': items_marked,
     }
 
 
 @batches_bp.route('/<batch_id>/live')
 @require_team_lead
 def live_monitor(batch_id):
-    """Live Monitor - full standalone page."""
+    """Live Monitor V2 - full standalone page."""
     tenant_id = session['tenant_id']
     data = _build_live_monitor_data(batch_id, tenant_id)
     if not data:
@@ -556,7 +726,7 @@ def live_monitor(batch_id):
 @batches_bp.route('/<batch_id>/live/data')
 @require_team_lead
 def live_monitor_data(batch_id):
-    """Live Monitor - HTMX partial refresh."""
+    """Live Monitor V2 - HTMX partial refresh."""
     tenant_id = session['tenant_id']
     data = _build_live_monitor_data(batch_id, tenant_id)
     if not data:
