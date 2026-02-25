@@ -372,7 +372,7 @@ def _build_live_monitor_data(batch_id, tenant_id):
                COALESCE(i.status, 'not_started') AS insp_status,
                i.id AS inspection_id,
                ic.cycle_number,
-               insp.name AS inspector_name
+               COALESCE(insp.name, i.inspector_name) AS inspector_name
         FROM batch_unit bu
         JOIN unit u ON bu.unit_id = u.id
         JOIN inspection_cycle ic ON bu.cycle_id = ic.id
