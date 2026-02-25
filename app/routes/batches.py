@@ -546,7 +546,11 @@ def live_monitor(batch_id):
     data = _build_live_monitor_data(batch_id, tenant_id)
     if not data:
         abort(404)
-    return render_template('batches/live_monitor.html', **data)
+    resp = make_response(render_template('batches/live_monitor.html', **data))
+    resp.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate'
+    resp.headers['Pragma'] = 'no-cache'
+    resp.headers['Expires'] = '0'
+    return resp
 
 
 @batches_bp.route('/<batch_id>/live/data')
@@ -557,4 +561,8 @@ def live_monitor_data(batch_id):
     data = _build_live_monitor_data(batch_id, tenant_id)
     if not data:
         abort(404)
-    return render_template('batches/live_monitor_data.html', **data)
+    resp = make_response(render_template('batches/live_monitor_data.html', **data))
+    resp.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate'
+    resp.headers['Pragma'] = 'no-cache'
+    resp.headers['Expires'] = '0'
+    return resp
