@@ -3312,10 +3312,8 @@ def inspector_detail(inspector_name):
                            raw_avg=raw_avg, colour=colour)
 
 
-@analytics_bp.route('/audit')
-@require_manager
-def inspector_audit():
-    """Inspector Audit Trail - payment verification page."""
+def _build_audit_data_dict():
+    """Shared data builder for inspector audit trail."""
     tenant_id = session['tenant_id']
     from_date = request.args.get('from_date', '')
     to_date = request.args.get('to_date', '')
@@ -3480,7 +3478,7 @@ def inspector_audit():
     elif to_date:
         period_label = f'Until {to_date}'
 
-    return render_template('analytics/inspector_audit.html',
+    return dict(
         inspectors=inspectors,
         total_units=total_units,
         total_defects=total_defects,
@@ -3489,3 +3487,38 @@ def inspector_audit():
         to_date=to_date,
         period_label=period_label,
     )
+
+
+@analytics_bp.route('/audit')
+@require_manager
+def inspector_audit():
+    """Inspector Audit Trail - payment verification page."""
+    data = _build_audit_data_dict()
+    return render_template('analytics/inspector_audit.html', **data)
+
+
+@analytics_bp.route('/audit/view')
+@require_manager
+def inspector_audit_view():
+    """Standalone HTML view for audit trail PDF."""
+    data = _build_audit_data_dict()
+    from datetime import datetime as dt
+    data['now'] = dt.now().strftime('%Y-%m-%d %H:%M')
+    return render_template('analytics/inspector_audit_pdf.html', **data)
+
+
+@analytics_bp.route('/audit/pdf')
+@require_manager
+def inspector_audit_pdf():
+    """Download audit trail as PDF."""
+    data = _build_audit_data_dict()
+    from datetime import datetime as dt
+    data['now'] = dt.now().strftime('%Y-%m-%d %H:%M')
+    from weasyprint import HTML
+    html_str = render_template('analytics/inspector_audit_pdf.html', **data)
+    pdf_bytes = HTML(string=html_str, base_url=request.host_url).write_pdf()
+    resp = make_response(pdf_bytes)
+    resp.headers['Content-Type'] = 'application/pdf'
+    period = data.get('period_label', '').replace(' ', '_') or 'all'
+    resp.headers['Content-Disposition'] = f'attachment; filename=inspector_audit_{period}.pdf'
+    return resp
