@@ -4,7 +4,7 @@ Create batches with unit numbers, auto-route to cycles, assign inspectors.
 Access: Team Lead + Admin.
 """
 from datetime import datetime, timezone
-from flask import Blueprint, render_template, session, redirect, url_for, abort, request, flash
+from flask import Blueprint, render_template, session, redirect, url_for, abort, request, flash, make_response
 from app.auth import require_team_lead
 from app.utils import generate_id
 from app.utils.audit import log_audit
