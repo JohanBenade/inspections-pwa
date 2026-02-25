@@ -143,6 +143,11 @@ def create_app():
                 session['user_name'] = user['name']
                 session['role'] = user['role']
                 session['tenant_id'] = user['tenant_id']
+                # Track login timestamp
+                from datetime import datetime, timezone
+                db.execute("UPDATE inspector SET last_login = ? WHERE id = ?",
+                           [datetime.now(timezone.utc).isoformat(), user['id']])
+                db.commit()
                 return redirect(url_for('home'))
             else:
                 error = 'Invalid login code. Please try again.'

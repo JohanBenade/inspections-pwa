@@ -3522,3 +3522,40 @@ def inspector_audit_pdf():
     period = data.get('period_label', '').replace(' ', '_') or 'all'
     resp.headers['Content-Disposition'] = f'attachment; filename=inspector_audit_{period}.pdf'
     return resp
+
+
+@analytics_bp.route('/login-status')
+@require_manager
+def login_status():
+    """Admin view: inspector login status."""
+    tenant_id = session['tenant_id']
+    inspectors = [dict(r) for r in query_db("""
+        SELECT id, name, email, role, last_login, active
+        FROM inspector
+        WHERE tenant_id = ? AND role = 'inspector' AND active = 1
+        ORDER BY last_login DESC NULLS LAST, name
+    """, [tenant_id])]
+
+    floor_labels = {0: 'Ground', 1: '1st Floor', 2: '2nd Floor'}
+
+    for insp in inspectors:
+        # Get assigned units from latest batch
+        units = [dict(r) for r in query_db("""
+            SELECT u.unit_number, u.block, u.floor
+            FROM batch_unit bu
+            JOIN unit u ON bu.unit_id = u.id
+            JOIN inspection_batch ib ON bu.batch_id = ib.id
+            WHERE bu.inspector_id = ? AND bu.tenant_id = ?
+            AND ib.status IN ('open', 'in_progress')
+            ORDER BY u.unit_number
+        """, [insp['id'], tenant_id])]
+        insp['units'] = ', '.join(u['unit_number'] for u in units) if units else 'None'
+        insp['login_display'] = insp['last_login'][:16].replace('T', ' ') if insp['last_login'] else 'Never'
+        insp['has_logged_in'] = insp['last_login'] is not None
+
+    logged_in = sum(1 for i in inspectors if i['has_logged_in'])
+
+    return render_template('analytics/login_status.html',
+        inspectors=inspectors,
+        logged_in=logged_in,
+        total=len(inspectors))
