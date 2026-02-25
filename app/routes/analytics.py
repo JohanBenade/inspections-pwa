@@ -3333,13 +3333,14 @@ def inspector_audit():
     # Get all inspections with unit and defect data
     rows = [dict(r) for r in query_db("""
         SELECT i.inspector_name, i.inspection_date, i.started_at, i.submitted_at,
-               i.status AS insp_status, i.id AS inspection_id,
+               i.status AS insp_status, i.id AS inspection_id, ic.cycle_number,
                u.id AS unit_id, u.unit_number, u.block, u.floor,
                COUNT(d.id) AS defect_count
         FROM inspection i
         JOIN unit u ON i.unit_id = u.id
+        JOIN inspection_cycle ic ON i.cycle_id = ic.id
         LEFT JOIN defect d ON d.unit_id = u.id AND d.raised_cycle_id = i.cycle_id
-            AND d.status = 'open' AND d.tenant_id = u.tenant_id
+            AND d.tenant_id = u.tenant_id
         WHERE i.tenant_id = ? AND i.status NOT IN ('not_started')
             AND i.inspector_name IS NOT NULL AND u.unit_number NOT LIKE 'TEST%%'
             {date_filter}
@@ -3410,6 +3411,7 @@ def inspector_audit():
             'unit_number': r['unit_number'],
             'zone': zone,
             'inspection_date': r['inspection_date'] or 'N/A',
+            'cycle': 'C{}'.format(r['cycle_number']),
             'duration': duration,
             'defect_count': r['defect_count'],
             'status_label': status_info[0],

@@ -62,6 +62,7 @@
                 <tr style="border-bottom: 2px solid #E5E5E5;">
                     <th style="text-align: left; padding: 0.5rem 0.3rem; color: #6B6B6B; font-weight: 600;">Unit</th>
                     <th style="text-align: left; padding: 0.5rem 0.3rem; color: #6B6B6B; font-weight: 600;">Zone</th>
+                    <th style="text-align: center; padding: 0.5rem 0.3rem; color: #6B6B6B; font-weight: 600;">Cycle</th>
                     <th style="text-align: left; padding: 0.5rem 0.3rem; color: #6B6B6B; font-weight: 600;">Date</th>
                     <th style="text-align: center; padding: 0.5rem 0.3rem; color: #6B6B6B; font-weight: 600;">Duration</th>
                     <th style="text-align: center; padding: 0.5rem 0.3rem; color: #6B6B6B; font-weight: 600;">Defects</th>
@@ -73,6 +74,7 @@
                 <tr style="border-bottom: 1px solid #F0F0F0; cursor: pointer;" onclick="window.location='{{ url_for('certification.view_unit', unit_id=u.unit_id) }}?from=audit'">
                     <td style="padding: 0.5rem 0.3rem; font-weight: 600; text-decoration: underline; text-underline-offset: 2px;">{{ u.unit_number }}</td>
                     <td style="padding: 0.5rem 0.3rem; color: #6B6B6B;">{{ u.zone }}</td>
+                    <td style="padding: 0.5rem 0.3rem; text-align: center;">{{ u.cycle }}</td>
                     <td style="padding: 0.5rem 0.3rem;">{{ u.inspection_date }}</td>
                     <td style="padding: 0.5rem 0.3rem; text-align: center; color: {{ '#1A1A1A' if u.duration != 'N/A' else '#9A9A9A' }};">{{ u.duration }}</td>
                     <td style="padding: 0.5rem 0.3rem; text-align: center; font-weight: 600;">{{ u.defect_count }}</td>
@@ -84,7 +86,7 @@
             </tbody>
             <tfoot>
                 <tr style="border-top: 2px solid #E5E5E5; font-weight: 600;">
-                    <td style="padding: 0.5rem 0.3rem;" colspan="2">Subtotal</td>
+                    <td style="padding: 0.5rem 0.3rem;" colspan="3">Subtotal</td>
                     <td style="padding: 0.5rem 0.3rem;"></td>
                     <td style="padding: 0.5rem 0.3rem; text-align: center;">{% if insp.avg_duration %}{{ insp.avg_duration }} avg{% else %}N/A{% endif %}</td>
                     <td style="padding: 0.5rem 0.3rem; text-align: center;">{{ insp.total_defects }}</td>
