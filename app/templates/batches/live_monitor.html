@@ -1,0 +1,433 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Live Monitor - {{ batch.name }}</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/htmx.org@1.9.10"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            background: #0A0A0A;
+            color: #FAFAF8;
+            font-family: 'DM Sans', sans-serif;
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        /* TOP BAR */
+        .top-bar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 1rem 2rem;
+            border-bottom: 1px solid #1A1A1A;
+            background: #0D0D0D;
+        }
+        .top-bar-left {
+            display: flex;
+            align-items: center;
+            gap: 1.5rem;
+        }
+        .logo-text {
+            font-size: 0.85rem;
+            font-weight: 600;
+            letter-spacing: 0.15em;
+            text-transform: uppercase;
+            color: #6B6B6B;
+        }
+        .monitor-title {
+            font-size: 1.1rem;
+            font-weight: 700;
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
+            color: #C8963E;
+        }
+        .live-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.4rem;
+            padding: 0.25rem 0.75rem;
+            border-radius: 9999px;
+            background: rgba(74, 124, 89, 0.2);
+            border: 1px solid rgba(74, 124, 89, 0.4);
+            font-size: 0.7rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            color: #4A7C59;
+        }
+        .live-dot {
+            width: 8px; height: 8px;
+            border-radius: 50%;
+            background: #4A7C59;
+            animation: pulse 2s ease-in-out infinite;
+        }
+        @keyframes pulse {
+            0%, 100% { opacity: 1; box-shadow: 0 0 0 0 rgba(74, 124, 89, 0.6); }
+            50% { opacity: 0.7; box-shadow: 0 0 0 6px rgba(74, 124, 89, 0); }
+        }
+        .top-bar-right {
+            display: flex;
+            align-items: center;
+            gap: 1.5rem;
+        }
+        .batch-name {
+            font-size: 0.85rem;
+            color: #6B6B6B;
+        }
+        .clock {
+            font-family: 'DM Mono', monospace;
+            font-size: 0.9rem;
+            color: #9A9A9A;
+        }
+        .back-link {
+            font-size: 0.75rem;
+            color: #6B6B6B;
+            text-decoration: none;
+            border: 1px solid #2A2A2A;
+            padding: 0.3rem 0.8rem;
+            border-radius: 4px;
+            transition: all 0.2s;
+        }
+        .back-link:hover { color: #FAFAF8; border-color: #4A4A4A; }
+
+        /* KPI STRIP */
+        .kpi-strip {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 1px;
+            background: #1A1A1A;
+            margin: 0;
+        }
+        .kpi-card {
+            background: #0D0D0D;
+            padding: 1.25rem 2rem;
+            text-align: center;
+        }
+        .kpi-value {
+            font-family: 'DM Mono', monospace;
+            font-size: 2.5rem;
+            font-weight: 700;
+            line-height: 1;
+            margin-bottom: 0.25rem;
+        }
+        .kpi-value.gold { color: #C8963E; }
+        .kpi-value.blue { color: #3D6B8E; }
+        .kpi-value.green { color: #4A7C59; }
+        .kpi-value.red { color: #C44D3F; }
+        .kpi-label {
+            font-size: 0.7rem;
+            text-transform: uppercase;
+            letter-spacing: 0.12em;
+            color: #6B6B6B;
+            font-weight: 500;
+        }
+
+        /* MAIN GRID */
+        .main-area {
+            display: grid;
+            grid-template-columns: 1fr 380px;
+            gap: 0;
+            min-height: calc(100vh - 180px);
+        }
+
+        /* INSPECTOR GRID */
+        .inspector-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 1rem;
+            padding: 1.5rem 2rem;
+            align-content: start;
+        }
+        .insp-card {
+            background: #111111;
+            border: 1px solid #1E1E1E;
+            border-radius: 12px;
+            padding: 1.25rem;
+            position: relative;
+            transition: border-color 0.3s;
+        }
+        .insp-card.active { border-color: #C8963E; }
+        .insp-card.idle-warn { border-color: #B07D4B; animation: idle-pulse 3s ease-in-out infinite; }
+        .insp-card.idle-alert { border-color: #C44D3F; animation: idle-pulse 2s ease-in-out infinite; }
+        .insp-card.not-started { border-color: #1E1E1E; opacity: 0.5; }
+        @keyframes idle-pulse {
+            0%, 100% { border-color: inherit; }
+            50% { border-color: #2A2A2A; }
+        }
+
+        .insp-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 1rem;
+        }
+        .insp-name {
+            font-size: 1rem;
+            font-weight: 700;
+            color: #FAFAF8;
+        }
+        .insp-unit {
+            font-family: 'DM Mono', monospace;
+            font-size: 1.8rem;
+            font-weight: 700;
+            color: #C8963E;
+            line-height: 1;
+        }
+        .insp-unit-label {
+            font-size: 0.6rem;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            color: #6B6B6B;
+            margin-bottom: 0.15rem;
+        }
+
+        /* PROGRESS RING */
+        .progress-ring-container {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            margin-bottom: 0.75rem;
+        }
+        .progress-ring {
+            width: 52px; height: 52px;
+            position: relative;
+        }
+        .progress-ring svg { transform: rotate(-90deg); }
+        .progress-ring-bg { stroke: #1E1E1E; fill: none; stroke-width: 4; }
+        .progress-ring-fill { fill: none; stroke-width: 4; stroke-linecap: round; transition: stroke-dashoffset 0.6s ease; }
+        .progress-ring-text {
+            position: absolute;
+            top: 50%; left: 50%;
+            transform: translate(-50%, -50%);
+            font-family: 'DM Mono', monospace;
+            font-size: 0.65rem;
+            font-weight: 600;
+            color: #FAFAF8;
+        }
+        .progress-stats {
+            flex: 1;
+        }
+        .progress-label {
+            font-size: 0.7rem;
+            color: #6B6B6B;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+        .progress-numbers {
+            font-family: 'DM Mono', monospace;
+            font-size: 0.85rem;
+            color: #9A9A9A;
+        }
+
+        /* AREA BADGE */
+        .area-badge {
+            display: inline-block;
+            padding: 0.2rem 0.5rem;
+            border-radius: 4px;
+            font-size: 0.65rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            background: rgba(200, 150, 62, 0.15);
+            color: #C8963E;
+            margin-bottom: 0.5rem;
+        }
+
+        /* LAST ACTIVITY */
+        .last-activity {
+            font-size: 0.7rem;
+            color: #6B6B6B;
+        }
+        .time-ago { font-family: 'DM Mono', monospace; }
+        .time-fresh { color: #4A7C59; }
+        .time-warm { color: #B07D4B; }
+        .time-stale { color: #C44D3F; }
+
+        .defect-count {
+            font-family: 'DM Mono', monospace;
+            font-size: 0.75rem;
+            color: #C44D3F;
+            margin-top: 0.25rem;
+        }
+
+        /* UNITS ROW */
+        .insp-units-row {
+            display: flex;
+            gap: 0.35rem;
+            margin-top: 0.75rem;
+            flex-wrap: wrap;
+        }
+        .unit-chip {
+            font-family: 'DM Mono', monospace;
+            font-size: 0.6rem;
+            padding: 0.15rem 0.4rem;
+            border-radius: 3px;
+            border: 1px solid #2A2A2A;
+            color: #6B6B6B;
+        }
+        .unit-chip.current { border-color: #C8963E; color: #C8963E; background: rgba(200, 150, 62, 0.1); }
+        .unit-chip.done { border-color: #4A7C59; color: #4A7C59; }
+
+        /* ACTIVITY FEED */
+        .feed-panel {
+            background: #0D0D0D;
+            border-left: 1px solid #1A1A1A;
+            padding: 1.5rem;
+            overflow-y: auto;
+        }
+        .feed-title {
+            font-size: 0.7rem;
+            text-transform: uppercase;
+            letter-spacing: 0.12em;
+            color: #6B6B6B;
+            font-weight: 600;
+            margin-bottom: 1rem;
+            padding-bottom: 0.5rem;
+            border-bottom: 1px solid #1A1A1A;
+        }
+        .feed-item {
+            padding: 0.75rem 0;
+            border-bottom: 1px solid #111111;
+            animation: feed-in 0.4s ease-out;
+        }
+        @keyframes feed-in {
+            from { opacity: 0; transform: translateY(-8px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .feed-inspector {
+            font-weight: 600;
+            font-size: 0.8rem;
+            color: #FAFAF8;
+        }
+        .feed-detail {
+            font-size: 0.75rem;
+            color: #6B6B6B;
+            margin-top: 0.2rem;
+            line-height: 1.4;
+        }
+        .feed-item-desc {
+            color: #9A9A9A;
+            font-style: italic;
+        }
+        .feed-status-nts {
+            display: inline-block;
+            padding: 0.1rem 0.3rem;
+            border-radius: 3px;
+            font-size: 0.6rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            background: rgba(196, 77, 63, 0.2);
+            color: #C44D3F;
+        }
+        .feed-status-ni {
+            display: inline-block;
+            padding: 0.1rem 0.3rem;
+            border-radius: 3px;
+            font-size: 0.6rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            background: rgba(61, 107, 142, 0.2);
+            color: #3D6B8E;
+        }
+        .feed-status-ok {
+            display: inline-block;
+            padding: 0.1rem 0.3rem;
+            border-radius: 3px;
+            font-size: 0.6rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            background: rgba(74, 124, 89, 0.2);
+            color: #4A7C59;
+        }
+        .feed-time {
+            font-family: 'DM Mono', monospace;
+            font-size: 0.65rem;
+            color: #4A4A4A;
+            margin-top: 0.15rem;
+        }
+
+        /* EMPTY STATE */
+        .empty-state {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 200px;
+            color: #4A4A4A;
+            font-size: 0.9rem;
+        }
+
+        /* RESPONSIVE */
+        @media (max-width: 1200px) {
+            .main-area { grid-template-columns: 1fr; }
+            .feed-panel { border-left: none; border-top: 1px solid #1A1A1A; max-height: 300px; }
+        }
+        @media (max-width: 768px) {
+            .kpi-strip { grid-template-columns: repeat(2, 1fr); }
+            .kpi-value { font-size: 1.8rem; }
+            .top-bar { padding: 0.75rem 1rem; flex-wrap: wrap; gap: 0.5rem; }
+            .inspector-grid { padding: 1rem; gap: 0.75rem; }
+        }
+    </style>
+</head>
+<body>
+
+<!-- TOP BAR -->
+<div class="top-bar">
+    <div class="top-bar-left">
+        <span class="logo-text">Monograph</span>
+        <span class="monitor-title">Live Monitor</span>
+        <span class="live-badge"><span class="live-dot"></span> Live</span>
+    </div>
+    <div class="top-bar-right">
+        <span class="batch-name">{{ batch.name }}</span>
+        <span class="clock" id="clock"></span>
+        <a href="{{ url_for('batches.detail', batch_id=batch.id) }}" class="back-link">Back to Batch</a>
+    </div>
+</div>
+
+<!-- HTMX AUTO-REFRESH CONTAINER -->
+<div id="live-data"
+     hx-get="{{ url_for('batches.live_monitor_data', batch_id=batch.id) }}"
+     hx-trigger="every 60s"
+     hx-swap="innerHTML">
+    {% include 'batches/live_monitor_data.html' %}
+</div>
+
+<script>
+// Live clock
+function updateClock() {
+    const now = new Date();
+    const h = String(now.getHours()).padStart(2, '0');
+    const m = String(now.getMinutes()).padStart(2, '0');
+    const s = String(now.getSeconds()).padStart(2, '0');
+    document.getElementById('clock').textContent = h + ':' + m + ':' + s;
+}
+setInterval(updateClock, 1000);
+updateClock();
+
+// Time-ago updater
+function updateTimeAgos() {
+    document.querySelectorAll('[data-timestamp]').forEach(function(el) {
+        var ts = el.getAttribute('data-timestamp');
+        if (!ts || ts === 'None') { el.textContent = 'No activity'; return; }
+        var then = new Date(ts);
+        var diff = Math.floor((Date.now() - then.getTime()) / 1000);
+        var text, cls;
+        if (diff < 60) { text = diff + 's ago'; cls = 'time-fresh'; }
+        else if (diff < 3600) { text = Math.floor(diff/60) + 'm ago'; cls = diff < 600 ? 'time-fresh' : 'time-warm'; }
+        else if (diff < 86400) { text = Math.floor(diff/3600) + 'h ago'; cls = 'time-stale'; }
+        else { text = Math.floor(diff/86400) + 'd ago'; cls = 'time-stale'; }
+        el.textContent = text;
+        el.className = 'time-ago ' + cls;
+    });
+}
+setInterval(updateTimeAgos, 5000);
+updateTimeAgos();
+</script>
+
+</body>
+</html>

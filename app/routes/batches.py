@@ -350,3 +350,198 @@ def assign_inspector(batch_id):
     db.commit()
 
     return '<span class="text-xs text-green-600">{}</span>'.format(inspector['name'])
+
+
+# ============================================================
+# LIVE MONITOR
+# ============================================================
+
+def _build_live_monitor_data(batch_id, tenant_id):
+    """Build all data needed for live monitor display."""
+    batch = query_db(
+        "SELECT * FROM inspection_batch WHERE id = ? AND tenant_id = ?",
+        [batch_id, tenant_id], one=True)
+    if not batch:
+        return None
+    batch = dict(batch)
+
+    # --- KPI: Unit statuses ---
+    units_raw = query_db("""
+        SELECT bu.id, bu.inspector_id, bu.unit_id, bu.cycle_id,
+               u.unit_number, u.block, u.floor,
+               COALESCE(i.status, 'not_started') AS insp_status,
+               i.id AS inspection_id,
+               insp.name AS inspector_name
+        FROM batch_unit bu
+        JOIN unit u ON bu.unit_id = u.id
+        LEFT JOIN inspection i ON i.unit_id = u.id AND i.cycle_id = bu.cycle_id
+        LEFT JOIN inspector insp ON bu.inspector_id = insp.id
+        WHERE bu.batch_id = ? AND bu.tenant_id = ?
+        ORDER BY u.unit_number
+    """, [batch_id, tenant_id])
+    units = [dict(r) for r in units_raw]
+
+    total_units = len(units)
+    units_complete = sum(1 for u in units if u['insp_status'] in ('submitted', 'reviewed', 'approved'))
+    units_in_progress = sum(1 for u in units if u['insp_status'] == 'in_progress')
+    units_not_started = sum(1 for u in units if u['insp_status'] == 'not_started')
+
+    # --- KPI: Items marked + defects (across whole batch) ---
+    inspection_ids = [u['inspection_id'] for u in units if u['inspection_id']]
+    items_marked = 0
+    total_items = 0
+    defects_found = 0
+
+    if inspection_ids:
+        ph = ','.join('?' * len(inspection_ids))
+        row = query_db(f"""
+            SELECT COUNT(*) AS total,
+                   SUM(CASE WHEN status NOT IN ('pending','skipped') THEN 1 ELSE 0 END) AS marked
+            FROM inspection_item WHERE inspection_id IN ({ph})
+        """, inspection_ids, one=True)
+        if row:
+            row = dict(row)
+            total_items = row['total']
+            items_marked = row['marked']
+
+        unit_ids = [u['unit_id'] for u in units]
+        cycle_ids = list(set(u['cycle_id'] for u in units))
+        ph_u = ','.join('?' * len(unit_ids))
+        ph_c = ','.join('?' * len(cycle_ids))
+        d_row = query_db(f"""
+            SELECT COUNT(*) AS cnt FROM defect
+            WHERE unit_id IN ({ph_u}) AND raised_cycle_id IN ({ph_c})
+            AND tenant_id = ? AND status = 'open'
+        """, unit_ids + cycle_ids + [tenant_id], one=True)
+        defects_found = dict(d_row)['cnt'] if d_row else 0
+
+    # --- Inspector cards ---
+    inspector_map = {}
+    for u in units:
+        iid = u['inspector_id']
+        if not iid:
+            continue
+        if iid not in inspector_map:
+            inspector_map[iid] = {
+                'id': iid,
+                'name': u['inspector_name'] or iid,
+                'units': [],
+                'total_marked': 0,
+                'total_items': 0,
+                'last_activity': None,
+                'current_area': None,
+                'current_category': None,
+                'current_unit': None,
+                'defects': 0
+            }
+        inspector_map[iid]['units'].append(u)
+
+    for iid, insp_data in inspector_map.items():
+        insp_ids = [u['inspection_id'] for u in insp_data['units'] if u['inspection_id']]
+        if not insp_ids:
+            continue
+        ph = ','.join('?' * len(insp_ids))
+
+        # Progress
+        prog = query_db(f"""
+            SELECT COUNT(*) AS total,
+                   SUM(CASE WHEN status NOT IN ('pending','skipped') THEN 1 ELSE 0 END) AS marked
+            FROM inspection_item WHERE inspection_id IN ({ph})
+        """, insp_ids, one=True)
+        if prog:
+            prog = dict(prog)
+            insp_data['total_items'] = prog['total']
+            insp_data['total_marked'] = prog['marked']
+
+        # Last activity + current area
+        last = query_db(f"""
+            SELECT ii.marked_at, ii.status AS item_status, u.unit_number,
+                   at2.area_name, ct.category_name, it.item_description
+            FROM inspection_item ii
+            JOIN inspection i ON ii.inspection_id = i.id
+            JOIN unit u ON i.unit_id = u.id
+            JOIN item_template it ON ii.item_template_id = it.id
+            JOIN category_template ct ON it.category_id = ct.id
+            JOIN area_template at2 ON ct.area_id = at2.id
+            WHERE ii.inspection_id IN ({ph})
+            AND ii.marked_at IS NOT NULL AND ii.status NOT IN ('pending','skipped')
+            ORDER BY ii.marked_at DESC LIMIT 1
+        """, insp_ids, one=True)
+        if last:
+            last = dict(last)
+            insp_data['last_activity'] = last['marked_at']
+            insp_data['current_area'] = last['area_name']
+            insp_data['current_category'] = last['category_name']
+            insp_data['current_unit'] = last['unit_number']
+
+        # Defects for this inspector
+        unit_ids = [u['unit_id'] for u in insp_data['units']]
+        cycle_ids = list(set(u['cycle_id'] for u in insp_data['units']))
+        ph_u = ','.join('?' * len(unit_ids))
+        ph_c = ','.join('?' * len(cycle_ids))
+        d = query_db(f"""
+            SELECT COUNT(*) AS cnt FROM defect
+            WHERE unit_id IN ({ph_u}) AND raised_cycle_id IN ({ph_c})
+            AND tenant_id = ? AND status = 'open'
+        """, unit_ids + cycle_ids + [tenant_id], one=True)
+        insp_data['defects'] = dict(d)['cnt'] if d else 0
+
+    inspectors = sorted(inspector_map.values(), key=lambda x: x['name'])
+
+    # --- Activity feed (last 20) ---
+    if inspection_ids:
+        ph = ','.join('?' * len(inspection_ids))
+        feed_raw = query_db(f"""
+            SELECT ii.marked_at, ii.status AS item_status, ii.comment,
+                   i.inspector_name, u.unit_number,
+                   at2.area_name, ct.category_name, it.item_description
+            FROM inspection_item ii
+            JOIN inspection i ON ii.inspection_id = i.id
+            JOIN unit u ON i.unit_id = u.id
+            JOIN item_template it ON ii.item_template_id = it.id
+            JOIN category_template ct ON it.category_id = ct.id
+            JOIN area_template at2 ON ct.area_id = at2.id
+            WHERE ii.inspection_id IN ({ph})
+            AND ii.marked_at IS NOT NULL AND ii.status NOT IN ('pending','skipped')
+            ORDER BY ii.marked_at DESC LIMIT 20
+        """, inspection_ids)
+        feed = [dict(r) for r in feed_raw]
+    else:
+        feed = []
+
+    return {
+        'batch': batch,
+        'units': units,
+        'total_units': total_units,
+        'units_complete': units_complete,
+        'units_in_progress': units_in_progress,
+        'units_not_started': units_not_started,
+        'items_marked': items_marked,
+        'total_items': total_items,
+        'defects_found': defects_found,
+        'inspectors': inspectors,
+        'feed': feed,
+        'floor_labels': FLOOR_LABELS,
+    }
+
+
+@batches_bp.route('/<batch_id>/live')
+@require_team_lead
+def live_monitor(batch_id):
+    """Live Monitor - full standalone page."""
+    tenant_id = session['tenant_id']
+    data = _build_live_monitor_data(batch_id, tenant_id)
+    if not data:
+        abort(404)
+    return render_template('batches/live_monitor.html', **data)
+
+
+@batches_bp.route('/<batch_id>/live/data')
+@require_team_lead
+def live_monitor_data(batch_id):
+    """Live Monitor - HTMX partial refresh."""
+    tenant_id = session['tenant_id']
+    data = _build_live_monitor_data(batch_id, tenant_id)
+    if not data:
+        abort(404)
+    return render_template('batches/live_monitor_data.html', **data)

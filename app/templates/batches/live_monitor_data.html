@@ -1,0 +1,127 @@
+<!-- KPI STRIP -->
+<div class="kpi-strip">
+    <div class="kpi-card">
+        <div class="kpi-value green">{{ units_complete }}</div>
+        <div class="kpi-label">Units Complete</div>
+    </div>
+    <div class="kpi-card">
+        <div class="kpi-value blue">{{ units_in_progress }}</div>
+        <div class="kpi-label">In Progress</div>
+    </div>
+    <div class="kpi-card">
+        <div class="kpi-value gold">{{ items_marked }}</div>
+        <div class="kpi-label">Items Marked</div>
+    </div>
+    <div class="kpi-card">
+        <div class="kpi-value red">{{ defects_found }}</div>
+        <div class="kpi-label">Defects Found</div>
+    </div>
+</div>
+
+<!-- MAIN CONTENT -->
+<div class="main-area">
+
+    <!-- INSPECTOR GRID -->
+    <div class="inspector-grid">
+        {% for insp in inspectors %}
+        {% set pct = ((insp.total_marked / insp.total_items * 100) | round(0) | int) if insp.total_items > 0 else 0 %}
+        {% set radius = 20 %}
+        {% set circ = 125.66 %}
+        {% set offset = circ - (circ * pct / 100) %}
+        {% set units_done = insp.units | selectattr('insp_status', 'in', ['submitted','reviewed','approved']) | list | length %}
+        {% set units_wip = insp.units | selectattr('insp_status', 'equalto', 'in_progress') | list | length %}
+
+        <div class="insp-card {% if units_wip > 0 %}active{% elif pct == 0 %}not-started{% endif %}">
+            <div class="insp-header">
+                <div>
+                    <div class="insp-name">{{ insp.name }}</div>
+                    <div style="font-size: 0.7rem; color: #4A4A4A; margin-top: 0.15rem;">
+                        {{ insp.units | length }} unit{{ 's' if insp.units | length != 1 }}
+                        {% if units_done > 0 %} &middot; {{ units_done }} done{% endif %}
+                    </div>
+                </div>
+                <div style="text-align: right;">
+                    {% if insp.current_unit %}
+                    <div class="insp-unit-label">Current</div>
+                    <div class="insp-unit">{{ insp.current_unit }}</div>
+                    {% else %}
+                    <div class="insp-unit" style="color: #2A2A2A; font-size: 1.2rem;">---</div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <div class="progress-ring-container">
+                <div class="progress-ring">
+                    <svg width="52" height="52" viewBox="0 0 52 52">
+                        <circle class="progress-ring-bg" cx="26" cy="26" r="{{ radius }}"/>
+                        <circle class="progress-ring-fill" cx="26" cy="26" r="{{ radius }}"
+                            stroke="{% if pct >= 100 %}#4A7C59{% elif pct > 0 %}#C8963E{% else %}#2A2A2A{% endif %}"
+                            stroke-dasharray="{{ circ }}"
+                            stroke-dashoffset="{{ offset }}"/>
+                    </svg>
+                    <span class="progress-ring-text">{{ pct }}%</span>
+                </div>
+                <div class="progress-stats">
+                    <div class="progress-numbers">{{ insp.total_marked }} / {{ insp.total_items }}</div>
+                    <div class="progress-label">Items marked</div>
+                </div>
+            </div>
+
+            {% if insp.current_area %}
+            <div class="area-badge">{{ insp.current_area }} &rsaquo; {{ insp.current_category }}</div>
+            {% endif %}
+
+            <div class="last-activity">
+                {% if insp.last_activity %}
+                <span data-timestamp="{{ insp.last_activity }}" class="time-ago">...</span>
+                {% else %}
+                <span style="color: #2A2A2A;">No activity yet</span>
+                {% endif %}
+            </div>
+
+            {% if insp.defects > 0 %}
+            <div class="defect-count">{{ insp.defects }} defect{{ 's' if insp.defects != 1 }}</div>
+            {% endif %}
+
+            <div class="insp-units-row">
+                {% for u in insp.units %}
+                <span class="unit-chip {% if u.unit_number == insp.current_unit %}current{% elif u.insp_status in ['submitted','reviewed','approved'] %}done{% endif %}">
+                    {{ u.unit_number }}
+                </span>
+                {% endfor %}
+            </div>
+        </div>
+        {% endfor %}
+
+        {% if not inspectors %}
+        <div class="empty-state">No inspectors assigned to this batch yet.</div>
+        {% endif %}
+    </div>
+
+    <!-- ACTIVITY FEED -->
+    <div class="feed-panel">
+        <div class="feed-title">Activity Feed</div>
+        {% if feed %}
+        {% for f in feed %}
+        <div class="feed-item">
+            <div class="feed-inspector">{{ f.inspector_name }}</div>
+            <div class="feed-detail">
+                Unit {{ f.unit_number }} &rsaquo; {{ f.area_name }} &rsaquo; {{ f.category_name }}
+                {% if f.item_status == 'not_to_standard' %}
+                <span class="feed-status-nts">NTS</span>
+                {% elif f.item_status == 'not_installed' %}
+                <span class="feed-status-ni">NI</span>
+                {% else %}
+                <span class="feed-status-ok">OK</span>
+                {% endif %}
+            </div>
+            <div class="feed-detail"><span class="feed-item-desc">{{ f.item_description }}</span></div>
+            <div class="feed-time" data-timestamp="{{ f.marked_at }}">...</div>
+        </div>
+        {% endfor %}
+        {% else %}
+        <div class="empty-state" style="height: 100px;">No activity yet</div>
+        {% endif %}
+    </div>
+
+</div>
