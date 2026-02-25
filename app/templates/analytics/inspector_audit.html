@@ -2,7 +2,7 @@
 {% block title %}Inspector Audit Trail{% endblock %}
 {% block content %}
 <div class="max-w-6xl mx-auto px-4 py-6">
-    <a href="javascript:history.back()" class="inline-block text-xs text-blue-600 hover:text-blue-800 mb-2">&larr; Back</a>
+    <a href="javascript:history.back()" class="no-print inline-block text-xs text-blue-600 hover:text-blue-800 mb-2">&larr; Back</a>
     <h1 style="font-size: 1.5rem; font-weight: 800; color: #0A0A0A; margin: 0 0 0.3rem 0;">Inspector Audit Trail</h1>
     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
         <p style="font-size: 0.82rem; color: #6B6B6B; margin: 0;">Payment verification &middot; inspection dates and unit counts per inspector</p>
@@ -12,7 +12,7 @@
     </div>
 
     <!-- Date Range Filter -->
-    <div style="background: #F5F3EE; border-radius: 8px; padding: 1rem; margin-bottom: 1.5rem;">
+    <div class="no-print" style="background: #F5F3EE; border-radius: 8px; padding: 1rem; margin-bottom: 1.5rem;">
         <form method="GET" style="display: flex; align-items: center; gap: 1rem; flex-wrap: wrap;">
             <label style="font-size: 0.82rem; font-weight: 600; color: #1A1A1A;">Period:</label>
             <input type="date" name="from_date" value="{{ from_date or '' }}" style="padding: 0.4rem 0.6rem; border: 1px solid #ccc; border-radius: 4px; font-size: 0.85rem;">
@@ -107,15 +107,34 @@
 
 <style>
 @media print {
+    /* Hide non-print elements */
     .no-print, nav, .mobile-nav, header, footer, form { display: none !important; }
-    body { background: white; font-size: 10pt; }
-    div[style*="max-w-6xl"] { max-width: 100%; padding: 0; }
-    div[style*="grid"] { display: block; }
-    div[style*="grid"] > div { display: inline-block; width: 30%; vertical-align: top; margin: 0.5%; }
-    table { page-break-inside: auto; }
+
+    /* Base */
+    body { background: white !important; font-size: 10pt; }
+    div[style*="max-w-6xl"] { max-width: 100% !important; padding: 0 !important; }
+
+    /* Override ALL inline flex to block */
+    div[style*="flex"] { display: block !important; }
+    span[style*="flex"] { display: block !important; }
+
+    /* Override inline grid to block, cards side by side */
+    div[style*="grid"] { display: block !important; }
+    div[style*="grid"] > div { display: inline-block !important; width: 30% !important; vertical-align: top !important; margin: 0.5% !important; }
+
+    /* Totals bar: keep visible, override flex */
+    div[style*="background: #0A0A0A"] { display: block !important; }
+    div[style*="background: #0A0A0A"] > span { display: inline-block !important; margin-right: 2rem; }
+
+    /* Tables */
+    table { page-break-inside: auto; width: 100% !important; }
     tr { page-break-inside: avoid; }
     div[style*="margin-bottom: 2rem"] { page-break-inside: avoid; }
-    a { text-decoration: none; color: #0A0A0A; }
+
+    /* Links */
+    a { text-decoration: none !important; color: #0A0A0A !important; }
+
+    /* Page setup */
     @page { margin: 1.5cm; }
 }
 </style>
