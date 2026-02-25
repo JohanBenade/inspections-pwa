@@ -450,12 +450,7 @@ def _build_live_monitor_data(batch_id, tenant_id):
             })
 
     # Sort areas: Kitchen, Bathroom, Lounge, then Bedrooms
-    area_order = {'KITCHEN': 0, 'BATHROOM': 1, 'LOUNGE': 2}
-    for uid in area_progress:
-        area_progress[uid].sort(key=lambda a: (area_order.get(a['area'], 10), a['area']))
-
-    # Sort areas: Kitchen, Bathroom, Lounge, then Bedrooms
-    area_order = {'KITCHEN': 0, 'BATHROOM': 1, 'LOUNGE': 2}
+    area_order = {'KITCHEN': 0, 'LOUNGE': 1, 'BATHROOM': 2}
     for uid in area_progress:
         area_progress[uid].sort(key=lambda a: (area_order.get(a['area'], 10), a['area']))
 
