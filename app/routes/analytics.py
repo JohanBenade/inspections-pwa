@@ -3314,8 +3314,8 @@ def inspector_detail(inspector_name):
 
 @analytics_bp.route('/audit')
 @require_manager
-def inspector_audit():
-    """Inspector Audit Trail - payment verification page."""
+def _build_audit_data_dict():
+    """Shared data builder for audit trail (HTML + PDF routes)."""
     tenant_id = session['tenant_id']
     from_date = request.args.get('from_date', '')
     to_date = request.args.get('to_date', '')
@@ -3330,7 +3330,6 @@ def inspector_audit():
         date_filter += ' AND i.inspection_date <= ?'
         params.append(to_date)
 
-    # Get all inspections with unit and defect data
     rows = [dict(r) for r in query_db("""
         SELECT i.inspector_name, i.inspection_date, i.started_at, i.submitted_at,
                i.status AS insp_status, i.id AS inspection_id, ic.cycle_number,
@@ -3348,10 +3347,7 @@ def inspector_audit():
         ORDER BY i.inspector_name, i.inspection_date DESC, u.unit_number
     """.format(date_filter=date_filter), params)]
 
-    # Floor labels
     floor_labels = {0: 'Ground', 1: '1st Floor', 2: '2nd Floor', 3: '3rd Floor'}
-
-    # Status display mapping
     status_map = {
         'in_progress': ('In Progress', '#FEF3C7', '#92400E'),
         'submitted': ('Submitted', '#DBEAFE', '#1E40AF'),
@@ -3361,40 +3357,6 @@ def inspector_audit():
         'certified': ('Certified', '#D1FAE5', '#065F46'),
     }
 
-    def calc_duration(started, submitted):
-        """Calculate duration string from timestamps."""
-        if not started or not submitted:
-            return 'N/A'
-        try:
-            from datetime import datetime
-            # Handle various timestamp formats
-            for fmt in ('%Y-%m-%dT%H:%M:%S.%f%z', '%Y-%m-%dT%H:%M:%S.%f', '%Y-%m-%dT%H:%M:%S%z', '%Y-%m-%dT%H:%M:%S', '%Y-%m-%d %H:%M:%S'):
-                try:
-                    s = datetime.strptime(started.replace('+00:00', '').replace('Z', ''), fmt.replace('%z', ''))
-                    break
-                except ValueError:
-                    s = None
-            for fmt in ('%Y-%m-%dT%H:%M:%S.%f%z', '%Y-%m-%dT%H:%M:%S.%f', '%Y-%m-%dT%H:%M:%S%z', '%Y-%m-%dT%H:%M:%S', '%Y-%m-%d %H:%M:%S'):
-                try:
-                    e = datetime.strptime(submitted.replace('+00:00', '').replace('Z', ''), fmt.replace('%z', ''))
-                    break
-                except ValueError:
-                    e = None
-            if not s or not e:
-                return 'N/A'
-            diff = e - s
-            total_mins = int(diff.total_seconds() / 60)
-            if total_mins < 2:
-                return 'N/A'  # Import artifacts where started==submitted
-            if total_mins < 60:
-                return f'{total_mins}m'
-            hours = total_mins // 60
-            mins = total_mins % 60
-            return f'{hours}h {mins}m'
-        except Exception:
-            return 'N/A'
-
-    # Group by inspector
     from collections import OrderedDict
     inspector_groups = OrderedDict()
     for r in rows:
@@ -3404,7 +3366,7 @@ def inspector_audit():
         floor_val = r['floor']
         zone = '{} {}'.format(r['block'], floor_labels.get(floor_val, 'Floor ' + str(floor_val)))
         status_info = status_map.get(r['insp_status'], ('Unknown', '#F3F4F6', '#6B7280'))
-        duration = 'N/A'  # All imports until mobile inspections
+        duration = 'N/A'
 
         inspector_groups[name].append({
             'unit_id': r['unit_id'],
@@ -3419,7 +3381,6 @@ def inspector_audit():
             'status_colour': status_info[2],
         })
 
-    # Build inspector summary cards
     colours = ['#C8963E', '#3D6B8E', '#4A7C59', '#C44D3F', '#7B6B8D', '#5A8A7A', '#B07D4B']
     inspectors = []
     total_units = 0
@@ -3428,43 +3389,22 @@ def inspector_audit():
         unit_count = len(units)
         defects = sum(u['defect_count'] for u in units)
         avg = round(defects / unit_count, 1) if unit_count else 0
-        durations = [u['duration'] for u in units if u['duration'] != 'N/A']
         dates = [u['inspection_date'] for u in units if u['inspection_date'] != 'N/A']
         colour = colours[i % len(colours)]
-
-        # Avg duration
-        avg_dur = None
-        if durations:
-            total_mins = 0
-            count = 0
-            for d in durations:
-                if 'h' in d:
-                    parts = d.replace('h', '').replace('m', '').split()
-                    total_mins += int(parts[0]) * 60 + (int(parts[1]) if len(parts) > 1 else 0)
-                elif 'm' in d:
-                    total_mins += int(d.replace('m', ''))
-                count += 1
-            if count:
-                am = total_mins // count
-                if am >= 60:
-                    avg_dur = f'{am // 60}h {am % 60}m'
-                else:
-                    avg_dur = f'{am}m'
-
         date_range = ''
         if dates:
             sorted_dates = sorted(dates)
             if sorted_dates[0] == sorted_dates[-1]:
                 date_range = sorted_dates[0]
             else:
-                date_range = f'{sorted_dates[0]} to {sorted_dates[-1]}'
+                date_range = '{} to {}'.format(sorted_dates[0], sorted_dates[-1])
 
         inspectors.append({
             'name': name,
             'unit_count': unit_count,
             'total_defects': defects,
             'avg_defects': avg,
-            'avg_duration': avg_dur,
+            'avg_duration': None,
             'date_range': date_range,
             'colour': colour,
             'units': units,
@@ -3474,18 +3414,54 @@ def inspector_audit():
 
     period_label = ''
     if from_date and to_date:
-        period_label = f'{from_date} to {to_date}'
+        period_label = '{} to {}'.format(from_date, to_date)
     elif from_date:
-        period_label = f'From {from_date}'
+        period_label = 'From {}'.format(from_date)
     elif to_date:
-        period_label = f'Until {to_date}'
+        period_label = 'Until {}'.format(to_date)
 
-    return render_template('analytics/inspector_audit.html',
-        inspectors=inspectors,
-        total_units=total_units,
-        total_defects=total_defects,
-        inspector_count=len(inspectors),
-        from_date=from_date,
-        to_date=to_date,
-        period_label=period_label,
-    )
+    return {
+        'inspectors': inspectors,
+        'total_units': total_units,
+        'total_defects': total_defects,
+        'inspector_count': len(inspectors),
+        'from_date': from_date,
+        'to_date': to_date,
+        'period_label': period_label,
+    }
+
+
+def inspector_audit():
+    """Inspector Audit Trail - payment verification page."""
+    data = _build_audit_data_dict()
+    return render_template('analytics/inspector_audit.html', **data)
+
+
+
+@analytics_bp.route('/audit/view')
+@login_required
+@role_required(['admin', 'manager'])
+def inspector_audit_view():
+    """Inspector Audit Trail - standalone HTML view for printing."""
+    data = _build_audit_data_dict()
+    from datetime import datetime
+    data['now'] = datetime.now().strftime('%Y-%m-%d %H:%M')
+    return render_template('analytics/inspector_audit_pdf.html', **data)
+
+
+@analytics_bp.route('/audit/pdf')
+@login_required
+@role_required(['admin', 'manager'])
+def inspector_audit_pdf():
+    """Inspector Audit Trail - WeasyPrint PDF download."""
+    data = _build_audit_data_dict()
+    from datetime import datetime
+    data['now'] = datetime.now().strftime('%Y-%m-%d %H:%M')
+    from weasyprint import HTML
+    html_str = render_template('analytics/inspector_audit_pdf.html', **data)
+    pdf_bytes = HTML(string=html_str, base_url=request.host_url).write_pdf()
+    resp = make_response(pdf_bytes)
+    resp.headers['Content-Type'] = 'application/pdf'
+    period = data.get('period_label', '').replace(' ', '_') or 'all'
+    resp.headers['Content-Disposition'] = f'attachment; filename=inspector_audit_{period}.pdf'
+    return resp

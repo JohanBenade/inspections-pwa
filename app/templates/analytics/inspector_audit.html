@@ -2,12 +2,12 @@
 {% block title %}Inspector Audit Trail{% endblock %}
 {% block content %}
 <div class="max-w-6xl mx-auto px-4 py-6">
-    <a href="javascript:history.back()" class="no-print inline-block text-xs text-blue-600 hover:text-blue-800 mb-2">&larr; Back</a>
     <h1 style="font-size: 1.5rem; font-weight: 800; color: #0A0A0A; margin: 0 0 0.3rem 0;">Inspector Audit Trail</h1>
     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
         <p style="font-size: 0.82rem; color: #6B6B6B; margin: 0;">Payment verification &middot; inspection dates and unit counts per inspector</p>
         <div class="no-print" style="display: flex; gap: 0.5rem;">
-            <button onclick="window.print()" style="padding: 0.4rem 1rem; background: #1A1A1A; color: white; border: none; border-radius: 4px; font-size: 0.82rem; font-weight: 600; cursor: pointer;">Print / PDF</button>
+            <a href="{{ url_for('analytics.inspector_audit_view', from_date=from_date, to_date=to_date) }}" class="inline-flex items-center px-3 py-1.5 text-xs font-medium rounded bg-gray-100 text-gray-700 hover:bg-gray-200" title="View clean printable version">View PDF</a>
+            <a href="{{ url_for('analytics.inspector_audit_pdf', from_date=from_date, to_date=to_date) }}" class="inline-flex items-center px-3 py-1.5 text-xs font-medium rounded bg-gray-100 text-gray-700 hover:bg-gray-200" title="Download PDF">Download</a>
         </div>
     </div>
 
