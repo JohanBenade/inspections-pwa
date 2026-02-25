@@ -1,4 +1,45 @@
-<!DOCTYPE html>
+#!/usr/bin/env python3
+"""
+Fix audit trail UX to match report page pattern.
+Run on MacBook: python3 fix_audit_ux.py
+
+1. inspector_audit.html: Replace View PDF + Download with Print + Download PDF (gold)
+2. inspector_audit_pdf.html: Rewrite with fixed columns, sticky toolbar, matching button pattern
+"""
+import sys, os
+
+if not os.path.exists('app/routes/analytics.py'):
+    print('ERROR: Run from project root')
+    sys.exit(1)
+
+# =============================================================
+# 1. FIX BUTTONS ON AUDIT PAGE
+# =============================================================
+print('--- Fixing inspector_audit.html ---')
+with open('app/templates/analytics/inspector_audit.html', 'r') as f:
+    html = f.read()
+
+old_buttons = """            <a href="{{ url_for('analytics.inspector_audit_view', from_date=from_date, to_date=to_date) }}" target="_blank" style="padding: 0.4rem 1rem; background: #F5F3EE; color: #1A1A1A; border: 1px solid #DDD; border-radius: 4px; font-size: 0.82rem; font-weight: 600; cursor: pointer; text-decoration: none;">View PDF</a>
+            <a href="{{ url_for('analytics.inspector_audit_pdf', from_date=from_date, to_date=to_date) }}" style="padding: 0.4rem 1rem; background: #1A1A1A; color: white; border: none; border-radius: 4px; font-size: 0.82rem; font-weight: 600; cursor: pointer; text-decoration: none;">Download</a>"""
+
+new_buttons = """            <button onclick="window.print()" style="padding: 0.4rem 1rem; background: #F5F3EE; color: #1A1A1A; border: 1px solid #E8E6E1; border-radius: 4px; font-size: 0.82rem; font-weight: 600; cursor: pointer;">Print</button>
+            <a href="{{ url_for('analytics.inspector_audit_pdf', from_date=from_date, to_date=to_date) }}" style="padding: 0.4rem 1rem; background: #C8963E; color: white; border: none; border-radius: 4px; font-size: 0.82rem; font-weight: 600; cursor: pointer; text-decoration: none;">Download PDF</a>"""
+
+if old_buttons in html:
+    html = html.replace(old_buttons, new_buttons, 1)
+    with open('app/templates/analytics/inspector_audit.html', 'w') as f:
+        f.write(html)
+    print('  Buttons updated: Print + Download PDF (gold)')
+else:
+    print('  ERROR: Could not find current buttons')
+    sys.exit(1)
+
+# =============================================================
+# 2. REWRITE PDF TEMPLATE (complete replacement)
+# =============================================================
+print('\n--- Rewriting inspector_audit_pdf.html ---')
+
+pdf_template = r"""<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
@@ -286,4 +327,11 @@
 
 </div>
 </body>
-</html>
+</html>"""
+
+with open('app/templates/analytics/inspector_audit_pdf.html', 'w') as f:
+    f.write(pdf_template)
+print('  inspector_audit_pdf.html rewritten')
+
+print('\n=== ALL DONE ===')
+print('git add -A && git commit -m "Match audit UX to report pattern: Print + Download PDF" && git push')
