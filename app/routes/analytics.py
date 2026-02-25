@@ -3310,3 +3310,182 @@ def inspector_detail(inspector_name):
                            units=units, zone_score=zone_score,
                            total_defects=total_defects, total_units=total_units,
                            raw_avg=raw_avg, colour=colour)
+
+
+@analytics_bp.route('/audit')
+@login_required
+def inspector_audit():
+    """Inspector Audit Trail - payment verification page."""
+    if current_user.role not in ('manager', 'admin'):
+        abort(403)
+
+    tenant_id = session['tenant_id']
+    from_date = request.args.get('from_date', '')
+    to_date = request.args.get('to_date', '')
+
+    # Build date filter
+    date_filter = ''
+    params = [tenant_id]
+    if from_date:
+        date_filter += ' AND i.inspection_date >= ?'
+        params.append(from_date)
+    if to_date:
+        date_filter += ' AND i.inspection_date <= ?'
+        params.append(to_date)
+
+    # Get all inspections with unit and defect data
+    rows = [dict(r) for r in query_db("""
+        SELECT i.inspector_name, i.inspection_date, i.started_at, i.submitted_at,
+               i.status AS insp_status, i.id AS inspection_id,
+               u.id AS unit_id, u.unit_number, u.block, u.floor,
+               COUNT(d.id) AS defect_count
+        FROM inspection i
+        JOIN unit u ON i.unit_id = u.id
+        LEFT JOIN defect d ON d.unit_id = u.id AND d.raised_cycle_id = i.cycle_id
+            AND d.status = 'open' AND d.tenant_id = u.tenant_id
+        WHERE i.tenant_id = ? AND i.status NOT IN ('not_started')
+            AND i.inspector_name IS NOT NULL AND u.unit_number NOT LIKE 'TEST%%'
+            {date_filter}
+        GROUP BY i.id
+        ORDER BY i.inspector_name, i.inspection_date DESC, u.unit_number
+    """.format(date_filter=date_filter), params)]
+
+    # Floor labels
+    floor_labels = {0: 'Ground', 1: '1st Floor', 2: '2nd Floor', 3: '3rd Floor'}
+
+    # Status display mapping
+    status_map = {
+        'in_progress': ('In Progress', '#FEF3C7', '#92400E'),
+        'submitted': ('Submitted', '#DBEAFE', '#1E40AF'),
+        'reviewed': ('Reviewed', '#D1FAE5', '#065F46'),
+        'pending_followup': ('Signed Off', '#E5E7EB', '#374151'),
+        'approved': ('Approved', '#D1FAE5', '#065F46'),
+        'certified': ('Certified', '#D1FAE5', '#065F46'),
+    }
+
+    def calc_duration(started, submitted):
+        """Calculate duration string from timestamps."""
+        if not started or not submitted:
+            return 'N/A'
+        try:
+            from datetime import datetime
+            # Handle various timestamp formats
+            for fmt in ('%Y-%m-%dT%H:%M:%S.%f%z', '%Y-%m-%dT%H:%M:%S.%f', '%Y-%m-%dT%H:%M:%S%z', '%Y-%m-%dT%H:%M:%S', '%Y-%m-%d %H:%M:%S'):
+                try:
+                    s = datetime.strptime(started.replace('+00:00', '').replace('Z', ''), fmt.replace('%z', ''))
+                    break
+                except ValueError:
+                    s = None
+            for fmt in ('%Y-%m-%dT%H:%M:%S.%f%z', '%Y-%m-%dT%H:%M:%S.%f', '%Y-%m-%dT%H:%M:%S%z', '%Y-%m-%dT%H:%M:%S', '%Y-%m-%d %H:%M:%S'):
+                try:
+                    e = datetime.strptime(submitted.replace('+00:00', '').replace('Z', ''), fmt.replace('%z', ''))
+                    break
+                except ValueError:
+                    e = None
+            if not s or not e:
+                return 'N/A'
+            diff = e - s
+            total_mins = int(diff.total_seconds() / 60)
+            if total_mins < 2:
+                return 'N/A'  # Import artifacts where started==submitted
+            if total_mins < 60:
+                return f'{total_mins}m'
+            hours = total_mins // 60
+            mins = total_mins % 60
+            return f'{hours}h {mins}m'
+        except Exception:
+            return 'N/A'
+
+    # Group by inspector
+    from collections import OrderedDict
+    inspector_groups = OrderedDict()
+    for r in rows:
+        name = r['inspector_name']
+        if name not in inspector_groups:
+            inspector_groups[name] = []
+        zone = f"{r['block']} {floor_labels.get(r['floor'], f'Floor {r['floor']}')}"
+        status_info = status_map.get(r['insp_status'], ('Unknown', '#F3F4F6', '#6B7280'))
+        duration = calc_duration(r['started_at'], r['submitted_at'])
+
+        inspector_groups[name].append({
+            'unit_id': r['unit_id'],
+            'unit_number': r['unit_number'],
+            'zone': zone,
+            'inspection_date': r['inspection_date'] or 'N/A',
+            'duration': duration,
+            'defect_count': r['defect_count'],
+            'status_label': status_info[0],
+            'status_bg': status_info[1],
+            'status_colour': status_info[2],
+        })
+
+    # Build inspector summary cards
+    colours = ['#C8963E', '#3D6B8E', '#4A7C59', '#C44D3F', '#7B6B8D', '#5A8A7A', '#B07D4B']
+    inspectors = []
+    total_units = 0
+    total_defects = 0
+    for i, (name, units) in enumerate(inspector_groups.items()):
+        unit_count = len(units)
+        defects = sum(u['defect_count'] for u in units)
+        avg = round(defects / unit_count, 1) if unit_count else 0
+        durations = [u['duration'] for u in units if u['duration'] != 'N/A']
+        dates = [u['inspection_date'] for u in units if u['inspection_date'] != 'N/A']
+        colour = colours[i % len(colours)]
+
+        # Avg duration
+        avg_dur = None
+        if durations:
+            total_mins = 0
+            count = 0
+            for d in durations:
+                if 'h' in d:
+                    parts = d.replace('h', '').replace('m', '').split()
+                    total_mins += int(parts[0]) * 60 + (int(parts[1]) if len(parts) > 1 else 0)
+                elif 'm' in d:
+                    total_mins += int(d.replace('m', ''))
+                count += 1
+            if count:
+                am = total_mins // count
+                if am >= 60:
+                    avg_dur = f'{am // 60}h {am % 60}m'
+                else:
+                    avg_dur = f'{am}m'
+
+        date_range = ''
+        if dates:
+            sorted_dates = sorted(dates)
+            if sorted_dates[0] == sorted_dates[-1]:
+                date_range = sorted_dates[0]
+            else:
+                date_range = f'{sorted_dates[0]} to {sorted_dates[-1]}'
+
+        inspectors.append({
+            'name': name,
+            'unit_count': unit_count,
+            'total_defects': defects,
+            'avg_defects': avg,
+            'avg_duration': avg_dur,
+            'date_range': date_range,
+            'colour': colour,
+            'units': units,
+        })
+        total_units += unit_count
+        total_defects += defects
+
+    period_label = ''
+    if from_date and to_date:
+        period_label = f'{from_date} to {to_date}'
+    elif from_date:
+        period_label = f'From {from_date}'
+    elif to_date:
+        period_label = f'Until {to_date}'
+
+    return render_template('analytics/inspector_audit.html',
+        inspectors=inspectors,
+        total_units=total_units,
+        total_defects=total_defects,
+        inspector_count=len(inspectors),
+        from_date=from_date,
+        to_date=to_date,
+        period_label=period_label,
+    )

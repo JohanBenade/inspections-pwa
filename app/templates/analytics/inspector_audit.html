@@ -1,0 +1,100 @@
+{% extends "base.html" %}
+{% block title %}Inspector Audit Trail{% endblock %}
+{% block content %}
+<div class="max-w-6xl mx-auto px-4 py-6">
+    <a href="javascript:history.back()" class="inline-block text-xs text-blue-600 hover:text-blue-800 mb-2">&larr; Back</a>
+    <h1 style="font-size: 1.5rem; font-weight: 800; color: #0A0A0A; margin: 0 0 0.3rem 0;">Inspector Audit Trail</h1>
+    <p style="font-size: 0.82rem; color: #6B6B6B; margin-bottom: 1.5rem;">Payment verification &middot; inspection dates and unit counts per inspector</p>
+
+    <!-- Date Range Filter -->
+    <div style="background: #F5F3EE; border-radius: 8px; padding: 1rem; margin-bottom: 1.5rem;">
+        <form method="GET" style="display: flex; align-items: center; gap: 1rem; flex-wrap: wrap;">
+            <label style="font-size: 0.82rem; font-weight: 600; color: #1A1A1A;">Period:</label>
+            <input type="date" name="from_date" value="{{ from_date or '' }}" style="padding: 0.4rem 0.6rem; border: 1px solid #ccc; border-radius: 4px; font-size: 0.85rem;">
+            <span style="font-size: 0.82rem; color: #6B6B6B;">to</span>
+            <input type="date" name="to_date" value="{{ to_date or '' }}" style="padding: 0.4rem 0.6rem; border: 1px solid #ccc; border-radius: 4px; font-size: 0.85rem;">
+            <button type="submit" style="padding: 0.4rem 1rem; background: #1A1A1A; color: white; border: none; border-radius: 4px; font-size: 0.82rem; font-weight: 600; cursor: pointer;">Filter</button>
+            {% if from_date or to_date %}
+            <a href="{{ url_for('analytics.inspector_audit') }}" style="font-size: 0.82rem; color: #6B6B6B;">Clear</a>
+            {% endif %}
+        </form>
+    </div>
+
+    {% if not inspectors %}
+    <div style="text-align: center; padding: 3rem; color: #9A9A9A;">No inspection data found for the selected period.</div>
+    {% else %}
+
+    <!-- Summary Cards -->
+    <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 1rem; margin-bottom: 2rem;">
+        {% for insp in inspectors %}
+        <div style="background: white; border-radius: 8px; padding: 1rem; border-left: 3px solid {{ insp.colour }}; box-shadow: 0 1px 3px rgba(0,0,0,0.08);">
+            <div style="font-weight: 700; font-size: 1rem; color: #0A0A0A;">{{ insp.name }}</div>
+            <div style="font-size: 0.82rem; color: #6B6B6B; margin-top: 0.3rem;">
+                {{ insp.unit_count }} units &middot; {{ insp.total_defects }} defects &middot; {{ insp.avg_defects }} avg/unit
+            </div>
+            {% if insp.avg_duration %}
+            <div style="font-size: 0.78rem; color: #9A9A9A; margin-top: 0.2rem;">Avg duration: {{ insp.avg_duration }}</div>
+            {% endif %}
+            <div style="font-size: 0.78rem; color: #9A9A9A; margin-top: 0.2rem;">
+                {{ insp.date_range }}
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+
+    <!-- Totals Bar -->
+    <div style="background: #0A0A0A; color: white; border-radius: 8px; padding: 0.8rem 1.2rem; margin-bottom: 2rem; display: flex; justify-content: space-between; flex-wrap: wrap; gap: 0.5rem;">
+        <span style="font-size: 0.85rem; font-weight: 600;">Total: {{ total_units }} units</span>
+        <span style="font-size: 0.85rem;">{{ total_defects }} defects</span>
+        <span style="font-size: 0.85rem;">{{ inspector_count }} inspectors</span>
+        {% if period_label %}<span style="font-size: 0.85rem; color: #C8963E;">{{ period_label }}</span>{% endif %}
+    </div>
+
+    <!-- Per-Inspector Tables -->
+    {% for insp in inspectors %}
+    <div style="margin-bottom: 2rem;">
+        <h2 style="font-size: 1.1rem; font-weight: 700; color: #0A0A0A; margin-bottom: 0.5rem; padding-bottom: 0.3rem; border-bottom: 2px solid {{ insp.colour }};">
+            {{ insp.name }}
+            <span style="font-size: 0.82rem; font-weight: 400; color: #6B6B6B; margin-left: 0.5rem;">{{ insp.unit_count }} units</span>
+        </h2>
+        <table style="width: 100%; border-collapse: collapse; font-size: 0.82rem;">
+            <thead>
+                <tr style="border-bottom: 2px solid #E5E5E5;">
+                    <th style="text-align: left; padding: 0.5rem 0.3rem; color: #6B6B6B; font-weight: 600;">Unit</th>
+                    <th style="text-align: left; padding: 0.5rem 0.3rem; color: #6B6B6B; font-weight: 600;">Zone</th>
+                    <th style="text-align: left; padding: 0.5rem 0.3rem; color: #6B6B6B; font-weight: 600;">Date</th>
+                    <th style="text-align: center; padding: 0.5rem 0.3rem; color: #6B6B6B; font-weight: 600;">Duration</th>
+                    <th style="text-align: center; padding: 0.5rem 0.3rem; color: #6B6B6B; font-weight: 600;">Defects</th>
+                    <th style="text-align: center; padding: 0.5rem 0.3rem; color: #6B6B6B; font-weight: 600;">Status</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for u in insp.units %}
+                <tr style="border-bottom: 1px solid #F0F0F0; cursor: pointer;" onclick="window.location='{{ url_for('certification.view_unit', unit_id=u.unit_id) }}?from=audit'">
+                    <td style="padding: 0.5rem 0.3rem; font-weight: 600; text-decoration: underline; text-underline-offset: 2px;">{{ u.unit_number }}</td>
+                    <td style="padding: 0.5rem 0.3rem; color: #6B6B6B;">{{ u.zone }}</td>
+                    <td style="padding: 0.5rem 0.3rem;">{{ u.inspection_date }}</td>
+                    <td style="padding: 0.5rem 0.3rem; text-align: center; color: {{ '#1A1A1A' if u.duration != 'N/A' else '#9A9A9A' }};">{{ u.duration }}</td>
+                    <td style="padding: 0.5rem 0.3rem; text-align: center; font-weight: 600;">{{ u.defect_count }}</td>
+                    <td style="padding: 0.5rem 0.3rem; text-align: center;">
+                        <span style="font-size: 0.75rem; padding: 0.15rem 0.5rem; border-radius: 9999px; background: {{ u.status_bg }}; color: {{ u.status_colour }};">{{ u.status_label }}</span>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+            <tfoot>
+                <tr style="border-top: 2px solid #E5E5E5; font-weight: 600;">
+                    <td style="padding: 0.5rem 0.3rem;" colspan="2">Subtotal</td>
+                    <td style="padding: 0.5rem 0.3rem;"></td>
+                    <td style="padding: 0.5rem 0.3rem; text-align: center;">{% if insp.avg_duration %}{{ insp.avg_duration }} avg{% else %}N/A{% endif %}</td>
+                    <td style="padding: 0.5rem 0.3rem; text-align: center;">{{ insp.total_defects }}</td>
+                    <td style="padding: 0.5rem 0.3rem; text-align: center;">{{ insp.unit_count }} units</td>
+                </tr>
+            </tfoot>
+        </table>
+    </div>
+    {% endfor %}
+
+    {% endif %}
+</div>
+{% endblock %}

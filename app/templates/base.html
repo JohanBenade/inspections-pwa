@@ -87,6 +87,7 @@
                         <a href="{{ url_for('approvals.pipeline') }}" class="text-sm text-gray-300 hover:text-white">Approvals</a>
                         <a href="{{ url_for('analytics.dashboard') }}" class="text-sm text-gray-300 hover:text-white">Analytics</a>
                         <a href="{{ url_for('analytics.reports') }}" class="text-sm text-gray-300 hover:text-white">Reports</a>
+                        <a href="{{ url_for('analytics.inspector_audit') }}" class="text-sm text-gray-300 hover:text-white">Audit Trail</a>
                         {% if current_user.role == 'admin' %}
                         <a href="{{ url_for('data_quality.descriptions') }}" class="text-sm text-gray-300 hover:text-white">Data Quality</a>
                         {% endif %}

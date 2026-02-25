@@ -9,7 +9,7 @@
         <div class="flex justify-between items-start">
             <div>
                 {% set back_from = request.args.get('from', '') %}
-                {% set readonly = back_from in ('analytics', 'block-detail', 'inspector', 'rectification') %}
+                {% set readonly = back_from in ('analytics', 'block-detail', 'inspector', 'rectification', 'audit') %}
                 <a href="javascript:history.back()" class="inline-block text-xs text-blue-600 hover:text-blue-800 mb-1">&larr; Back</a>
                 <div class="text-sm text-gray-500">
                     {% if inspection.project_name %}{{ inspection.project_name }}{% if inspection.phase_name %} / {{ inspection.phase_name }}{% endif %}{% endif %}
