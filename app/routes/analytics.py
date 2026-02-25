@@ -3403,7 +3403,8 @@ def inspector_audit():
         name = r['inspector_name']
         if name not in inspector_groups:
             inspector_groups[name] = []
-        zone = f"{r['block']} {floor_labels.get(r['floor'], f'Floor {r['floor']}')}"
+        floor_val = r['floor']
+        zone = '{} {}'.format(r['block'], floor_labels.get(floor_val, 'Floor ' + str(floor_val)))
         status_info = status_map.get(r['insp_status'], ('Unknown', '#F3F4F6', '#6B7280'))
         duration = calc_duration(r['started_at'], r['submitted_at'])
 
