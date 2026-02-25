@@ -798,6 +798,10 @@ def update_item(inspection_id, item_id):
     if not item:
         abort(404)
     
+    # Lock: no edits after sign-off
+    if inspection['status'] in ('pending_followup', 'approved', 'certified'):
+        abort(403)
+    
     template = query_db(
         "SELECT * FROM item_template WHERE id = ?",
         [item['item_template_id']], one=True
@@ -960,6 +964,10 @@ def add_defect(inspection_id, item_id):
     now = datetime.now(timezone.utc).isoformat()
     if len(description) > 0:
         description = description[0].upper() + description[1:]
+
+        # Lock: no edits after sign-off
+    if inspection['status'] in ('pending_followup', 'approved', 'certified'):
+        abort(403)
 
     is_submitted = inspection['status'] in ('submitted', 'reviewed', 'approved')
 
