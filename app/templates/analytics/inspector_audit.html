@@ -1,10 +1,30 @@
 {% extends "base.html" %}
-{% block title %}Inspector Audit Trail{% endblock %}
+{% block title %}Inspector Audit Trail
+<style>
+@media print {
+    .no-print, nav, .mobile-nav, header, footer, form { display: none !important; }
+    body { background: white; font-size: 10pt; }
+    div[style*="max-w-6xl"] { max-width: 100%; padding: 0; }
+    div[style*="grid"] { display: block; }
+    div[style*="grid"] > div { display: inline-block; width: 30%; vertical-align: top; margin: 0.5%; }
+    table { page-break-inside: auto; }
+    tr { page-break-inside: avoid; }
+    div[style*="margin-bottom: 2rem"] { page-break-inside: avoid; }
+    a { text-decoration: none; color: #0A0A0A; }
+    @page { margin: 1.5cm; }
+}
+</style>
+{% endblock %}
 {% block content %}
 <div class="max-w-6xl mx-auto px-4 py-6">
     <a href="javascript:history.back()" class="inline-block text-xs text-blue-600 hover:text-blue-800 mb-2">&larr; Back</a>
     <h1 style="font-size: 1.5rem; font-weight: 800; color: #0A0A0A; margin: 0 0 0.3rem 0;">Inspector Audit Trail</h1>
-    <p style="font-size: 0.82rem; color: #6B6B6B; margin-bottom: 1.5rem;">Payment verification &middot; inspection dates and unit counts per inspector</p>
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+        <p style="font-size: 0.82rem; color: #6B6B6B; margin: 0;">Payment verification &middot; inspection dates and unit counts per inspector</p>
+        <div class="no-print" style="display: flex; gap: 0.5rem;">
+            <button onclick="window.print()" style="padding: 0.4rem 1rem; background: #1A1A1A; color: white; border: none; border-radius: 4px; font-size: 0.82rem; font-weight: 600; cursor: pointer;">Print / PDF</button>
+        </div>
+    </div>
 
     <!-- Date Range Filter -->
     <div style="background: #F5F3EE; border-radius: 8px; padding: 1rem; margin-bottom: 1.5rem;">
@@ -99,4 +119,19 @@
 
     {% endif %}
 </div>
+
+<style>
+@media print {
+    .no-print, nav, .mobile-nav, header, footer, form { display: none !important; }
+    body { background: white; font-size: 10pt; }
+    div[style*="max-w-6xl"] { max-width: 100%; padding: 0; }
+    div[style*="grid"] { display: block; }
+    div[style*="grid"] > div { display: inline-block; width: 30%; vertical-align: top; margin: 0.5%; }
+    table { page-break-inside: auto; }
+    tr { page-break-inside: avoid; }
+    div[style*="margin-bottom: 2rem"] { page-break-inside: avoid; }
+    a { text-decoration: none; color: #0A0A0A; }
+    @page { margin: 1.5cm; }
+}
+</style>
 {% endblock %}

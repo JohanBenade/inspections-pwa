@@ -3404,7 +3404,7 @@ def inspector_audit():
         floor_val = r['floor']
         zone = '{} {}'.format(r['block'], floor_labels.get(floor_val, 'Floor ' + str(floor_val)))
         status_info = status_map.get(r['insp_status'], ('Unknown', '#F3F4F6', '#6B7280'))
-        duration = calc_duration(r['started_at'], r['submitted_at'])
+        duration = 'N/A'  # All imports until mobile inspections
 
         inspector_groups[name].append({
             'unit_id': r['unit_id'],
