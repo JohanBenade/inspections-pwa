@@ -10,7 +10,7 @@
         size: A4 landscape;
         margin: 15mm 18mm 18mm 18mm;
         @bottom-center {
-            content: "Monograph Architects | Inspector Audit Trail | Generated " attr(data-date);
+            content: "Monograph Architects | Inspector Audit Trail";
             font-family: 'DM Sans', sans-serif;
             font-size: 8pt;
             color: #9A9A9A;
@@ -54,11 +54,14 @@
         margin-bottom: 16px;
     }
 
+    .content-area {
+        padding-top: 60px;
+    }
+
     /* KPI cards as table */
     .kpi-table {
         width: 100%;
-        border-collapse: separate;
-        border-spacing: 10px 0;
+        border-collapse: collapse;
         margin-bottom: 20px;
     }
     .kpi-cell {
@@ -68,6 +71,10 @@
         text-align: left;
         vertical-align: top;
         width: 25%;
+        border-right: 1px solid #E5E5E5;
+    }
+    .kpi-cell:last-child {
+        border-right: none;
     }
     .kpi-value {
         font-family: 'Cormorant Garamond', serif;
@@ -100,12 +107,13 @@
         color: #6B6B6B;
     }
 
-    /* Data tables */
+    /* Data tables with fixed column widths */
     .data-table {
         width: 100%;
         border-collapse: collapse;
         margin-bottom: 12px;
         page-break-inside: auto;
+        table-layout: fixed;
     }
     .data-table thead { page-break-after: avoid; }
     .data-table tr { page-break-inside: avoid; }
@@ -123,10 +131,22 @@
         padding: 5px 10px;
         border-bottom: 1px solid #E5E5E5;
         font-size: 9pt;
+        overflow: hidden;
+        text-overflow: ellipsis;
     }
     .data-table tr:nth-child(even) td {
         background: rgba(245, 243, 238, 0.5);
     }
+
+    /* Fixed column widths */
+    .col-unit { width: 7%; }
+    .col-zone { width: 22%; }
+    .col-date { width: 14%; }
+    .col-cycle { width: 8%; }
+    .col-duration { width: 12%; }
+    .col-defects { width: 10%; text-align: right; }
+    .col-status { width: 12%; text-align: center; }
+
     .text-right { text-align: right; }
     .text-center { text-align: center; }
 
@@ -138,37 +158,46 @@
         font-weight: 600;
     }
 
+    /* Toolbar - sticky, screen only */
     .toolbar {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        z-index: 100;
         background: #1A1A1A;
         color: white;
-        padding: 10px 20px;
-        margin: -15px -18px 20px -18px;
+        padding: 12px 20px;
         font-size: 10pt;
     }
     .toolbar a {
         color: white;
         text-decoration: none;
-        margin-right: 16px;
-        padding: 4px 12px;
+        margin-right: 12px;
+        padding: 6px 14px;
         border: 1px solid rgba(255,255,255,0.3);
         border-radius: 4px;
+        font-size: 10pt;
     }
     .toolbar a:hover { background: rgba(255,255,255,0.1); }
 
     @media print {
         .toolbar { display: none; }
+        .content-area { padding-top: 0; }
         body { background: white; }
     }
 </style>
 </head>
 <body>
 
-<!-- Toolbar (hidden in print/PDF) -->
+<!-- Toolbar (sticky, hidden in print/PDF) -->
 <div class="toolbar">
     <a href="{{ url_for('analytics.inspector_audit', from_date=from_date, to_date=to_date) }}">&larr; Back</a>
     <a href="{{ url_for('analytics.inspector_audit_pdf', from_date=from_date, to_date=to_date) }}">Download PDF</a>
     <a href="javascript:window.print()">Print</a>
 </div>
+
+<div class="content-area">
 
 <!-- Header -->
 <h1>Inspector Audit Trail</h1>
@@ -210,6 +239,15 @@
 </div>
 
 <table class="data-table">
+    <colgroup>
+        <col class="col-unit">
+        <col class="col-zone">
+        <col class="col-date">
+        <col class="col-cycle">
+        <col class="col-duration">
+        <col class="col-defects">
+        <col class="col-status">
+    </colgroup>
     <thead>
         <tr>
             <th>Unit</th>
@@ -241,5 +279,6 @@
 </table>
 {% endfor %}
 
+</div>
 </body>
 </html>
