@@ -736,3 +736,27 @@ def live_monitor_data(batch_id):
     resp.headers['Pragma'] = 'no-cache'
     resp.headers['Expires'] = '0'
     return resp
+
+
+@batches_bp.route('/<batch_id>/toggle-lock', methods=['POST'])
+@require_team_lead
+def toggle_lock(batch_id):
+    """Lock or unlock a batch for inspectors."""
+    tenant_id = session['tenant_id']
+    db = get_db()
+
+    batch = query_db(
+        "SELECT id, locked FROM inspection_batch WHERE id = ? AND tenant_id = ?",
+        [batch_id, tenant_id], one=True)
+    if not batch:
+        abort(404)
+
+    new_state = 0 if batch['locked'] else 1
+    db.execute("UPDATE inspection_batch SET locked = ?, updated_at = ? WHERE id = ?",
+               [new_state, datetime.now(timezone.utc).isoformat(), batch_id])
+    db.commit()
+
+    label = 'locked' if new_state else 'unlocked'
+    flash('Batch {}.'.format(label), 'success')
+    return redirect(url_for('batches.detail', batch_id=batch_id))
+
