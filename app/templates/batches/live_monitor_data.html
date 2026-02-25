@@ -27,7 +27,7 @@
         {% if insp.last_activity %}
         <span data-timestamp="{{ insp.last_activity }}" class="time-ago insp-chip-time">...</span>
         {% else %}
-        <span class="insp-chip-time" style="color: #2A2A2A;">idle</span>
+        <span class="insp-chip-time" style="color: #6B6B6B;">idle</span>
         {% endif %}
     </div>
     {% endfor %}
@@ -54,7 +54,7 @@
                     {% if u.inspector_name %}
                     <span class="unit-inspector">{{ u.inspector_name }}</span>
                     {% else %}
-                    <span class="unit-inspector" style="color: #4A4A4A;">Unassigned</span>
+                    <span class="unit-inspector" style="color: #7A7A7A;">Unassigned</span>
                     {% endif %}
                 </div>
                 <div class="unit-header-right">
