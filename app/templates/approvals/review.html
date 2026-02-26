@@ -76,13 +76,13 @@
             <div class="w-2.5 h-2.5 rounded-full {% if complete %}bg-green-500{% else %}bg-gray-300{% endif %}"></div>
             <span class="text-[9px] text-gray-400 mt-0.5">{{ label }}</span>
             {% if label == 'Submitted' and stats.first_submitted_at %}
-            <span class="text-[10px] text-gray-500">{{ stats.first_submitted_at[:10] }}</span>
+            <span class="text-[10px] text-gray-500">{{ stats.first_submitted_at|to_sast('%Y-%m-%d') }}</span>
             {% elif label == 'Reviewed' and stats.last_reviewed_at %}
-            <span class="text-[10px] text-gray-500">{{ stats.last_reviewed_at[:10] }}</span>
+            <span class="text-[10px] text-gray-500">{{ stats.last_reviewed_at|to_sast('%Y-%m-%d') }}</span>
             {% elif label == 'Signed Off' and cycle.approved_at %}
-            <span class="text-[10px] text-gray-500">{{ cycle.approved_at[:10] }}</span>
+            <span class="text-[10px] text-gray-500">{{ cycle.approved_at|to_sast('%Y-%m-%d') }}</span>
             {% elif label == 'PDFs Pushed' and cycle.pdfs_pushed_at %}
-            <span class="text-[10px] text-gray-500">{{ cycle.pdfs_pushed_at[:10] }}</span>
+            <span class="text-[10px] text-gray-500">{{ cycle.pdfs_pushed_at|to_sast('%Y-%m-%d') }}</span>
             {% endif %}
         </div>
         {% endfor %}
@@ -144,14 +144,14 @@
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
             </svg>
             <span class="font-medium">Signed off{% if cycle.approved_by %} by {{ cycle.approved_by }}{% endif %}</span>
-            {% if cycle.approved_at %}<span class="text-xs text-gray-400 ml-1">{{ cycle.approved_at[:16].replace('T',' ') }}</span>{% endif %}
+            {% if cycle.approved_at %}<span class="text-xs text-gray-400 ml-1">{{ cycle.approved_at|to_sast }}</span>{% endif %}
         </div>
         <div class="flex items-center justify-center gap-2 text-green-600">
             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
             </svg>
             <span class="font-medium">{{ stats.total }} PDFs pushed to SharePoint</span>
-            {% if cycle.pdfs_pushed_at %}<span class="text-xs text-gray-400 ml-1">{{ cycle.pdfs_pushed_at[:16].replace('T',' ') }}</span>{% endif %}
+            {% if cycle.pdfs_pushed_at %}<span class="text-xs text-gray-400 ml-1">{{ cycle.pdfs_pushed_at|to_sast }}</span>{% endif %}
         </div>
         <p class="text-sm text-gray-500">Cycle complete.</p>
     </div>
@@ -164,7 +164,7 @@
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
             </svg>
             <span class="font-medium">Signed off{% if cycle.approved_by %} by {{ cycle.approved_by }}{% endif %}</span>
-            {% if cycle.approved_at %}<span class="text-xs text-gray-400 ml-1">{{ cycle.approved_at[:16].replace('T',' ') }}</span>{% endif %}
+            {% if cycle.approved_at %}<span class="text-xs text-gray-400 ml-1">{{ cycle.approved_at|to_sast }}</span>{% endif %}
         </div>
         <form method="POST" action="{{ url_for('approvals.push_pdfs', cycle_id=cycle.id) }}">
             <button type="submit"

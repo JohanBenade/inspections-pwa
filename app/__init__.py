@@ -3,11 +3,26 @@ Inspections PWA - Flask Application Factory
 Multi-tenant defect inspection for student housing
 """
 import os
-from datetime import timedelta
+from datetime import timedelta, datetime, timezone
 from flask import Flask, render_template, session, redirect, url_for, request
 
 def create_app():
     app = Flask(__name__)
+
+    # Jinja filter: convert ISO UTC timestamp to SAST (UTC+2)
+    def _to_sast(iso_str, fmt='%Y-%m-%d %H:%M'):
+        if not iso_str:
+            return ''
+        try:
+            s = iso_str.replace('Z', '+00:00')
+            dt = datetime.fromisoformat(s)
+            if dt.tzinfo is None:
+                dt = dt.replace(tzinfo=timezone.utc)
+            sast = dt + timedelta(hours=2)
+            return sast.strftime(fmt)
+        except (ValueError, TypeError):
+            return iso_str
+    app.jinja_env.filters['to_sast'] = _to_sast
     
     # Configuration
     app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'dev-secret-change-in-prod')

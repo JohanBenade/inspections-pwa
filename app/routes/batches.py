@@ -79,7 +79,7 @@ def list_batches():
     tenant_id = session['tenant_id']
 
     batches_raw = query_db("""
-        SELECT ib.id, ib.name, ib.status, ib.notes, ib.created_at,
+        SELECT ib.id, ib.name, ib.status, ib.notes, ib.created_at, ib.locked,
             COUNT(bu.id) AS total_units,
             SUM(CASE WHEN i.status IN ('submitted','reviewed','pending_followup','approved','certified','closed')
                 THEN 1 ELSE 0 END) AS completed,
