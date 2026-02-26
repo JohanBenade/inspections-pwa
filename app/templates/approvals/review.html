@@ -144,12 +144,14 @@
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
             </svg>
             <span class="font-medium">Signed off{% if cycle.approved_by %} by {{ cycle.approved_by }}{% endif %}</span>
+            {% if cycle.approved_at %}<span class="text-xs text-gray-400 ml-1">{{ cycle.approved_at[:16].replace('T',' ') }}</span>{% endif %}
         </div>
         <div class="flex items-center justify-center gap-2 text-green-600">
             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
             </svg>
             <span class="font-medium">{{ stats.total }} PDFs pushed to SharePoint</span>
+            {% if cycle.pdfs_pushed_at %}<span class="text-xs text-gray-400 ml-1">{{ cycle.pdfs_pushed_at[:16].replace('T',' ') }}</span>{% endif %}
         </div>
         <p class="text-sm text-gray-500">Cycle complete.</p>
     </div>
@@ -162,6 +164,7 @@
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
             </svg>
             <span class="font-medium">Signed off{% if cycle.approved_by %} by {{ cycle.approved_by }}{% endif %}</span>
+            {% if cycle.approved_at %}<span class="text-xs text-gray-400 ml-1">{{ cycle.approved_at[:16].replace('T',' ') }}</span>{% endif %}
         </div>
         <form method="POST" action="{{ url_for('approvals.push_pdfs', cycle_id=cycle.id) }}">
             <button type="submit"
@@ -256,7 +259,12 @@
             {% endif %}
 
             <div id="review-status-{{ unit.unit_id }}">
-            {% if unit.is_reviewed %}
+            {% if cycle.approved_at %}
+            <div class="flex items-center gap-1">
+                <span class="inline-block w-2 h-2 rounded-full bg-green-500"></span>
+                <span class="text-green-600 text-xs font-medium">Signed Off</span>
+            </div>
+            {% elif unit.is_reviewed %}
             <div class="flex items-center gap-1">
                 <span class="inline-block w-2 h-2 rounded-full bg-green-500"></span>
                 <span class="text-green-600 text-xs font-medium">Reviewed</span>
