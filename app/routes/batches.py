@@ -678,10 +678,14 @@ def _build_live_monitor_data(batch_id, tenant_id):
             f['initials'] = _get_initials(f['inspector_name'])
 
     # --- Computed KPIs ---
+    # Use live defect counts from inspection_item (updates on every tap)
+    # instead of defect table (only updates on submission)
+    live_defects = sum(u['total_defects'] for u in units)
+    units_with_marks = sum(1 for u in units if u['total_marked'] > 0)
     completion_pct = round(units_complete / total_units * 100) if total_units else 0
     total_non_skipped = items_marked  # items that have been marked (not pending/skipped)
-    defect_rate = round(defects_found / total_non_skipped * 100, 1) if total_non_skipped else 0
-    avg_defects = round(defects_found / units_complete, 1) if units_complete else 0
+    defect_rate = round(live_defects / total_non_skipped * 100, 1) if total_non_skipped else 0
+    avg_defects = round(live_defects / units_with_marks, 1) if units_with_marks else 0
 
     return {
         'batch': batch,
@@ -692,7 +696,7 @@ def _build_live_monitor_data(batch_id, tenant_id):
         'units_not_started': units_not_started,
         'items_marked': items_marked,
         'total_items': total_items,
-        'defects_found': defects_found,
+        'defects_found': live_defects,
         'inspectors': inspectors,
         'feed': feed,
         'floor_labels': FLOOR_LABELS,

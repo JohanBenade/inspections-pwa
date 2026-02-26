@@ -308,7 +308,7 @@
 <!-- HTMX AUTO-REFRESH CONTAINER -->
 <div id="live-data"
      hx-get="{{ url_for('batches.live_monitor_data', batch_id=batch.id) }}"
-     hx-trigger="every 60s"
+     hx-trigger="every 30s"
      hx-swap="innerHTML">
     {% include 'batches/live_monitor_data.html' %}
 </div>
