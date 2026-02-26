@@ -91,6 +91,7 @@
         {% endif %}
     {% endfor %}
     
+    {% if filter_mode != 'defects' or ns.defects > 0 %}
     <div class="border rounded-lg overflow-hidden">
         <!-- Category Header -->
         <div class="bg-gray-100 px-4 py-3 border-b flex items-center select-none">
@@ -167,6 +168,7 @@
     </div>
     {% endif %}
     
+    {% endif %}
     {% endif %}
     {% endfor %}
     
