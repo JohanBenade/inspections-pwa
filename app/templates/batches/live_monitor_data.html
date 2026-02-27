@@ -63,7 +63,7 @@
     {% for insp in inspectors %}
     {% set bar_pct = (insp.units_done / insp.units_total * 100)|round|int if insp.units_total else 0 %}
     <div class="race-row">
-        <div class="race-avatar {% if insp.is_idle %}idle{% endif %}">{{ insp.initials }}</div>
+        <div class="race-avatar {% if insp.is_idle %}idle{% endif %}" style="background:#2A2A2A;color:#9A9A9A;">{{ insp.initials }}</div>
         <div class="race-name {% if insp.is_idle %}idle{% endif %}">{{ insp.name }}</div>
         <div class="race-bar-track">
             <div class="race-bar-fill {% if insp.is_idle %}race-bar-idle{% else %}race-bar-neutral{% if insp.current_unit %} active{% endif %}{% endif %}"
@@ -139,7 +139,7 @@
                         {% if a.defects > 0 %}
                         <span class="area-defects-badge">{{ a.defects }}</span>
                         {% endif %}
-                        {% if a.duration and a.duration > 1 %}
+                        {% if a.duration and a.duration > 1 and a.duration <= 120 %}
                         <span class="area-time">{% if a.duration > 60 %}{{ (a.duration // 60) }}h{{ (a.duration % 60) }}m{% else %}{{ a.duration }}m{% endif %}</span>
                         {% endif %}
                     </div>
@@ -223,7 +223,7 @@
                              style="width: {% if bar_width < 8 %}8{% else %}{{ bar_width }}{% endif %}%;">{% if bar_width >= 25 %}<span class="bar-pct-label">{{ defect_share }}%</span>{% endif %}</div>
                     </div>
                     <div class="defect-count">{{ a.defects }}</div>
-                    {% if a.duration and a.duration > 1 %}
+                    {% if a.duration and a.duration > 1 and a.duration <= 120 %}
                     <div class="defect-time">{% if a.duration > 60 %}{{ (a.duration // 60) }}h{{ (a.duration % 60) }}m{% else %}{{ a.duration }}m{% endif %}</div>
                     {% else %}
                     <div class="defect-time"></div>
