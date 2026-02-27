@@ -696,6 +696,14 @@ def _build_live_monitor_data(batch_id, tenant_id):
     defect_rate = round(live_defects / total_non_skipped * 100, 1) if total_non_skipped else 0
     avg_defects = round(live_defects / units_with_marks, 1) if units_with_marks else 0
 
+    # Zone summary for header
+    zones = {}
+    for u in units:
+        key = (u["block"], u["floor_label"])
+        zones[key] = zones.get(key, 0) + 1
+    zone_parts = ["{} {} ({})".format(b, f, n) for (b, f), n in sorted(zones.items())]
+    batch_zones = " | ".join(zone_parts)
+
     return {
         'batch': batch,
         'units': units,
@@ -718,6 +726,7 @@ def _build_live_monitor_data(batch_id, tenant_id):
         'defect_rate': defect_rate,
         'avg_defects': avg_defects,
         'total_items_inspected': items_marked,
+        'batch_zones': batch_zones,
     }
 
 

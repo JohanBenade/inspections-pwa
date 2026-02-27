@@ -322,7 +322,7 @@
     <div class="command-right">
         <div class="batch-info">
             <div class="batch-name">{{ batch.name }}</div>
-            <div class="batch-date">{{ total_units }} units</div>
+            <div class="batch-date">{{ total_units }} units &middot; {{ batch_zones }}</div>
         </div>
         <span class="clock" id="clock"></span>
         <a href="{{ url_for('batches.detail', batch_id=batch.id) }}" class="back-link">Back to Batch</a>
