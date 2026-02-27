@@ -615,6 +615,8 @@ def _build_live_monitor_data(batch_id, tenant_id):
                 'initials': _get_initials(u['inspector_name']),
                 'units_total': 0,
                 'units_done': 0,
+                'items_marked': 0,
+                'items_total': 0,
                 'durations': [],
                 'current_unit': None,
                 'last_activity': None,
@@ -624,6 +626,8 @@ def _build_live_monitor_data(batch_id, tenant_id):
             }
         im = inspector_map[iid]
         im['units_total'] += 1
+        im['items_marked'] += u.get('total_marked', 0)
+        im['items_total'] += u.get('total_items', 0)
 
         if u['insp_status'] in ('submitted', 'reviewed', 'approved'):
             im['units_done'] += 1
@@ -643,6 +647,8 @@ def _build_live_monitor_data(batch_id, tenant_id):
         if im['durations']:
             im['avg_pace'] = round(sum(im['durations']) / len(im['durations']))
         del im['durations']
+
+        im['items_pct'] = round(im['items_marked'] / im['items_total'] * 100) if im['items_total'] else 0
 
         if im['last_activity']:
             last_dt = _parse_iso(im['last_activity'])

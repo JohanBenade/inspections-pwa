@@ -61,13 +61,12 @@
 <div class="race-strip">
     <div class="race-title">Inspector Progress</div>
     {% for insp in inspectors %}
-    {% set bar_pct = (insp.units_done / insp.units_total * 100)|round|int if insp.units_total else 0 %}
     <div class="race-row">
         <div class="race-avatar {% if insp.is_idle %}idle{% endif %}" style="background:#2A2A2A;color:#9A9A9A;">{{ insp.initials }}</div>
         <div class="race-name {% if insp.is_idle %}idle{% endif %}">{{ insp.name }}</div>
         <div class="race-bar-track">
             <div class="race-bar-fill {% if insp.is_idle %}race-bar-idle{% else %}race-bar-neutral{% if insp.current_unit %} active{% endif %}{% endif %}"
-                 style="width: {{ bar_pct }}%;"></div>
+                 style="width: {{ insp.items_pct }}%;">{% if insp.items_pct >= 10 %}<span class="bar-pct-label">{{ insp.items_pct }}%</span>{% endif %}</div>
         </div>
         <div class="race-stats">
             <div class="race-stat">
