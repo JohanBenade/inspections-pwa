@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% block title %}Defects Cleanup{% endblock %}
 
-{% block head_extra %}
+{% block extra_head %}
 <style>
     .cleanup-header {
         display: flex; align-items: center; justify-content: space-between;
@@ -9,18 +9,17 @@
         flex-wrap: wrap; gap: 0.75rem;
     }
     .cleanup-title { font-size: 1.4rem; font-weight: 700; color: #1a1a1a; }
-    .cleanup-nav { display: flex; gap: 0.5rem; }
-    .cleanup-nav a {
+    .cleanup-subtitle { font-size: 0.8rem; color: #6b7280; margin-top: 0.15rem; }
+    .cleanup-back {
         padding: 0.4rem 1rem; border-radius: 6px; font-size: 0.85rem;
-        text-decoration: none; font-weight: 500;
+        text-decoration: none; font-weight: 500; background: #f3f4f6; color: #374151;
     }
-    .cleanup-nav a.active { background: #1a1a1a; color: #fff; }
-    .cleanup-nav a:not(.active) { background: #f3f4f6; color: #374151; }
-    .cleanup-nav a:not(.active):hover { background: #e5e7eb; }
+    .cleanup-back:hover { background: #e5e7eb; }
 
     /* Stats strip */
     .stats-strip {
-        display: flex; gap: 1px; background: #e5e7eb; margin: 0;
+        display: flex !important; flex-direction: row !important;
+        gap: 1px; background: #e5e7eb; margin: 0;
     }
     .stat-card {
         flex: 1; padding: 0.6rem 1rem; background: #fff; text-align: center;
@@ -28,7 +27,7 @@
     .stat-value { font-size: 1.3rem; font-weight: 700; font-family: monospace; }
     .stat-label { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.05em; color: #6b7280; }
     .stat-value.placeholder { color: #dc2626; }
-    .stat-value.new { color: #d97706; }
+    .stat-value.new-val { color: #d97706; }
     .stat-value.clean { color: #16a34a; }
 
     /* Filter bar */
@@ -137,6 +136,7 @@
     .edit-panel input[type="text"], .edit-panel select {
         width: 100%; padding: 0.5rem 0.75rem; border: 1px solid #d1d5db;
         border-radius: 6px; font-size: 0.9rem; margin-bottom: 0.75rem;
+        box-sizing: border-box;
     }
     .edit-panel input[type="text"]:focus {
         outline: none; border-color: #2563eb; box-shadow: 0 0 0 2px rgba(37,99,235,0.15);
@@ -199,11 +199,9 @@
 <div class="cleanup-header">
     <div>
         <div class="cleanup-title">Defects Cleanup</div>
+        <div class="cleanup-subtitle">Review and standardise defect descriptions on submitted units</div>
     </div>
-    <div class="cleanup-nav">
-        <a href="{{ url_for('approvals.cleanup') }}" class="active">Cleanup</a>
-        <a href="{{ url_for('approvals.pipeline') }}">Review Pipeline</a>
-    </div>
+    <a href="{{ url_for('approvals.pipeline') }}" class="cleanup-back">&#8592; Review Pipeline</a>
 </div>
 
 <!-- Stats -->
@@ -217,7 +215,7 @@
         <div class="stat-label">Placeholders</div>
     </div>
     <div class="stat-card">
-        <div class="stat-value new">{{ stats.new }}</div>
+        <div class="stat-value new-val">{{ stats.new }}</div>
         <div class="stat-label">New (not in library)</div>
     </div>
     <div class="stat-card">
