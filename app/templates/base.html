@@ -82,8 +82,10 @@
                         {% if current_user.role == 'team_lead' %}
                         <a href="{{ url_for('certification.my_reviews') }}" class="text-sm text-gray-300 hover:text-white">My Reviews</a>
                         <a href="{{ url_for('certification.my_inspections') }}" class="text-sm text-gray-300 hover:text-white">My Inspections</a>
+                        <a href="{{ url_for('approvals.cleanup') }}" class="text-sm text-gray-300 hover:text-white">Defects Cleanup</a>
                         {% endif %}
                         {% if current_user.role in ['manager', 'admin'] %}
+                        <a href="{{ url_for('approvals.cleanup') }}" class="text-sm text-gray-300 hover:text-white">Defects Cleanup</a>
                         <a href="{{ url_for('approvals.pipeline') }}" class="text-sm text-gray-300 hover:text-white">Approvals</a>
                         <a href="{{ url_for('analytics.dashboard') }}" class="text-sm text-gray-300 hover:text-white">Analytics</a>
                         <a href="{{ url_for('analytics.reports') }}" class="text-sm text-gray-300 hover:text-white">Reports</a>
