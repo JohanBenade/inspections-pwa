@@ -201,7 +201,7 @@
         <div class="cleanup-title">Defects Cleanup</div>
         <div class="cleanup-subtitle">Review and standardise defect descriptions on submitted units</div>
     </div>
-    <a href="{{ url_for('approvals.pipeline') }}" class="cleanup-back">&#8592; Review Pipeline</a>
+    <a href="{{ url_for('certification.my_reviews') }}" class="cleanup-back">&#8592; My Reviews</a>
 </div>
 
 <!-- Stats -->
@@ -224,6 +224,9 @@
     </div>
 </div>
 
+{% if filtered_inspector %}
+<div style="margin: -8px 0 8px 0; font-size: 0.95rem; color: #475569;">Inspector: <strong>{{ filtered_inspector }}</strong></div>
+{% endif %}
 <!-- Filters -->
 <div class="filter-bar">
     <span class="filter-label">Filter:</span>

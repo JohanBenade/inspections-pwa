@@ -910,8 +910,14 @@ def cleanup():
         'clean': sum(1 for d in filtered if d['cleanup_status'] == 'clean'),
     }
 
+    # Inspector name when unit filtered
+    filtered_inspector = ''
+    if f_unit and filtered:
+        filtered_inspector = filtered[0].get('inspector_name', '')
+
     return render_template('approvals/cleanup.html',
                            defects=filtered, stats=stats,
+                           filtered_inspector=filtered_inspector,
                            filters={'unit': f_unit, 'area': f_area,
                                     'category': f_category, 'item': f_item,
                                     'subitem': f_subitem, 'status': f_status,
