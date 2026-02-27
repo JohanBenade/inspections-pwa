@@ -648,7 +648,10 @@ def _build_live_monitor_data(batch_id, tenant_id):
             im['avg_pace'] = round(sum(im['durations']) / len(im['durations']))
         del im['durations']
 
-        im['items_pct'] = round(im['items_marked'] / im['items_total'] * 100) if im['items_total'] else 0
+        # Use max items per unit * total units as denominator (covers not-started units with 0 items)
+        max_ipu = max((u.get('total_items', 0) for u in units), default=0)
+        expected_total = im['units_total'] * max_ipu
+        im['items_pct'] = round(im['items_marked'] / expected_total * 100) if expected_total else 0
 
         if im['last_activity']:
             last_dt = _parse_iso(im['last_activity'])

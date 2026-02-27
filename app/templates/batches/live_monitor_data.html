@@ -66,7 +66,7 @@
         <div class="race-name {% if insp.is_idle %}idle{% endif %}">{{ insp.name }}</div>
         <div class="race-bar-track">
             <div class="race-bar-fill {% if insp.is_idle %}race-bar-idle{% else %}race-bar-neutral{% if insp.current_unit %} active{% endif %}{% endif %}"
-                 style="width: {{ insp.items_pct }}%;">{% if insp.items_pct >= 10 %}<span class="bar-pct-label">{{ insp.items_pct }}%</span>{% endif %}</div>
+                 style="width: {{ insp.items_pct }}%;">{% if insp.items_pct >= 3 %}<span class="bar-pct-label">{{ insp.items_pct }}%</span>{% endif %}</div>
         </div>
         <div class="race-stats">
             <div class="race-stat">
