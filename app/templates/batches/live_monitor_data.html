@@ -74,11 +74,11 @@
                 <div class="race-stat-label">Units</div>
             </div>
             <div class="race-stat">
-                <div class="race-stat-value">{% if insp.avg_pace %}{{ insp.avg_pace }}m{% else %}--{% endif %}</div>
+                <div class="race-stat-value">{% if insp.avg_pace %}{{ insp.avg_pace // 60 }}:{{ "%02d" % (insp.avg_pace % 60) }}{% else %}--{% endif %}</div>
                 <div class="race-stat-label">Avg/Unit</div>
             </div>
             {% if insp.is_idle %}
-            <span class="race-idle-tag">IDLE {{ insp.idle_minutes }}m</span>
+            <span class="race-idle-tag">IDLE {{ insp.idle_minutes // 60 }}:{{ "%02d" % (insp.idle_minutes % 60) }}</span>
             {% elif insp.current_unit %}
             <span class="race-current">Unit {{ insp.current_unit }}</span>
             {% endif %}
@@ -143,7 +143,7 @@
                     <span class="area-defects-badge">{{ a.defects }}</span>
                     {% endif %}
                     {% if a.duration and a.duration > 1 and a.duration <= 120 %}
-                    <span class="area-time">{{ a.duration }}m</span>
+                    <span class="area-time">{{ a.duration // 60 }}:{{ "%02d" % (a.duration % 60) }}</span>
                     {% endif %}
                 </div>
             </div>
@@ -231,7 +231,7 @@
                 </div>
                 <div class="defect-count" style="color: #C44D3F;">{{ a.defects }}</div>
                 {% if a.duration and a.duration > 1 and a.duration <= 120 %}
-                <div class="defect-time">{{ a.duration }}m</div>
+                <div class="defect-time">{{ a.duration // 60 }}:{{ "%02d" % (a.duration % 60) }}</div>
                 {% else %}
                 <div class="defect-time"></div>
                 {% endif %}
