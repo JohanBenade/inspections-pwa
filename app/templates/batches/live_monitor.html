@@ -66,7 +66,7 @@
         .ring-fill.green { stroke: #4A7C59; filter: drop-shadow(0 0 6px rgba(74, 124, 89, 0.4)); }
         .ring-center { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); text-align: center; }
         .ring-pct { font-family: 'DM Mono', monospace; font-size: 1.6rem; font-weight: 700; color: #FAFAF8; line-height: 1; }
-        .ring-label { font-size: 0.55rem; text-transform: uppercase; letter-spacing: 0.1em; color: #6B6B6B; margin-top: 0.2rem; }
+        .ring-label { font-size: 0.55rem; text-transform: uppercase; letter-spacing: 0.1em; color: #9A9A9A; margin-top: 0.2rem; }
 
         .kpi-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 1px; background: #1A1A1A; }
         .kpi-card { background: #0D0D0D; padding: 1rem 1.25rem; display: flex; flex-direction: column; justify-content: center; }
@@ -76,7 +76,7 @@
         .kpi-value.red { color: #C44D3F; }
         .kpi-value.white { color: #FAFAF8; }
         .kpi-label { font-size: 0.6rem; text-transform: uppercase; letter-spacing: 0.1em; color: #7A7A7A; font-weight: 600; margin-top: 0.25rem; }
-        .kpi-sub { font-family: 'DM Mono', monospace; font-size: 0.65rem; color: #6B6B6B; margin-top: 0.15rem; }
+        .kpi-sub { font-family: 'DM Mono', monospace; font-size: 0.65rem; color: #9A9A9A; margin-top: 0.15rem; }
         .elapsed-cell { display: flex; flex-direction: column; justify-content: center; padding: 1rem 1.25rem; background: #0D0D0D; }
         .elapsed-value { font-family: 'DM Mono', monospace; font-size: 1.4rem; font-weight: 700; color: #FAFAF8; }
         .elapsed-started { font-family: 'DM Mono', monospace; font-size: 0.6rem; color: #7A7A7A; margin-top: 0.15rem; }
@@ -129,7 +129,7 @@
         .race-name.idle { color: #7A7A7A; }
         .race-bar-track { flex: 1; height: 20px; background: #111111; border-radius: 4px; overflow: hidden; }
         .race-bar-fill { height: 100%; border-radius: 4px; transition: width 1.5s ease; }
-        .race-bar-neutral { background: linear-gradient(90deg, #7A7A7A, #6B6B6B); }
+        .race-bar-neutral { background: linear-gradient(90deg, #7A7A7A, #9A9A9A); }
         .race-bar-neutral.active { animation: bar-shimmer 2s ease-in-out infinite; }
         @keyframes bar-shimmer {
             0%, 100% { filter: brightness(1); }
@@ -165,7 +165,7 @@
         .unit-header { display: flex; align-items: center; justify-content: space-between; gap: 1rem; }
         .unit-header-left { display: flex; align-items: baseline; gap: 0.75rem; }
         .unit-number { font-family: 'DM Mono', monospace; font-size: 1.5rem; font-weight: 700; color: #C8963E; }
-        .unit-meta { font-size: 0.7rem; color: #6B6B6B; text-transform: uppercase; letter-spacing: 0.05em; }
+        .unit-meta { font-size: 0.7rem; color: #9A9A9A; text-transform: uppercase; letter-spacing: 0.05em; }
         .unit-inspector { font-size: 0.8rem; font-weight: 500; color: #9A9A9A; }
         .unit-header-right { display: flex; align-items: baseline; gap: 0.75rem; text-align: right; }
 
@@ -194,7 +194,7 @@
 
         .area-bars { display: flex; flex-direction: column; gap: 0.3rem; margin-top: 0.75rem; }
         .area-row { display: flex; align-items: center; gap: 0.5rem; }
-        .area-label { width: 100px; font-size: 0.6rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: #6B6B6B; text-align: right; flex-shrink: 0; }
+        .area-label { width: 100px; font-size: 0.6rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: #9A9A9A; text-align: right; flex-shrink: 0; }
         .area-bar-track { flex: 1; height: 16px; background: #1A1A1A; border-radius: 3px; overflow: hidden; }
         .area-bar-fill { height: 100%; border-radius: 3px; transition: width 1s ease; }
         .bar-green { background: linear-gradient(90deg, #3A6A49, #4A7C59); }
@@ -225,7 +225,7 @@
         .defect-hero.severity-green { color: #4A7C59; }
         .defect-hero.severity-gold { color: #C8963E; }
         .defect-hero.severity-red { color: #C44D3F; }
-        .defect-hero-label { font-size: 0.55rem; color: #6B6B6B; text-transform: uppercase; letter-spacing: 0.05em; }
+        .defect-hero-label { font-size: 0.55rem; color: #9A9A9A; text-transform: uppercase; letter-spacing: 0.05em; }
 
         .unit-timing { display: flex; gap: 1.5rem; margin-top: 0.15rem; }
         .timing-item { font-family: 'DM Mono', monospace; font-size: 0.6rem; color: #7A7A7A; }
@@ -233,7 +233,7 @@
 
         .defect-bars { display: flex; flex-direction: column; gap: 0.25rem; margin-top: 0.75rem; }
         .defect-row { display: flex; align-items: center; gap: 0.5rem; }
-        .defect-area-label { width: 100px; font-size: 0.6rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: #6B6B6B; text-align: right; flex-shrink: 0; }
+        .defect-area-label { width: 100px; font-size: 0.6rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: #9A9A9A; text-align: right; flex-shrink: 0; }
         .defect-bar-track { flex: 1; height: 14px; background: #1A1A1A; border-radius: 3px; overflow: hidden; }
         .defect-bar-fill { height: 100%; border-radius: 3px; transition: width 0.8s ease; }
         .defect-bar-fill.bar-red { background: linear-gradient(90deg, #9A3A30, #C44D3F); }
@@ -246,7 +246,7 @@
         .unit-card.waiting { opacity: 0.85; }
         .unit-card.waiting .unit-number { color: #9A9A9A; }
         .unit-card.waiting .unit-inspector { color: #7A7A7A; }
-        .unit-empty { font-size: 0.75rem; color: #6B6B6B; padding: 0.5rem 0; }
+        .unit-empty { font-size: 0.75rem; color: #9A9A9A; padding: 0.5rem 0; }
 
         /* ========== ACTIVITY FEED ========== */
         .feed-panel { background: #0D0D0D; border-left: 1px solid #1A1A1A; padding: 1.25rem; overflow-y: auto; }
@@ -258,7 +258,7 @@
         .feed-top { display: flex; justify-content: space-between; align-items: baseline; }
         .feed-inspector { font-weight: 600; font-size: 0.75rem; color: #FAFAF8; }
         .feed-time { font-family: 'DM Mono', monospace; font-size: 0.6rem; color: #7A7A7A; }
-        .feed-detail { font-size: 0.7rem; color: #6B6B6B; margin-top: 0.15rem; line-height: 1.4; }
+        .feed-detail { font-size: 0.7rem; color: #9A9A9A; margin-top: 0.15rem; line-height: 1.4; }
         .feed-desc { color: #9A9A9A; font-style: italic; }
         .feed-badge-nts { display: inline-block; padding: 0.1rem 0.35rem; border-radius: 3px; font-size: 0.55rem; font-weight: 700; text-transform: uppercase; background: rgba(196, 77, 63, 0.2); color: #C44D3F; }
         .feed-badge-ok { display: inline-block; padding: 0.1rem 0.35rem; border-radius: 3px; font-size: 0.55rem; font-weight: 700; text-transform: uppercase; background: rgba(74, 124, 89, 0.2); color: #4A7C59; }
@@ -270,7 +270,7 @@
         .time-stale { color: #C44D3F !important; }
 
         /* ========== EMPTY STATE ========== */
-        .empty-state { display: flex; align-items: center; justify-content: center; height: 200px; color: #6B6B6B; font-size: 0.9rem; }
+        .empty-state { display: flex; align-items: center; justify-content: center; height: 200px; color: #9A9A9A; font-size: 0.9rem; }
 
         /* ========== RESPONSIVE ========== */
         @media (max-width: 1200px) {
