@@ -88,192 +88,160 @@
 </div>
 {% endif %}
 
-<!-- MAIN CONTENT -->
+<!-- UNIT CARDS (full width, no feed) -->
 <div class="main-area">
-
-    <!-- UNIT PROGRESS PANEL -->
-    <div class="unit-panel">
-        {# === ACTIVE CARDS === #}
-        <div class="active-grid">
-        {% for u in units %}
-        {% if u.insp_status == 'in_progress' %}
-        <!-- IN PROGRESS CARD -->
-        <div class="unit-card active {% if u.is_idle %}idle-unit{% endif %}"
-             {% if u.last_activity %}data-last-activity="{{ u.last_activity }}"{% endif %}>
-            <div class="unit-header">
-                <div class="unit-header-left">
-                    <span class="unit-number">{{ u.unit_number }}</span>
-                    <span class="progress-badge">{{ u.pct }}%</span>
-                    <span class="unit-meta">{{ u.block }} {{ u.floor_label }} &middot; C{{ u.cycle_number }}</span>
-                </div>
-                <div style="flex: 1;">
-                    {% if u.inspector_name %}
-                    <span class="unit-inspector">{{ u.inspector_name }}</span>
-                    {% else %}
-                    <span class="unit-inspector" style="color: #9A9A9A;">Unassigned</span>
-                    {% endif %}
-                    {% if u.started_iso %}
-                    <span class="unit-elapsed {% if u.is_idle %}idle-timer{% endif %}"
-                          data-unit-started="{{ u.started_iso }}">...</span>
-                    {% endif %}
-                </div>
-                <div class="unit-header-right">
-                    <span class="unit-counts">{{ u.total_marked }}/{{ u.total_items }}</span>
-                    {% if u.total_defects > 0 %}
-                    <span class="unit-defects-small">{{ u.total_defects }} defect{{ 's' if u.total_defects != 1 }}</span>
-                    {% endif %}
-                </div>
+<div class="unit-panel">
+    {# === ACTIVE CARDS === #}
+    <div class="active-grid">
+    {% for u in units %}
+    {% if u.insp_status == 'in_progress' %}
+    <!-- IN PROGRESS CARD -->
+    <div class="unit-card active {% if u.is_idle %}idle-unit{% endif %}"
+         {% if u.last_activity %}data-last-activity="{{ u.last_activity }}"{% endif %}>
+        <div class="unit-header">
+            <div class="unit-header-left">
+                <span class="unit-number">{{ u.unit_number }}</span>
+                <span class="progress-badge">{{ u.pct }}%</span>
+                <span class="unit-meta">{{ u.block }} {{ u.floor_label }} &middot; C{{ u.cycle_number }}</span>
             </div>
-            {% if u.areas %}
-            <div class="area-bars">
-                {% for a in u.areas %}
-                <div class="area-row">
-                    <div class="area-label">{{ a.area }}</div>
-                    <div class="area-bar-track">
-                        <div class="area-bar-fill {% if a.pct >= 100 %}bar-green{% elif a.pct > 0 %}bar-gold{% endif %}"
-                             style="width: {{ a.pct }}%;">{% if a.pct >= 25 %}<span class="bar-pct-label">{{ a.pct }}%</span>{% endif %}</div>
-                    </div>
-                    <div class="area-stats">
-                        <span class="area-count">{{ a.marked }}/{{ a.total }}</span>
-                        {% if a.defects > 0 %}
-                        <span class="area-defects-badge">{{ a.defects }}</span>
-                        {% endif %}
-                        {% if a.duration and a.duration > 1 and a.duration <= 120 %}
-                        <span class="area-time">{% if a.duration > 60 %}{{ (a.duration // 60) }}h{{ (a.duration % 60) }}m{% else %}{{ a.duration }}m{% endif %}</span>
-                        {% endif %}
-                    </div>
+            <div style="flex: 1;">
+                {% if u.inspector_name %}
+                <span class="unit-inspector">{{ u.inspector_name }}</span>
+                {% else %}
+                <span class="unit-inspector" style="color: #9A9A9A;">Unassigned</span>
+                {% endif %}
+                {% if u.start_time %}
+                <div class="unit-timing">
+                    <span class="timing-item">Start <span class="timing-value">{{ u.start_time }}</span></span>
+                    <span class="timing-item">Duration <span class="timing-value unit-elapsed {% if u.is_idle %}idle-timer{% endif %}" data-unit-started="{{ u.started_iso }}">--:--</span></span>
                 </div>
-                {% endfor %}
+                {% endif %}
             </div>
-            {% endif %}
-        </div>
-
-        {% endif %}
-        {% endfor %}
-        </div>
-
-        {# === WAITING STRIP === #}
-        {% set waiting_units = units|selectattr('insp_status', 'equalto', 'not_started')|list %}
-        {% if waiting_units %}
-        <div class="waiting-strip">
-            <div class="waiting-strip-title">Waiting ({{ waiting_units|length }})</div>
-            <div class="waiting-chips">
-                {% for u in waiting_units %}
-                <div class="waiting-chip">
-                    <span class="waiting-chip-number">{{ u.unit_number }}</span>
-                    <span class="waiting-chip-meta">{{ u.block }} {{ u.floor_label }}</span>
-                    {% if u.inspector_name %}
-                    <span class="waiting-chip-inspector">{{ u.inspector_name }}</span>
-                    {% else %}
-                    <span class="waiting-chip-unassigned">Unassigned</span>
-                    {% endif %}
-                </div>
-                {% endfor %}
+            <div class="unit-header-right">
+                <span class="unit-counts">{{ u.total_marked }}/{{ u.total_items }}</span>
+                {% if u.total_defects > 0 %}
+                <span class="unit-defects-small">{{ u.total_defects }} defect{{ 's' if u.total_defects != 1 }}</span>
+                {% endif %}
             </div>
         </div>
-        {% endif %}
-
-        {# === COMPLETED CARDS === #}
-        <div class="completed-grid">
-        {% for u in units %}
-        {% if u.insp_status in ['submitted','reviewed','approved'] %}
-        <!-- COMPLETED CARD -->
-        <div class="unit-card done severity-{{ u.severity }}">
-            <div class="unit-header">
-                <div class="unit-header-left">
-                    <span class="unit-number">{{ u.unit_number }}</span>
-                    <span class="complete-badge severity-{{ u.severity }}">&#10003; Complete</span>
-                    <span class="unit-meta">{{ u.block }} {{ u.floor_label }} &middot; C{{ u.cycle_number }}</span>
+        {% if u.areas %}
+        <div class="area-bars">
+            {% for a in u.areas %}
+            <div class="area-row">
+                <div class="area-label">{{ a.area }}</div>
+                <div class="area-bar-track">
+                    <div class="area-bar-fill {% if a.pct >= 100 %}bar-green{% elif a.pct > 0 %}bar-gold{% endif %}"
+                         style="width: {{ a.pct }}%;">{% if a.pct >= 25 %}<span class="bar-pct-label">{{ a.pct }}%</span>{% endif %}</div>
                 </div>
-                <div style="flex: 1;">
-                    {% if u.inspector_name %}
-                    <span class="unit-inspector">{{ u.inspector_name }}</span>
-                    {% else %}
-                    <span class="unit-inspector" style="color: #9A9A9A;">Unassigned</span>
+                <div class="area-stats">
+                    <span class="area-count">{{ a.marked }}/{{ a.total }}</span>
+                    {% if a.defects > 0 %}
+                    <span class="area-defects-badge">{{ a.defects }}</span>
                     {% endif %}
-                    {% if u.start_time %}
-                    <div class="unit-timing">
-                        <span class="timing-item">Start <span class="timing-value">{{ u.start_time }}</span></span>
-                        {% if u.end_time %}
-                        <span class="timing-item">End <span class="timing-value">{{ u.end_time }}</span></span>
-                        {% endif %}
-                        {% if u.duration_minutes and u.duration_minutes > 1 %}
-                        <span class="timing-item">Duration <span class="timing-value">{% if u.duration_minutes > 60 %}{{ (u.duration_minutes // 60) }}h {{ (u.duration_minutes % 60) }}m{% else %}{{ u.duration_minutes }}m{% endif %}</span></span>
-                        {% endif %}
-                    </div>
-                    {% endif %}
-                </div>
-                <div class="unit-header-right" style="flex-direction: column; align-items: flex-end; gap: 0;">
-                    <span class="defect-hero severity-{{ u.severity }}">{{ u.total_defects }}</span>
-                    <span class="defect-hero-label">defects</span>
-                </div>
-            </div>
-            {% if u.areas and u.total_defects > 0 %}
-            {% set max_area_defects = u.areas|map(attribute='defects')|max %}
-            <div class="defect-bars">
-                {% for a in u.areas %}
-                {% if a.defects > 0 %}
-                {% set bar_width = (a.defects / max_area_defects * 100)|round(1) if max_area_defects else 0 %}
-                <div class="defect-row">
-                    <div class="defect-area-label">{{ a.area }}</div>
-                    <div class="defect-bar-track">
-                        {% set defect_share = (a.defects * 100 // u.total_defects) if u.total_defects else 0 %}
-                        <div class="defect-bar-fill {% if u.severity == 'red' %}bar-red{% elif u.severity == 'gold' %}bar-amber{% else %}bar-low{% endif %}"
-                             style="width: {% if defect_share < 8 %}8{% else %}{{ defect_share }}{% endif %}%;">{% if defect_share >= 15 %}<span class="bar-pct-label">{{ defect_share }}%</span>{% endif %}</div>
-                    </div>
-                    <div class="defect-count">{{ a.defects }}</div>
                     {% if a.duration and a.duration > 1 and a.duration <= 120 %}
-                    <div class="defect-time">{% if a.duration > 60 %}{{ (a.duration // 60) }}h{{ (a.duration % 60) }}m{% else %}{{ a.duration }}m{% endif %}</div>
-                    {% else %}
-                    <div class="defect-time"></div>
+                    <span class="area-time">{{ a.duration }}m</span>
+                    {% endif %}
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
+    </div>
+
+    {% endif %}
+    {% endfor %}
+    </div>
+
+    {# === WAITING STRIP === #}
+    {% set waiting_units = units|selectattr('insp_status', 'equalto', 'not_started')|list %}
+    {% if waiting_units %}
+    <div class="waiting-strip">
+        <div class="waiting-strip-title">Waiting ({{ waiting_units|length }})</div>
+        <div class="waiting-chips">
+            {% for u in waiting_units %}
+            <div class="waiting-chip">
+                <span class="waiting-chip-number">{{ u.unit_number }}</span>
+                <span class="waiting-chip-meta">{{ u.block }} {{ u.floor_label }}</span>
+                {% if u.inspector_name %}
+                <span class="waiting-chip-inspector">{{ u.inspector_name }}</span>
+                {% else %}
+                <span class="waiting-chip-unassigned">Unassigned</span>
+                {% endif %}
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+
+    {# === COMPLETED CARDS === #}
+    <div class="completed-grid">
+    {% for u in units %}
+    {% if u.insp_status in ['submitted','reviewed','approved'] %}
+    <!-- COMPLETED CARD -->
+    <div class="unit-card done severity-{{ u.severity }}">
+        <div class="unit-header">
+            <div class="unit-header-left">
+                <span class="unit-number">{{ u.unit_number }}</span>
+                <span class="complete-badge severity-{{ u.severity }}">&#10003; Complete</span>
+                <span class="unit-meta">{{ u.block }} {{ u.floor_label }} &middot; C{{ u.cycle_number }}</span>
+            </div>
+            <div style="flex: 1;">
+                {% if u.inspector_name %}
+                <span class="unit-inspector">{{ u.inspector_name }}</span>
+                {% else %}
+                <span class="unit-inspector" style="color: #9A9A9A;">Unassigned</span>
+                {% endif %}
+                {% if u.start_time %}
+                <div class="unit-timing">
+                    <span class="timing-item">Start <span class="timing-value">{{ u.start_time }}</span></span>
+                    {% if u.end_time %}
+                    <span class="timing-item">End <span class="timing-value">{{ u.end_time }}</span></span>
+                    {% endif %}
+                    {% if u.duration_minutes and u.duration_minutes > 1 and u.duration_minutes <= 120 %}
+                    <span class="timing-item">Duration <span class="timing-value">{{ u.duration_minutes // 60 }}:{{ '%02d' % (u.duration_minutes % 60) }}</span></span>
                     {% endif %}
                 </div>
                 {% endif %}
-                {% endfor %}
             </div>
-            {% elif u.areas and u.total_defects == 0 %}
-            <div class="unit-empty" style="color: #4A7C59;">No defects found</div>
+            <div class="unit-header-right" style="flex-direction: column; align-items: flex-end; gap: 0;">
+                <span class="defect-hero severity-{{ u.severity }}">{{ u.total_defects }}</span>
+                <span class="defect-hero-label">defects</span>
+            </div>
+        </div>
+        {% if u.areas and u.total_defects > 0 %}
+        {% set max_area_defects = u.areas|map(attribute='defects')|max %}
+        <div class="defect-bars">
+            {% for a in u.areas %}
+            {% if a.defects > 0 %}
+            {% set bar_width = (a.defects / max_area_defects * 100)|round(1) if max_area_defects else 0 %}
+            <div class="defect-row">
+                <div class="defect-area-label">{{ a.area }}</div>
+                <div class="defect-bar-track">
+                    {% set defect_share = (a.defects * 100 // u.total_defects) if u.total_defects else 0 %}
+                    <div class="defect-bar-fill {% if u.severity == 'red' %}bar-red{% elif u.severity == 'gold' %}bar-amber{% else %}bar-low{% endif %}"
+                         style="width: {% if defect_share < 8 %}8{% else %}{{ defect_share }}{% endif %}%;">{% if defect_share >= 15 %}<span class="bar-pct-label">{{ defect_share }}%</span>{% endif %}</div>
+                </div>
+                <div class="defect-count">{{ a.defects }}</div>
+                {% if a.duration and a.duration > 1 and a.duration <= 120 %}
+                <div class="defect-time">{{ a.duration }}m</div>
+                {% else %}
+                <div class="defect-time"></div>
+                {% endif %}
+            </div>
             {% endif %}
+            {% endfor %}
         </div>
-
-        {% endif %}
-        {% endfor %}
-        </div>
-
-        {% if not units %}
-        <div class="empty-state">No units in this batch.</div>
+        {% elif u.areas and u.total_defects == 0 %}
+        <div class="unit-empty" style="color: #4A7C59;">No defects found</div>
         {% endif %}
     </div>
 
-    <!-- ACTIVITY FEED -->
-    <div class="feed-panel">
-        <div class="feed-title">Activity Feed</div>
-        {% if feed %}
-        {% for f in feed %}
-        <div class="feed-item {% if f.item_status in ['not_to_standard','not_installed'] %}defect-flash{% endif %}">
-            <div class="feed-avatar">{{ f.initials }}</div>
-            <div class="feed-content">
-                <div class="feed-top">
-                    <span class="feed-inspector">{{ f.inspector_name }}</span>
-                    <span class="feed-time" data-timestamp="{{ f.marked_at }}">...</span>
-                </div>
-                <div class="feed-detail">
-                    Unit {{ f.unit_number }} &rsaquo; {{ f.area_name }} &rsaquo; {{ f.category_name }}
-                    {% if f.item_status == 'not_to_standard' %}
-                    <span class="feed-badge-nts">NTS</span>
-                    {% elif f.item_status == 'not_installed' %}
-                    <span class="feed-badge-ni">NI</span>
-                    {% else %}
-                    <span class="feed-badge-ok">OK</span>
-                    {% endif %}
-                </div>
-                <div class="feed-detail"><span class="feed-desc">{{ f.item_description }}</span></div>
-            </div>
-        </div>
-        {% endfor %}
-        {% else %}
-        <div class="empty-state" style="height: 100px;">No activity yet</div>
-        {% endif %}
+    {% endif %}
+    {% endfor %}
     </div>
 
+    {% if not units %}
+    <div class="empty-state">No units in this batch.</div>
+    {% endif %}
+</div>
 </div>
