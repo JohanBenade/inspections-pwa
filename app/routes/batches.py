@@ -660,7 +660,7 @@ def _build_live_monitor_data(batch_id, tenant_id):
                 im["is_idle"] = idle_secs > 600 and im["items_pct"] < 100
                 im['idle_minutes'] = int(idle_secs / 60) if im['is_idle'] else 0
 
-    inspectors = sorted(inspector_map.values(), key=lambda x: x['name'])
+    inspectors = sorted(inspector_map.values(), key=lambda x: x['items_pct'], reverse=True)
 
     # --- Activity feed (last 20) ---
     feed = []
