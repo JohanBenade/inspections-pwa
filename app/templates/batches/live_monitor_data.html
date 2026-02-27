@@ -219,9 +219,9 @@
                 <div class="defect-bar-track">
                     {% set defect_share = (a.defects * 100 // u.total_defects) if u.total_defects else 0 %}
                     <div class="defect-bar-fill {% if u.severity == 'red' %}bar-red{% elif u.severity == 'gold' %}bar-amber{% else %}bar-low{% endif %}"
-                         style="width: {% if defect_share < 8 %}8{% else %}{{ defect_share }}{% endif %}%;">{% if defect_share >= 15 %}<span class="bar-pct-label">{{ defect_share }}%</span>{% endif %}</div>
+                         style="width: {% if defect_share < 8 %}8{% else %}{{ defect_share }}{% endif %}%;"></div>
                 </div>
-                <div class="defect-count">{{ a.defects }}</div>
+                <div class="defect-count" style="color: #C44D3F;">{{ a.defects }}</div>
                 {% if a.duration and a.duration > 1 and a.duration <= 120 %}
                 <div class="defect-time">{{ a.duration }}m</div>
                 {% else %}
