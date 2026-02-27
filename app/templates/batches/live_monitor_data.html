@@ -92,6 +92,10 @@
 <div class="main-area">
 <div class="unit-panel">
     {# === ACTIVE CARDS === #}
+    {% set active_count = units|selectattr('insp_status', 'equalto', 'in_progress')|list|length %}
+    {% if active_count %}
+    <div class="section-header">In Progress ({{ active_count }})</div>
+    {% endif %}
     <div class="active-grid">
     {% for u in units %}
     {% if u.insp_status == 'in_progress' %}
@@ -174,6 +178,10 @@
     {% endif %}
 
     {# === COMPLETED CARDS === #}
+    {% set completed_count = units|rejectattr('insp_status', 'equalto', 'in_progress')|rejectattr('insp_status', 'equalto', 'not_started')|list|length %}
+    {% if completed_count %}
+    <div class="section-header">Completed ({{ completed_count }})</div>
+    {% endif %}
     <div class="completed-grid">
     {% for u in units %}
     {% if u.insp_status in ['submitted','reviewed','approved'] %}

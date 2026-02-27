@@ -704,6 +704,14 @@ def _build_live_monitor_data(batch_id, tenant_id):
     zone_parts = ["{} {} ({})".format(b, f, n) for (b, f), n in sorted(zones.items())]
     batch_zones = " | ".join(zone_parts)
 
+    # Sort: in_progress by unit_number, then not_started, then completed by defects DESC
+    status_order = {'in_progress': 0, 'not_started': 1}
+    units.sort(key=lambda u: (
+        status_order.get(u.get('insp_status', ''), 2),
+        u.get('unit_number', '') if u.get('insp_status') in ('in_progress', 'not_started') else '',
+        -(u.get('total_defects', 0) or 0)
+    ))
+
     return {
         'batch': batch,
         'units': units,
