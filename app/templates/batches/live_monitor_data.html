@@ -94,12 +94,9 @@
 
     <!-- UNIT PROGRESS PANEL -->
     <div class="unit-panel">
+        {# === ACTIVE CARDS === #}
         {% for u in units %}
-        {% set is_active = u.insp_status == 'in_progress' %}
-        {% set is_done = u.insp_status in ['submitted','reviewed','approved'] %}
-        {% set is_waiting = u.insp_status == 'not_started' %}
-
-        {% if is_active %}
+        {% if u.insp_status == 'in_progress' %}
         <!-- IN PROGRESS CARD -->
         <div class="unit-card active {% if u.is_idle %}idle-unit{% endif %}"
              {% if u.last_activity %}data-last-activity="{{ u.last_activity }}"{% endif %}>
@@ -141,7 +138,7 @@
                         {% if a.defects > 0 %}
                         <span class="area-defects-badge">{{ a.defects }}</span>
                         {% endif %}
-                        {% if a.duration %}
+                        {% if a.duration and a.duration > 1 %}
                         <span class="area-time">{{ a.duration }}m</span>
                         {% endif %}
                     </div>
@@ -151,7 +148,33 @@
             {% endif %}
         </div>
 
-        {% elif is_done %}
+        {% endif %}
+        {% endfor %}
+
+        {# === WAITING STRIP === #}
+        {% set waiting_units = units|selectattr('insp_status', 'equalto', 'not_started')|list %}
+        {% if waiting_units %}
+        <div class="waiting-strip">
+            <div class="waiting-strip-title">Waiting ({{ waiting_units|length }})</div>
+            <div class="waiting-chips">
+                {% for u in waiting_units %}
+                <div class="waiting-chip">
+                    <span class="waiting-chip-number">{{ u.unit_number }}</span>
+                    <span class="waiting-chip-meta">{{ u.block }} {{ u.floor_label }}</span>
+                    {% if u.inspector_name %}
+                    <span class="waiting-chip-inspector">{{ u.inspector_name }}</span>
+                    {% else %}
+                    <span class="waiting-chip-unassigned">Unassigned</span>
+                    {% endif %}
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+
+        {# === COMPLETED CARDS === #}
+        {% for u in units %}
+        {% if u.insp_status in ['submitted','reviewed','approved'] %}
         <!-- COMPLETED CARD -->
         <div class="unit-card done severity-{{ u.severity }}">
             <div class="unit-header">
@@ -196,7 +219,7 @@
                              style="width: {{ bar_width }}%;"></div>
                     </div>
                     <div class="defect-count">{{ a.defects }}</div>
-                    {% if a.duration %}
+                    {% if a.duration and a.duration > 1 %}
                     <div class="defect-time">{{ a.duration }}m</div>
                     {% else %}
                     <div class="defect-time"></div>
@@ -210,26 +233,7 @@
             {% endif %}
         </div>
 
-        {% elif is_waiting %}
-        <!-- WAITING CARD -->
-        <div class="unit-card waiting">
-            <div class="unit-header">
-                <div class="unit-header-left">
-                    <span class="unit-number">{{ u.unit_number }}</span>
-                    <span class="unit-meta">{{ u.block }} {{ u.floor_label }} &middot; C{{ u.cycle_number }}</span>
-                </div>
-                <div style="flex: 1;">
-                    {% if u.inspector_name %}
-                    <span class="unit-inspector">{{ u.inspector_name }}</span>
-                    {% else %}
-                    <span class="unit-inspector" style="color: #9A9A9A;">Unassigned</span>
-                    {% endif %}
-                </div>
-            </div>
-            <div class="unit-empty">Not started</div>
-        </div>
         {% endif %}
-
         {% endfor %}
 
         {% if not units %}

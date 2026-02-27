@@ -194,18 +194,18 @@
 
         .area-bars { display: flex; flex-direction: column; gap: 0.3rem; margin-top: 0.75rem; }
         .area-row { display: flex; align-items: center; gap: 0.5rem; }
-        .area-label { width: 100px; font-size: 0.6rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: #9A9A9A; text-align: right; flex-shrink: 0; }
+        .area-label { width: 100px; font-size: 0.75rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: #9A9A9A; text-align: right; flex-shrink: 0; }
         .area-bar-track { flex: 1; height: 16px; background: #1A1A1A; border-radius: 3px; overflow: hidden; }
         .area-bar-fill { height: 100%; border-radius: 3px; transition: width 1s ease; }
         .bar-green { background: linear-gradient(90deg, #3A6A49, #4A7C59); }
         .bar-gold { background: linear-gradient(90deg, #A07830, #C8963E); }
         .area-stats { display: flex; gap: 0.4rem; width: 110px; flex-shrink: 0; }
-        .area-count { font-family: 'DM Mono', monospace; font-size: 0.6rem; color: #9A9A9A; }
-        .area-defects-badge { font-family: 'DM Mono', monospace; font-size: 0.6rem; color: #C44D3F; background: rgba(196, 77, 63, 0.15); padding: 0 0.25rem; border-radius: 2px; }
-        .area-time { font-family: 'DM Mono', monospace; font-size: 0.55rem; color: #9A9A9A; }
+        .area-count { font-family: 'DM Mono', monospace; font-size: 0.7rem; color: #9A9A9A; }
+        .area-defects-badge { font-family: 'DM Mono', monospace; font-size: 0.7rem; color: #C44D3F; background: rgba(196, 77, 63, 0.15); padding: 0 0.25rem; border-radius: 2px; }
+        .area-time { font-family: 'DM Mono', monospace; font-size: 0.7rem; color: #9A9A9A; }
 
         /* ========== COMPLETED ========== */
-        .unit-card.done { opacity: 0.85; }
+        .unit-card.done { opacity: 0.92; }
         .unit-card.done.severity-green { border-color: #4A7C59; border-left: 3px solid #4A7C59; }
         .unit-card.done.severity-gold { border-color: #C8963E; border-left: 3px solid #C8963E; }
         .unit-card.done.severity-red { border-color: #C44D3F; border-left: 3px solid #C44D3F; }
@@ -213,7 +213,7 @@
 
         .complete-badge {
             display: inline-flex; align-items: center; gap: 0.3rem;
-            font-family: 'DM Mono', monospace; font-size: 0.6rem; font-weight: 700;
+            font-family: 'DM Mono', monospace; font-size: 0.7rem; font-weight: 700;
             text-transform: uppercase; letter-spacing: 0.08em;
             padding: 0.15rem 0.5rem; border-radius: 3px;
         }
@@ -228,25 +228,36 @@
         .defect-hero-label { font-size: 0.55rem; color: #9A9A9A; text-transform: uppercase; letter-spacing: 0.05em; }
 
         .unit-timing { display: flex; gap: 1.5rem; margin-top: 0.15rem; }
-        .timing-item { font-family: 'DM Mono', monospace; font-size: 0.6rem; color: #9A9A9A; }
-        .timing-value { color: #9A9A9A; }
+        .timing-item { font-family: 'DM Mono', monospace; font-size: 0.7rem; color: #9A9A9A; }
+        .timing-value { color: #CDCDCD; }
 
         .defect-bars { display: flex; flex-direction: column; gap: 0.25rem; margin-top: 0.75rem; }
         .defect-row { display: flex; align-items: center; gap: 0.5rem; }
-        .defect-area-label { width: 100px; font-size: 0.6rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: #9A9A9A; text-align: right; flex-shrink: 0; }
-        .defect-bar-track { flex: 1; height: 14px; background: #1A1A1A; border-radius: 3px; overflow: hidden; }
+        .defect-area-label { width: 100px; font-size: 0.75rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: #9A9A9A; text-align: right; flex-shrink: 0; }
+        .defect-bar-track { flex: 1; height: 20px; background: #1A1A1A; border-radius: 3px; overflow: hidden; }
         .defect-bar-fill { height: 100%; border-radius: 3px; transition: width 0.8s ease; }
         .defect-bar-fill.bar-red { background: linear-gradient(90deg, #9A3A30, #C44D3F); }
         .defect-bar-fill.bar-amber { background: linear-gradient(90deg, #A07830, #C8963E); }
         .defect-bar-fill.bar-low { background: linear-gradient(90deg, #3A6A49, #4A7C59); }
-        .defect-count { width: 30px; font-family: 'DM Mono', monospace; font-size: 0.65rem; color: #9A9A9A; text-align: right; flex-shrink: 0; }
-        .defect-time { width: 45px; font-family: 'DM Mono', monospace; font-size: 0.55rem; color: #9A9A9A; text-align: right; flex-shrink: 0; }
+        .defect-count { width: 30px; font-family: 'DM Mono', monospace; font-size: 0.75rem; color: #9A9A9A; text-align: right; flex-shrink: 0; }
+        .defect-time { width: 45px; font-family: 'DM Mono', monospace; font-size: 0.7rem; color: #9A9A9A; text-align: right; flex-shrink: 0; }
 
         /* ========== WAITING ========== */
-        .unit-card.waiting { opacity: 0.85; }
+        .unit-card.waiting { opacity: 0.92; }
         .unit-card.waiting .unit-number { color: #9A9A9A; }
         .unit-card.waiting .unit-inspector { color: #9A9A9A; }
         .unit-empty { font-size: 0.75rem; color: #9A9A9A; padding: 0.5rem 0; }
+
+
+        /* ========== WAITING STRIP ========== */
+        .waiting-strip { background: #111111; border: 1px solid #1E1E1E; border-radius: 10px; padding: 0.75rem 1.25rem; }
+        .waiting-strip-title { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.1em; color: #9A9A9A; font-weight: 600; margin-bottom: 0.5rem; }
+        .waiting-chips { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+        .waiting-chip { display: flex; align-items: center; gap: 0.5rem; padding: 0.4rem 0.75rem; background: #1A1A1A; border-radius: 6px; border: 1px solid #2A2A2A; }
+        .waiting-chip-number { font-family: 'DM Mono', monospace; font-size: 1.1rem; font-weight: 700; color: #9A9A9A; }
+        .waiting-chip-meta { font-size: 0.65rem; color: #9A9A9A; text-transform: uppercase; letter-spacing: 0.03em; }
+        .waiting-chip-inspector { font-size: 0.65rem; color: #9A9A9A; }
+        .waiting-chip-unassigned { font-size: 0.65rem; color: #9A9A9A; font-style: italic; }
 
         /* ========== ACTIVITY FEED ========== */
         .feed-panel { background: #0D0D0D; border-left: 1px solid #1A1A1A; padding: 1.25rem; overflow-y: auto; }
