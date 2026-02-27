@@ -214,7 +214,7 @@
             </div>
         </div>
         {% if u.areas and u.total_defects > 0 %}
-        {% set max_area_defects = u.areas|map(attribute='defects')|max %}
+        {% set max_area_defects = global_max_area_defects %}
         <div class="defect-bars">
             {% for a in u.areas %}
             {% if a.defects > 0 %}

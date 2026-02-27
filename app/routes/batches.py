@@ -735,6 +735,7 @@ def _build_live_monitor_data(batch_id, tenant_id):
         'avg_defects': avg_defects,
         'total_items_inspected': items_marked,
         'batch_zones': batch_zones,
+        'global_max_area_defects': max((a['defects'] for u in units if u['insp_status'] in ('submitted','reviewed','approved') for a in u.get('areas', [])), default=0),
     }
 
 
