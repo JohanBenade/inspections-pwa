@@ -3,7 +3,7 @@
 
 {% block content %}
 <div class="mb-6">
-    <h1 class="text-2xl font-bold text-gray-900">Approvals</h1>
+    <div style="display:flex;align-items:center;justify-content:space-between;"><h1 class="text-2xl font-bold text-gray-900">Approvals</h1><a href="{{ url_for('approvals.cleanup') }}" style="padding:0.4rem 1rem;background:#1a1a1a;color:#fff;border-radius:6px;font-size:0.85rem;font-weight:500;text-decoration:none;">Defects Cleanup</a></div>
     <p class="text-sm text-gray-500 mt-1">Review defect descriptions, sign off cycles, push PDFs to Raubex.</p>
 </div>
 

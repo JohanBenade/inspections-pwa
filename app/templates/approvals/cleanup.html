@@ -1,0 +1,532 @@
+{% extends "base.html" %}
+{% block title %}Defects Cleanup{% endblock %}
+
+{% block head_extra %}
+<style>
+    .cleanup-header {
+        display: flex; align-items: center; justify-content: space-between;
+        padding: 1rem 1.5rem; background: #fff; border-bottom: 1px solid #e5e7eb;
+        flex-wrap: wrap; gap: 0.75rem;
+    }
+    .cleanup-title { font-size: 1.4rem; font-weight: 700; color: #1a1a1a; }
+    .cleanup-nav { display: flex; gap: 0.5rem; }
+    .cleanup-nav a {
+        padding: 0.4rem 1rem; border-radius: 6px; font-size: 0.85rem;
+        text-decoration: none; font-weight: 500;
+    }
+    .cleanup-nav a.active { background: #1a1a1a; color: #fff; }
+    .cleanup-nav a:not(.active) { background: #f3f4f6; color: #374151; }
+    .cleanup-nav a:not(.active):hover { background: #e5e7eb; }
+
+    /* Stats strip */
+    .stats-strip {
+        display: flex; gap: 1px; background: #e5e7eb; margin: 0;
+    }
+    .stat-card {
+        flex: 1; padding: 0.6rem 1rem; background: #fff; text-align: center;
+    }
+    .stat-value { font-size: 1.3rem; font-weight: 700; font-family: monospace; }
+    .stat-label { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.05em; color: #6b7280; }
+    .stat-value.placeholder { color: #dc2626; }
+    .stat-value.new { color: #d97706; }
+    .stat-value.clean { color: #16a34a; }
+
+    /* Filter bar */
+    .filter-bar {
+        display: flex; gap: 0.5rem; padding: 0.75rem 1.5rem;
+        background: #f9fafb; border-bottom: 1px solid #e5e7eb;
+        flex-wrap: wrap; align-items: center;
+    }
+    .filter-bar select {
+        padding: 0.35rem 0.6rem; border: 1px solid #d1d5db; border-radius: 6px;
+        font-size: 0.8rem; background: #fff; color: #374151;
+    }
+    .filter-bar .filter-label {
+        font-size: 0.7rem; font-weight: 600; color: #6b7280;
+        text-transform: uppercase; letter-spacing: 0.05em;
+    }
+    .filter-bar .btn-clear {
+        padding: 0.35rem 0.75rem; border: 1px solid #d1d5db; border-radius: 6px;
+        font-size: 0.8rem; background: #fff; color: #6b7280; cursor: pointer;
+        text-decoration: none;
+    }
+    .filter-bar .btn-clear:hover { background: #f3f4f6; }
+    .filter-count { font-size: 0.8rem; color: #6b7280; margin-left: auto; }
+
+    /* Table */
+    .cleanup-table-wrap {
+        overflow-x: auto; padding: 0 1rem;
+    }
+    .cleanup-table {
+        width: 100%; border-collapse: collapse; font-size: 0.85rem;
+    }
+    .cleanup-table thead th {
+        padding: 0.6rem 0.5rem; text-align: left; font-size: 0.7rem;
+        text-transform: uppercase; letter-spacing: 0.05em; color: #6b7280;
+        border-bottom: 2px solid #e5e7eb; background: #f9fafb;
+        position: sticky; top: 0; z-index: 10;
+    }
+    .cleanup-table tbody tr {
+        border-bottom: 1px solid #f3f4f6;
+    }
+    .cleanup-table tbody tr:hover { background: #f9fafb; }
+    .cleanup-table td { padding: 0.5rem; vertical-align: middle; }
+
+    .col-unit { width: 55px; font-weight: 700; font-family: monospace; }
+    .col-area { width: 90px; font-size: 0.75rem; color: #6b7280; }
+    .col-cat { width: 90px; font-size: 0.75rem; color: #6b7280; }
+    .col-item { width: 180px; font-size: 0.78rem; color: #374151; }
+    .col-desc { min-width: 200px; }
+    .col-type { width: 50px; }
+    .col-status { width: 80px; }
+    .col-actions { width: 120px; }
+
+    .desc-text { color: #1a1a1a; }
+    .status-placeholder .desc-text { color: #dc2626; font-style: italic; }
+    .status-new .desc-text { color: #d97706; }
+
+    /* Badges */
+    .type-badge {
+        display: inline-block; padding: 0.15rem 0.4rem; border-radius: 4px;
+        font-size: 0.7rem; font-weight: 700; text-transform: uppercase;
+    }
+    .type-badge.nts { background: #fef2f2; color: #dc2626; }
+    .type-badge.ni { background: #eff6ff; color: #2563eb; }
+
+    .status-badge {
+        display: inline-block; padding: 0.15rem 0.5rem; border-radius: 10px;
+        font-size: 0.7rem; font-weight: 600;
+    }
+    .status-badge.placeholder { background: #fef2f2; color: #dc2626; }
+    .status-badge.new { background: #fffbeb; color: #d97706; }
+    .status-badge.clean { background: #f0fdf4; color: #16a34a; }
+
+    /* Action buttons */
+    .btn-edit {
+        padding: 0.3rem 0.6rem; border: 1px solid #d1d5db; border-radius: 5px;
+        font-size: 0.75rem; background: #fff; color: #374151; cursor: pointer;
+    }
+    .btn-edit:hover { background: #f3f4f6; }
+    .btn-apply-all {
+        padding: 0.25rem 0.5rem; border: 1px solid #d1d5db; border-radius: 5px;
+        font-size: 0.7rem; background: #fff; color: #6b7280; cursor: pointer;
+    }
+    .btn-apply-all:hover { background: #fef3c7; color: #d97706; border-color: #d97706; }
+
+    /* Edit modal overlay */
+    .edit-overlay {
+        display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+        background: rgba(0,0,0,0.4); z-index: 100;
+        align-items: center; justify-content: center;
+    }
+    .edit-overlay.active { display: flex; }
+    .edit-panel {
+        background: #fff; border-radius: 12px; padding: 1.5rem;
+        width: 560px; max-width: 95vw; max-height: 90vh; overflow-y: auto;
+        box-shadow: 0 20px 60px rgba(0,0,0,0.2);
+    }
+    .edit-panel h3 { margin: 0 0 0.25rem; font-size: 1.1rem; color: #1a1a1a; }
+    .edit-panel .edit-context {
+        font-size: 0.8rem; color: #6b7280; margin-bottom: 1rem;
+        padding-bottom: 0.75rem; border-bottom: 1px solid #e5e7eb;
+    }
+    .edit-panel label {
+        display: block; font-size: 0.75rem; font-weight: 600;
+        color: #374151; margin-bottom: 0.25rem;
+    }
+    .edit-panel input[type="text"], .edit-panel select {
+        width: 100%; padding: 0.5rem 0.75rem; border: 1px solid #d1d5db;
+        border-radius: 6px; font-size: 0.9rem; margin-bottom: 0.75rem;
+    }
+    .edit-panel input[type="text"]:focus {
+        outline: none; border-color: #2563eb; box-shadow: 0 0 0 2px rgba(37,99,235,0.15);
+    }
+
+    /* Suggestions dropdown */
+    .sugg-container {
+        border: 1px solid #e5e7eb; border-radius: 6px; max-height: 200px;
+        overflow-y: auto; margin-bottom: 0.75rem; background: #fff;
+    }
+    .sugg-item {
+        padding: 0.4rem 0.75rem; cursor: pointer; font-size: 0.85rem;
+        display: flex; justify-content: space-between; align-items: center;
+        border-bottom: 1px solid #f3f4f6;
+    }
+    .sugg-item:hover { background: #f0fdf4; }
+    .sugg-count { font-size: 0.7rem; color: #9ca3af; }
+    .sugg-empty { padding: 0.5rem 0.75rem; color: #9ca3af; font-size: 0.8rem; }
+
+    /* Edit panel buttons */
+    .edit-buttons {
+        display: flex; gap: 0.5rem; margin-top: 1rem;
+        padding-top: 0.75rem; border-top: 1px solid #e5e7eb;
+    }
+    .btn-save {
+        padding: 0.5rem 1.25rem; background: #1a1a1a; color: #fff;
+        border: none; border-radius: 6px; font-size: 0.85rem;
+        font-weight: 600; cursor: pointer;
+    }
+    .btn-save:hover { background: #374151; }
+    .btn-save-apply {
+        padding: 0.5rem 1.25rem; background: #d97706; color: #fff;
+        border: none; border-radius: 6px; font-size: 0.85rem;
+        font-weight: 600; cursor: pointer;
+    }
+    .btn-save-apply:hover { background: #b45309; }
+    .btn-cancel {
+        padding: 0.5rem 1.25rem; background: #fff; color: #6b7280;
+        border: 1px solid #d1d5db; border-radius: 6px; font-size: 0.85rem;
+        cursor: pointer;
+    }
+    .btn-cancel:hover { background: #f3f4f6; }
+
+    /* Apply All modal */
+    .apply-preview { margin: 1rem 0; }
+    .apply-all-list table th, .apply-all-list table td {
+        text-align: left;
+    }
+
+    /* Original comment display */
+    .original-comment {
+        font-size: 0.75rem; color: #9ca3af; font-style: italic;
+        margin-top: 0.15rem;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- Header -->
+<div class="cleanup-header">
+    <div>
+        <div class="cleanup-title">Defects Cleanup</div>
+    </div>
+    <div class="cleanup-nav">
+        <a href="{{ url_for('approvals.cleanup') }}" class="active">Cleanup</a>
+        <a href="{{ url_for('approvals.pipeline') }}">Review Pipeline</a>
+    </div>
+</div>
+
+<!-- Stats -->
+<div class="stats-strip">
+    <div class="stat-card">
+        <div class="stat-value">{{ stats.total }}</div>
+        <div class="stat-label">Total Defects</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-value placeholder">{{ stats.placeholder }}</div>
+        <div class="stat-label">Placeholders</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-value new">{{ stats.new }}</div>
+        <div class="stat-label">New (not in library)</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-value clean">{{ stats.clean }}</div>
+        <div class="stat-label">Clean</div>
+    </div>
+</div>
+
+<!-- Filters -->
+<div class="filter-bar">
+    <span class="filter-label">Filter:</span>
+    <select onchange="applyFilters()" id="f-unit">
+        <option value="">All Units</option>
+        {% for u in options.units %}
+        <option value="{{ u }}" {{ 'selected' if filters.unit == u }}>{{ u }}</option>
+        {% endfor %}
+    </select>
+    <select onchange="applyFilters()" id="f-area">
+        <option value="">All Areas</option>
+        {% for a in options.areas %}
+        <option value="{{ a }}" {{ 'selected' if filters.area == a }}>{{ a }}</option>
+        {% endfor %}
+    </select>
+    <select onchange="applyFilters()" id="f-category">
+        <option value="">All Categories</option>
+        {% for c in options.categories %}
+        <option value="{{ c }}" {{ 'selected' if filters.category == c }}>{{ c }}</option>
+        {% endfor %}
+    </select>
+    <select onchange="applyFilters()" id="f-status">
+        <option value="">All Statuses</option>
+        <option value="placeholder" {{ 'selected' if filters.status == 'placeholder' }}>Placeholders</option>
+        <option value="new" {{ 'selected' if filters.status == 'new' }}>New</option>
+        <option value="clean" {{ 'selected' if filters.status == 'clean' }}>Clean</option>
+    </select>
+    <select onchange="applyFilters()" id="f-inspector">
+        <option value="">All Inspectors</option>
+        {% for ins in options.inspectors %}
+        <option value="{{ ins }}" {{ 'selected' if filters.inspector == ins }}>{{ ins }}</option>
+        {% endfor %}
+    </select>
+    {% if options.cycles|length > 1 %}
+    <select onchange="applyFilters()" id="f-cycle">
+        <option value="">All Cycles</option>
+        {% for c in options.cycles %}
+        <option value="{{ c }}" {{ 'selected' if filters.cycle == c }}>{{ c }}</option>
+        {% endfor %}
+    </select>
+    {% endif %}
+    <a href="{{ url_for('approvals.cleanup') }}" class="btn-clear">Clear All</a>
+    <span class="filter-count">Showing {{ stats.filtered }} of {{ stats.total }}</span>
+</div>
+
+<!-- Table -->
+<div class="cleanup-table-wrap">
+    <table class="cleanup-table">
+        <thead>
+            <tr>
+                <th>Unit</th>
+                <th>Area</th>
+                <th>Category</th>
+                <th>Item</th>
+                <th>Description</th>
+                <th>Type</th>
+                <th>Status</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for d in defects %}
+            <tr id="row-{{ d.id }}" class="cleanup-row status-{{ d.cleanup_status }}">
+                <td class="col-unit">{{ d.unit_number }}</td>
+                <td class="col-area">{{ d.area_name }}</td>
+                <td class="col-cat">{{ d.category_name }}</td>
+                <td class="col-item">{{ d.item_path }}</td>
+                <td class="col-desc">
+                    <span class="desc-text">{{ d.display_desc or '' }}</span>
+                    {% if d.reviewed_comment and d.original_comment != d.reviewed_comment %}
+                    <div class="original-comment">was: {{ d.original_comment }}</div>
+                    {% endif %}
+                </td>
+                <td class="col-type">
+                    <span class="type-badge {{ 'ni' if d.defect_type == 'not_installed' else 'nts' }}">
+                        {{ 'NI' if d.defect_type == 'not_installed' else 'NTS' }}
+                    </span>
+                </td>
+                <td class="col-status">
+                    <span class="status-badge {{ d.cleanup_status }}">
+                        {{ d.cleanup_status|capitalize }}
+                    </span>
+                </td>
+                <td class="col-actions">
+                    <button class="btn-edit" onclick="startEdit(this)"
+                        data-id="{{ d.id }}"
+                        data-template="{{ d.item_template_id }}"
+                        data-desc="{{ d.display_desc or '' }}"
+                        data-original="{{ d.original_comment or '' }}"
+                        data-type="{{ d.defect_type }}"
+                        data-unit="{{ d.unit_number }}"
+                        data-area="{{ d.area_name }}"
+                        data-cat="{{ d.category_name }}"
+                        data-item="{{ d.item_path }}">Edit</button>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+{% if not defects %}
+<div style="text-align:center;padding:3rem;color:#6b7280;">
+    <p style="font-size:1.1rem;font-weight:600;">No defects to clean up</p>
+    <p style="font-size:0.85rem;">All defects on submitted units have been reviewed, or no units are in submitted status.</p>
+</div>
+{% endif %}
+
+<!-- Edit Modal -->
+<div class="edit-overlay" id="editOverlay">
+    <div class="edit-panel">
+        <h3>Edit Defect</h3>
+        <div class="edit-context" id="editContext"></div>
+
+        <form id="editForm">
+            <input type="hidden" name="defect_id" id="edit-defect-id">
+            <input type="hidden" name="item_template_id" id="edit-template-id">
+            <input type="hidden" name="library_entry_id" id="edit-lib-id">
+
+            <label>Description</label>
+            <input type="text" name="description" id="edit-desc"
+                   autocomplete="off" oninput="loadSuggestions()">
+            <div class="sugg-container" id="suggBox"></div>
+
+            <label>Defect Type</label>
+            <select name="defect_type" id="edit-type">
+                <option value="not_to_standard">NTS - Not to Standard</option>
+                <option value="not_installed">NI - Not Installed</option>
+            </select>
+
+            <div class="edit-buttons">
+                <button type="button" class="btn-save" onclick="saveEdit()">Save</button>
+                <button type="button" class="btn-save-apply" onclick="saveAndApplyAll()">Save &amp; Apply to All</button>
+                <button type="button" class="btn-cancel" onclick="closeEdit()">Cancel</button>
+            </div>
+        </form>
+
+        <!-- Apply All Preview (loaded via HTMX) -->
+        <div class="apply-preview" id="applyPreview" style="display:none;">
+            <div id="applyPreviewContent"></div>
+            <div class="edit-buttons">
+                <form id="applyAllForm" method="POST"
+                      action="{{ url_for('approvals.cleanup_apply_all_confirm') }}">
+                    <input type="hidden" name="old_comment" id="apply-old">
+                    <input type="hidden" name="new_description" id="apply-new">
+                    <input type="hidden" name="new_defect_type" id="apply-type">
+                    <input type="hidden" name="item_template_id" id="apply-template">
+                    <button type="submit" class="btn-save-apply">Confirm &amp; Apply to All</button>
+                    <button type="button" class="btn-cancel" onclick="hideApplyPreview()">Back</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Current edit state
+let currentEdit = {};
+
+function startEdit(btn) {
+    currentEdit = {
+        id: btn.dataset.id,
+        template: btn.dataset.template,
+        desc: btn.dataset.desc,
+        original: btn.dataset.original,
+        type: btn.dataset.type,
+        unit: btn.dataset.unit,
+        area: btn.dataset.area,
+        cat: btn.dataset.cat,
+        item: btn.dataset.item
+    };
+    document.getElementById('edit-defect-id').value = currentEdit.id;
+    document.getElementById('edit-template-id').value = currentEdit.template;
+    document.getElementById('edit-lib-id').value = '';
+    document.getElementById('edit-desc').value = currentEdit.desc;
+    document.getElementById('edit-type').value = currentEdit.type;
+    document.getElementById('editContext').innerHTML =
+        '<strong>Unit ' + currentEdit.unit + '</strong> &rsaquo; '
+        + currentEdit.area + ' &rsaquo; ' + currentEdit.cat
+        + ' &rsaquo; ' + currentEdit.item
+        + (currentEdit.original !== currentEdit.desc
+           ? '<br><span style="color:#9ca3af;">Original: ' + currentEdit.original + '</span>'
+           : '');
+    document.getElementById('editOverlay').classList.add('active');
+    document.getElementById('editForm').style.display = 'block';
+    document.getElementById('applyPreview').style.display = 'none';
+    document.getElementById('edit-desc').focus();
+    loadSuggestions();
+}
+
+function closeEdit() {
+    document.getElementById('editOverlay').classList.remove('active');
+}
+
+// Close on overlay click
+document.getElementById('editOverlay').addEventListener('click', function(e) {
+    if (e.target === this) closeEdit();
+});
+
+// Close on Escape
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') closeEdit();
+});
+
+let suggTimeout;
+function loadSuggestions() {
+    clearTimeout(suggTimeout);
+    suggTimeout = setTimeout(function() {
+        const q = document.getElementById('edit-desc').value;
+        const tmpl = document.getElementById('edit-template-id').value;
+        fetch('{{ url_for("approvals.cleanup_suggestions") }}?item_template_id='
+              + tmpl + '&q=' + encodeURIComponent(q))
+            .then(r => r.text())
+            .then(html => {
+                document.getElementById('suggBox').innerHTML = html;
+                document.querySelectorAll('.sugg-item').forEach(item => {
+                    item.addEventListener('click', function() {
+                        document.getElementById('edit-desc').value = this.dataset.desc;
+                        document.getElementById('edit-lib-id').value = this.dataset.libId;
+                        document.getElementById('suggBox').innerHTML = '';
+                    });
+                });
+            });
+    }, 250);
+}
+
+function saveEdit() {
+    const form = new FormData();
+    form.append('defect_id', document.getElementById('edit-defect-id').value);
+    form.append('description', document.getElementById('edit-desc').value);
+    form.append('defect_type', document.getElementById('edit-type').value);
+    form.append('library_entry_id', document.getElementById('edit-lib-id').value);
+
+    fetch('{{ url_for("approvals.cleanup_edit_defect") }}', {
+        method: 'POST',
+        headers: {'HX-Request': 'true'},
+        body: form
+    })
+    .then(r => r.text())
+    .then(html => {
+        const row = document.getElementById('row-' + currentEdit.id);
+        if (row && html) {
+            row.outerHTML = html;
+        }
+        closeEdit();
+    });
+}
+
+function saveAndApplyAll() {
+    // First save the current one
+    const form = new FormData();
+    form.append('defect_id', document.getElementById('edit-defect-id').value);
+    form.append('description', document.getElementById('edit-desc').value);
+    form.append('defect_type', document.getElementById('edit-type').value);
+    form.append('library_entry_id', document.getElementById('edit-lib-id').value);
+
+    fetch('{{ url_for("approvals.cleanup_edit_defect") }}', {
+        method: 'POST',
+        headers: {'HX-Request': 'true'},
+        body: form
+    })
+    .then(r => r.text())
+    .then(html => {
+        const row = document.getElementById('row-' + currentEdit.id);
+        if (row && html) row.outerHTML = html;
+
+        // Now show Apply All preview
+        const previewForm = new FormData();
+        previewForm.append('defect_id', currentEdit.id);
+        previewForm.append('old_comment', currentEdit.desc);
+        previewForm.append('item_template_id', currentEdit.template);
+
+        return fetch('{{ url_for("approvals.cleanup_apply_all_preview") }}', {
+            method: 'POST',
+            body: previewForm
+        });
+    })
+    .then(r => r.text())
+    .then(html => {
+        document.getElementById('applyPreviewContent').innerHTML = html;
+        document.getElementById('apply-old').value = currentEdit.desc;
+        document.getElementById('apply-new').value = document.getElementById('edit-desc').value;
+        document.getElementById('apply-type').value = document.getElementById('edit-type').value;
+        document.getElementById('apply-template').value = currentEdit.template;
+        document.getElementById('editForm').style.display = 'none';
+        document.getElementById('applyPreview').style.display = 'block';
+    });
+}
+
+function hideApplyPreview() {
+    document.getElementById('editForm').style.display = 'block';
+    document.getElementById('applyPreview').style.display = 'none';
+}
+
+function applyFilters() {
+    const params = new URLSearchParams();
+    ['unit', 'area', 'category', 'status', 'inspector', 'cycle'].forEach(f => {
+        const el = document.getElementById('f-' + f);
+        if (el && el.value) params.set(f, el.value);
+    });
+    window.location.href = '{{ url_for("approvals.cleanup") }}?' + params.toString();
+}
+</script>
+{% endblock %}
