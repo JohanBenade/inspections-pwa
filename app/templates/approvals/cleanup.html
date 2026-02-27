@@ -207,8 +207,8 @@
 <!-- Stats -->
 <div class="stats-strip">
     <div class="stat-card">
-        <div class="stat-value">{{ stats.total }}</div>
-        <div class="stat-label">Total Defects</div>
+        <div class="stat-value">{{ stats.filtered }}</div>
+        <div class="stat-label">{% if stats.filtered != stats.total %}of {{ stats.total }} total{% else %}Total Defects{% endif %}</div>
     </div>
     <div class="stat-card">
         <div class="stat-value placeholder">{{ stats.placeholder }}</div>
@@ -243,6 +243,18 @@
         <option value="">All Categories</option>
         {% for c in options.categories %}
         <option value="{{ c }}" {{ 'selected' if filters.category == c }}>{{ c }}</option>
+        {% endfor %}
+    </select>
+    <select onchange="applyFilters()" id="f-item">
+        <option value="">All Items</option>
+        {% for it in options.items %}
+        <option value="{{ it }}" {{ 'selected' if filters.item == it }}>{{ it }}</option>
+        {% endfor %}
+    </select>
+    <select onchange="applyFilters()" id="f-subitem">
+        <option value="">All Sub-items</option>
+        {% for s in options.subitems %}
+        <option value="{{ s }}" {{ 'selected' if filters.subitem == s }}>{{ s }}</option>
         {% endfor %}
     </select>
     <select onchange="applyFilters()" id="f-status">
@@ -520,7 +532,7 @@ function hideApplyPreview() {
 
 function applyFilters() {
     const params = new URLSearchParams();
-    ['unit', 'area', 'category', 'status', 'inspector', 'cycle'].forEach(f => {
+    ['unit', 'area', 'category', 'item', 'subitem', 'status', 'inspector', 'cycle'].forEach(f => {
         const el = document.getElementById('f-' + f);
         if (el && el.value) params.set(f, el.value);
     });

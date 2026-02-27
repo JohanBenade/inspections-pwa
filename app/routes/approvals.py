@@ -779,6 +779,8 @@ def cleanup():
     f_status = request.args.get('status', '')  # placeholder / new / clean
     f_inspector = request.args.get('inspector', '')
     f_cycle = request.args.get('cycle', '')
+    f_item = request.args.get('item', '')
+    f_subitem = request.args.get('subitem', '')
 
     # All defects on submitted inspections
     defects = [dict(r) for r in query_db("""
@@ -832,6 +834,14 @@ def cleanup():
         else:
             d['item_path'] = d['item_description']
 
+        # Item/subitem for cascading filters
+        if d['parent_description']:
+            d['item_name'] = d['parent_description']
+            d['subitem_name'] = d['item_description']
+        else:
+            d['item_name'] = d['item_description']
+            d['subitem_name'] = ''
+
         # Classify
         if desc_lower in placeholders:
             d['cleanup_status'] = 'placeholder'
@@ -852,6 +862,14 @@ def cleanup():
                        key=lambda a: next((d['area_order'] for d in defects
                                            if d['area_name'] == a), 0))
     all_categories = sorted(set(d['category_name'] for d in defects))
+    # Cascading: items filtered by selected area+category
+    items_pool = [d for d in defects
+                  if (not f_area or d['area_name'] == f_area)
+                  and (not f_category or d['category_name'] == f_category)]
+    all_items = sorted(set(d['item_name'] for d in items_pool if d['item_name']))
+    # Cascading: subitems filtered by selected item
+    subitems_pool = [d for d in items_pool if (not f_item or d['item_name'] == f_item)]
+    all_subitems = sorted(set(d['subitem_name'] for d in subitems_pool if d['subitem_name']))
     all_inspectors = sorted(set(d['inspector_name'] for d in defects
                                 if d['inspector_name']))
     all_cycles = sorted(set(d['cycle_label'] for d in defects))
@@ -864,6 +882,10 @@ def cleanup():
         filtered = [d for d in filtered if d['area_name'] == f_area]
     if f_category:
         filtered = [d for d in filtered if d['category_name'] == f_category]
+    if f_item:
+        filtered = [d for d in filtered if d['item_name'] == f_item]
+    if f_subitem:
+        filtered = [d for d in filtered if d['subitem_name'] == f_subitem]
     if f_status:
         filtered = [d for d in filtered if d['cleanup_status'] == f_status]
     if f_inspector:
@@ -882,19 +904,22 @@ def cleanup():
     # Stats
     stats = {
         'total': len(defects),
-        'placeholder': sum(1 for d in defects if d['cleanup_status'] == 'placeholder'),
-        'new': sum(1 for d in defects if d['cleanup_status'] == 'new'),
-        'clean': sum(1 for d in defects if d['cleanup_status'] == 'clean'),
         'filtered': len(filtered),
+        'placeholder': sum(1 for d in filtered if d['cleanup_status'] == 'placeholder'),
+        'new': sum(1 for d in filtered if d['cleanup_status'] == 'new'),
+        'clean': sum(1 for d in filtered if d['cleanup_status'] == 'clean'),
     }
 
     return render_template('approvals/cleanup.html',
                            defects=filtered, stats=stats,
                            filters={'unit': f_unit, 'area': f_area,
-                                    'category': f_category, 'status': f_status,
+                                    'category': f_category, 'item': f_item,
+                                    'subitem': f_subitem, 'status': f_status,
                                     'inspector': f_inspector, 'cycle': f_cycle},
                            options={'units': all_units, 'areas': all_areas,
                                     'categories': all_categories,
+                                    'items': all_items,
+                                    'subitems': all_subitems,
                                     'inspectors': all_inspectors,
                                     'cycles': all_cycles})
 
