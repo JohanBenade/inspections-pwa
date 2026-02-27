@@ -19,13 +19,16 @@
 
         /* ========== COMMAND BAR ========== */
         .command-bar {
-            display: flex;
+            display: grid;
+            grid-template-columns: auto 1fr auto;
             align-items: center;
-            justify-content: space-between;
             padding: 0.75rem 2rem;
             background: linear-gradient(180deg, #111111 0%, #0D0D0D 100%);
             border-bottom: 1px solid #1A1A1A;
         }
+        .command-center { text-align: center; }
+        .batch-zone-title { font-size: 1.1rem; font-weight: 700; color: #FAFAF8; letter-spacing: 0.05em; }
+        .batch-zone-sub { font-family: 'DM Mono', monospace; font-size: 0.65rem; color: #9A9A9A; margin-top: 0.15rem; }
         .command-left { display: flex; align-items: center; gap: 1.5rem; }
         .logo-text { font-size: 0.75rem; font-weight: 600; letter-spacing: 0.2em; text-transform: uppercase; color: #9A9A9A; }
         .monitor-title { font-size: 1.2rem; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: #C8963E; }
@@ -319,11 +322,11 @@
         <span class="monitor-title">Live Monitor</span>
         <span class="live-badge"><span class="live-dot"></span> Live</span>
     </div>
+    <div class="command-center">
+        <div class="batch-zone-title">{{ batch_zones }} &middot; {{ total_units }} units</div>
+        <div class="batch-zone-sub">{{ batch.name }}</div>
+    </div>
     <div class="command-right">
-        <div class="batch-info">
-            <div class="batch-name">{{ batch.name }}</div>
-            <div class="batch-date">{{ total_units }} units &middot; {{ batch_zones }}</div>
-        </div>
         <span class="clock" id="clock"></span>
         <a href="{{ url_for('batches.detail', batch_id=batch.id) }}" class="back-link">Back to Batch</a>
     </div>
