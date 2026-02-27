@@ -16,7 +16,7 @@
             <div>
                 <span class="text-lg font-bold text-gray-800">Unit {{ insp.unit_number }}</span>
                 <span class="text-sm text-gray-500 ml-2">
-                    Block {{ insp.block }}
+                    {{ insp.block }}
                     {% if insp.floor == 0 %}Ground Floor
                     {% elif insp.floor == 1 %}1st Floor
                     {% elif insp.floor == 2 %}2nd Floor

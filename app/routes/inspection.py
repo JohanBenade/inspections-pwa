@@ -1380,24 +1380,6 @@ def submit_inspection(inspection_id):
             flash(f"{pending['count']} items not yet inspected", 'error')
             return redirect(url_for('inspection.inspect', inspection_id=inspection_id))
         
-        missing_comments = query_db("""
-            SELECT it.item_description
-            FROM inspection_item ii
-            JOIN item_template it ON ii.item_template_id = it.id
-            WHERE ii.inspection_id = ?
-            AND ii.status IN ('not_to_standard', 'not_installed')
-            AND (ii.comment IS NULL OR ii.comment = '')
-            AND NOT EXISTS (
-                SELECT 1 FROM inspection_defect id2
-                WHERE id2.inspection_item_id = ii.id AND id2.tenant_id = ii.tenant_id
-            )
-        """, [inspection_id])
-        
-        if missing_comments:
-            from flask import flash
-            for item in missing_comments:
-                flash(f"Missing comment: {item['item_description']}", 'error')
-            return redirect(url_for('inspection.inspect', inspection_id=inspection_id))
     else:
         # Cycle 2+: ensure all actionable items have been reviewed
         pending_items = query_db("""
