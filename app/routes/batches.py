@@ -657,7 +657,7 @@ def _build_live_monitor_data(batch_id, tenant_id):
             last_dt = _parse_iso(im['last_activity'])
             if last_dt:
                 idle_secs = (now_utc - last_dt).total_seconds()
-                im['is_idle'] = idle_secs > 600
+                im["is_idle"] = idle_secs > 600 and im["items_pct"] < 100
                 im['idle_minutes'] = int(idle_secs / 60) if im['is_idle'] else 0
 
     inspectors = sorted(inspector_map.values(), key=lambda x: x['name'])
