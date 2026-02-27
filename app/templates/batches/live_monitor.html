@@ -161,6 +161,16 @@
         .unit-panel { padding: 1rem 2rem; overflow-y: auto; display: flex; flex-direction: column; gap: 0.75rem; }
 
 
+
+        /* ========== PROGRESS BADGE ========== */
+        .progress-badge {
+            display: inline-flex; align-items: center;
+            font-family: 'DM Mono', monospace; font-size: 0.7rem; font-weight: 700;
+            text-transform: uppercase; letter-spacing: 0.08em;
+            padding: 0.15rem 0.5rem; border-radius: 3px;
+            color: #C8963E; background: rgba(200, 150, 62, 0.12); border: 1px solid rgba(200, 150, 62, 0.2);
+        }
+
         /* ========== ACTIVE CARDS GRID ========== */
         .active-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 0.75rem; }
         @media (max-width: 1400px) { .active-grid { grid-template-columns: 1fr; } }
@@ -171,7 +181,7 @@
         .unit-header-left { display: flex; align-items: baseline; gap: 0.75rem; }
         .unit-number { font-family: 'DM Mono', monospace; font-size: 1.5rem; font-weight: 700; color: #C8963E; }
         .unit-meta { font-size: 0.7rem; color: #9A9A9A; text-transform: uppercase; letter-spacing: 0.05em; }
-        .unit-inspector { font-size: 0.8rem; font-weight: 500; color: #9A9A9A; }
+        .unit-inspector { font-size: 0.8rem; font-weight: 500; color: #9A9A9A; max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: inline-block; }
         .unit-header-right { display: flex; align-items: baseline; gap: 0.75rem; text-align: right; }
 
         /* ========== IN PROGRESS ========== */
@@ -254,6 +264,15 @@
         .unit-empty { font-size: 0.75rem; color: #9A9A9A; padding: 0.5rem 0; }
 
 
+
+
+        /* ========== BAR PCT LABELS ========== */
+        .bar-pct-label {
+            font-family: 'DM Mono', monospace; font-size: 0.55rem; font-weight: 500;
+            color: rgba(250, 250, 248, 0.85); float: right; padding-right: 4px;
+            line-height: 16px;
+        }
+        .defect-bar-fill .bar-pct-label { line-height: 20px; }
 
         /* ========== COMPLETED CARDS GRID ========== */
         .completed-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 0.75rem; }

@@ -104,6 +104,7 @@
             <div class="unit-header">
                 <div class="unit-header-left">
                     <span class="unit-number">{{ u.unit_number }}</span>
+                    <span class="progress-badge">{{ u.pct }}%</span>
                     <span class="unit-meta">{{ u.block }} {{ u.floor_label }} &middot; C{{ u.cycle_number }}</span>
                 </div>
                 <div style="flex: 1;">
@@ -118,7 +119,6 @@
                     {% endif %}
                 </div>
                 <div class="unit-header-right">
-                    <span class="unit-pct gold">{{ u.pct }}%</span>
                     <span class="unit-counts">{{ u.total_marked }}/{{ u.total_items }}</span>
                     {% if u.total_defects > 0 %}
                     <span class="unit-defects-small">{{ u.total_defects }} defect{{ 's' if u.total_defects != 1 }}</span>
@@ -132,7 +132,7 @@
                     <div class="area-label">{{ a.area }}</div>
                     <div class="area-bar-track">
                         <div class="area-bar-fill {% if a.pct >= 100 %}bar-green{% elif a.pct > 0 %}bar-gold{% endif %}"
-                             style="width: {{ a.pct }}%;"></div>
+                             style="width: {{ a.pct }}%;">{% if a.pct >= 25 %}<span class="bar-pct-label">{{ a.pct }}%</span>{% endif %}</div>
                     </div>
                     <div class="area-stats">
                         <span class="area-count">{{ a.marked }}/{{ a.total }}</span>
@@ -140,7 +140,7 @@
                         <span class="area-defects-badge">{{ a.defects }}</span>
                         {% endif %}
                         {% if a.duration and a.duration > 1 %}
-                        <span class="area-time">{{ a.duration }}m</span>
+                        <span class="area-time">{% if a.duration > 60 %}{{ (a.duration // 60) }}h{{ (a.duration % 60) }}m{% else %}{{ a.duration }}m{% endif %}</span>
                         {% endif %}
                     </div>
                 </div>
@@ -218,12 +218,13 @@
                 <div class="defect-row">
                     <div class="defect-area-label">{{ a.area }}</div>
                     <div class="defect-bar-track">
+                        {% set defect_share = (a.defects * 100 // u.total_defects) if u.total_defects else 0 %}
                         <div class="defect-bar-fill {% if u.severity == 'red' %}bar-red{% elif u.severity == 'gold' %}bar-amber{% else %}bar-low{% endif %}"
-                             style="width: {{ bar_width }}%;"></div>
+                             style="width: {% if bar_width < 8 %}8{% else %}{{ bar_width }}{% endif %}%;">{% if bar_width >= 25 %}<span class="bar-pct-label">{{ defect_share }}%</span>{% endif %}</div>
                     </div>
                     <div class="defect-count">{{ a.defects }}</div>
                     {% if a.duration and a.duration > 1 %}
-                    <div class="defect-time">{{ a.duration }}m</div>
+                    <div class="defect-time">{% if a.duration > 60 %}{{ (a.duration // 60) }}h{{ (a.duration % 60) }}m{% else %}{{ a.duration }}m{% endif %}</div>
                     {% else %}
                     <div class="defect-time"></div>
                     {% endif %}
