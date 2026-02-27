@@ -247,7 +247,7 @@
     </select>
     <select onchange="applyFilters()" id="f-item">
         <option value="">All Items</option>
-        {% for it in options.items %}
+        {% for it in options.item_names %}
         <option value="{{ it }}" {{ 'selected' if filters.item == it }}>{{ it }}</option>
         {% endfor %}
     </select>

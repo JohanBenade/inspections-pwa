@@ -918,7 +918,7 @@ def cleanup():
                                     'inspector': f_inspector, 'cycle': f_cycle},
                            options={'units': all_units, 'areas': all_areas,
                                     'categories': all_categories,
-                                    'items': all_items,
+                                    'item_names': all_items,
                                     'subitems': all_subitems,
                                     'inspectors': all_inspectors,
                                     'cycles': all_cycles})
