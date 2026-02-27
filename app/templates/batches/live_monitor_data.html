@@ -142,7 +142,7 @@
                     {% if a.defects > 0 %}
                     <span class="area-defects-badge">{{ a.defects }}</span>
                     {% endif %}
-                    {% if a.duration and a.duration > 1 and a.duration <= 120 %}
+                    {% if a.duration and a.duration > 1 %}
                     <span class="area-time">{{ a.duration // 60 }}:{{ "%02d" % (a.duration % 60) }}</span>
                     {% endif %}
                 </div>
@@ -205,7 +205,7 @@
                     {% if u.end_time %}
                     <span class="timing-item">End <span class="timing-value">{{ u.end_time }}</span></span>
                     {% endif %}
-                    {% if u.duration_minutes and u.duration_minutes > 1 and u.duration_minutes <= 120 %}
+                    {% if u.duration_minutes and u.duration_minutes > 1 %}
                     <span class="timing-item">Duration <span class="timing-value">{{ u.duration_minutes // 60 }}:{{ '%02d' % (u.duration_minutes % 60) }}</span></span>
                     {% endif %}
                 </div>
@@ -230,7 +230,7 @@
                          style="width: {% if bar_width < 8 %}8{% else %}{{ bar_width }}{% endif %}%;"></div>
                 </div>
                 <div class="defect-count" style="color: #C44D3F;">{{ a.defects }}</div>
-                {% if a.duration and a.duration > 1 and a.duration <= 120 %}
+                {% if a.duration and a.duration > 1 %}
                 <div class="defect-time">{{ a.duration // 60 }}:{{ "%02d" % (a.duration % 60) }}</div>
                 {% else %}
                 <div class="defect-time"></div>
