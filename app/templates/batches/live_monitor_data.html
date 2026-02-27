@@ -95,6 +95,7 @@
     <!-- UNIT PROGRESS PANEL -->
     <div class="unit-panel">
         {# === ACTIVE CARDS === #}
+        <div class="active-grid">
         {% for u in units %}
         {% if u.insp_status == 'in_progress' %}
         <!-- IN PROGRESS CARD -->
@@ -150,6 +151,7 @@
 
         {% endif %}
         {% endfor %}
+        </div>
 
         {# === WAITING STRIP === #}
         {% set waiting_units = units|selectattr('insp_status', 'equalto', 'not_started')|list %}
@@ -173,6 +175,7 @@
         {% endif %}
 
         {# === COMPLETED CARDS === #}
+        <div class="completed-grid">
         {% for u in units %}
         {% if u.insp_status in ['submitted','reviewed','approved'] %}
         <!-- COMPLETED CARD -->
@@ -195,8 +198,8 @@
                         {% if u.end_time %}
                         <span class="timing-item">End <span class="timing-value">{{ u.end_time }}</span></span>
                         {% endif %}
-                        {% if u.duration_minutes %}
-                        <span class="timing-item">Duration <span class="timing-value">{{ u.duration_minutes }}m</span></span>
+                        {% if u.duration_minutes and u.duration_minutes > 1 %}
+                        <span class="timing-item">Duration <span class="timing-value">{% if u.duration_minutes > 60 %}{{ (u.duration_minutes // 60) }}h {{ (u.duration_minutes % 60) }}m{% else %}{{ u.duration_minutes }}m{% endif %}</span></span>
                         {% endif %}
                     </div>
                     {% endif %}
@@ -235,6 +238,7 @@
 
         {% endif %}
         {% endfor %}
+        </div>
 
         {% if not units %}
         <div class="empty-state">No units in this batch.</div>
