@@ -152,8 +152,9 @@ def _get_batch_pipeline(tenant_id):
 
         # Days elapsed since batch created
         try:
-            created = datetime.fromisoformat(batch['created_at'].replace('Z', '+00:00'))
-            elapsed = (datetime.now(timezone.utc) - created).days
+            rd = batch.get('received_date') or batch['created_at'][:10]
+            received_dt = datetime.fromisoformat(rd + 'T00:00:00+00:00')
+            elapsed = (datetime.now(timezone.utc) - received_dt).days
             batch['days_elapsed'] = elapsed
         except Exception:
             batch['days_elapsed'] = 0
@@ -248,7 +249,7 @@ def _get_batch_pipeline(tenant_id):
 
         # Created date for display
         try:
-            batch['created_date'] = batch['created_at'][:10]
+            batch['created_date'] = batch.get('received_date') or batch['created_at'][:10]
         except Exception:
             batch['created_date'] = ''
 
