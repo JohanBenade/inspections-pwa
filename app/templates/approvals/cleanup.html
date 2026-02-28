@@ -498,39 +498,25 @@ function saveEdit() {
 }
 
 function saveAndApplyAll() {
-    // First save the current one
-    const form = new FormData();
-    form.append('defect_id', document.getElementById('edit-defect-id').value);
-    form.append('description', document.getElementById('edit-desc').value);
-    form.append('defect_type', document.getElementById('edit-type').value);
-    form.append('library_entry_id', document.getElementById('edit-lib-id').value);
+    var newDesc = document.getElementById('edit-desc').value.trim();
+    if (!newDesc) { alert('Please enter a description'); return; }
 
-    fetch('{{ url_for("approvals.cleanup_edit_defect") }}', {
+    var previewForm = new FormData();
+    previewForm.append('defect_id', currentEdit.id);
+    previewForm.append('old_comment', currentEdit.desc);
+    previewForm.append('new_description', newDesc);
+    previewForm.append('new_defect_type', document.getElementById('edit-type').value);
+    previewForm.append('item_template_id', currentEdit.template);
+
+    fetch('{{ url_for("approvals.cleanup_apply_all_preview") }}', {
         method: 'POST',
-        headers: {'HX-Request': 'true'},
-        body: form
+        body: previewForm
     })
-    .then(r => r.text())
-    .then(html => {
-        const row = document.getElementById('row-' + currentEdit.id);
-        if (row && html) row.outerHTML = html;
-
-        // Now show Apply All preview
-        const previewForm = new FormData();
-        previewForm.append('defect_id', currentEdit.id);
-        previewForm.append('old_comment', currentEdit.desc);
-        previewForm.append('item_template_id', currentEdit.template);
-
-        return fetch('{{ url_for("approvals.cleanup_apply_all_preview") }}', {
-            method: 'POST',
-            body: previewForm
-        });
-    })
-    .then(r => r.text())
-    .then(html => {
+    .then(function(r) { return r.text(); })
+    .then(function(html) {
         document.getElementById('applyPreviewContent').innerHTML = html;
         document.getElementById('apply-old').value = currentEdit.desc;
-        document.getElementById('apply-new').value = document.getElementById('edit-desc').value;
+        document.getElementById('apply-new').value = newDesc;
         document.getElementById('apply-type').value = document.getElementById('edit-type').value;
         document.getElementById('apply-template').value = currentEdit.template;
         document.getElementById('editForm').style.display = 'none';

@@ -1011,7 +1011,6 @@ def cleanup_apply_all_preview():
     """Preview: find all matching defects for bulk update."""
     tenant_id = session['tenant_id']
 
-    source_id = request.form.get('defect_id')
     old_comment = request.form.get('old_comment', '').strip()
     item_template_id = request.form.get('item_template_id', '').strip()
 
@@ -1033,18 +1032,28 @@ def cleanup_apply_all_preview():
         AND i.status = 'submitted'
         AND d.item_template_id = ?
         AND LOWER(TRIM(COALESCE(d.reviewed_comment, d.original_comment))) = LOWER(TRIM(?))
-        AND d.id != ?
         ORDER BY u.unit_number
-    """, [tenant_id, item_template_id, old_comment, source_id])]
+    """, [tenant_id, item_template_id, old_comment])]
+
+    new_desc = request.form.get('new_description', '').strip()
+    new_type = request.form.get('new_defect_type', '')
+    type_label = 'NI' if new_type == 'not_installed' else 'NTS'
+    unit_count = len(set(m['unit_number'] for m in matches))
 
     html = '<div class="apply-all-list">'
-    html += '<p style="margin-bottom:0.75rem;font-weight:600;">'
-    html += 'This will update <strong>' + str(len(matches))
-    html += ' defect' + ('s' if len(matches) != 1 else '')
-    html += '</strong> across <strong>'
-    html += str(len(set(m['unit_number'] for m in matches)))
-    html += ' unit' + ('s' if len(set(m['unit_number'] for m in matches)) != 1 else '')
-    html += '</strong></p>'
+    html += '<div style="background:#fffbeb;border:1px solid #fcd34d;border-radius:8px;padding:0.75rem;margin-bottom:1rem;">'
+    html += '<p style="margin:0 0 0.5rem;font-weight:700;color:#92400e;">Preview - nothing saved yet</p>'
+    html += '<p style="margin:0;font-size:0.85rem;color:#78350f;">'
+    html += '<strong>' + str(len(matches)) + '</strong> defect'
+    html += ('s' if len(matches) != 1 else '')
+    html += ' across <strong>' + str(unit_count) + '</strong> unit'
+    html += ('s' if unit_count != 1 else '')
+    html += ' will be updated:</p>'
+    html += '<p style="margin:0.5rem 0 0;font-size:0.85rem;">'
+    html += '<span style="color:#dc2626;text-decoration:line-through;">' + old_comment + '</span>'
+    html += ' &#8594; <span style="color:#16a34a;font-weight:600;">' + new_desc + '</span>'
+    html += ' <span style="font-size:0.75rem;color:#6b7280;">(' + type_label + ')</span>'
+    html += '</p></div>'
 
     if matches:
         html += '<div style="max-height:300px;overflow-y:auto;border:1px solid #ddd;border-radius:6px;">'
