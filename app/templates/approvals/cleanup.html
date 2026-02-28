@@ -302,7 +302,7 @@
         <tbody>
             {% for d in defects %}
             <tr id="row-{{ d.id }}" class="cleanup-row status-{{ d.cleanup_status }}">
-                <td class="col-unit">{{ d.unit_number }}</td>
+                <td class="col-unit"><a href="{{ url_for('inspection.inspection_detail', inspection_id=d.inspection_id) }}" style="color: #2563eb; text-decoration: none; font-weight: 700;">{{ d.unit_number }}</a></td>
                 <td class="col-area">{{ d.area_name }}</td>
                 <td class="col-cat">{{ d.category_name }}</td>
                 <td class="col-item">{{ d.item_path }}</td>

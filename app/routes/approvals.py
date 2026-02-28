@@ -787,7 +787,7 @@ def cleanup():
         SELECT d.id, d.unit_id, d.item_template_id,
                d.original_comment, d.reviewed_comment,
                COALESCE(d.reviewed_comment, d.original_comment) AS display_desc,
-               d.defect_type, d.raised_cycle_id, d.created_at,
+               d.defect_type, d.raised_cycle_id, d.created_at, i.id AS inspection_id,
                u.unit_number, u.block, u.floor,
                i.inspector_name, i.status AS insp_status,
                it.item_description,
@@ -799,6 +799,9 @@ def cleanup():
         JOIN unit u ON d.unit_id = u.id
         JOIN inspection i ON i.unit_id = d.unit_id
             AND i.cycle_id = d.raised_cycle_id AND i.tenant_id = d.tenant_id
+            AND i.id = (SELECT i2.id FROM inspection i2
+                        WHERE i2.unit_id = d.unit_id AND i2.cycle_id = d.raised_cycle_id
+                        AND i2.tenant_id = d.tenant_id ORDER BY i2.created_at DESC LIMIT 1)
         JOIN item_template it ON d.item_template_id = it.id
         JOIN category_template ct ON it.category_id = ct.id
         JOIN area_template at ON ct.area_id = at.id
