@@ -55,6 +55,9 @@
                     <div class="h-full" style="width: {{ pct }}%; background-color: {{ color }};"></div>
                 </div>
                 <p class="text-xs text-gray-400 mt-1">{{ cycle.units_submitted }}/{{ cycle.total_units }} units submitted</p>
+            </div>
+        </div>
+        {% endfor %}
     </div>
     {% else %}
     <div class="bg-white rounded-lg shadow p-8 text-center">
