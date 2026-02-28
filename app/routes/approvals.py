@@ -1145,6 +1145,53 @@ def cleanup_apply_all_confirm():
             ' style="margin-left:1rem;">Refresh page</a></div>')
 
 
+@approvals_bp.route('/cleanup/delete-defect', methods=['POST'])
+@require_team_lead
+def cleanup_delete_defect():
+    """Delete a single defect and reset its inspection item to OK."""
+    tenant_id = session['tenant_id']
+    db = get_db()
+    now = datetime.now(timezone.utc).isoformat()
+
+    defect_id = request.form.get('defect_id', '').strip()
+    if not defect_id:
+        abort(400)
+
+    # Get defect details for audit
+    defect = query_db("""
+        SELECT d.id, d.unit_id, d.item_template_id, d.raised_cycle_id,
+               d.original_comment, d.reviewed_comment,
+               COALESCE(d.reviewed_comment, d.original_comment) AS display_desc
+        FROM defect d
+        WHERE d.id = ? AND d.tenant_id = ?
+    """, [defect_id, tenant_id], one=True)
+
+    if not defect:
+        abort(404)
+
+    # Delete the defect
+    db.execute("DELETE FROM defect WHERE id = ? AND tenant_id = ?",
+               [defect_id, tenant_id])
+
+    # Reset inspection item to OK
+    db.execute("""
+        UPDATE inspection_item SET status = 'ok', comment = NULL, marked_at = ?
+        WHERE item_template_id = ? AND inspection_id IN (
+            SELECT i.id FROM inspection i
+            WHERE i.unit_id = ? AND i.cycle_id = ? AND i.tenant_id = ?
+        )
+    """, [now, defect['item_template_id'], defect['unit_id'],
+           defect['raised_cycle_id'], tenant_id])
+
+    # Audit trail
+    log_audit(db, tenant_id, 'defect', defect_id, 'cleanup_delete',
+              old_value=defect['display_desc'], new_value='DELETED',
+              user_id=session['user_id'], user_name=session['user_name'])
+
+    db.commit()
+    return '', 200
+
+
 @approvals_bp.route('/cleanup/suggestions', methods=['GET'])
 @require_team_lead
 def cleanup_suggestions():
