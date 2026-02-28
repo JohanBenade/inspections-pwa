@@ -453,7 +453,7 @@ function startEdit(btn) {
     document.getElementById('editForm').style.display = 'block';
     document.getElementById('applyPreview').style.display = 'none';
     document.getElementById('edit-desc').focus();
-    loadSuggestions();
+    loadSuggestions(true);
 }
 
 function closeEdit() {
@@ -471,10 +471,10 @@ document.addEventListener('keydown', function(e) {
 });
 
 let suggTimeout;
-function loadSuggestions() {
+function loadSuggestions(showAll) {
     clearTimeout(suggTimeout);
     suggTimeout = setTimeout(function() {
-        const q = document.getElementById('edit-desc').value;
+        const q = showAll ? '' : document.getElementById('edit-desc').value;
         const tmpl = document.getElementById('edit-template-id').value;
         fetch('{{ url_for("approvals.cleanup_suggestions") }}?item_template_id='
               + tmpl + '&q=' + encodeURIComponent(q))
