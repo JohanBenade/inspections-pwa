@@ -150,14 +150,8 @@ def _get_batch_pipeline(tenant_id):
     for b in batches_raw:
         batch = dict(b)
 
-        # Days elapsed since batch created
-        try:
-            rd = batch.get('received_date') or batch['created_at'][:10]
-            received_dt = datetime.fromisoformat(rd + 'T00:00:00+00:00')
-            elapsed = (datetime.now(timezone.utc) - received_dt).days
-            batch['days_elapsed'] = elapsed
-        except Exception:
-            batch['days_elapsed'] = 0
+        # Days elapsed - set after milestones query
+        batch['days_elapsed'] = 0
 
         # Get zones (distinct cycles) in this batch
         zones_raw = query_db("""
@@ -247,15 +241,12 @@ def _get_batch_pipeline(tenant_id):
             batch['stage'] = 'open'
             batch['stage_label'] = 'Open'
 
-        # Created date for display
-        try:
-            batch['created_date'] = batch.get('received_date') or batch['created_at'][:10]
-        except Exception:
-            batch['created_date'] = ''
+
 
         # Milestone dates from inspections in this batch
         milestones = query_db("""
             SELECT
+                MIN(i.inspection_date) as earliest_inspection,
                 MAX(i.submitted_at) as last_submitted,
                 MAX(CASE WHEN i.status IN ('reviewed','pending_followup','certified','closed')
                     THEN i.updated_at END) as last_reviewed
@@ -267,7 +258,19 @@ def _get_batch_pipeline(tenant_id):
         if milestones:
             batch['last_submitted_date'] = milestones['last_submitted'][:10] if milestones['last_submitted'] else None
             batch['last_reviewed_date'] = milestones['last_reviewed'][:10] if milestones['last_reviewed'] else None
+            # Received = Monday before earliest inspection date
+            ei = milestones['earliest_inspection']
+            if ei:
+                from datetime import timedelta
+                ei_date = datetime.strptime(ei, '%Y-%m-%d')
+                monday = ei_date - timedelta(days=ei_date.weekday())
+                batch['created_date'] = monday.strftime('%Y-%m-%d')
+                elapsed = (datetime.now(timezone.utc) - datetime(monday.year, monday.month, monday.day, tzinfo=timezone.utc)).days
+                batch['days_elapsed'] = elapsed
+            else:
+                batch['created_date'] = batch['created_at'][:10]
         else:
+            batch['created_date'] = batch['created_at'][:10]
             batch['last_submitted_date'] = None
             batch['last_reviewed_date'] = None
 
