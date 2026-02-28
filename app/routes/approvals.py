@@ -252,15 +252,54 @@ def _get_batch_pipeline(tenant_id):
         except Exception:
             batch['created_date'] = ''
 
-        # Flags for template sections
-        batch['has_ready_zones'] = any(
-            z['stage'] in ('all_reviewed', 'signed_off', 'pushed') and z['total_inspections'] > 0
-            for z in zones
-        )
-        batch['has_progress_zones'] = any(
-            z['stage'] in ('in_progress', 'submitted', 'reviewing') and z['total_inspections'] > 0
-            for z in zones
-        )
+        # Milestone dates from inspections in this batch
+        milestones = query_db("""
+            SELECT
+                MAX(i.submitted_at) as last_submitted,
+                MAX(CASE WHEN i.status IN ('reviewed','pending_followup','certified','closed')
+                    THEN i.updated_at END) as last_reviewed
+            FROM batch_unit bu
+            JOIN inspection i ON i.unit_id = bu.unit_id AND i.cycle_id = bu.cycle_id
+            WHERE bu.batch_id = ? AND bu.tenant_id = ?
+        """, [batch['id'], tenant_id], one=True)
+
+        if milestones:
+            batch['last_submitted_date'] = milestones['last_submitted'][:10] if milestones['last_submitted'] else None
+            batch['last_reviewed_date'] = milestones['last_reviewed'][:10] if milestones['last_reviewed'] else None
+        else:
+            batch['last_submitted_date'] = None
+            batch['last_reviewed_date'] = None
+
+        # Signed off / pushed dates from cycles
+        cycle_dates = query_db("""
+            SELECT MAX(ic.approved_at) as last_approved, MAX(ic.pdfs_pushed_at) as last_pushed
+            FROM batch_unit bu
+            JOIN inspection_cycle ic ON bu.cycle_id = ic.id
+            WHERE bu.batch_id = ? AND bu.tenant_id = ?
+        """, [batch['id'], tenant_id], one=True)
+
+        if cycle_dates:
+            batch['signed_off_date'] = cycle_dates['last_approved'][:10] if cycle_dates['last_approved'] else None
+            batch['pushed_date'] = cycle_dates['last_pushed'][:10] if cycle_dates['last_pushed'] else None
+        else:
+            batch['signed_off_date'] = None
+            batch['pushed_date'] = None
+
+        # Categorise batch for sections
+        active_zones = [z for z in zones if z['total_inspections'] > 0]
+        all_pushed = all(z['stage'] == 'pushed' for z in active_zones) if active_zones else False
+        all_signed = all(z['stage'] in ('signed_off', 'pushed') for z in active_zones) if active_zones else False
+        any_ready = any(z['stage'] in ('all_reviewed', 'signed_off', 'pushed') for z in active_zones)
+        any_progress = any(z['stage'] in ('in_progress', 'submitted', 'reviewing') for z in active_zones)
+
+        if all_pushed:
+            batch['section'] = 'complete'
+        elif any_ready:
+            batch['section'] = 'ready'
+        elif any_progress:
+            batch['section'] = 'progress'
+        else:
+            batch['section'] = 'progress'
 
         result.append(batch)
 

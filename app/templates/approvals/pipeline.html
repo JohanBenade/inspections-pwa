@@ -10,66 +10,69 @@
     <p class="text-sm text-gray-500 mt-1">Review defect descriptions, sign off zones, push PDFs to Raubex.</p>
 </div>
 
-{% if not batches %}
-<div class="bg-white rounded-lg p-8 text-center text-gray-500">
-    No batches available.
-</div>
-{% endif %}
-
-<div class="space-y-5">
-{% for b in batches %}
-<div class="bg-white rounded-xl shadow-sm border border-gray-200 p-5">
-
-    <!-- Batch Header -->
-    <div class="flex items-start justify-between mb-4">
+{% macro batch_card(b, border_class) %}
+<div class="bg-white rounded-xl shadow-sm {{ border_class }} p-5">
+    <div class="flex items-start justify-between mb-2">
         <div>
-            <h2 class="text-lg font-semibold text-gray-900">{{ b.name }}</h2>
-            <p class="text-sm text-gray-500">
-                {{ b.total_units }} unit{{ 's' if b.total_units != 1 }} &middot;
-                {{ b.zones|length }} zone{{ 's' if b.zones|length != 1 }}
-                {% if b.notes %} &middot; {{ b.notes|safe }}{% endif %}
+            <h3 class="text-lg font-semibold text-gray-900">{{ b.name }}</h3>
+            <p class="text-xs text-gray-400 mt-0.5">
+                {{ b.total_units }} unit{{ 's' if b.total_units != 1 }}
+                &middot; {{ b.zones|selectattr('total_inspections', 'gt', 0)|list|length }} zone{{ 's' if b.zones|selectattr('total_inspections', 'gt', 0)|list|length != 1 }}
+                {% if b.notes %}&middot; {{ b.notes|safe }}{% endif %}
             </p>
         </div>
-        <div class="flex items-center gap-2">
-            <span class="text-xs text-gray-400 font-medium">Day {{ b.days_elapsed }}</span>
+        <div class="text-right shrink-0 ml-3">
             <span class="text-xs font-medium px-2.5 py-1 rounded-full
-                {% if b.stage == 'pushed' %}bg-green-100 text-green-700
-                {% elif b.stage == 'signed_off' %}bg-blue-100 text-blue-700
-                {% elif b.stage == 'all_reviewed' %}bg-indigo-100 text-indigo-700
-                {% elif b.stage == 'reviewing' %}bg-purple-100 text-purple-700
-                {% elif b.stage == 'submitted' %}bg-yellow-100 text-yellow-700
-                {% elif b.stage == 'in_progress' %}bg-orange-100 text-orange-700
-                {% else %}bg-gray-100 text-gray-600{% endif %}">
+                {% if b.section == 'complete' %}bg-green-100 text-green-700
+                {% elif b.section == 'ready' %}bg-indigo-100 text-indigo-700
+                {% else %}bg-orange-100 text-orange-700{% endif %}">
                 {{ b.stage_label }}
             </span>
         </div>
     </div>
 
+    <!-- Timeline -->
+    <div class="flex items-center gap-0 mb-4 mt-3 px-1">
+        {% set milestones = [
+            ('Received', b.created_date, true),
+            ('Inspected', b.last_submitted_date, b.last_submitted_date is not none),
+            ('Reviewed', b.last_reviewed_date, b.last_reviewed_date is not none),
+            ('Signed Off', b.signed_off_date, b.signed_off_date is not none),
+            ('Pushed', b.pushed_date, b.pushed_date is not none)
+        ] %}
+        {% for label, date, done in milestones %}
+            {% if not loop.first %}
+            <div class="flex-1 h-0.5 {% if done %}bg-green-400{% else %}bg-gray-200{% endif %}"></div>
+            {% endif %}
+            <div class="flex flex-col items-center" style="min-width:60px;">
+                <div class="w-2.5 h-2.5 rounded-full {% if done %}bg-green-500{% else %}bg-gray-300{% endif %}"></div>
+                <span class="text-[10px] text-gray-400 mt-0.5">{{ label }}</span>
+                {% if date %}
+                <span class="text-[10px] text-gray-500 font-medium">{{ date[5:] }}</span>
+                {% endif %}
+            </div>
+        {% endfor %}
+        <span class="ml-2 text-xs text-gray-400 font-medium whitespace-nowrap">Day {{ b.days_elapsed }}</span>
+    </div>
+
     <!-- Zones -->
     <div class="space-y-2">
     {% for z in b.zones %}
+    {% if z.total_inspections > 0 %}
         <a href="{{ url_for('approvals.review', cycle_id=z.cycle_id) }}"
            class="block rounded-lg border border-gray-100 hover:border-primary/40 hover:bg-gray-50 transition-all p-3">
             <div class="flex items-center justify-between">
-                <div class="flex-1 min-w-0">
-                    <div class="flex items-center gap-2 flex-wrap">
-                        <span class="font-medium text-gray-800 text-sm">
-                            {{ z.block }} &middot;
-                            {% if z.floor == 0 %}Ground{% elif z.floor == 1 %}1st Floor{% elif z.floor == 2 %}2nd Floor{% elif z.floor == 3 %}3rd Floor{% else %}Floor {{ z.floor }}{% endif %}
-                        </span>
+                <div>
+                    <div class="flex items-center gap-2">
+                        <span class="font-medium text-gray-800 text-sm">{{ z.block }} &middot; {{ z.floor_label }}</span>
                         {% if z.cycle_number > 1 %}
                         <span class="text-xs px-1.5 py-0.5 rounded bg-amber-100 text-amber-700 font-medium">C{{ z.cycle_number }}</span>
-                        {% else %}
-                        <span class="text-xs text-gray-400">C{{ z.cycle_number }}</span>
                         {% endif %}
                     </div>
                     <div class="flex items-center gap-3 mt-1 text-xs text-gray-500">
                         <span>{{ z.total_inspections }} units</span>
                         <span>{{ z.defect_count }} defects</span>
-                        <span class="font-medium
-                            {% if z.reviewed_count == z.total_inspections and z.total_inspections > 0 %}text-green-600
-                            {% elif z.reviewed_count > 0 %}text-blue-600
-                            {% else %}text-gray-500{% endif %}">
+                        <span class="font-medium {% if z.reviewed_count == z.total_inspections %}text-green-600{% elif z.reviewed_count > 0 %}text-blue-600{% endif %}">
                             {{ z.reviewed_count }}/{{ z.total_inspections }} reviewed
                         </span>
                     </div>
@@ -82,7 +85,7 @@
                         </svg>
                         {{ z.needs_attention }}
                     </span>
-                    {% elif z.total_inspections > 0 and z.stage not in ('in_progress',) %}
+                    {% elif z.stage not in ('in_progress',) %}
                     <svg class="w-4 h-4 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
                     </svg>
@@ -102,10 +105,59 @@
                 </div>
             </div>
         </a>
+    {% endif %}
     {% endfor %}
     </div>
+</div>
+{% endmacro %}
 
+{# ── READY FOR SIGN-OFF ── #}
+{% set ready = batches|selectattr('section', 'equalto', 'ready')|list %}
+{% if ready %}
+<div class="mb-8">
+    <h2 class="text-sm font-semibold text-green-700 uppercase tracking-wide mb-3">Ready for Sign-off</h2>
+    <div class="space-y-4">
+    {% for b in ready %}
+        {{ batch_card(b, 'border-2 border-green-200') }}
+    {% endfor %}
+    </div>
 </div>
-{% endfor %}
+{% endif %}
+
+{# ── IN PROGRESS ── #}
+{% set progress = batches|selectattr('section', 'equalto', 'progress')|list %}
+{% if progress %}
+<div class="mb-8">
+    <h2 class="text-sm font-semibold text-orange-600 uppercase tracking-wide mb-3">In Progress</h2>
+    <div class="space-y-4">
+    {% for b in progress %}
+        {{ batch_card(b, 'border border-gray-200') }}
+    {% endfor %}
+    </div>
 </div>
+{% endif %}
+
+{# ── COMPLETE ── #}
+{% set complete = batches|selectattr('section', 'equalto', 'complete')|list %}
+{% if complete %}
+<div class="mb-8">
+    <h2 class="text-sm font-semibold text-gray-400 uppercase tracking-wide mb-3">Complete</h2>
+    <div class="space-y-4">
+    {% for b in complete %}
+        {{ batch_card(b, 'border border-gray-200') }}
+    {% endfor %}
+    </div>
+</div>
+{% endif %}
+
+{# ── EMPTY STATE ── #}
+{% if not ready and not progress and not complete %}
+<div class="bg-white rounded-lg p-8 text-center">
+    <svg class="w-12 h-12 text-green-500 mx-auto mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+    </svg>
+    <p class="text-gray-500 text-lg">All caught up!</p>
+</div>
+{% endif %}
+
 {% endblock %}
