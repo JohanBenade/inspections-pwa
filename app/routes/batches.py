@@ -268,9 +268,12 @@ def detail(batch_id):
     """, [tenant_id])
     inspectors = [dict(r) for r in inspectors_raw]
 
+    # Distinct cycle IDs for exclusion management links
+    cycle_ids = list(set(u['cycle_id'] for u in units))
+
     return render_template('batches/detail.html',
                            batch=batch, units=units, inspectors=inspectors,
-                           floor_labels=FLOOR_LABELS)
+                           floor_labels=FLOOR_LABELS, cycle_ids=cycle_ids)
 
 
 @batches_bp.route('/<batch_id>/edit', methods=['GET', 'POST'])

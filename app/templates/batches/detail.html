@@ -18,6 +18,7 @@
     </div>
     {% if batch.status == 'open' %}
     <a href="{{ url_for('batches.edit_batch', batch_id=batch.id) }}" class="px-3 py-1.5 text-xs font-semibold rounded bg-blue-50 text-blue-600 border border-blue-200 hover:bg-blue-100 mr-2">Edit</a>
+    {% if cycle_ids %}<a href="{{ url_for('cycles.edit_cycle', cycle_id=cycle_ids[0], return_to=url_for('batches.detail', batch_id=batch.id)) }}" class="px-3 py-1.5 text-xs font-semibold rounded bg-orange-50 text-orange-600 border border-orange-200 hover:bg-orange-100 mr-2">Manage Exclusions</a>{% endif %}
     <a href="{{ url_for('batches.live_monitor', batch_id=batch.id) }}" class="px-3 py-1.5 text-xs font-semibold rounded bg-gray-800 text-amber-400 hover:bg-gray-700 mr-2">Live Monitor</a>
     <form method="POST" action="{{ url_for('batches.toggle_lock', batch_id=batch.id) }}" class="inline mr-2">
         {% if batch.locked %}
@@ -28,6 +29,8 @@
     </form>
     <span class="px-2.5 py-1 text-xs font-semibold rounded-full bg-gray-100 text-gray-600">Open</span>
     {% elif batch.status == 'in_progress' %}
+    <a href="{{ url_for('batches.edit_batch', batch_id=batch.id) }}" class="px-3 py-1.5 text-xs font-semibold rounded bg-blue-50 text-blue-600 border border-blue-200 hover:bg-blue-100 mr-2">Edit</a>
+    {% if cycle_ids %}<a href="{{ url_for('cycles.edit_cycle', cycle_id=cycle_ids[0], return_to=url_for('batches.detail', batch_id=batch.id)) }}" class="px-3 py-1.5 text-xs font-semibold rounded bg-orange-50 text-orange-600 border border-orange-200 hover:bg-orange-100 mr-2">Manage Exclusions</a>{% endif %}
     <a href="{{ url_for('batches.live_monitor', batch_id=batch.id) }}" class="px-3 py-1.5 text-xs font-semibold rounded bg-gray-800 text-amber-400 hover:bg-gray-700 mr-2">Live Monitor</a>
     <form method="POST" action="{{ url_for('batches.toggle_lock', batch_id=batch.id) }}" class="inline mr-2">
         {% if batch.locked %}
