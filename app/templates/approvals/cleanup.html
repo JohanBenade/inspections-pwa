@@ -111,6 +111,12 @@
         font-size: 0.75rem; background: #fff; color: #374151; cursor: pointer;
     }
     .btn-edit:hover { background: #f3f4f6; }
+    .btn-delete {
+        padding: 0.3rem 0.5rem; border: 1px solid #fca5a5; border-radius: 5px;
+        font-size: 0.7rem; background: #fff; color: #dc2626; cursor: pointer;
+        margin-left: 0.25rem;
+    }
+    .btn-delete:hover { background: #fef2f2; }
     .btn-apply-all {
         padding: 0.25rem 0.5rem; border: 1px solid #d1d5db; border-radius: 5px;
         font-size: 0.7rem; background: #fff; color: #6b7280; cursor: pointer;
@@ -343,6 +349,13 @@
                         data-area="{{ d.area_name }}"
                         data-cat="{{ d.category_name }}"
                         data-item="{{ d.item_path }}">Edit</button>
+                    <button class="btn-delete" onclick="confirmDelete(this)"
+                        data-id="{{ d.id }}"
+                        data-unit="{{ d.unit_number }}"
+                        data-area="{{ d.area_name }}"
+                        data-cat="{{ d.category_name }}"
+                        data-item="{{ d.item_path }}"
+                        data-desc="{{ d.display_desc or '' }}">Del</button>
                 </td>
             </tr>
             {% endfor %}
@@ -542,6 +555,45 @@ function applyFilters() {
     window.location.href = '{{ url_for("approvals.cleanup") }}?' + params.toString();
 }
 
+// Delete confirmation
+function confirmDelete(btn) {
+    document.getElementById('del-defect-id').value = btn.dataset.id;
+    document.getElementById('delContext').innerHTML =
+        '<strong>Unit ' + btn.dataset.unit + '</strong> &#8250; '
+        + btn.dataset.area + ' &#8250; ' + btn.dataset.cat
+        + ' &#8250; ' + btn.dataset.item
+        + '<br><span style="color:#dc2626;">' + btn.dataset.desc + '</span>';
+    document.getElementById('deleteOverlay').classList.add('active');
+}
+
+function closeDelete() {
+    document.getElementById('deleteOverlay').classList.remove('active');
+}
+
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') closeDelete();
+});
+
+function executeDelete() {
+    var defectId = document.getElementById('del-defect-id').value;
+    var form = new FormData();
+    form.append('defect_id', defectId);
+
+    fetch('/approvals/cleanup/delete-defect', {
+        method: 'POST',
+        body: form
+    })
+    .then(function(r) {
+        if (r.ok) {
+            var row = document.getElementById('row-' + defectId);
+            if (row) row.remove();
+            closeDelete();
+        } else {
+            alert('Delete failed');
+        }
+    });
+}
+
 let currentSortCol = -1;
 let currentSortDir = 'asc';
 
@@ -581,4 +633,21 @@ function sortTable(colIdx) {
     rows.forEach(function(row) { tbody.appendChild(row); });
 }
 </script>
+
+<!-- Delete Confirmation Modal -->
+<div class="edit-overlay" id="deleteOverlay">
+    <div class="edit-panel" style="max-width:420px;">
+        <h3 style="color:#dc2626;">Delete Defect</h3>
+        <div class="edit-context" id="delContext"></div>
+        <input type="hidden" id="del-defect-id">
+        <div style="background:#fef2f2;border:1px solid #fca5a5;border-radius:8px;padding:0.75rem;margin:1rem 0;">
+            <p style="margin:0;font-size:0.85rem;color:#991b1b;font-weight:600;">This will permanently delete this defect.</p>
+            <p style="margin:0.25rem 0 0;font-size:0.8rem;color:#991b1b;">The inspection item will be reset to OK. This cannot be undone.</p>
+        </div>
+        <div class="edit-buttons">
+            <button type="button" style="padding:0.5rem 1.25rem;background:#dc2626;color:#fff;border:none;border-radius:6px;font-size:0.85rem;font-weight:600;cursor:pointer;" onclick="executeDelete()">Delete</button>
+            <button type="button" class="btn-cancel" onclick="closeDelete()">Cancel</button>
+        </div>
+    </div>
+</div>
 {% endblock %}
