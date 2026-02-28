@@ -556,6 +556,37 @@ def _build_live_monitor_data(batch_id, tenant_id):
                 'duration': area_dur,
             })
 
+        # --- Overlay defect table counts for submitted units ---
+        # In-progress: keep inspection_item counts (real-time, updates on tap)
+        # Submitted+: use defect table (accurate, one item can have multiple defects)
+        submitted_uids = set(u['unit_id'] for u in units
+                             if u['insp_status'] in ('submitted', 'reviewed', 'approved'))
+        if submitted_uids:
+            sub_list = list(submitted_uids)
+            ph_su = ','.join('?' * len(sub_list))
+            sub_cycles = list(set(u['cycle_id'] for u in units
+                                  if u['unit_id'] in submitted_uids))
+            ph_sc = ','.join('?' * len(sub_cycles))
+            defect_area_raw = query_db("""
+                SELECT d.unit_id, at2.area_name, COUNT(d.id) AS defect_count
+                FROM defect d
+                JOIN item_template it ON d.item_template_id = it.id
+                JOIN category_template ct ON it.category_id = ct.id
+                JOIN area_template at2 ON ct.area_id = at2.id
+                WHERE d.unit_id IN ({}) AND d.raised_cycle_id IN ({})
+                AND d.tenant_id = ? AND d.status = 'open'
+                GROUP BY d.unit_id, at2.area_name
+            """.format(ph_su, ph_sc), sub_list + sub_cycles + [tenant_id])
+            defect_area_map = {}
+            for r in [dict(x) for x in defect_area_raw]:
+                defect_area_map[(r['unit_id'], r['area_name'])] = r['defect_count']
+            for uid in submitted_uids:
+                if uid in area_progress:
+                    for area_dict in area_progress[uid]:
+                        key = (uid, area_dict['area'])
+                        if key in defect_area_map:
+                            area_dict['defects'] = defect_area_map[key]
+
     # Sort areas: Kitchen, Lounge, Bathroom, then Bedrooms
     area_order = {'KITCHEN': 0, 'LOUNGE': 1, 'BATHROOM': 2}
     for uid in area_progress:
