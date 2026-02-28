@@ -9,6 +9,9 @@ from app.auth import require_team_lead
 from app.utils import generate_id
 from app.utils.audit import log_audit
 from app.services.db import get_db, query_db
+import bleach
+
+ALLOWED_TAGS = ['p', 'br', 'strong', 'em', 'b', 'i', 'u', 'ol', 'ul', 'li']
 
 batches_bp = Blueprint('batches', __name__, url_prefix='/batches')
 
@@ -285,8 +288,10 @@ def edit_batch(batch_id):
 
     if request.method == 'POST':
         name = request.form.get('name', '').strip()
-        notes = request.form.get('notes', '').strip() or None
-        exclusion_notes = request.form.get('exclusion_notes', '').strip() or None
+        notes_raw = request.form.get('notes', '').strip()
+        notes = bleach.clean(notes_raw, tags=ALLOWED_TAGS, strip=True) if notes_raw else None
+        exclusion_notes_raw = request.form.get('exclusion_notes', '').strip()
+        exclusion_notes = bleach.clean(exclusion_notes_raw, tags=ALLOWED_TAGS, strip=True) if exclusion_notes_raw else None
 
         if not name:
             flash('Batch name is required.', 'error')

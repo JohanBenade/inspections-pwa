@@ -13,7 +13,7 @@
         <h1 class="text-2xl font-bold text-gray-800">{{ batch.name }}</h1>
         <p class="text-gray-500 mt-1">
             {{ units | length }} unit{{ 's' if units | length != 1 }}
-            {% if batch.notes %} &middot; {{ batch.notes }}{% endif %}
+            {% if batch.notes %} &middot; {{ batch.notes|safe }}{% endif %}
         </p>
     </div>
     {% if batch.status == 'open' %}

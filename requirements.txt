@@ -4,3 +4,4 @@ gunicorn==21.2.0
 weasyprint==60.1
 pydyf==0.8.0
 openpyxl
+bleach
