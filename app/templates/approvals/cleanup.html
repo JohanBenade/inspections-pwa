@@ -59,6 +59,11 @@
     .cleanup-table {
         width: 100%; border-collapse: collapse; font-size: 0.85rem;
     }
+    .sortable { cursor: pointer; user-select: none; }
+    .sortable:hover { background: #f3f4f6; }
+    .sort-arrow { font-size: 0.6rem; margin-left: 0.2rem; color: #9ca3af; }
+    .sort-arrow.asc::after { content: '\25B2'; }
+    .sort-arrow.desc::after { content: '\25BC'; }
     .cleanup-table thead th {
         padding: 0.6rem 0.5rem; text-align: left; font-size: 0.7rem;
         text-transform: uppercase; letter-spacing: 0.05em; color: #6b7280;
@@ -289,13 +294,13 @@
     <table class="cleanup-table">
         <thead>
             <tr>
-                <th>Unit</th>
-                <th>Area</th>
-                <th>Category</th>
-                <th>Item</th>
-                <th>Description</th>
-                <th>Type</th>
-                <th>Status</th>
+                <th class="sortable" data-col="0" onclick="sortTable(0)">Unit <span class="sort-arrow"></span></th>
+                <th class="sortable" data-col="1" onclick="sortTable(1)">Area <span class="sort-arrow"></span></th>
+                <th class="sortable" data-col="2" onclick="sortTable(2)">Category <span class="sort-arrow"></span></th>
+                <th class="sortable" data-col="3" onclick="sortTable(3)">Item <span class="sort-arrow"></span></th>
+                <th class="sortable" data-col="4" onclick="sortTable(4)">Description <span class="sort-arrow"></span></th>
+                <th class="sortable" data-col="5" onclick="sortTable(5)">Type <span class="sort-arrow"></span></th>
+                <th class="sortable" data-col="6" onclick="sortTable(6)">Status <span class="sort-arrow"></span></th>
                 <th>Actions</th>
             </tr>
         </thead>
@@ -540,6 +545,45 @@ function applyFilters() {
         if (el && el.value) params.set(f, el.value);
     });
     window.location.href = '{{ url_for("approvals.cleanup") }}?' + params.toString();
+}
+
+let currentSortCol = -1;
+let currentSortDir = 'asc';
+
+function sortTable(colIdx) {
+    const table = document.querySelector('.cleanup-table');
+    const tbody = table.querySelector('tbody');
+    const rows = Array.from(tbody.querySelectorAll('tr'));
+
+    // Toggle direction
+    if (currentSortCol === colIdx) {
+        currentSortDir = currentSortDir === 'asc' ? 'desc' : 'asc';
+    } else {
+        currentSortDir = 'asc';
+        currentSortCol = colIdx;
+    }
+
+    // Update arrows
+    document.querySelectorAll('.sort-arrow').forEach(a => { a.className = 'sort-arrow'; });
+    table.querySelector('th[data-col="' + colIdx + '"] .sort-arrow').classList.add(currentSortDir);
+
+    rows.sort(function(a, b) {
+        let aVal = a.cells[colIdx].textContent.trim().toLowerCase();
+        let bVal = b.cells[colIdx].textContent.trim().toLowerCase();
+
+        // Numeric sort for Unit column
+        if (colIdx === 0) {
+            aVal = parseInt(aVal) || 0;
+            bVal = parseInt(bVal) || 0;
+            return currentSortDir === 'asc' ? aVal - bVal : bVal - aVal;
+        }
+
+        if (aVal < bVal) return currentSortDir === 'asc' ? -1 : 1;
+        if (aVal > bVal) return currentSortDir === 'asc' ? 1 : -1;
+        return 0;
+    });
+
+    rows.forEach(function(row) { tbody.appendChild(row); });
 }
 </script>
 {% endblock %}
