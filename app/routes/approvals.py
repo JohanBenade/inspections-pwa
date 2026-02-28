@@ -135,6 +135,111 @@ def _count_needs_attention(tenant_id, cycle_id):
     return count
 
 
+
+
+def _get_batch_pipeline(tenant_id):
+    """Build pipeline data grouped by batch, with zones (cycles) nested inside."""
+    batches_raw = query_db("""
+        SELECT ib.*
+        FROM inspection_batch ib
+        WHERE ib.tenant_id = ?
+        ORDER BY ib.created_at DESC
+    """, [tenant_id])
+
+    result = []
+    for b in batches_raw:
+        batch = dict(b)
+
+        # Days elapsed since batch created
+        try:
+            created = datetime.fromisoformat(batch['created_at'].replace('Z', '+00:00'))
+            elapsed = (datetime.now(timezone.utc) - created).days
+            batch['days_elapsed'] = elapsed
+        except Exception:
+            batch['days_elapsed'] = 0
+
+        # Get zones (distinct cycles) in this batch
+        zones_raw = query_db("""
+            SELECT ic.id as cycle_id, ic.block, ic.floor, ic.cycle_number,
+                   ic.approved_at, ic.pdfs_pushed_at,
+                   COUNT(DISTINCT bu.unit_id) as batch_unit_count
+            FROM batch_unit bu
+            JOIN inspection_cycle ic ON bu.cycle_id = ic.id
+            WHERE bu.batch_id = ? AND bu.tenant_id = ?
+            GROUP BY ic.id
+            ORDER BY ic.block, ic.floor, ic.cycle_number
+        """, [batch['id'], tenant_id])
+
+        zones = []
+        total_units = 0
+        for z in zones_raw:
+            zone = dict(z)
+            total_units += zone['batch_unit_count']
+
+            # Full cycle stats (all units in cycle)
+            cs = query_db("""
+                SELECT
+                    COUNT(DISTINCT i.id) as total_inspections,
+                    COUNT(DISTINCT CASE WHEN i.status = 'submitted' THEN i.id END) as submitted_count,
+                    COUNT(DISTINCT CASE WHEN i.status = 'reviewed' THEN i.id END) as reviewed_count,
+                    COUNT(DISTINCT CASE WHEN i.status IN ('pending_followup', 'certified', 'closed') THEN i.id END) as signed_count,
+                    (SELECT COUNT(*) FROM defect d WHERE d.raised_cycle_id = ?
+                     AND d.status = 'open' AND d.tenant_id = ?) as defect_count
+                FROM inspection i
+                WHERE i.cycle_id = ? AND i.tenant_id = ?
+            """, [zone['cycle_id'], tenant_id, zone['cycle_id'], tenant_id], one=True)
+
+            if cs:
+                zone.update(dict(cs))
+            else:
+                zone['total_inspections'] = 0
+                zone['submitted_count'] = 0
+                zone['reviewed_count'] = 0
+                zone['signed_count'] = 0
+                zone['defect_count'] = 0
+
+            total = zone['total_inspections']
+            zone['needs_attention'] = _count_needs_attention(tenant_id, zone['cycle_id']) if total > 0 else 0
+
+            if zone.get('pdfs_pushed_at'):
+                zone['stage'] = 'pushed'
+                zone['stage_label'] = 'PDFs Pushed'
+            elif zone.get('approved_at'):
+                zone['stage'] = 'signed_off'
+                zone['stage_label'] = 'Signed Off'
+            elif zone['reviewed_count'] == total and total > 0:
+                zone['stage'] = 'all_reviewed'
+                zone['stage_label'] = 'All Reviewed'
+            elif zone['reviewed_count'] > 0:
+                zone['stage'] = 'reviewing'
+                zone['stage_label'] = 'Reviewing'
+            elif zone['submitted_count'] > 0:
+                zone['stage'] = 'submitted'
+                zone['stage_label'] = 'Submitted'
+            else:
+                zone['stage'] = 'in_progress'
+                zone['stage_label'] = 'In Progress'
+
+            zones.append(zone)
+
+        batch['zones'] = zones
+        batch['total_units'] = total_units
+
+        # Batch overall stage = worst zone
+        if zones:
+            stage_order = ['in_progress', 'submitted', 'reviewing', 'all_reviewed', 'signed_off', 'pushed']
+            zone_stages = [z['stage'] for z in zones]
+            worst = min(zone_stages, key=lambda s: stage_order.index(s) if s in stage_order else 0)
+            batch['stage'] = worst
+            batch['stage_label'] = next(z['stage_label'] for z in zones if z['stage'] == worst)
+        else:
+            batch['stage'] = 'open'
+            batch['stage_label'] = 'Open'
+
+        result.append(batch)
+
+    return result
+
 def _build_review_data(tenant_id, cycle_id):
     """Build complete review data for a cycle."""
     cycle = query_db(
@@ -323,8 +428,8 @@ def _get_suggestions(tenant_id, item_template_id, exclude_desc=None):
 def pipeline():
     """Pipeline overview - all cycles with status."""
     tenant_id = session['tenant_id']
-    cycles = _get_cycle_pipeline(tenant_id)
-    return render_template('approvals/pipeline.html', cycles=cycles)
+    batches = _get_batch_pipeline(tenant_id)
+    return render_template('approvals/pipeline.html', batches=batches)
 
 
 @approvals_bp.route('/<cycle_id>/')
