@@ -483,9 +483,18 @@ function loadSuggestions(showAll) {
                 document.getElementById('suggBox').innerHTML = html;
                 document.querySelectorAll('.sugg-item').forEach(item => {
                     item.addEventListener('click', function() {
-                        document.getElementById('edit-desc').value = this.dataset.desc;
+                        var field = document.getElementById('edit-desc');
+                        var current = field.value.trim();
+                        var picked = this.dataset.desc;
+                        if (current && current.toLowerCase() !== 'defect noted' && current !== 'N/a' && current !== 'na') {
+                            field.value = current + ', ' + picked;
+                        } else {
+                            field.value = picked;
+                        }
                         document.getElementById('edit-lib-id').value = this.dataset.libId;
-                        document.getElementById('suggBox').innerHTML = '';
+                        this.style.opacity = '0.4';
+                        this.style.pointerEvents = 'none';
+                        field.focus();
                     });
                 });
             });
