@@ -220,6 +220,16 @@ def _get_batch_pipeline(tenant_id):
                 zone['stage'] = 'in_progress'
                 zone['stage_label'] = 'In Progress'
 
+            # Floor label
+            floor_map = {0: 'Ground', 1: '1st Floor', 2: '2nd Floor', 3: '3rd Floor'}
+            zone['floor_label'] = floor_map.get(zone['floor'], 'Floor ' + str(zone['floor']))
+
+            # First submitted date
+            sub_date = query_db(
+                "SELECT MIN(submitted_at) as d FROM inspection WHERE cycle_id = ? AND submitted_at IS NOT NULL",
+                [zone['cycle_id']], one=True)
+            zone['first_submitted_date'] = sub_date['d'][:10] if sub_date and sub_date['d'] else None
+
             zones.append(zone)
 
         batch['zones'] = zones
@@ -235,6 +245,22 @@ def _get_batch_pipeline(tenant_id):
         else:
             batch['stage'] = 'open'
             batch['stage_label'] = 'Open'
+
+        # Created date for display
+        try:
+            batch['created_date'] = batch['created_at'][:10]
+        except Exception:
+            batch['created_date'] = ''
+
+        # Flags for template sections
+        batch['has_ready_zones'] = any(
+            z['stage'] in ('all_reviewed', 'signed_off', 'pushed') and z['total_inspections'] > 0
+            for z in zones
+        )
+        batch['has_progress_zones'] = any(
+            z['stage'] in ('in_progress', 'submitted', 'reviewing') and z['total_inspections'] > 0
+            for z in zones
+        )
 
         result.append(batch)
 
