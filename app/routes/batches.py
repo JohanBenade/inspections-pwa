@@ -270,6 +270,39 @@ def detail(batch_id):
                            floor_labels=FLOOR_LABELS)
 
 
+@batches_bp.route('/<batch_id>/edit', methods=['GET', 'POST'])
+@require_team_lead
+def edit_batch(batch_id):
+    """Edit batch name, notes, exclusion notes."""
+    tenant_id = session['tenant_id']
+
+    batch = query_db(
+        'SELECT * FROM inspection_batch WHERE id = ? AND tenant_id = ?',
+        [batch_id, tenant_id], one=True)
+    if not batch:
+        abort(404)
+    batch = dict(batch)
+
+    if request.method == 'POST':
+        name = request.form.get('name', '').strip()
+        notes = request.form.get('notes', '').strip() or None
+        exclusion_notes = request.form.get('exclusion_notes', '').strip() or None
+
+        if not name:
+            flash('Batch name is required.', 'error')
+            return render_template('batches/edit.html', batch=batch)
+
+        now = datetime.now(timezone.utc).isoformat()
+        get_db().execute(
+            'UPDATE inspection_batch SET name = ?, notes = ?, exclusion_notes = ?, updated_at = ? WHERE id = ? AND tenant_id = ?',
+            [name, notes, exclusion_notes, now, batch_id, tenant_id])
+        get_db().commit()
+        flash('Batch updated.', 'success')
+        return redirect(url_for('batches.detail', batch_id=batch_id))
+
+    return render_template('batches/edit.html', batch=batch)
+
+
 @batches_bp.route('/<batch_id>/assign', methods=['POST'])
 @require_team_lead
 def assign_inspector(batch_id):
