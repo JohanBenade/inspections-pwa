@@ -93,6 +93,7 @@
                         <a href="{{ url_for('analytics.login_status') }}" class="text-sm text-gray-300 hover:text-white">Login Status</a>
                         {% if current_user.role == 'admin' %}
                         <a href="{{ url_for('data_quality.descriptions') }}" class="text-sm text-gray-300 hover:text-white">Data Quality</a>
+                        <a href="{{ url_for('cycles.list_cycles') }}" class="text-sm text-gray-300 hover:text-white">Cycles</a>
                         {% endif %}
                         {% endif %}
                     </div>
