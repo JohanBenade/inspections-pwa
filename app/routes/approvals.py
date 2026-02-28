@@ -285,21 +285,39 @@ def _get_batch_pipeline(tenant_id):
             batch['signed_off_date'] = None
             batch['pushed_date'] = None
 
-        # Categorise batch for sections
+        # Categorise batch for sections (only count zones with actual inspections)
         active_zones = [z for z in zones if z['total_inspections'] > 0]
-        all_pushed = all(z['stage'] == 'pushed' for z in active_zones) if active_zones else False
-        all_signed = all(z['stage'] in ('signed_off', 'pushed') for z in active_zones) if active_zones else False
-        any_ready = any(z['stage'] in ('all_reviewed', 'signed_off', 'pushed') for z in active_zones)
-        any_progress = any(z['stage'] in ('in_progress', 'submitted', 'reviewing') for z in active_zones)
 
-        if all_pushed:
-            batch['section'] = 'complete'
-        elif any_ready:
-            batch['section'] = 'ready'
-        elif any_progress:
+        if not active_zones:
             batch['section'] = 'progress'
+            batch['stage'] = 'open'
+            batch['stage_label'] = 'Open'
         else:
-            batch['section'] = 'progress'
+            all_pushed = all(z['stage'] == 'pushed' for z in active_zones)
+            all_signed = all(z['stage'] in ('signed_off', 'pushed') for z in active_zones)
+            all_reviewed = all(z['stage'] in ('all_reviewed', 'signed_off', 'pushed') for z in active_zones)
+            any_progress = any(z['stage'] in ('in_progress', 'submitted', 'reviewing') for z in active_zones)
+
+            if all_pushed:
+                batch['section'] = 'complete'
+                batch['stage'] = 'pushed'
+                batch['stage_label'] = 'PDFs Pushed'
+            elif all_signed:
+                batch['section'] = 'complete'
+                batch['stage'] = 'signed_off'
+                batch['stage_label'] = 'Signed Off'
+            elif all_reviewed:
+                batch['section'] = 'ready'
+                batch['stage'] = 'all_reviewed'
+                batch['stage_label'] = 'All Reviewed'
+            elif any_progress:
+                batch['section'] = 'progress'
+                batch['stage'] = 'in_progress'
+                batch['stage_label'] = 'In Progress'
+            else:
+                batch['section'] = 'progress'
+                batch['stage'] = 'submitted'
+                batch['stage_label'] = 'Submitted'
 
         result.append(batch)
 
