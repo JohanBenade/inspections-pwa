@@ -265,6 +265,11 @@
         <option value="{{ s }}" {{ 'selected' if filters.subitem == s }}>{{ s }}</option>
         {% endfor %}
     </select>
+    <select onchange="applyFilters()" id="f-type">
+        <option value="">All Types</option>
+        <option value="not_to_standard" {{ 'selected' if filters.type == 'not_to_standard' }}>NTS</option>
+        <option value="not_installed" {{ 'selected' if filters.type == 'not_installed' }}>NI</option>
+    </select>
     <select onchange="applyFilters()" id="f-status">
         <option value="">All Statuses</option>
         <option value="placeholder" {{ 'selected' if filters.status == 'placeholder' }}>Placeholders</option>
@@ -540,7 +545,7 @@ function hideApplyPreview() {
 
 function applyFilters() {
     const params = new URLSearchParams();
-    ['unit', 'area', 'category', 'item', 'subitem', 'status', 'inspector', 'cycle'].forEach(f => {
+    ['unit', 'area', 'category', 'item', 'subitem', 'type', 'status', 'inspector', 'cycle'].forEach(f => {
         const el = document.getElementById('f-' + f);
         if (el && el.value) params.set(f, el.value);
     });

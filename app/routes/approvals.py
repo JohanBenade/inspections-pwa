@@ -781,6 +781,7 @@ def cleanup():
     f_cycle = request.args.get('cycle', '')
     f_item = request.args.get('item', '')
     f_subitem = request.args.get('subitem', '')
+    f_type = request.args.get('type', '')
 
     # All defects on submitted inspections
     defects = [dict(r) for r in query_db("""
@@ -889,6 +890,8 @@ def cleanup():
         filtered = [d for d in filtered if d['item_name'] == f_item]
     if f_subitem:
         filtered = [d for d in filtered if d['subitem_name'] == f_subitem]
+    if f_type:
+        filtered = [d for d in filtered if d['defect_type'] == f_type]
     if f_status:
         filtered = [d for d in filtered if d['cleanup_status'] == f_status]
     if f_inspector:
@@ -923,7 +926,7 @@ def cleanup():
                            filtered_inspector=filtered_inspector,
                            filters={'unit': f_unit, 'area': f_area,
                                     'category': f_category, 'item': f_item,
-                                    'subitem': f_subitem, 'status': f_status,
+                                    'subitem': f_subitem, 'type': f_type, 'status': f_status,
                                     'inspector': f_inspector, 'cycle': f_cycle},
                            options={'units': all_units, 'areas': all_areas,
                                     'categories': all_categories,
