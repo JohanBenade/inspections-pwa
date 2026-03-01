@@ -276,6 +276,110 @@ def detail(batch_id):
                            floor_labels=FLOOR_LABELS, cycle_ids=cycle_ids)
 
 
+
+@batches_bp.route('/<batch_id>/exclusions')
+@require_team_lead
+def exclusions(batch_id):
+    """Manage exclusions for a batch - shows template tree with counts."""
+    tenant_id = session['tenant_id']
+
+    batch = query_db(
+        "SELECT * FROM inspection_batch WHERE id = ? AND tenant_id = ?",
+        [batch_id, tenant_id], one=True)
+    if not batch:
+        abort(404)
+    batch = dict(batch)
+
+    # Get distinct cycles in this batch
+    cycles = query_db("""
+        SELECT DISTINCT ic.id as cycle_id, ic.block, ic.floor, ic.cycle_number
+        FROM batch_unit bu
+        JOIN inspection_cycle ic ON bu.cycle_id = ic.id
+        WHERE bu.batch_id = ? AND bu.tenant_id = ?
+        ORDER BY ic.block, ic.floor
+    """, [batch_id, tenant_id])
+
+    if not cycles:
+        abort(404)
+
+    # For now, use first cycle (single-cycle batches)
+    cycle = cycles[0]
+    cycle_id = cycle['cycle_id']
+
+    # Get unit_type from units in this batch
+    unit = query_db("""
+        SELECT u.unit_type FROM batch_unit bu
+        JOIN unit u ON bu.unit_id = u.id
+        WHERE bu.batch_id = ? LIMIT 1
+    """, [batch_id], one=True)
+
+    if not unit:
+        abort(404)
+
+    # Build template tree with exclusion status and counts
+    areas = query_db("""
+        SELECT * FROM area_template
+        WHERE tenant_id = ? AND unit_type = ?
+        ORDER BY area_order
+    """, [tenant_id, unit['unit_type']])
+
+    total_items = 0
+    total_excluded = 0
+    template_tree = []
+
+    for area in areas:
+        categories = query_db("""
+            SELECT * FROM category_template
+            WHERE area_id = ?
+            ORDER BY category_order
+        """, [area['id']])
+
+        area_items = 0
+        area_excluded = 0
+        cat_list = []
+
+        for cat in categories:
+            items = query_db("""
+                SELECT it.*,
+                    CASE WHEN cei.id IS NOT NULL THEN 1 ELSE 0 END as is_excluded,
+                    cei.reason as exclude_reason
+                FROM item_template it
+                LEFT JOIN cycle_excluded_item cei ON cei.item_template_id = it.id AND cei.cycle_id = ?
+                WHERE it.category_id = ?
+                ORDER BY it.item_order
+            """, [cycle_id, cat['id']])
+
+            cat_items = len(items)
+            cat_excluded = sum(1 for i in items if i['is_excluded'])
+            area_items += cat_items
+            area_excluded += cat_excluded
+
+            cat_list.append({
+                'id': cat['id'],
+                'name': cat['category_name'],
+                'checklist': items,
+                'total': cat_items,
+                'excluded': cat_excluded,
+            })
+
+        total_items += area_items
+        total_excluded += area_excluded
+
+        template_tree.append({
+            'id': area['id'],
+            'name': area['area_name'],
+            'categories': cat_list,
+            'total': area_items,
+            'excluded': area_excluded,
+        })
+
+    return render_template('batches/exclusions.html',
+                           batch=batch, cycle_id=cycle_id,
+                           template_tree=template_tree,
+                           total_items=total_items,
+                           total_excluded=total_excluded)
+
+
 @batches_bp.route('/<batch_id>/edit', methods=['GET', 'POST'])
 @require_team_lead
 def edit_batch(batch_id):
