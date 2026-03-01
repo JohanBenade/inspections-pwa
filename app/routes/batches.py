@@ -257,9 +257,26 @@ def detail(batch_id):
         LEFT JOIN inspection i ON i.unit_id = u.id AND i.cycle_id = bu.cycle_id
         LEFT JOIN inspector insp ON bu.inspector_id = insp.id
         WHERE bu.batch_id = ? AND bu.tenant_id = ?
+        AND bu.status != 'removed'
         ORDER BY u.block, u.floor, u.unit_number
     """, [batch_id, tenant_id])
     units = [dict(r) for r in units_raw]
+
+    # Removed units (separate section)
+    removed_raw = query_db("""
+        SELECT bu.id AS bu_id, bu.removed_at, bu.removed_by, bu.removed_reason,
+               u.unit_number, u.block, u.floor,
+               ic.cycle_number,
+               COALESCE(insp.name, bu.removed_by) AS removed_by_name
+        FROM batch_unit bu
+        JOIN unit u ON bu.unit_id = u.id
+        JOIN inspection_cycle ic ON bu.cycle_id = ic.id
+        LEFT JOIN inspector insp ON bu.removed_by = insp.id
+        WHERE bu.batch_id = ? AND bu.tenant_id = ?
+        AND bu.status = 'removed'
+        ORDER BY bu.removed_at DESC
+    """, [batch_id, tenant_id])
+    removed_units = [dict(r) for r in removed_raw]
 
     inspectors_raw = query_db("""
         SELECT id, name FROM inspector
@@ -273,7 +290,8 @@ def detail(batch_id):
 
     return render_template('batches/detail.html',
                            batch=batch, units=units, inspectors=inspectors,
-                           floor_labels=FLOOR_LABELS, cycle_ids=cycle_ids)
+                           floor_labels=FLOOR_LABELS, cycle_ids=cycle_ids,
+                           removed_units=removed_units)
 
 
 
@@ -597,6 +615,91 @@ def assign_inspector(batch_id):
     return '<span class="text-xs text-green-600">{}</span>'.format(inspector['name'])
 
 
+
+@batches_bp.route('/<batch_id>/remove-confirm/<bu_id>')
+@require_team_lead
+def remove_confirm(batch_id, bu_id):
+    """HTMX partial: inline confirmation strip for removing a unit."""
+    tenant_id = session['tenant_id']
+    bu = query_db("""
+        SELECT bu.id AS bu_id, u.unit_number
+        FROM batch_unit bu
+        JOIN unit u ON bu.unit_id = u.id
+        WHERE bu.id = ? AND bu.batch_id = ? AND bu.tenant_id = ?
+    """, [bu_id, batch_id, tenant_id], one=True)
+    if not bu:
+        abort(404)
+    return render_template('batches/_remove_confirm.html',
+                           batch_id=batch_id, bu=dict(bu))
+
+
+@batches_bp.route('/<batch_id>/remove-unit', methods=['POST'])
+@require_team_lead
+def remove_unit(batch_id):
+    """Remove a unit from this batch (not_started/pending/assigned only)."""
+    tenant_id = session['tenant_id']
+    db = get_db()
+    now = datetime.now(timezone.utc).isoformat()
+
+    bu_id = request.form.get('bu_id')
+    reason = request.form.get('reason', '').strip() or None
+
+    if not bu_id:
+        return '', 400
+
+    bu = query_db(
+        "SELECT * FROM batch_unit WHERE id = ? AND batch_id = ? AND tenant_id = ?",
+        [bu_id, batch_id, tenant_id], one=True)
+    if not bu:
+        abort(404)
+    bu = dict(bu)
+
+    # Only allow removal for not-yet-started units
+    allowed = ('not_started', 'pending', 'assigned')
+    insp = query_db(
+        "SELECT id, status FROM inspection WHERE unit_id = ? AND cycle_id = ? AND tenant_id = ?",
+        [bu['unit_id'], bu['cycle_id'], tenant_id], one=True)
+    insp_status = insp['status'] if insp else 'not_started'
+
+    if bu['status'] not in allowed and insp_status not in ('not_started',):
+        flash('Cannot remove a unit that is already in progress.', 'error')
+        return redirect(url_for('batches.detail', batch_id=batch_id))
+
+    if bu['status'] == 'removed':
+        flash('Unit already removed.', 'error')
+        return redirect(url_for('batches.detail', batch_id=batch_id))
+
+    # Get unit number for flash message
+    unit = query_db("SELECT unit_number FROM unit WHERE id = ?", [bu['unit_id']], one=True)
+    unit_number = unit['unit_number'] if unit else bu['unit_id']
+
+    # Clean up not_started inspection + CUA
+    if insp and insp['status'] == 'not_started':
+        db.execute("DELETE FROM inspection_item WHERE inspection_id = ?", [insp['id']])
+        db.execute("DELETE FROM inspection WHERE id = ?", [insp['id']])
+        db.execute(
+            "DELETE FROM cycle_unit_assignment WHERE cycle_id = ? AND unit_id = ?",
+            [bu['cycle_id'], bu['unit_id']])
+
+    # Mark batch_unit as removed
+    db.execute("""
+        UPDATE batch_unit
+        SET status = 'removed', removed_at = ?, removed_by = ?, removed_reason = ?
+        WHERE id = ?
+    """, [now, session['user_id'], reason, bu_id])
+
+    log_audit(db, tenant_id, 'batch', batch_id, 'unit_removed',
+              new_value=unit_number,
+              user_id=session['user_id'], user_name=session['user_name'],
+              metadata='{{"unit": "{}", "reason": "{}"}}'.format(
+                  unit_number, reason or ''))
+
+    db.commit()
+
+    flash('Unit {} removed from batch.'.format(unit_number), 'success')
+    return redirect(url_for('batches.detail', batch_id=batch_id))
+
+
 # ============================================================
 # LIVE MONITOR V2
 # ============================================================
@@ -701,6 +804,7 @@ def _build_live_monitor_data(batch_id, tenant_id):
         LEFT JOIN inspection i ON i.unit_id = u.id AND i.cycle_id = bu.cycle_id
         LEFT JOIN inspector insp ON bu.inspector_id = insp.id
         WHERE bu.batch_id = ? AND bu.tenant_id = ?
+        AND bu.status != 'removed'
         ORDER BY u.unit_number
     """, [batch_id, tenant_id])
     units = [dict(r) for r in units_raw]

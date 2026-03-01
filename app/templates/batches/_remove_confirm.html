@@ -1,0 +1,16 @@
+<tr id="row-{{ bu.bu_id }}" class="bg-red-50">
+    <td colspan="6" class="px-4 py-3">
+        <form method="POST" action="{{ url_for('batches.remove_unit', batch_id=batch_id) }}">
+            <input type="hidden" name="bu_id" value="{{ bu.bu_id }}">
+            <div class="flex items-center gap-3 flex-wrap">
+                <span class="text-sm font-medium text-red-700">Remove Unit {{ bu.unit_number }}?</span>
+                <input type="text" name="reason" placeholder="Reason (optional)"
+                       class="text-sm border border-gray-300 rounded px-2 py-1.5 flex-1 min-w-[140px]">
+                <button type="submit"
+                        class="px-3 py-1.5 text-xs font-semibold rounded bg-red-600 text-white hover:bg-red-700">Remove</button>
+                <a href="{{ url_for('batches.detail', batch_id=batch_id) }}"
+                   class="text-xs text-gray-500 hover:text-gray-700">Cancel</a>
+            </div>
+        </form>
+    </td>
+</tr>

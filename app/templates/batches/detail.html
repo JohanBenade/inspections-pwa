@@ -57,11 +57,12 @@
                 <th class="px-4 py-3 text-left font-medium text-gray-600">Round</th>
                 <th class="px-4 py-3 text-left font-medium text-gray-600">Status</th>
                 <th class="px-4 py-3 text-left font-medium text-gray-600">Inspector</th>
+                <th class="px-4 py-3 w-8"></th>
             </tr>
         </thead>
         <tbody class="divide-y divide-gray-100">
             {% for u in units %}
-            <tr class="hover:bg-gray-50">
+            <tr id="row-{{ u.bu_id }}" class="hover:bg-gray-50">
                 <td class="px-4 py-3 font-medium text-gray-800">
                     {{ u.unit_number }}
                     <span class="sm:hidden text-xs text-gray-400 block">
@@ -120,6 +121,16 @@
                         {% endif %}
                     </span>
                 </td>
+                <td class="px-4 py-2 text-center">
+                    {% if batch.status in ('open', 'in_progress') and u.bu_status in ('not_started', 'pending', 'assigned') %}
+                    <button type="button"
+                            class="text-red-400 hover:text-red-600 text-lg leading-none px-2 py-1"
+                            title="Remove from batch"
+                            hx-get="{{ url_for('batches.remove_confirm', batch_id=batch.id, bu_id=u.bu_id) }}"
+                            hx-target="#row-{{ u.bu_id }}"
+                            hx-swap="outerHTML">&times;</button>
+                    {% endif %}
+                </td>
             </tr>
             {% endfor %}
         </tbody>
@@ -128,6 +139,24 @@
 {% else %}
 <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-8 text-center">
     <p class="text-gray-400">No units in this batch.</p>
+</div>
+{% endif %}
+
+{% if removed_units %}
+<div class="mt-6 bg-gray-50 rounded-lg border border-gray-200 p-4">
+    <h3 class="text-sm font-semibold text-gray-500 mb-3">Removed ({{ removed_units|length }})</h3>
+    {% for ru in removed_units %}
+    <div class="flex items-center justify-between py-2 {% if not loop.last %}border-b border-gray-100{% endif %}">
+        <div>
+            <span class="text-sm text-gray-400 line-through">Unit {{ ru.unit_number }}</span>
+            <span class="text-xs text-gray-400 ml-2">{{ ru.block }} {{ floor_labels.get(ru.floor, ru.floor) }} C{{ ru.cycle_number }}</span>
+        </div>
+        <div class="text-xs text-gray-400 text-right">
+            {% if ru.removed_reason %}{{ ru.removed_reason }} &middot; {% endif %}
+            {{ ru.removed_by_name or 'Unknown' }} &middot; {{ ru.removed_at[:10] if ru.removed_at else '' }}
+        </div>
+    </div>
+    {% endfor %}
 </div>
 {% endif %}
 
