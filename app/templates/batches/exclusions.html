@@ -9,64 +9,51 @@
 
 {% block content %}
 <div class="max-w-4xl mx-auto">
-    <!-- Header -->
-    <div class="flex justify-between items-start mb-6">
-        <div>
-            <h1 class="text-2xl font-bold text-gray-900">Manage Exclusions</h1>
-            <p class="text-gray-500 mt-1">{{ batch.name }}</p>
-        </div>
-        <div class="text-right">
-            <div class="text-3xl font-bold text-orange-600">{{ total_excluded }}</div>
-            <div class="text-xs text-gray-500">of {{ total_items }} items excluded</div>
-            <div class="text-xs text-gray-400">{{ (total_excluded * 100 / total_items) | round(1) if total_items else 0 }}%</div>
+    <!-- Sticky Header -->
+    <div class="bg-white rounded-lg shadow p-4 mb-4 sticky top-0 z-10">
+        <div class="flex justify-between items-start">
+            <div>
+                <h1 class="text-xl font-bold text-gray-900">Manage Exclusions</h1>
+                <div class="text-sm text-gray-600">{{ batch.name }}</div>
+            </div>
+            <div class="text-right">
+                <div class="text-2xl font-bold text-orange-600" id="total-excluded">{{ total_excluded }}</div>
+                <div class="text-xs text-gray-500">of {{ total_items }} excluded</div>
+                <div class="text-xs text-gray-400">{{ (total_excluded * 100 / total_items) | round(1) if total_items else 0 }}%</div>
+            </div>
         </div>
     </div>
 
-    <!-- Area Cards -->
-    {% for area in template_tree %}
-    <div class="bg-white rounded-lg shadow-sm border border-gray-200 mb-4">
-        <details {% if area.excluded > 0 %}open{% endif %}>
-            <summary class="px-4 py-3 cursor-pointer hover:bg-gray-50 flex justify-between items-center">
-                <span class="font-semibold text-gray-900">{{ area.name }}</span>
-                <span class="text-sm {% if area.excluded > 0 %}text-orange-600 font-semibold{% else %}text-gray-400{% endif %}">
-                    {{ area.excluded }} / {{ area.total }}
-                </span>
-            </summary>
-            <div class="border-t border-gray-100 px-4 pb-3">
-                {% for cat in area.categories %}
-                <details class="mt-2" {% if cat.excluded > 0 %}open{% endif %}>
-                    <summary class="py-2 cursor-pointer hover:text-blue-600 flex justify-between items-center text-sm">
-                        <span class="font-medium text-gray-700">{{ cat.name }}</span>
-                        <span class="text-xs {% if cat.excluded > 0 %}text-orange-600 font-semibold{% else %}text-gray-400{% endif %}">
-                            {{ cat.excluded }} / {{ cat.total }}
+    <!-- Area Tabs -->
+    <div class="bg-white rounded-lg shadow mb-4">
+        <div class="border-b overflow-x-auto">
+            <div class="flex flex-wrap">
+                {% for area in area_tabs %}
+                <button class="area-tab px-4 py-3 text-sm font-medium whitespace-nowrap border-b-2 flex items-center gap-2
+                       {% if loop.first %}border-orange-500 text-orange-600{% else %}border-transparent text-gray-500 hover:text-gray-700{% endif %}"
+                        hx-get="{{ url_for('batches.exclusions_area', batch_id=batch.id, area_id=area.id, cycle_id=cycle_id) }}"
+                        hx-target="#area-content"
+                        hx-swap="innerHTML"
+                        onclick="document.querySelectorAll('.area-tab').forEach(t => {t.classList.remove('border-orange-500', 'text-orange-600'); t.classList.add('border-transparent', 'text-gray-500')}); this.classList.add('border-orange-500', 'text-orange-600'); this.classList.remove('border-transparent', 'text-gray-500')">
+                    <span class="flex flex-col items-start">
+                        <span class="flex items-center gap-2">
+                            {{ area.name }}
+                            {% if area.excluded > 0 %}
+                            <span class="bg-orange-500 text-white text-xs px-1.5 py-0.5 rounded-full">{{ area.excluded }}</span>
+                            {% endif %}
                         </span>
-                    </summary>
-                    <div class="ml-2 mt-1 space-y-0.5">
-                        {% for item in cat.checklist %}
-                        <div id="exclusion-{{ item.id }}" class="{% if item.depth > 0 %}ml-4{% endif %}">
-                            <label class="flex items-center gap-2 py-1 cursor-pointer hover:bg-gray-50 rounded px-2 -mx-2">
-                                <input type="checkbox"
-                                       {% if item.is_excluded %}checked{% endif %}
-                                       class="rounded border-gray-300 text-orange-600 focus:ring-orange-500"
-                                       hx-post="{{ url_for('cycles.toggle_exclusion', cycle_id=cycle_id) }}"
-                                       hx-vals='{"item_id": "{{ item.id }}"}'
-                                       hx-target="#exclusion-{{ item.id }}"
-                                       hx-swap="innerHTML">
-                                <span class="text-sm {% if item.is_excluded %}text-orange-600 line-through{% else %}text-gray-700{% endif %}">
-                                    {{ item.item_description }}
-                                </span>
-                                {% if item.is_excluded and item.exclude_reason %}
-                                <span class="text-xs text-orange-500">({{ item.exclude_reason }})</span>
-                                {% endif %}
-                            </label>
-                        </div>
-                        {% endfor %}
-                    </div>
-                </details>
+                        <span class="text-xs {% if area.excluded > 0 %}text-orange-600 font-semibold{% else %}text-gray-400{% endif %}">{{ area.excluded }}/{{ area.total }}</span>
+                    </span>
+                </button>
                 {% endfor %}
             </div>
-        </details>
+        </div>
+
+        <div id="area-content" class="p-4"
+             hx-get="{{ url_for('batches.exclusions_area', batch_id=batch.id, area_id=area_tabs[0].id, cycle_id=cycle_id) }}"
+             hx-trigger="load">
+            <div class="text-center py-8 text-gray-500">Loading...</div>
+        </div>
     </div>
-    {% endfor %}
 </div>
 {% endblock %}

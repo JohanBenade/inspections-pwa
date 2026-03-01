@@ -1,0 +1,64 @@
+<!-- Exclusion area partial - loaded via HTMX -->
+<div class="space-y-4">
+    <div class="flex justify-end mb-2">
+        <a href="javascript:void(0)" id="toggle-all-btn"
+           onclick="var cats=document.querySelectorAll('.cat-content');var chevs=document.querySelectorAll('.cat-chevron');var anyHidden=false;cats.forEach(function(c){if(c.classList.contains('hidden'))anyHidden=true});cats.forEach(function(c){if(anyHidden)c.classList.remove('hidden');else c.classList.add('hidden')});chevs.forEach(function(ch){if(anyHidden)ch.classList.add('rotate-90');else ch.classList.remove('rotate-90')});this.textContent=anyHidden?'Collapse All':'Expand All';return false"
+           class="text-sm text-blue-600 font-medium" style="text-decoration:none">
+            Expand All
+        </a>
+    </div>
+
+    {% for category in categories %}
+    <div class="border rounded-lg overflow-hidden">
+        <!-- Category Header -->
+        <div class="bg-gray-100 px-4 py-3 border-b flex items-center select-none">
+            <div onclick="var h=this.closest('.bg-gray-100');var c=h.nextElementSibling;var ch=this.querySelector('.cat-chevron');if(c)c.classList.toggle('hidden');if(ch)ch.classList.toggle('rotate-90')"
+                 class="flex items-center justify-center flex-shrink-0 mr-1 cursor-pointer"
+                 role="button"
+                 style="width:44px;height:44px;margin:-8px 0 -8px -10px">
+                <svg class="cat-chevron w-4 h-4 text-gray-400 transform transition-transform duration-200 {% if category.excluded > 0 %}rotate-90{% endif %}"
+                     fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+                </svg>
+            </div>
+            <h3 class="font-semibold text-gray-800 flex-1">
+                {{ category.name }}
+                {% if category.excluded > 0 %}
+                <span class="bg-orange-500 text-white text-xs px-1.5 py-0.5 rounded-full font-medium align-middle">{{ category.excluded }}</span>
+                {% endif %}
+            </h3>
+            <span class="text-xs {% if category.excluded > 0 %}text-orange-600 font-semibold{% else %}text-gray-500{% endif %} ml-2">
+                {{ category.excluded }}/{{ category.total }}
+            </span>
+        </div>
+
+        <!-- Category Content -->
+        <div class="cat-content {% if category.excluded == 0 %}hidden{% endif %}">
+            <div class="divide-y">
+                {% for item in category.checklist %}
+                <div id="excl-{{ item.id }}" class="px-4 py-2 {% if item.depth > 0 %}pl-8{% endif %} hover:bg-gray-50">
+                    <div id="excl-inner-{{ item.id }}">
+                    <label class="flex items-center gap-3 cursor-pointer">
+                        <input type="checkbox"
+                               {% if item.is_excluded %}checked{% endif %}
+                               class="rounded border-gray-300 text-orange-600 focus:ring-orange-500 flex-shrink-0"
+                               style="width:20px;height:20px"
+                               hx-post="{{ url_for('cycles.toggle_exclusion', cycle_id=cycle_id) }}"
+                               hx-vals='{"item_id": "{{ item.id }}"}'
+                               hx-target="#excl-inner-{{ item.id }}"
+                               hx-swap="innerHTML">
+                        <span class="text-sm {% if item.is_excluded %}text-orange-600 line-through{% else %}text-gray-700{% endif %}">
+                            {{ item.item_description }}
+                        </span>
+                        {% if item.is_excluded and item.exclude_reason %}
+                        <span class="text-xs text-orange-400">({{ item.exclude_reason }})</span>
+                        {% endif %}
+                    </label>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+</div>

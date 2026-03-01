@@ -280,7 +280,7 @@ def detail(batch_id):
 @batches_bp.route('/<batch_id>/exclusions')
 @require_team_lead
 def exclusions(batch_id):
-    """Manage exclusions for a batch - shows template tree with counts."""
+    """Manage exclusions for a batch - inspection-style UI with area tabs."""
     tenant_id = session['tenant_id']
 
     batch = query_db(
@@ -302,21 +302,18 @@ def exclusions(batch_id):
     if not cycles:
         abort(404)
 
-    # For now, use first cycle (single-cycle batches)
-    cycle = cycles[0]
-    cycle_id = cycle['cycle_id']
+    cycle_id = cycles[0]['cycle_id']
 
-    # Get unit_type from units in this batch
+    # Get unit_type
     unit = query_db("""
         SELECT u.unit_type FROM batch_unit bu
         JOIN unit u ON bu.unit_id = u.id
         WHERE bu.batch_id = ? LIMIT 1
     """, [batch_id], one=True)
-
     if not unit:
         abort(404)
 
-    # Build template tree with exclusion status and counts
+    # Build area summary for tabs
     areas = query_db("""
         SELECT * FROM area_template
         WHERE tenant_id = ? AND unit_type = ?
@@ -325,59 +322,85 @@ def exclusions(batch_id):
 
     total_items = 0
     total_excluded = 0
-    template_tree = []
+    area_tabs = []
 
     for area in areas:
-        categories = query_db("""
-            SELECT * FROM category_template
-            WHERE area_id = ?
-            ORDER BY category_order
-        """, [area['id']])
+        stats = query_db("""
+            SELECT COUNT(*) as total,
+                   SUM(CASE WHEN cei.id IS NOT NULL THEN 1 ELSE 0 END) as excluded
+            FROM item_template it
+            LEFT JOIN cycle_excluded_item cei ON cei.item_template_id = it.id AND cei.cycle_id = ?
+            JOIN category_template ct ON it.category_id = ct.id
+            WHERE ct.area_id = ?
+        """, [cycle_id, area['id']], one=True)
 
-        area_items = 0
-        area_excluded = 0
-        cat_list = []
+        a_total = stats['total'] or 0
+        a_excluded = stats['excluded'] or 0
+        total_items += a_total
+        total_excluded += a_excluded
 
-        for cat in categories:
-            items = query_db("""
-                SELECT it.*,
-                    CASE WHEN cei.id IS NOT NULL THEN 1 ELSE 0 END as is_excluded,
-                    cei.reason as exclude_reason
-                FROM item_template it
-                LEFT JOIN cycle_excluded_item cei ON cei.item_template_id = it.id AND cei.cycle_id = ?
-                WHERE it.category_id = ?
-                ORDER BY it.item_order
-            """, [cycle_id, cat['id']])
-
-            cat_items = len(items)
-            cat_excluded = sum(1 for i in items if i['is_excluded'])
-            area_items += cat_items
-            area_excluded += cat_excluded
-
-            cat_list.append({
-                'id': cat['id'],
-                'name': cat['category_name'],
-                'checklist': items,
-                'total': cat_items,
-                'excluded': cat_excluded,
-            })
-
-        total_items += area_items
-        total_excluded += area_excluded
-
-        template_tree.append({
+        area_tabs.append({
             'id': area['id'],
             'name': area['area_name'],
-            'categories': cat_list,
-            'total': area_items,
-            'excluded': area_excluded,
+            'total': a_total,
+            'excluded': a_excluded,
         })
 
     return render_template('batches/exclusions.html',
                            batch=batch, cycle_id=cycle_id,
-                           template_tree=template_tree,
+                           area_tabs=area_tabs,
                            total_items=total_items,
                            total_excluded=total_excluded)
+
+
+@batches_bp.route('/<batch_id>/exclusions/area/<area_id>')
+@require_team_lead
+def exclusions_area(batch_id, area_id):
+    """HTMX partial: load exclusion items for one area."""
+    tenant_id = session['tenant_id']
+
+    batch = query_db(
+        "SELECT * FROM inspection_batch WHERE id = ? AND tenant_id = ?",
+        [batch_id, tenant_id], one=True)
+    if not batch:
+        abort(404)
+
+    cycle_id = request.args.get('cycle_id')
+    if not cycle_id:
+        abort(400)
+
+    categories = query_db("""
+        SELECT * FROM category_template
+        WHERE area_id = ?
+        ORDER BY category_order
+    """, [area_id])
+
+    cat_list = []
+    for cat in categories:
+        items = query_db("""
+            SELECT it.*,
+                CASE WHEN cei.id IS NOT NULL THEN 1 ELSE 0 END as is_excluded,
+                cei.reason as exclude_reason
+            FROM item_template it
+            LEFT JOIN cycle_excluded_item cei ON cei.item_template_id = it.id AND cei.cycle_id = ?
+            WHERE it.category_id = ?
+            ORDER BY it.item_order
+        """, [cycle_id, cat['id']])
+
+        cat_items = len(items)
+        cat_excluded = sum(1 for i in items if i['is_excluded'])
+
+        cat_list.append({
+            'id': cat['id'],
+            'name': cat['category_name'],
+            'checklist': items,
+            'total': cat_items,
+            'excluded': cat_excluded,
+        })
+
+    return render_template('batches/_exclusion_area.html',
+                           batch=batch, cycle_id=cycle_id,
+                           categories=cat_list)
 
 
 @batches_bp.route('/<batch_id>/edit', methods=['GET', 'POST'])
