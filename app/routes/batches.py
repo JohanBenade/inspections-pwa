@@ -403,6 +403,67 @@ def exclusions_area(batch_id, area_id):
                            categories=cat_list)
 
 
+
+
+@batches_bp.route('/<batch_id>/exclusions/counts')
+@require_team_lead
+def exclusions_counts(batch_id):
+    """HTMX partial: return updated exclusion counts for header + tabs."""
+    tenant_id = session['tenant_id']
+    cycle_id = request.args.get('cycle_id')
+    if not cycle_id:
+        abort(400)
+
+    batch = query_db(
+        "SELECT * FROM inspection_batch WHERE id = ? AND tenant_id = ?",
+        [batch_id, tenant_id], one=True)
+    if not batch:
+        abort(404)
+
+    unit = query_db("""
+        SELECT u.unit_type FROM batch_unit bu
+        JOIN unit u ON bu.unit_id = u.id
+        WHERE bu.batch_id = ? LIMIT 1
+    """, [batch_id], one=True)
+
+    areas = query_db("""
+        SELECT * FROM area_template
+        WHERE tenant_id = ? AND unit_type = ?
+        ORDER BY area_order
+    """, [tenant_id, unit['unit_type']])
+
+    total_items = 0
+    total_excluded = 0
+    area_tabs = []
+
+    for area in areas:
+        stats = query_db("""
+            SELECT COUNT(*) as total,
+                   SUM(CASE WHEN cei.id IS NOT NULL THEN 1 ELSE 0 END) as excluded
+            FROM item_template it
+            LEFT JOIN cycle_excluded_item cei ON cei.item_template_id = it.id AND cei.cycle_id = ?
+            JOIN category_template ct ON it.category_id = ct.id
+            WHERE ct.area_id = ?
+        """, [cycle_id, area['id']], one=True)
+
+        a_total = stats['total'] or 0
+        a_excluded = stats['excluded'] or 0
+        total_items += a_total
+        total_excluded += a_excluded
+
+        area_tabs.append({
+            'id': area['id'],
+            'name': area['area_name'],
+            'total': a_total,
+            'excluded': a_excluded,
+        })
+
+    return render_template('batches/_exclusion_counts.html',
+                           batch=batch, cycle_id=cycle_id,
+                           area_tabs=area_tabs,
+                           total_items=total_items,
+                           total_excluded=total_excluded)
+
 @batches_bp.route('/<batch_id>/edit', methods=['GET', 'POST'])
 @require_team_lead
 def edit_batch(batch_id):

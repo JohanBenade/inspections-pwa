@@ -16,7 +16,7 @@
                  class="flex items-center justify-center flex-shrink-0 mr-1 cursor-pointer"
                  role="button"
                  style="width:44px;height:44px;margin:-8px 0 -8px -10px">
-                <svg class="cat-chevron w-4 h-4 text-gray-400 transform transition-transform duration-200 {% if category.excluded > 0 %}rotate-90{% endif %}"
+                <svg class="cat-chevron w-4 h-4 text-gray-400 transform transition-transform duration-200"
                      fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
                 </svg>
@@ -32,12 +32,11 @@
             </span>
         </div>
 
-        <!-- Category Content -->
-        <div class="cat-content {% if category.excluded == 0 %}hidden{% endif %}">
+        <!-- Category Content - always collapsed -->
+        <div class="cat-content hidden">
             <div class="divide-y">
                 {% for item in category.checklist %}
                 <div id="excl-{{ item.id }}" class="px-4 py-2 {% if item.depth > 0 %}pl-8{% endif %} hover:bg-gray-50">
-                    <div id="excl-inner-{{ item.id }}">
                     <label class="flex items-center gap-3 cursor-pointer">
                         <input type="checkbox"
                                {% if item.is_excluded %}checked{% endif %}
@@ -45,8 +44,8 @@
                                style="width:20px;height:20px"
                                hx-post="{{ url_for('cycles.toggle_exclusion', cycle_id=cycle_id) }}"
                                hx-vals='{"item_id": "{{ item.id }}"}'
-                               hx-target="#excl-inner-{{ item.id }}"
-                               hx-swap="innerHTML">
+                               hx-swap="none"
+                               hx-on::after-request="this.closest('label').querySelector('span').classList.toggle('line-through');this.closest('label').querySelector('span').classList.toggle('text-orange-600');this.closest('label').querySelector('span').classList.toggle('text-gray-700');document.body.dispatchEvent(new CustomEvent('exclToggled'))">
                         <span class="text-sm {% if item.is_excluded %}text-orange-600 line-through{% else %}text-gray-700{% endif %}">
                             {{ item.item_description }}
                         </span>
@@ -54,7 +53,6 @@
                         <span class="text-xs text-orange-400">({{ item.exclude_reason }})</span>
                         {% endif %}
                     </label>
-                    </div>
                 </div>
                 {% endfor %}
             </div>
