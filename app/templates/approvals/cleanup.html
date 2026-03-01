@@ -282,7 +282,12 @@
         <option value="new" {{ 'selected' if filters.status == 'new' }}>New</option>
         <option value="clean" {{ 'selected' if filters.status == 'clean' }}>Clean</option>
     </select>
-    <select onchange="applyFilters()" id="f-inspector">
+    <select onchange="applyFilters()" id="f-min-defects">
+        <option value="">Defects per item</option>
+        <option value="1" {{ 'selected' if filters.min_defects == '1' }}>More than 1</option>
+        <option value="2" {{ 'selected' if filters.min_defects == '2' }}>More than 2</option>
+        <option value="3" {{ 'selected' if filters.min_defects == '3' }}>More than 3</option>
+    </select>    <select onchange="applyFilters()" id="f-inspector">
         <option value="">All Inspectors</option>
         {% for ins in options.inspectors %}
         <option value="{{ ins }}" {{ 'selected' if filters.inspector == ins }}>{{ ins }}</option>
@@ -559,9 +564,9 @@ function hideApplyPreview() {
 
 function applyFilters() {
     const params = new URLSearchParams();
-    ['unit', 'area', 'category', 'item', 'subitem', 'type', 'status', 'inspector', 'cycle'].forEach(f => {
+    ['unit', 'area', 'category', 'item', 'subitem', 'type', 'status', 'min-defects', 'inspector', 'cycle'].forEach(f => {
         const el = document.getElementById('f-' + f);
-        if (el && el.value) params.set(f, el.value);
+        if (el && el.value) params.set(f.replace('-', '_'), el.value);
     });
     window.location.href = '{{ url_for("approvals.cleanup") }}?' + params.toString();
 }

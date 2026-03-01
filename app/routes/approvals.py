@@ -974,6 +974,7 @@ def cleanup():
     f_item = request.args.get('item', '')
     f_subitem = request.args.get('subitem', '')
     f_type = request.args.get('type', '')
+    f_min_defects = request.args.get('min_defects', '')
 
     # All defects on submitted inspections
     defects = [dict(r) for r in query_db("""
@@ -1090,6 +1091,11 @@ def cleanup():
         filtered = [d for d in filtered if d['inspector_name'] == f_inspector]
     if f_cycle:
         filtered = [d for d in filtered if d['cycle_label'] == f_cycle]
+    if f_min_defects and f_min_defects.isdigit():
+        min_d = int(f_min_defects)
+        from collections import Counter
+        item_unit_counts = Counter((d['unit_id'], d['item_template_id']) for d in defects)
+        filtered = [d for d in filtered if item_unit_counts[(d['unit_id'], d['item_template_id'])] > min_d]
 
     # Sort: placeholder first, then new, then clean
     status_order = {'placeholder': 0, 'new': 1, 'clean': 2}
@@ -1119,7 +1125,7 @@ def cleanup():
                            filters={'unit': f_unit, 'area': f_area,
                                     'category': f_category, 'item': f_item,
                                     'subitem': f_subitem, 'type': f_type, 'status': f_status,
-                                    'inspector': f_inspector, 'cycle': f_cycle},
+                                    'inspector': f_inspector, 'cycle': f_cycle, 'min_defects': f_min_defects},
                            options={'units': all_units, 'areas': all_areas,
                                     'categories': all_categories,
                                     'item_names': all_items,
