@@ -501,7 +501,7 @@ def save_exclusion_notes(batch_id):
 @batches_bp.route('/<batch_id>/edit', methods=['GET', 'POST'])
 @require_team_lead
 def edit_batch(batch_id):
-    """Edit batch name, notes, exclusion notes."""
+    """Edit batch name, received_date, notes. Show audit trail."""
     tenant_id = session['tenant_id']
 
     batch = query_db(
@@ -513,24 +513,64 @@ def edit_batch(batch_id):
 
     if request.method == 'POST':
         name = request.form.get('name', '').strip()
+        received_date = request.form.get('received_date', '').strip() or None
         notes_raw = request.form.get('notes', '').strip()
         notes = bleach.clean(notes_raw, tags=ALLOWED_TAGS, strip=True) if notes_raw else None
-        exclusion_notes_raw = request.form.get('exclusion_notes', '').strip()
-        exclusion_notes = bleach.clean(exclusion_notes_raw, tags=ALLOWED_TAGS, strip=True) if exclusion_notes_raw else None
 
         if not name:
             flash('Batch name is required.', 'error')
-            return render_template('batches/edit.html', batch=batch)
+            return render_template('batches/edit.html', batch=batch, milestones={})
 
         now = datetime.now(timezone.utc).isoformat()
         get_db().execute(
-            'UPDATE inspection_batch SET name = ?, notes = ?, exclusion_notes = ?, updated_at = ? WHERE id = ? AND tenant_id = ?',
-            [name, notes, exclusion_notes, now, batch_id, tenant_id])
+            'UPDATE inspection_batch SET name = ?, received_date = ?, notes = ?, updated_at = ? WHERE id = ? AND tenant_id = ?',
+            [name, received_date, notes, now, batch_id, tenant_id])
         get_db().commit()
         flash('Batch updated.', 'success')
         return redirect(url_for('batches.detail', batch_id=batch_id))
 
-    return render_template('batches/edit.html', batch=batch)
+    # Build audit trail milestones
+    batch_started_row = query_db("""
+        SELECT MIN(ii.marked_at) AS first_mark
+        FROM inspection_item ii
+        JOIN inspection i ON ii.inspection_id = i.id
+        JOIN batch_unit bu ON bu.unit_id = i.unit_id AND bu.cycle_id = i.cycle_id
+        WHERE bu.batch_id = ? AND bu.tenant_id = ?
+        AND ii.marked_at IS NOT NULL AND ii.status NOT IN ('pending', 'skipped')
+    """, [batch_id, tenant_id], one=True)
+    batch_started = batch_started_row['first_mark'] if batch_started_row else None
+
+    # Compute duration
+    batch_duration = None
+    if batch_started and batch.get('submitted_at'):
+        try:
+            from datetime import datetime as dt2
+            s = batch_started.replace('Z', '+00:00')
+            e = batch['submitted_at'].replace('Z', '+00:00')
+            start_dt = dt2.fromisoformat(s)
+            end_dt = dt2.fromisoformat(e)
+            diff_secs = (end_dt - start_dt).total_seconds()
+            if diff_secs > 0:
+                h = int(diff_secs // 3600)
+                m = int((diff_secs % 3600) // 60)
+                batch_duration = '{}h {:02d}m'.format(h, m)
+        except (ValueError, TypeError):
+            pass
+
+    milestones = {
+        'received': batch.get('received_date'),
+        'created': batch.get('created_at', '')[:10] if batch.get('created_at') else None,
+        'first_inspection': _format_local_hhmm(batch_started) + ' ' + batch_started[:10] if batch_started else None,
+        'submitted': batch.get('submitted_at', '')[:10] if batch.get('submitted_at') else None,
+        'reviewed': batch.get('reviewed_at', '')[:10] if batch.get('reviewed_at') else None,
+        'approved': batch.get('approved_at', '')[:10] if batch.get('approved_at') else None,
+        'signed_off': batch.get('signed_off_at', '')[:10] if batch.get('signed_off_at') else None,
+        'pushed': batch.get('pushed_at', '')[:10] if batch.get('pushed_at') else None,
+        'closed': batch.get('closed_at', '')[:10] if batch.get('closed_at') else None,
+        'duration': batch_duration,
+    }
+
+    return render_template('batches/edit.html', batch=batch, milestones=milestones)
 
 
 @batches_bp.route('/<batch_id>/assign', methods=['POST'])
