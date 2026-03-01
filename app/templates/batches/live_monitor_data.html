@@ -41,6 +41,9 @@
             {% if batch_started_hhmm %}
             <div class="elapsed-started">Started {{ batch_started_hhmm }}</div>
             {% endif %}
+            {% if batch_ended_hhmm %}
+            <div class="elapsed-started">Ended {{ batch_ended_hhmm }}</div>
+            {% endif %}
             <div class="kpi-sub" id="batch-eta" style="margin-top: 0.3rem; color: #C8963E; display: none;"></div>
         </div>
     </div>

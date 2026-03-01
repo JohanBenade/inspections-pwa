@@ -1112,6 +1112,8 @@ def _build_live_monitor_data(batch_id, tenant_id):
         'batch_started_hhmm': _format_local_hhmm(batch_started),
         'batch_ended': batch.get('submitted_at') or '',
         'batch_ended_hhmm': _format_local_hhmm(batch.get('submitted_at')) or '',
+        'batch_ended': batch.get('submitted_at') or '',
+        'batch_ended_hhmm': _format_local_hhmm(batch.get('submitted_at')) or '',
         'completion_pct': completion_pct,
         'defect_rate': defect_rate,
         'avg_defects': avg_defects,

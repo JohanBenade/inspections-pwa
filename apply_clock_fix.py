@@ -15,7 +15,7 @@ def replace_in_file(filepath, old, new, label):
         f.write(content)
     print(f"  OK: [{label}] {filepath}")
 
-print("=== Applying clock auto-stop fix ===\n")
+print("=== Applying clock auto-stop + ended display ===\n")
 
 # EDIT 1: batches.py - Add batch_ended to live monitor data
 replace_in_file(
@@ -51,5 +51,20 @@ function updateBatchElapsed() {
     'js-clock-stop'
 )
 
+# EDIT 3: live_monitor_data.html - Add Ended HH:MM below Started
+replace_in_file(
+    'app/templates/batches/live_monitor_data.html',
+    """            {% if batch_started_hhmm %}
+            <div class="elapsed-started">Started {{ batch_started_hhmm }}</div>
+            {% endif %}""",
+    """            {% if batch_started_hhmm %}
+            <div class="elapsed-started">Started {{ batch_started_hhmm }}</div>
+            {% endif %}
+            {% if batch_ended_hhmm %}
+            <div class="elapsed-started">Ended {{ batch_ended_hhmm }}</div>
+            {% endif %}""",
+    'ended-display'
+)
+
 print("\n=== ALL EDITS APPLIED ===")
-print("Next: git add -A && git commit -m 'Live monitor: auto-stop elapsed clock when batch submitted' && git push")
+print("Next: git add -A && git commit -m 'Live monitor: auto-stop clock + show ended time' && git push")
