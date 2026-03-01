@@ -117,7 +117,7 @@ body {
     letter-spacing: 1px; margin-top: 4px;
 }
 .progress-track {
-    height: 6px; background: #E8E6E1; border-radius: 3px;
+    height: 8px; background: #E8E6E1; border-radius: 3px;
     overflow: hidden; margin-top: 6px;
 }
 .progress-fill { height: 100%; border-radius: 3px; background: #C8963E; }
@@ -161,7 +161,7 @@ body {
 /* -- BAR CHART (horizontal) -- */
 .bar-label-cell { width: 110px; text-align: left; padding-right: 12px; font-size: 11px; color: #1A1A1A; white-space: nowrap; }
 .bar-track { padding: 0; white-space: nowrap; }
-.bar-fill { display: inline-block; height: 10px; border-radius: 2px; vertical-align: middle; }
+.bar-fill { display: inline-block; height: 8px; border-radius: 3px; vertical-align: middle; }
 .bar-count-label { display: inline-block; font-size: 9px; font-weight: 600; color: #6B6B6B; margin-left: 4px; vertical-align: middle; }
 
 /* -- LEGEND -- */
@@ -385,8 +385,8 @@ body {
                 <span style="font-size: 10px; color: #1A1A1A; min-width: 75px; white-space: nowrap;">
                     <span style="display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: {{ area_colours[loop.index0 % area_colours|length] }}; margin-right: 3px; vertical-align: middle;"></span>{{ a.area }}
                 </span>
-                <div style="flex: 1; height: 10px; background: #E8E6E1; border-radius: 2px; overflow: hidden;">
-                    <div style="height: 10px; width: {{ (a.defect_count / area_max * 100)|round }}%; background: {% if a.defect_count > area_median %}#C44D3F{% elif a.defect_count == area_median %}#C8963E{% else %}#4A7C59{% endif %}; border-radius: 2px;"></div>
+                <div style="flex: 1; height: 8px; background: #E8E6E1; border-radius: 3px; overflow: hidden;">
+                    <div style="height: 8px; width: {{ (a.defect_count / area_max * 100)|round }}%; background: {% if a.defect_count > area_median %}#C44D3F{% elif a.defect_count == area_median %}#C8963E{% else %}#4A7C59{% endif %}; border-radius: 2px;"></div>
                 </div>
                 <span style="font-size: 10px; font-weight: 700; width: 30px; text-align: right; color: {% if a.defect_count > area_median %}#C44D3F{% elif a.defect_count == area_median %}#C8963E{% else %}#4A7C59{% endif %};">{{ a.defect_count }}</span>
                 <span style="font-size: 9px; color: #9A9A9A; width: 30px; text-align: right;">{{ a.pct }}%</span>
@@ -413,8 +413,8 @@ body {
                     <span style="font-size: 8px; color: #9A9A9A;">{{ unit.block }} {{ floor_map.get(unit.floor, 'Floor ' ~ unit.floor) }}</span>
                     <span style="margin-left: auto; font-size: 10px; font-weight: 700; color: {{ unit_colour }};">{{ unit.defect_count }}</span>
                 </div>
-                <div style="height: 10px; background: #E8E6E1; border-radius: 2px; overflow: hidden;">
-                    <div style="height: 10px; width: {{ (unit.defect_count / worst_units[0].defect_count * 100)|round }}%; background: {{ unit_colour }}; border-radius: 2px;"></div>
+                <div style="height: 8px; background: #E8E6E1; border-radius: 3px; overflow: hidden;">
+                    <div style="height: 8px; width: {{ (unit.defect_count / worst_units[0].defect_count * 100)|round }}%; background: {{ unit_colour }}; border-radius: 2px;"></div>
                 </div>
             </div>
             {% endfor %}
@@ -457,8 +457,8 @@ body {
                         </td>
                         <td style="padding: 4px 8px; vertical-align: top;">
                             <div style="font-size: 10px; color: #1A1A1A; margin-bottom: 3px;">{{ d.description }}</div>
-                            <div style="height: 3px; background: #E8E6E1; border-radius: 2px; overflow: hidden;">
-                                <div style="height: 3px; border-radius: 2px; width: {{ d.bar_pct }}%; background: {{ area_info.colour }};"></div>
+                            <div style="height: 8px; background: #E8E6E1; border-radius: 3px; overflow: hidden;">
+                                <div style="height: 8px; border-radius: 3px; width: {{ d.bar_pct }}%; background: {{ area_info.colour }};"></div>
                             </div>
                         </td>
                         <td style="width: 40px; text-align: right; vertical-align: top; padding: 4px 0;">
@@ -500,8 +500,8 @@ body {
             <span style="font-size: 10px; font-weight: 700; color: {% if d.cnt > td_median %}#C44D3F{% elif d.cnt == td_median %}#C8963E{% else %}#4A7C59{% endif %};">{{ d.cnt }}</span>
             <span style="font-size: 9px; color: #9A9A9A; width: 35px; text-align: right;">{{ td_pct }}%</span>
         </div>
-        <div style="height: 6px; background: #E8E6E1; border-radius: 3px; overflow: hidden;">
-            <div style="height: 6px; width: {{ (d.cnt / td_max * 100)|round }}%; background: {% if d.cnt > td_median %}#C44D3F{% elif d.cnt == td_median %}#C8963E{% else %}#4A7C59{% endif %}; border-radius: 3px;"></div>
+        <div style="height: 8px; background: #E8E6E1; border-radius: 3px; overflow: hidden;">
+            <div style="height: 8px; width: {{ (d.cnt / td_max * 100)|round }}%; background: {% if d.cnt > td_median %}#C44D3F{% elif d.cnt == td_median %}#C8963E{% else %}#4A7C59{% endif %}; border-radius: 3px;"></div>
         </div>
     </div>
     {% endfor %}
@@ -536,8 +536,8 @@ body {
         </div>
         <div style="display: flex; align-items: center; gap: 8px;">
             <div style="width: 32px;"></div>
-            <div style="flex: 1; height: 6px; background: #E8E6E1; border-radius: 3px; overflow: hidden;">
-                <div style="height: 6px; width: {{ (r.cnt / rec_max * 100)|round }}%; background: #C44D3F; border-radius: 3px;"></div>
+            <div style="flex: 1; height: 8px; background: #E8E6E1; border-radius: 3px; overflow: hidden;">
+                <div style="height: 8px; width: {{ (r.cnt / rec_max * 100)|round }}%; background: #C44D3F; border-radius: 3px;"></div>
             </div>
             <span style="font-size: 8px; color: #9A9A9A; min-width: 60px; text-align: right;">{{ r.category_name }}</span>
         </div>
@@ -568,8 +568,8 @@ body {
     {% set cat_pct = (c.count / project.open_defects * 100)|round(1) if project.open_defects > 0 else 0 %}
     <div style="display: flex; align-items: center; gap: 6px; padding: 4px 0;">
         <span style="font-size: 10px; color: #1A1A1A; min-width: 100px;">{{ c.category }}</span>
-        <div style="flex: 1; height: 10px; background: #E8E6E1; border-radius: 2px; overflow: hidden;">
-            <div style="height: 10px; width: {{ (c.count / cat_max * 100)|round }}%; background: {% if c.count > cat_median %}#C44D3F{% elif c.count == cat_median %}#C8963E{% else %}#4A7C59{% endif %}; border-radius: 2px;"></div>
+        <div style="flex: 1; height: 8px; background: #E8E6E1; border-radius: 3px; overflow: hidden;">
+            <div style="height: 8px; width: {{ (c.count / cat_max * 100)|round }}%; background: {% if c.count > cat_median %}#C44D3F{% elif c.count == cat_median %}#C8963E{% else %}#4A7C59{% endif %}; border-radius: 2px;"></div>
         </div>
         <span style="font-size: 9px; color: #9A9A9A; width: 30px; text-align: right;">{{ cat_pct }}%</span>
         <span style="font-size: 10px; font-weight: 700; width: 35px; text-align: right; color: {% if c.count > cat_median %}#C44D3F{% elif c.count == cat_median %}#C8963E{% else %}#4A7C59{% endif %};">{{ c.count }}</span>
