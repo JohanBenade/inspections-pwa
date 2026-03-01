@@ -356,12 +356,18 @@ updateClock();
 
 /* === Batch Elapsed Timer === */
 var batchStartedStr = '{{ batch_started|default("", true) }}';
+var batchEndedStr = '{{ batch_ended|default("", true) }}';
 function updateBatchElapsed() {
     var el = document.getElementById('batch-elapsed');
     if (!el || !batchStartedStr) return;
     var started = new Date(batchStartedStr);
     if (isNaN(started.getTime())) return;
-    var diff = Math.floor((Date.now() - started.getTime()) / 1000);
+    var endTime = Date.now();
+    if (batchEndedStr) {
+        var ended = new Date(batchEndedStr);
+        if (!isNaN(ended.getTime())) endTime = ended.getTime();
+    }
+    var diff = Math.floor((endTime - started.getTime()) / 1000);
     if (diff < 0) diff = 0;
     var h = Math.floor(diff / 3600);
     var m = Math.floor((diff % 3600) / 60);
