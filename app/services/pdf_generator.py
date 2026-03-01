@@ -355,10 +355,29 @@ def get_defects_data(tenant_id, unit_id, cycle_id=None):
         'defects': total_new if cycle_number == 1 else total_defects
     }
     
-    # Process notes for PDF rendering (convert plain text to HTML if needed)
+    # Process notes for PDF rendering
+    # If unit has a batch_unit record, use batch-level notes; otherwise cycle-level
     general_notes_html = None
     exclusion_notes_html = None
-    if cycle:
+
+    batch_notes = None
+    if cycle_id:
+        batch_notes = query_db("""
+            SELECT ib.notes, ib.exclusion_notes
+            FROM batch_unit bu
+            JOIN inspection_batch ib ON bu.batch_id = ib.id
+            WHERE bu.unit_id = ? AND bu.cycle_id = ? AND bu.status != 'removed'
+            LIMIT 1
+        """, [unit_id, cycle_id], one=True)
+
+    if batch_notes:
+        gn = batch_notes['notes']
+        if gn:
+            general_notes_html = plain_text_to_html(gn)
+        en = batch_notes['exclusion_notes']
+        if en:
+            exclusion_notes_html = plain_text_to_html(en)
+    elif cycle:
         gn = cycle['general_notes']
         if gn:
             general_notes_html = plain_text_to_html(gn)
