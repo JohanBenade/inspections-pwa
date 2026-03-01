@@ -2496,6 +2496,464 @@ def report_pdf(cycle_id):
     )
 
 
+
+
+def _build_unified_report_data():
+    """Build data for unified project report.
+    Merges dashboard queries (progress, rectification, zone cards)
+    with report visual data (donut SVG, logo base64).
+    Returns dict with all template variables, or None if no data.
+    """
+    import base64, os, math, statistics
+    from flask import current_app, session
+
+    tenant_id = session.get('tenant_id', 'MONOGRAPH')
+
+    def _hex_to_rgba(hex_colour, alpha=0.15):
+        h = hex_colour.lstrip('#')
+        r, g, b = int(h[0:2], 16), int(h[2:4], 16), int(h[4:6], 16)
+        return 'rgba({},{},{},{})'.format(r, g, b, alpha)
+
+    # Unit counts per block+floor
+    unit_counts_raw = query_db("""
+        SELECT u.block, u.floor, COUNT(DISTINCT u.id) as total_units
+        FROM unit u
+        WHERE u.tenant_id = ? AND u.unit_number NOT LIKE 'TEST%'
+        GROUP BY u.block, u.floor
+        ORDER BY u.block, u.floor
+    """, [tenant_id])
+    unit_counts = [dict(r) for r in unit_counts_raw]
+
+    if not unit_counts:
+        return None
+
+    # Open defects per block+floor
+    defect_counts_raw = query_db("""
+        SELECT u.block, u.floor, COUNT(d.id) as open_defects
+        FROM defect d
+        JOIN unit u ON d.unit_id = u.id
+        WHERE d.tenant_id = ? AND d.status = 'open'
+        AND d.raised_cycle_id NOT LIKE 'test-%'
+        GROUP BY u.block, u.floor
+    """, [tenant_id])
+    defect_map = {}
+    for r in defect_counts_raw:
+        defect_map[(r['block'], r['floor'])] = r['open_defects']
+
+    # Inspected units per block+floor
+    inspected_zone_raw = query_db("""
+        SELECT u.block, u.floor, COUNT(DISTINCT i.unit_id) as inspected
+        FROM inspection i
+        JOIN unit u ON i.unit_id = u.id
+        WHERE i.tenant_id = ? AND i.cycle_id NOT LIKE 'test-%'
+        AND i.status IN ('reviewed','approved','certified')
+        GROUP BY u.block, u.floor
+    """, [tenant_id])
+    inspected_zone_map = {}
+    for r in inspected_zone_raw:
+        inspected_zone_map[(r['block'], r['floor'])] = r['inspected']
+
+    # Certified counts per block+floor
+    certified_raw = query_db("""
+        SELECT u.block, u.floor, COUNT(DISTINCT i.unit_id) as certified
+        FROM inspection i
+        JOIN unit u ON i.unit_id = u.id
+        WHERE i.tenant_id = ? AND i.status = 'certified'
+        AND i.cycle_id NOT LIKE 'test-%'
+        GROUP BY u.block, u.floor
+    """, [tenant_id])
+    certified_map = {}
+    for r in certified_raw:
+        certified_map[(r['block'], r['floor'])] = r['certified']
+
+    # Round breakdown per block+floor
+    rounds_raw = query_db("""
+        SELECT ic.block, ic.floor, ic.cycle_number as round_number,
+            COUNT(DISTINCT i.unit_id) as units_inspected
+        FROM inspection i
+        JOIN inspection_cycle ic ON i.cycle_id = ic.id
+        WHERE i.tenant_id = ? AND i.cycle_id NOT LIKE 'test-%'
+        AND i.status IN ('reviewed','approved','certified')
+        GROUP BY ic.block, ic.floor, ic.cycle_number
+        ORDER BY ic.block, ic.floor, ic.cycle_number
+    """, [tenant_id])
+    rounds_map = {}
+    for r in rounds_raw:
+        key = (r['block'], r['floor'])
+        if key not in rounds_map:
+            rounds_map[key] = []
+        rounds_map[key].append({
+            'round_number': r['round_number'],
+            'units_inspected': r['units_inspected'],
+        })
+
+    # Build zone cards
+    zone_cards = []
+    total_units_project = 0
+    total_defects_project = 0
+    total_certified_project = 0
+
+    for uc in unit_counts:
+        key = (uc['block'], uc['floor'])
+        total_units = uc['total_units']
+        open_defects = defect_map.get(key, 0)
+        rounds = rounds_map.get(key, [])
+        certified = certified_map.get(key, 0)
+        inspected = inspected_zone_map.get(key, 0)
+        max_round = max((r['round_number'] for r in rounds), default=0)
+        avg_defects = round(open_defects / inspected, 1) if inspected > 0 else 0
+        items_inspected = ITEMS_PER_UNIT * inspected
+        defect_rate = round(open_defects / items_inspected * 100, 1) if items_inspected > 0 else 0
+        floor_label = FLOOR_LABELS.get(uc['floor'], 'Floor {}'.format(uc['floor']))
+
+        zone_cards.append({
+            'block': uc['block'],
+            'floor': uc['floor'],
+            'floor_label': floor_label,
+            'label': '{} {}'.format(uc['block'], floor_label),
+            'total_units': total_units,
+            'inspected': inspected,
+            'open_defects': open_defects,
+            'avg_defects': avg_defects,
+            'defect_rate': defect_rate,
+            'rounds': rounds,
+            'max_round': max_round,
+            'certified': certified,
+        })
+
+        total_units_project += total_units
+        total_defects_project += open_defects
+        total_certified_project += certified
+
+    # Project overview
+    units_inspected_raw = query_db("""
+        SELECT COUNT(DISTINCT i.unit_id) as inspected
+        FROM inspection i
+        WHERE i.tenant_id = ? AND i.cycle_id NOT LIKE 'test-%'
+        AND i.status IN ('reviewed','approved','certified')
+    """, [tenant_id], one=True)
+    units_inspected = units_inspected_raw['inspected'] if units_inspected_raw else 0
+    items_inspected_total = ITEMS_PER_UNIT * units_inspected
+
+    project = {
+        'total_units': total_units_project,
+        'units_inspected': units_inspected,
+        'project_total': PROJECT_TOTAL_UNITS,
+        'pct_complete': round(units_inspected / PROJECT_TOTAL_UNITS * 100) if PROJECT_TOTAL_UNITS > 0 else 0,
+        'open_defects': total_defects_project,
+        'avg_defects': round(total_defects_project / units_inspected, 1) if units_inspected > 0 else 0,
+        'defect_rate': round(total_defects_project / items_inspected_total * 100, 1) if items_inspected_total > 0 else 0,
+        'certified': total_certified_project,
+    }
+
+    # Median, min, max defects per unit
+    unit_defect_counts_raw = query_db("""
+        SELECT COUNT(d.id) as defect_count
+        FROM inspection i
+        JOIN unit u ON i.unit_id = u.id
+        LEFT JOIN defect d ON d.unit_id = u.id AND d.status = 'open'
+            AND d.raised_cycle_id NOT LIKE 'test-%' AND d.tenant_id = u.tenant_id
+        WHERE i.tenant_id = ? AND i.cycle_id NOT LIKE 'test-%'
+        AND i.status IN ('reviewed','approved','certified')
+        AND u.unit_number NOT LIKE 'TEST%'
+        GROUP BY u.id
+        ORDER BY defect_count
+    """, [tenant_id])
+    unit_counts_list = [r['defect_count'] for r in unit_defect_counts_raw]
+    if unit_counts_list:
+        n = len(unit_counts_list)
+        median_val = unit_counts_list[n // 2] if n % 2 else (unit_counts_list[n // 2 - 1] + unit_counts_list[n // 2]) / 2
+        project['median_defects'] = round(median_val, 1)
+        project['min_defects'] = unit_counts_list[0]
+        project['max_defects'] = unit_counts_list[-1]
+    else:
+        project['median_defects'] = 0
+        project['min_defects'] = 0
+        project['max_defects'] = 0
+
+    # Rectification pulse
+    r2_units_raw = query_db("""
+        SELECT COUNT(DISTINCT i.unit_id) as r2_units
+        FROM inspection i
+        JOIN inspection_cycle ic ON i.cycle_id = ic.id
+        WHERE i.tenant_id = ? AND ic.cycle_number > 1
+        AND ic.id NOT LIKE 'test-%' AND i.status IN ('reviewed','approved','certified')
+    """, [tenant_id], one=True)
+
+    rectification = None
+    r2_units = r2_units_raw['r2_units'] if r2_units_raw else 0
+    if r2_units > 0:
+        rect_cleared = query_db("""
+            SELECT COUNT(*) as total FROM defect d
+            JOIN inspection_cycle ic ON d.raised_cycle_id = ic.id
+            WHERE d.tenant_id = ? AND ic.id NOT LIKE 'test-%'
+            AND d.status = 'cleared'
+        """, [tenant_id], one=True)
+        total_cleared = rect_cleared['total'] or 0 if rect_cleared else 0
+
+        r2_new_raw = query_db("""
+            SELECT COUNT(*) as new_defects FROM defect d
+            JOIN inspection_cycle ic ON d.raised_cycle_id = ic.id
+            WHERE d.tenant_id = ? AND ic.cycle_number > 1
+            AND ic.id NOT LIKE 'test-%' AND d.status = 'open'
+        """, [tenant_id], one=True)
+        r2_new = r2_new_raw['new_defects'] or 0 if r2_new_raw else 0
+
+        net_imp = total_cleared - r2_new
+        rectification = {
+            'r2_units': r2_units,
+            'rectified': total_cleared,
+            'new_defects': r2_new,
+            'net_improvement': net_imp,
+        }
+
+    # Defect density grid
+    grid_blocks = sorted(set(c['block'] for c in zone_cards if c['inspected'] > 0))
+    grid_floors = sorted(set(c['floor'] for c in zone_cards if c['inspected'] > 0))
+    block_floor_grid = {}
+    for c in zone_cards:
+        if c['inspected'] > 0:
+            if c['block'] not in block_floor_grid:
+                block_floor_grid[c['block']] = {}
+            block_floor_grid[c['block']][c['floor']] = {
+                'avg': c['avg_defects'],
+                'defects': c['open_defects'],
+                'units': c['inspected'],
+                'defect_rate': c['defect_rate'],
+            }
+
+    grid_median = project['avg_defects']
+
+    # Area distribution + donut SVG
+    area_data_raw = [dict(r) for r in query_db("""
+        SELECT at2.area_name as area, COUNT(d.id) as defect_count
+        FROM defect d
+        JOIN item_template it ON d.item_template_id = it.id
+        JOIN category_template ct ON it.category_id = ct.id
+        JOIN area_template at2 ON ct.area_id = at2.id
+        WHERE d.tenant_id = ? AND d.status = 'open'
+            AND d.raised_cycle_id NOT LIKE 'test-%%'
+        GROUP BY at2.area_name ORDER BY defect_count DESC
+    """, [tenant_id])]
+
+    area_max = area_data_raw[0]['defect_count'] if area_data_raw else 1
+    area_colours = ['#C8963E', '#3D6B8E', '#4A7C59', '#C44D3F', '#7B6B8D', '#5A8A7A', '#B07D4B']
+
+    circumference = 439.82
+    offset = 0
+    for a in area_data_raw:
+        pct = a['defect_count'] / total_defects_project if total_defects_project > 0 else 0
+        a['pct'] = round(pct * 100, 1)
+        a['dash'] = round(pct * circumference, 2)
+        a['offset'] = round(offset, 2)
+        offset += a['dash']
+    for a in area_data_raw:
+        mid_frac = (a['offset'] + a['dash'] / 2) / circumference
+        angle = mid_frac * 2 * math.pi - math.pi / 2
+        a['pct_x'] = round(100 + 70 * math.cos(angle), 1)
+        a['pct_y'] = round(100 + 70 * math.sin(angle), 1)
+
+    area_counts_sorted = sorted([a['defect_count'] for a in area_data_raw])
+    if area_counts_sorted:
+        mid = len(area_counts_sorted) // 2
+        area_median = area_counts_sorted[mid] if len(area_counts_sorted) % 2 else (area_counts_sorted[mid - 1] + area_counts_sorted[mid]) / 2
+    else:
+        area_median = 0
+
+    area_top2_sum = sum(a['defect_count'] for a in area_data_raw[:2]) if len(area_data_raw) >= 2 else 0
+    area_top2_pct = round(area_top2_sum / total_defects_project * 100) if total_defects_project > 0 else 0
+    area_top2_names = [a['area'].title() for a in area_data_raw[:2]] if len(area_data_raw) >= 2 else []
+
+    # Area deep dive
+    area_deep_dive = []
+    dd_colours = ['#C8963E', '#3D6B8E']
+    for idx, area_row in enumerate(area_data_raw[:2]):
+        area_name = area_row['area']
+        area_defects = [dict(r) for r in query_db("""
+            SELECT d.original_comment AS description, COUNT(*) AS count
+            FROM defect d
+            JOIN item_template it ON d.item_template_id = it.id
+            JOIN category_template ct ON it.category_id = ct.id
+            JOIN area_template at2 ON ct.area_id = at2.id
+            WHERE d.tenant_id = ? AND d.status = 'open'
+            AND d.raised_cycle_id NOT LIKE 'test-%'
+            AND at2.area_name = ?
+            GROUP BY d.original_comment
+            ORDER BY count DESC
+            LIMIT 3
+        """, [tenant_id, area_name])]
+        max_dd = area_defects[0]['count'] if area_defects else 1
+        for d in area_defects:
+            d['bar_pct'] = round(d['count'] / max_dd * 100)
+        area_pct = round(area_row['defect_count'] / total_defects_project * 100, 1) if total_defects_project > 0 else 0
+        area_deep_dive.append({
+            'area': area_name,
+            'total': area_row['defect_count'],
+            'pct': area_pct,
+            'colour': dd_colours[idx],
+            'defects': area_defects,
+        })
+
+    dd_callout = ''
+    if len(area_deep_dive) >= 1 and area_deep_dive[0]['defects']:
+        a1 = area_deep_dive[0]
+        d1 = a1['defects'][0]
+        dd_callout = 'The most frequent defect in {} is {} ({} occurrences).'.format(
+            a1['area'].title(), d1['description'].lower(), d1['count'])
+        if len(area_deep_dive) >= 2 and area_deep_dive[1]['defects']:
+            a2 = area_deep_dive[1]
+            d2 = a2['defects'][0]
+            dd_callout += ' In {}, {} leads with {} occurrences.'.format(
+                a2['area'].title(), d2['description'].lower(), d2['count'])
+
+    # Top defect types
+    top_defects = [dict(r) for r in query_db("""
+        SELECT original_comment AS description, COUNT(*) AS cnt
+        FROM defect
+        WHERE tenant_id = ? AND status = 'open'
+        AND raised_cycle_id NOT LIKE 'test-%'
+        GROUP BY original_comment
+        ORDER BY cnt DESC
+        LIMIT 10
+    """, [tenant_id])]
+
+    td_max = top_defects[0]['cnt'] if top_defects else 1
+    td_counts = sorted([d['cnt'] for d in top_defects])
+    if td_counts:
+        mid = len(td_counts) // 2
+        td_median = td_counts[mid] if len(td_counts) % 2 else (td_counts[mid - 1] + td_counts[mid]) / 2
+    else:
+        td_median = 0
+
+    # Systemic issues
+    recurring_raw = query_db("""
+        SELECT d.original_comment, ct.category_name,
+            COUNT(d.id) AS cnt, COUNT(DISTINCT d.unit_id) AS unit_count,
+            GROUP_CONCAT(DISTINCT u.unit_number) AS affected_units
+        FROM defect d
+        JOIN unit u ON d.unit_id = u.id
+        JOIN item_template it ON d.item_template_id = it.id
+        JOIN category_template ct ON it.category_id = ct.id
+        WHERE d.tenant_id = ? AND d.status = 'open'
+        AND d.raised_cycle_id NOT LIKE 'test-%'
+        GROUP BY d.original_comment, ct.category_name
+        HAVING unit_count >= 3
+        ORDER BY cnt DESC
+        LIMIT 10
+    """, [tenant_id])
+    recurring = [dict(r) for r in recurring_raw]
+
+    # Defects by trade
+    category_data = [dict(r) for r in query_db("""
+        SELECT ct.category_name AS category, COUNT(d.id) AS count
+        FROM defect d
+        JOIN item_template it ON d.item_template_id = it.id
+        JOIN category_template ct ON it.category_id = ct.id
+        WHERE d.tenant_id = ? AND d.status = 'open'
+        AND d.raised_cycle_id NOT LIKE 'test-%'
+        GROUP BY ct.category_name
+        ORDER BY count DESC
+    """, [tenant_id])]
+
+    cat_max = category_data[0]['count'] if category_data else 1
+    cat_counts = sorted([c['count'] for c in category_data])
+    if cat_counts:
+        mid = len(cat_counts) // 2
+        cat_median = cat_counts[mid] if len(cat_counts) % 2 else (cat_counts[mid - 1] + cat_counts[mid]) / 2
+    else:
+        cat_median = 0
+
+    # Zone performance (ranked worst to best)
+    active_zones = [c for c in zone_cards if c['inspected'] > 0]
+    active_zones.sort(key=lambda x: x['avg_defects'], reverse=True)
+
+    zone_avgs = [c['avg_defects'] for c in active_zones]
+    if zone_avgs:
+        zone_avgs_sorted = sorted(zone_avgs)
+        n_z = len(zone_avgs_sorted)
+        zone_median = zone_avgs_sorted[n_z // 2] if n_z % 2 else round((zone_avgs_sorted[n_z // 2 - 1] + zone_avgs_sorted[n_z // 2]) / 2, 1)
+    else:
+        zone_median = 0
+
+    # Logo + signature
+    logo_b64 = ''
+    sig_b64 = ''
+    try:
+        img_dir = os.path.join(current_app.static_folder, 'images')
+        logo_path = os.path.join(img_dir, 'monograph_logo.jpg')
+        sig_path = os.path.join(img_dir, 'kc_signature.png')
+        if os.path.exists(logo_path):
+            with open(logo_path, 'rb') as fimg:
+                logo_b64 = base64.b64encode(fimg.read()).decode()
+        if os.path.exists(sig_path):
+            with open(sig_path, 'rb') as fimg:
+                sig_b64 = base64.b64encode(fimg.read()).decode()
+    except Exception:
+        pass
+
+    floor_map = {0: 'Ground', 1: '1st Floor', 2: '2nd Floor', 3: '3rd Floor'}
+    report_date = __import__('datetime').datetime.utcnow().strftime('%d %B %Y')
+
+    return {
+        'project': project,
+        'rectification': rectification,
+        'zone_cards': active_zones,
+        'zone_median': zone_median,
+        'grid_blocks': grid_blocks,
+        'grid_floors': grid_floors,
+        'block_floor_grid': block_floor_grid,
+        'grid_median': grid_median,
+        'area_data': area_data_raw,
+        'area_max': area_max,
+        'area_colours': area_colours,
+        'area_median': area_median,
+        'area_top2_pct': area_top2_pct,
+        'area_top2_names': area_top2_names,
+        'area_deep_dive': area_deep_dive,
+        'dd_callout': dd_callout,
+        'top_defects': top_defects,
+        'td_max': td_max,
+        'td_median': td_median,
+        'recurring': recurring,
+        'category_data': category_data,
+        'cat_max': cat_max,
+        'cat_median': cat_median,
+        'floor_map': floor_map,
+        'logo_b64': logo_b64,
+        'sig_b64': sig_b64,
+        'report_date': report_date,
+    }
+
+
+@analytics_bp.route('/report/unified')
+@require_manager
+def unified_report_view():
+    """Unified project report - HTML view."""
+    data = _build_unified_report_data()
+    if data is None:
+        return "No inspection data available.", 404
+    data['is_pdf'] = False
+    return render_template('analytics/report_unified.html', **data)
+
+
+@analytics_bp.route('/report/unified/pdf')
+@require_manager
+def unified_report_pdf():
+    """Unified project report - PDF download via WeasyPrint."""
+    from weasyprint import HTML
+    data = _build_unified_report_data()
+    if data is None:
+        return "No inspection data available.", 404
+    data['is_pdf'] = True
+    html_str = render_template('analytics/report_unified.html', **data)
+    pdf_bytes = HTML(string=html_str, base_url=request.url_root).write_pdf()
+    response = make_response(pdf_bytes)
+    response.headers['Content-Type'] = 'application/pdf'
+    response.headers['Content-Disposition'] = 'attachment; filename=PPSH_Project_Report_{}.pdf'.format(
+        data['report_date'].replace(' ', '_'))
+    return response
+
+
 def _build_combined_report_data():
     """Gather data for combined bi-weekly report (all batches/cycles).
     Returns dict with all template variables, or None if fewer than 2 batches.
