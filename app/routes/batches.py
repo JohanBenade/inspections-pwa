@@ -464,6 +464,22 @@ def exclusions_counts(batch_id):
                            total_items=total_items,
                            total_excluded=total_excluded)
 
+
+@batches_bp.route('/<batch_id>/save-exclusion-notes', methods=['POST'])
+@require_team_lead
+def save_exclusion_notes(batch_id):
+    """AJAX: save exclusion notes from Manage Exclusions page."""
+    tenant_id = session['tenant_id']
+    import bleach
+    ALLOWED_TAGS = ['p', 'br', 'strong', 'em', 'b', 'i', 'u', 'ol', 'ul', 'li']
+    raw = request.form.get('exclusion_notes', '').strip()
+    cleaned = bleach.clean(raw, tags=ALLOWED_TAGS, strip=True) if raw else None
+    db = get_db()
+    db.execute("UPDATE inspection_batch SET exclusion_notes = ?, updated_at = ? WHERE id = ? AND tenant_id = ?",
+               [cleaned, datetime.now(timezone.utc).isoformat(), batch_id, tenant_id])
+    db.commit()
+    return '', 204
+
 @batches_bp.route('/<batch_id>/edit', methods=['GET', 'POST'])
 @require_team_lead
 def edit_batch(batch_id):

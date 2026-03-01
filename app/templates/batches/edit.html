@@ -26,12 +26,6 @@
         <input type="hidden" id="notes-hidden" name="notes">
     </div>
 
-    <div>
-        <label class="block text-sm font-medium text-gray-700 mb-1">Exclusion Notes</label>
-        <p class="text-xs text-gray-500 mb-2">Explain why items are excluded (appears on reports).</p>
-        <div id="exclusion-notes-editor" class="bg-white rounded-lg" style="min-height:180px;">{{ (batch.exclusion_notes or '')|safe }}</div>
-        <input type="hidden" id="exclusion-notes-hidden" name="exclusion_notes">
-    </div>
 
     <div class="flex items-center gap-3 pt-2">
         <button type="submit"
