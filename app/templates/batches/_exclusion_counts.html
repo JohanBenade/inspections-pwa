@@ -1,4 +1,4 @@
-<!-- Exclusion counts partial - header -->
+<!-- Exclusion counts partial - header only -->
 <div class="flex justify-between items-start">
     <div>
         <h1 class="text-xl font-bold text-gray-900">Manage Exclusions</h1>
@@ -9,25 +9,4 @@
         <div class="text-xs text-gray-500">of {{ total_items }} excluded</div>
         <div class="text-xs text-gray-400">{{ (total_excluded * 100 / total_items) | round(1) if total_items else 0 }}%</div>
     </div>
-</div>
-
-<!-- Area tabs (selected by hx-select="#excl-tabs-inner") -->
-<div id="excl-tabs-inner" class="flex flex-wrap" style="display:none">
-    {% for area in area_tabs %}
-    <button class="area-tab px-4 py-3 text-sm font-medium whitespace-nowrap border-b-2 border-transparent text-gray-500 hover:text-gray-700"
-            hx-get="{{ url_for('batches.exclusions_area', batch_id=batch.id, area_id=area.id, cycle_id=cycle_id) }}"
-            hx-target="#area-content"
-            hx-swap="innerHTML"
-            onclick="document.querySelectorAll('.area-tab').forEach(t => {t.classList.remove('border-orange-500', 'text-orange-600'); t.classList.add('border-transparent', 'text-gray-500')}); this.classList.add('border-orange-500', 'text-orange-600'); this.classList.remove('border-transparent', 'text-gray-500')">
-        <span class="flex flex-col items-start">
-            <span class="flex items-center gap-2">
-                {{ area.name }}
-                {% if area.excluded > 0 %}
-                <span class="bg-orange-500 text-white text-xs px-1.5 py-0.5 rounded-full">{{ area.excluded }}</span>
-                {% endif %}
-            </span>
-            <span class="text-xs {% if area.excluded > 0 %}text-orange-600 font-semibold{% else %}text-gray-400{% endif %}">{{ area.excluded }}/{{ area.total }}</span>
-        </span>
-    </button>
-    {% endfor %}
 </div>

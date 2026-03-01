@@ -30,13 +30,8 @@
 
     <!-- Area Tabs -->
     <div class="bg-white rounded-lg shadow mb-4">
-        <div class="border-b overflow-x-auto" id="excl-tabs"
-             hx-get="{{ url_for('batches.exclusions_counts', batch_id=batch.id, cycle_id=cycle_id) }}?part=tabs"
-             hx-trigger="exclToggled from:body"
-             hx-target="#excl-tabs"
-             hx-swap="innerHTML"
-             hx-select="#excl-tabs-inner">
-            <div id="excl-tabs-inner" class="flex flex-wrap">
+        <div class="border-b overflow-x-auto" id="excl-tabs">
+            <div class="flex flex-wrap">
                 {% for area in area_tabs %}
                 <button class="area-tab px-4 py-3 text-sm font-medium whitespace-nowrap border-b-2 flex items-center gap-2
                        {% if loop.first %}border-orange-500 text-orange-600{% else %}border-transparent text-gray-500 hover:text-gray-700{% endif %}"

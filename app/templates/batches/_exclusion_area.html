@@ -91,7 +91,45 @@ function handleExclToggle(cb) {
         badge.classList.add('hidden');
     }
 
-    // 3. Fire event for header + area tab refresh
+    // 3. Update active area tab badge + count
+    var activeTab = document.querySelector('.area-tab.border-orange-500');
+    if (activeTab) {
+        // Count all checked in current area content
+        var allChecked = document.querySelectorAll('#area-content .excl-checkbox:checked').length;
+        var allTotal = document.querySelectorAll('#area-content .excl-checkbox').length;
+
+        // Update tab badge
+        var tabBadge = activeTab.querySelector('.rounded-full');
+        var tabCount = activeTab.querySelectorAll('.text-xs');
+        var countEl = tabCount[tabCount.length - 1]; // last text-xs is the x/y
+
+        if (tabBadge) {
+            if (allChecked > 0) {
+                tabBadge.textContent = allChecked;
+            } else {
+                tabBadge.remove();
+            }
+        } else if (allChecked > 0) {
+            var nameSpan = activeTab.querySelector('.flex.items-center.gap-2');
+            var b = document.createElement('span');
+            b.className = 'bg-orange-500 text-white text-xs px-1.5 py-0.5 rounded-full';
+            b.textContent = allChecked;
+            nameSpan.appendChild(b);
+        }
+
+        if (countEl) {
+            countEl.textContent = allChecked + '/' + allTotal;
+            if (allChecked > 0) {
+                countEl.classList.add('text-orange-600', 'font-semibold');
+                countEl.classList.remove('text-gray-400');
+            } else {
+                countEl.classList.remove('text-orange-600', 'font-semibold');
+                countEl.classList.add('text-gray-400');
+            }
+        }
+    }
+
+    // 4. Fire event for header total refresh
     document.body.dispatchEvent(new CustomEvent('exclToggled'));
 }
 </script>
