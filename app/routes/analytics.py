@@ -80,6 +80,7 @@ def dashboard():
         JOIN unit u ON d.unit_id = u.id
         WHERE d.tenant_id = ? AND d.status = 'open'
         AND d.raised_cycle_id NOT LIKE 'test-%'
+        AND EXISTS (SELECT 1 FROM inspection i2 WHERE i2.unit_id = d.unit_id AND i2.cycle_id = d.raised_cycle_id AND i2.status IN ('reviewed','approved','certified'))
         GROUP BY u.block, u.floor
     """, [tenant_id])
     defect_map = {}
@@ -210,6 +211,7 @@ def dashboard():
         JOIN unit u ON i.unit_id = u.id
         LEFT JOIN defect d ON d.unit_id = u.id AND d.status = 'open'
             AND d.raised_cycle_id NOT LIKE 'test-%' AND d.tenant_id = u.tenant_id
+            AND EXISTS (SELECT 1 FROM inspection i2 WHERE i2.unit_id = d.unit_id AND i2.cycle_id = d.raised_cycle_id AND i2.status IN ('reviewed','approved','certified'))
         WHERE i.tenant_id = ? AND i.cycle_id NOT LIKE 'test-%'
         AND i.status IN ('reviewed','approved','certified')
         AND u.unit_number NOT LIKE 'TEST%'
@@ -285,6 +287,7 @@ def dashboard():
         JOIN area_template at2 ON ct.area_id = at2.id
         WHERE d.tenant_id = ? AND d.status = 'open'
         AND d.raised_cycle_id NOT LIKE 'test-%'
+        AND EXISTS (SELECT 1 FROM inspection i2 WHERE i2.unit_id = d.unit_id AND i2.cycle_id = d.raised_cycle_id AND i2.status IN ('reviewed','approved','certified'))
         GROUP BY at2.area_name
         ORDER BY defect_count DESC
     """, [tenant_id])]
@@ -315,6 +318,7 @@ def dashboard():
             JOIN area_template at2 ON ct.area_id = at2.id
             WHERE d.tenant_id = ? AND d.status = 'open'
             AND d.raised_cycle_id NOT LIKE 'test-%'
+            AND EXISTS (SELECT 1 FROM inspection i2 WHERE i2.unit_id = d.unit_id AND i2.cycle_id = d.raised_cycle_id AND i2.status IN ('reviewed','approved','certified'))
             AND at2.area_name = ?
             GROUP BY d.original_comment
             ORDER BY count DESC
@@ -353,6 +357,7 @@ def dashboard():
         JOIN unit u ON d.unit_id = u.id
         WHERE d.tenant_id = ? AND d.status = 'open'
         AND d.raised_cycle_id NOT LIKE 'test-%'
+        AND EXISTS (SELECT 1 FROM inspection i2 WHERE i2.unit_id = d.unit_id AND i2.cycle_id = d.raised_cycle_id AND i2.status IN ('reviewed','approved','certified'))
         GROUP BY u.id, u.unit_number, u.block, u.floor
         ORDER BY defect_count DESC
         LIMIT 5
@@ -373,6 +378,7 @@ def dashboard():
         FROM defect
         WHERE tenant_id = ? AND status = 'open'
         AND raised_cycle_id NOT LIKE 'test-%'
+        AND EXISTS (SELECT 1 FROM inspection i2 WHERE i2.unit_id = defect.unit_id AND i2.cycle_id = defect.raised_cycle_id AND i2.status IN ('reviewed','approved','certified'))
         GROUP BY original_comment
         ORDER BY cnt DESC
         LIMIT 10
@@ -393,6 +399,7 @@ def dashboard():
         JOIN category_template ct ON it.category_id = ct.id
         WHERE d.tenant_id = ? AND d.status = 'open'
         AND d.raised_cycle_id NOT LIKE 'test-%'
+        AND EXISTS (SELECT 1 FROM inspection i2 WHERE i2.unit_id = d.unit_id AND i2.cycle_id = d.raised_cycle_id AND i2.status IN ('reviewed','approved','certified'))
         GROUP BY ct.category_name
         ORDER BY count DESC
     """, [tenant_id])
@@ -415,6 +422,7 @@ def dashboard():
         JOIN category_template ct ON it.category_id = ct.id
         WHERE d.tenant_id = ? AND d.status = 'open'
         AND d.raised_cycle_id NOT LIKE 'test-%'
+        AND EXISTS (SELECT 1 FROM inspection i2 WHERE i2.unit_id = d.unit_id AND i2.cycle_id = d.raised_cycle_id AND i2.status IN ('reviewed','approved','certified'))
         GROUP BY d.original_comment, ct.category_name
         HAVING unit_count >= 3
         ORDER BY cnt DESC
@@ -769,6 +777,7 @@ def block_floor_detail(block_slug, floor):
         JOIN area_template at2 ON ct.area_id = at2.id
         WHERE u.block = ? AND u.floor = ? AND d.tenant_id = ?
         AND d.status = 'open' AND d.raised_cycle_id NOT LIKE 'test-%'
+        AND EXISTS (SELECT 1 FROM inspection i2 WHERE i2.unit_id = d.unit_id AND i2.cycle_id = d.raised_cycle_id AND i2.status IN ('reviewed','approved','certified'))
         GROUP BY at2.area_name
         ORDER BY defect_count DESC
     """, [block, floor, tenant_id])]
@@ -793,6 +802,7 @@ def block_floor_detail(block_slug, floor):
             JOIN area_template at2 ON ct.area_id = at2.id
             WHERE u.block = ? AND u.floor = ? AND d.tenant_id = ?
             AND d.status = 'open' AND d.raised_cycle_id NOT LIKE 'test-%'
+            AND EXISTS (SELECT 1 FROM inspection i2 WHERE i2.unit_id = d.unit_id AND i2.cycle_id = d.raised_cycle_id AND i2.status IN ('reviewed','approved','certified'))
             AND at2.area_name = ?
             GROUP BY d.original_comment
             ORDER BY count DESC
@@ -826,6 +836,7 @@ def block_floor_detail(block_slug, floor):
         JOIN unit u ON d.unit_id = u.id
         WHERE u.block = ? AND u.floor = ? AND d.tenant_id = ?
         AND d.status = 'open' AND d.raised_cycle_id NOT LIKE 'test-%'
+        AND EXISTS (SELECT 1 FROM inspection i2 WHERE i2.unit_id = d.unit_id AND i2.cycle_id = d.raised_cycle_id AND i2.status IN ('reviewed','approved','certified'))
         GROUP BY d.original_comment
         ORDER BY count DESC
         LIMIT 10
@@ -2534,6 +2545,7 @@ def _build_unified_report_data():
         JOIN unit u ON d.unit_id = u.id
         WHERE d.tenant_id = ? AND d.status = 'open'
         AND d.raised_cycle_id NOT LIKE 'test-%'
+        AND EXISTS (SELECT 1 FROM inspection i2 WHERE i2.unit_id = d.unit_id AND i2.cycle_id = d.raised_cycle_id AND i2.status IN ('reviewed','approved','certified'))
         GROUP BY u.block, u.floor
     """, [tenant_id])
     defect_map = {}
@@ -2653,6 +2665,7 @@ def _build_unified_report_data():
         JOIN unit u ON i.unit_id = u.id
         LEFT JOIN defect d ON d.unit_id = u.id AND d.status = 'open'
             AND d.raised_cycle_id NOT LIKE 'test-%' AND d.tenant_id = u.tenant_id
+            AND EXISTS (SELECT 1 FROM inspection i2 WHERE i2.unit_id = d.unit_id AND i2.cycle_id = d.raised_cycle_id AND i2.status IN ('reviewed','approved','certified'))
         WHERE i.tenant_id = ? AND i.cycle_id NOT LIKE 'test-%'
         AND i.status IN ('reviewed','approved','certified')
         AND u.unit_number NOT LIKE 'TEST%'
@@ -2733,6 +2746,7 @@ def _build_unified_report_data():
         JOIN area_template at2 ON ct.area_id = at2.id
         WHERE d.tenant_id = ? AND d.status = 'open'
             AND d.raised_cycle_id NOT LIKE 'test-%%'
+            AND EXISTS (SELECT 1 FROM inspection i2 WHERE i2.unit_id = d.unit_id AND i2.cycle_id = d.raised_cycle_id AND i2.status IN ('reviewed','approved','certified'))
         GROUP BY at2.area_name ORDER BY defect_count DESC
     """, [tenant_id])]
 
@@ -2777,6 +2791,7 @@ def _build_unified_report_data():
             JOIN area_template at2 ON ct.area_id = at2.id
             WHERE d.tenant_id = ? AND d.status = 'open'
             AND d.raised_cycle_id NOT LIKE 'test-%'
+            AND EXISTS (SELECT 1 FROM inspection i2 WHERE i2.unit_id = d.unit_id AND i2.cycle_id = d.raised_cycle_id AND i2.status IN ('reviewed','approved','certified'))
             AND at2.area_name = ?
             GROUP BY d.original_comment
             ORDER BY count DESC
@@ -2812,6 +2827,7 @@ def _build_unified_report_data():
         FROM defect
         WHERE tenant_id = ? AND status = 'open'
         AND raised_cycle_id NOT LIKE 'test-%'
+        AND EXISTS (SELECT 1 FROM inspection i2 WHERE i2.unit_id = defect.unit_id AND i2.cycle_id = defect.raised_cycle_id AND i2.status IN ('reviewed','approved','certified'))
         GROUP BY original_comment
         ORDER BY cnt DESC
         LIMIT 10
@@ -2836,6 +2852,7 @@ def _build_unified_report_data():
         JOIN category_template ct ON it.category_id = ct.id
         WHERE d.tenant_id = ? AND d.status = 'open'
         AND d.raised_cycle_id NOT LIKE 'test-%'
+        AND EXISTS (SELECT 1 FROM inspection i2 WHERE i2.unit_id = d.unit_id AND i2.cycle_id = d.raised_cycle_id AND i2.status IN ('reviewed','approved','certified'))
         GROUP BY d.original_comment, ct.category_name
         HAVING unit_count >= 3
         ORDER BY cnt DESC
@@ -2851,6 +2868,7 @@ def _build_unified_report_data():
         JOIN category_template ct ON it.category_id = ct.id
         WHERE d.tenant_id = ? AND d.status = 'open'
         AND d.raised_cycle_id NOT LIKE 'test-%'
+        AND EXISTS (SELECT 1 FROM inspection i2 WHERE i2.unit_id = d.unit_id AND i2.cycle_id = d.raised_cycle_id AND i2.status IN ('reviewed','approved','certified'))
         GROUP BY ct.category_name
         ORDER BY count DESC
     """, [tenant_id])]
@@ -3108,6 +3126,7 @@ def _build_combined_report_data():
         JOIN area_template at2 ON ct.area_id = at2.id
         WHERE d.tenant_id = ? AND d.status = 'open'
             AND d.raised_cycle_id NOT LIKE 'test-%%'
+            AND EXISTS (SELECT 1 FROM inspection i2 WHERE i2.unit_id = d.unit_id AND i2.cycle_id = d.raised_cycle_id AND i2.status IN ('reviewed','approved','certified'))
         GROUP BY at2.area_name ORDER BY defect_count DESC
     """, [tenant_id])]
 
@@ -3135,6 +3154,7 @@ def _build_combined_report_data():
         JOIN area_template at2 ON ct.area_id = at2.id
         WHERE d.tenant_id = ? AND d.status = 'open'
             AND d.raised_cycle_id NOT LIKE 'test-%%'
+            AND EXISTS (SELECT 1 FROM inspection i2 WHERE i2.unit_id = d.unit_id AND i2.cycle_id = d.raised_cycle_id AND i2.status IN ('reviewed','approved','certified'))
         GROUP BY at2.area_name, d.raised_cycle_id ORDER BY cnt DESC
     """, [tenant_id])]
 
@@ -3175,6 +3195,7 @@ def _build_combined_report_data():
         JOIN category_template ct ON it.category_id = ct.id
         WHERE d.tenant_id = ? AND d.status = 'open'
             AND d.raised_cycle_id NOT LIKE 'test-%%'
+            AND EXISTS (SELECT 1 FROM inspection i2 WHERE i2.unit_id = d.unit_id AND i2.cycle_id = d.raised_cycle_id AND i2.status IN ('reviewed','approved','certified'))
         GROUP BY ct.category_name, d.raised_cycle_id ORDER BY cnt DESC
     """, [tenant_id])]
 
@@ -3213,6 +3234,7 @@ def _build_combined_report_data():
         FROM defect d
         WHERE d.tenant_id = ? AND d.status = 'open'
             AND d.raised_cycle_id NOT LIKE 'test-%%'
+            AND EXISTS (SELECT 1 FROM inspection i2 WHERE i2.unit_id = d.unit_id AND i2.cycle_id = d.raised_cycle_id AND i2.status IN ('reviewed','approved','certified'))
         GROUP BY d.original_comment, d.raised_cycle_id ORDER BY cnt DESC
     """, [tenant_id])]
 
@@ -3247,6 +3269,7 @@ def _build_combined_report_data():
             JOIN area_template at2 ON ct.area_id = at2.id
             WHERE d.tenant_id = ? AND d.status = 'open' AND at2.area_name = ?
                 AND d.raised_cycle_id NOT LIKE 'test-%%'
+                AND EXISTS (SELECT 1 FROM inspection i2 WHERE i2.unit_id = d.unit_id AND i2.cycle_id = d.raised_cycle_id AND i2.status IN ('reviewed','approved','certified'))
             GROUP BY d.original_comment ORDER BY total DESC LIMIT 3
         """, [tenant_id, area_name]))
 
@@ -3391,6 +3414,7 @@ def _build_combined_report_data():
         JOIN category_template ct ON it.category_id = ct.id
         WHERE d.tenant_id = ? AND d.status = 'open'
             AND d.raised_cycle_id NOT LIKE 'test-%%'
+            AND EXISTS (SELECT 1 FROM inspection i2 WHERE i2.unit_id = d.unit_id AND i2.cycle_id = d.raised_cycle_id AND i2.status IN ('reviewed','approved','certified'))
         GROUP BY d.original_comment
         HAVING COUNT(DISTINCT u.id) >= 3
         ORDER BY cnt DESC
