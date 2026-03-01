@@ -9,7 +9,7 @@
     </div>
 
     {% for category in categories %}
-    <div class="border rounded-lg overflow-hidden">
+    <div class="border rounded-lg overflow-hidden" data-cat-idx="{{ loop.index0 }}">
         <!-- Category Header -->
         <div class="bg-gray-100 px-4 py-3 border-b flex items-center select-none">
             <div onclick="var h=this.closest('.bg-gray-100');var c=h.nextElementSibling;var ch=this.querySelector('.cat-chevron');if(c)c.classList.toggle('hidden');if(ch)ch.classList.toggle('rotate-90')"
@@ -23,11 +23,9 @@
             </div>
             <h3 class="font-semibold text-gray-800 flex-1">
                 {{ category.name }}
-                {% if category.excluded > 0 %}
-                <span class="bg-orange-500 text-white text-xs px-1.5 py-0.5 rounded-full font-medium align-middle">{{ category.excluded }}</span>
-                {% endif %}
             </h3>
-            <span class="text-xs {% if category.excluded > 0 %}text-orange-600 font-semibold{% else %}text-gray-500{% endif %} ml-2">
+            <span class="cat-badge ml-2 {% if category.excluded > 0 %}bg-orange-500 text-white text-xs px-1.5 py-0.5 rounded-full font-medium{% else %}hidden{% endif %}">{{ category.excluded }}</span>
+            <span class="cat-count text-xs ml-2 {% if category.excluded > 0 %}text-orange-600 font-semibold{% else %}text-gray-500{% endif %}">
                 {{ category.excluded }}/{{ category.total }}
             </span>
         </div>
@@ -40,18 +38,15 @@
                     <label class="flex items-center gap-3 cursor-pointer">
                         <input type="checkbox"
                                {% if item.is_excluded %}checked{% endif %}
-                               class="rounded border-gray-300 text-orange-600 focus:ring-orange-500 flex-shrink-0"
+                               class="excl-checkbox rounded border-gray-300 text-orange-600 focus:ring-orange-500 flex-shrink-0"
                                style="width:20px;height:20px"
                                hx-post="{{ url_for('cycles.toggle_exclusion', cycle_id=cycle_id) }}"
                                hx-vals='{"item_id": "{{ item.id }}"}'
                                hx-swap="none"
-                               hx-on::after-request="var lbl=this.closest('label').querySelector('span');lbl.classList.toggle('line-through');lbl.classList.toggle('text-orange-600');lbl.classList.toggle('text-gray-700');var cat=this.closest('.border.rounded-lg');var hdr=cat.querySelector('.bg-gray-100');var countSpan=hdr.querySelector('.text-xs');var badge=hdr.querySelector('.rounded-full');var parts=countSpan.textContent.trim().split('/');var exc=parseInt(parts[0]);var tot=parseInt(parts[1]);exc=this.checked?exc+1:exc-1;countSpan.textContent=exc+'/'+tot;if(exc>0){countSpan.classList.add('text-orange-600','font-semibold');countSpan.classList.remove('text-gray-500')}else{countSpan.classList.remove('text-orange-600','font-semibold');countSpan.classList.add('text-gray-500')};if(badge){if(exc>0){badge.textContent=exc}else{badge.remove()}}else if(exc>0){var h3=hdr.querySelector('h3');var b=document.createElement('span');b.className='bg-orange-500 text-white text-xs px-1.5 py-0.5 rounded-full font-medium align-middle';b.textContent=exc;h3.appendChild(document.createTextNode(' '));h3.appendChild(b)};document.body.dispatchEvent(new CustomEvent('exclToggled'))">
-                        <span class="text-sm {% if item.is_excluded %}text-orange-600 line-through{% else %}text-gray-700{% endif %}">
+                               hx-on::after-request="handleExclToggle(this)">
+                        <span class="excl-label text-sm {% if item.is_excluded %}text-orange-600 line-through{% else %}text-gray-700{% endif %}">
                             {{ item.item_description }}
                         </span>
-                        {% if item.is_excluded and item.exclude_reason %}
-                        <span class="text-xs text-orange-400">({{ item.exclude_reason }})</span>
-                        {% endif %}
                     </label>
                 </div>
                 {% endfor %}
@@ -60,3 +55,43 @@
     </div>
     {% endfor %}
 </div>
+
+<script>
+function handleExclToggle(cb) {
+    // 1. Toggle label style
+    var lbl = cb.closest('label').querySelector('.excl-label');
+    if (cb.checked) {
+        lbl.classList.add('line-through', 'text-orange-600');
+        lbl.classList.remove('text-gray-700');
+    } else {
+        lbl.classList.remove('line-through', 'text-orange-600');
+        lbl.classList.add('text-gray-700');
+    }
+
+    // 2. Update category count
+    var catDiv = cb.closest('[data-cat-idx]');
+    var header = catDiv.querySelector('.bg-gray-100');
+    var countSpan = header.querySelector('.cat-count');
+    var badge = header.querySelector('.cat-badge');
+
+    // Count checked boxes in this category
+    var checked = catDiv.querySelectorAll('.excl-checkbox:checked').length;
+    var total = catDiv.querySelectorAll('.excl-checkbox').length;
+
+    countSpan.textContent = checked + '/' + total;
+    if (checked > 0) {
+        countSpan.classList.add('text-orange-600', 'font-semibold');
+        countSpan.classList.remove('text-gray-500');
+        badge.textContent = checked;
+        badge.classList.remove('hidden');
+        badge.classList.add('bg-orange-500', 'text-white', 'text-xs', 'px-1.5', 'py-0.5', 'rounded-full', 'font-medium');
+    } else {
+        countSpan.classList.remove('text-orange-600', 'font-semibold');
+        countSpan.classList.add('text-gray-500');
+        badge.classList.add('hidden');
+    }
+
+    // 3. Fire event for header + area tab refresh
+    document.body.dispatchEvent(new CustomEvent('exclToggled'));
+}
+</script>
