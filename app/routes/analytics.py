@@ -2881,6 +2881,27 @@ def _build_unified_report_data():
     else:
         cat_median = 0
 
+    # Top 5 worst units
+    worst_units = [dict(r) for r in query_db("""
+        SELECT u.id as unit_id, u.unit_number, u.block, u.floor,
+               COUNT(d.id) as defect_count
+        FROM defect d
+        JOIN unit u ON d.unit_id = u.id
+        WHERE d.tenant_id = ? AND d.status = 'open'
+        AND d.raised_cycle_id NOT LIKE 'test-%'
+        AND EXISTS (SELECT 1 FROM inspection i2 WHERE i2.unit_id = d.unit_id AND i2.cycle_id = d.raised_cycle_id AND i2.status IN ('reviewed','approved','certified'))
+        GROUP BY u.id, u.unit_number, u.block, u.floor
+        ORDER BY defect_count DESC
+        LIMIT 5
+    """, [tenant_id])]
+    worst_sum = sum(u['defect_count'] for u in worst_units)
+    worst_pct = round(worst_sum / total_defects_project * 100) if total_defects_project > 0 else 0
+    worst_blocks = {}
+    for u in worst_units:
+        key = u['block'] + ' ' + FLOOR_LABELS.get(u['floor'], 'Floor ' + str(u['floor']))
+        worst_blocks[key] = worst_blocks.get(key, 0) + 1
+    worst_dominant = max(worst_blocks.items(), key=lambda x: x[1]) if worst_blocks else ('', 0)
+
     # Zone performance (ranked worst to best)
     active_zones = [c for c in zone_cards if c['inspected'] > 0]
     active_zones.sort(key=lambda x: x['avg_defects'], reverse=True)
@@ -2940,6 +2961,10 @@ def _build_unified_report_data():
         'logo_b64': logo_b64,
         'sig_b64': sig_b64,
         'report_date': report_date,
+        'worst_units': worst_units,
+        'worst_pct': worst_pct,
+        'worst_dominant_zone': worst_dominant[0],
+        'worst_dominant_count': worst_dominant[1],
     }
 
 
