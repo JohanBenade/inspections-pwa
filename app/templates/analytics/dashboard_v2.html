@@ -31,7 +31,7 @@
     .hotspot-panel { background: #FAFAF8; border: 1px solid #e5e5e5; border-radius: 8px; padding: 1.25rem; }
     .area-row { display: flex; align-items: center; gap: 0.5rem; padding: 0.4rem 0; text-decoration: none; color: inherit; }
     .area-row:hover { opacity: 0.8; }
-    .area-bar { height: 10px; border-radius: 2px; min-width: 3px; }
+    .area-bar { height: 8px; border-radius: 3px; min-width: 3px; }
     .area-label { font-size: 0.8rem; font-weight: 500; min-width: 90px; color: #1A1A1A; }
     .area-count { font-size: 0.8rem; font-weight: 700; min-width: 36px; text-align: right; color: #1A1A1A; }
     .area-pct { font-size: 0.7rem; color: #9A9A9A; min-width: 36px; text-align: right; }
@@ -303,7 +303,7 @@
                     <span style="font-size: 0.8rem; color: #1A1A1A;">{{ d.description }}</span>
                     <span style="margin-left: auto; font-size: 0.8rem; font-weight: 700; color: #1A1A1A;">{{ d.count }}</span>
                 </div>
-                <div style="height: 10px; background: #f0ede8; border-radius: 4px; overflow: hidden;">
+                <div style="height: 8px; background: #f0ede8; border-radius: 3px; overflow: hidden;">
                     <div style="width: {{ d.bar_pct }}%; height: 100%; background: {{ area.colour }}; border-radius: 4px;"></div>
                 </div>
             </div>
@@ -344,7 +344,7 @@
                 <span style="font-size: 0.8rem; font-weight: 700; color: {% if d.cnt > td_median %}#C44D3F{% elif d.cnt == td_median %}#C8963E{% else %}#4A7C59{% endif %}; flex-shrink: 0;">{{ d.cnt }}</span>
                 <span style="font-size: 0.7rem; color: #9A9A9A; width: 40px; text-align: right; flex-shrink: 0;">{{ td_pct }}%</span>
             </div>
-            <div style="height: 6px; background: #f0f0f0; border-radius: 3px;">
+            <div style="height: 8px; background: #f0f0f0; border-radius: 3px;">
                 <div style="height: 100%; width: {{ (d.cnt / td_max * 100)|round }}%; background: {% if d.cnt > td_median %}#C44D3F{% elif d.cnt == td_median %}#C8963E{% else %}#4A7C59{% endif %}; border-radius: 3px;"></div>
             </div>
         </a>
@@ -380,8 +380,8 @@
             </div>
             <div style="display: flex; align-items: center; gap: 0.5rem;">
                 <div style="width: 32px;"></div>
-                <div style="flex: 1; height: 6px; background: #f0ede8; border-radius: 3px; overflow: hidden;">
-                    <div style="height: 6px; width: {{ (r.cnt / rec_max * 100)|round }}%; background: #C44D3F; border-radius: 3px;"></div>
+                <div style="flex: 1; height: 8px; background: #f0ede8; border-radius: 3px; overflow: hidden;">
+                    <div style="height: 8px; width: {{ (r.cnt / rec_max * 100)|round }}%; background: #C44D3F; border-radius: 3px;"></div>
                 </div>
                 <span style="font-size: 0.65rem; color: #9A9A9A; min-width: 60px; text-align: right;">{{ r.category_name }}</span>
             </div>
