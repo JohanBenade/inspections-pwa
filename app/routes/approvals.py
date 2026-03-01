@@ -1020,7 +1020,7 @@ def cleanup():
         lib_by_cat[cat].add(entry['desc_lower'])
 
     # Classify each defect
-    placeholders = {'defect noted', 'n/a', 'na', 'as indicated', ''}
+    placeholders = {'defect noted', 'n/a', 'na', 'as indicated', '', 'not applicable yet', 'not applicable', 'not tested', 'to be tested', 'to be inspected'}
     for d in defects:
         desc_lower = (d['display_desc'] or '').lower().strip()
         cat_name = d['category_name']
