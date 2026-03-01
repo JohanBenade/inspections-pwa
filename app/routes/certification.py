@@ -841,25 +841,88 @@ def update_category_note(unit_id):
 @certification_bp.route('/my-reviews')
 @require_team_lead
 def my_reviews():
-    """Team Lead review queue - submitted inspections awaiting review."""
+    """Team Lead review queue - grouped by batch and zone."""
     tenant_id = session['tenant_id']
+    FLOOR_LABELS = {0: 'Ground Floor', 1: '1st Floor', 2: '2nd Floor'}
 
-    inspections = [dict(r) for r in query_db("""
+    # Get all submitted inspections with batch context
+    rows = [dict(r) for r in query_db("""
         SELECT i.id AS inspection_id, i.status AS inspection_status,
                i.submitted_at, i.inspector_name,
                u.id AS unit_id, u.unit_number, u.block, u.floor,
                ic.cycle_number, ic.id AS cycle_id,
+               ib.id AS batch_id, ib.name AS batch_name, ib.received_date,
                (SELECT COUNT(*) FROM defect d
                 WHERE d.unit_id = u.id AND d.raised_cycle_id = ic.id
                 AND d.status = 'open' AND d.tenant_id = i.tenant_id) AS defect_count
         FROM inspection i
         JOIN unit u ON i.unit_id = u.id
         JOIN inspection_cycle ic ON i.cycle_id = ic.id
+        LEFT JOIN batch_unit bu ON bu.unit_id = u.id AND bu.cycle_id = ic.id AND bu.status != 'removed'
+        LEFT JOIN inspection_batch ib ON bu.batch_id = ib.id
         WHERE i.tenant_id = ? AND i.status = 'submitted'
-        ORDER BY u.block, u.floor, u.unit_number
+        ORDER BY ib.received_date DESC, u.block, u.floor, u.unit_number
     """, [tenant_id])]
 
-    return render_template('certification/my_reviews.html', inspections=inspections)
+    # Also get reviewed counts per cycle for progress
+    reviewed_counts = {}
+    for r in query_db("""
+        SELECT ic.id AS cycle_id, COUNT(*) AS cnt
+        FROM inspection i
+        JOIN inspection_cycle ic ON i.cycle_id = ic.id
+        WHERE i.tenant_id = ? AND i.status = 'reviewed'
+        GROUP BY ic.id
+    """, [tenant_id]):
+        reviewed_counts[r['cycle_id']] = r['cnt']
+
+    # Group: batch -> zone -> units
+    from collections import OrderedDict
+    batches = OrderedDict()
+    for r in rows:
+        bid = r['batch_id'] or 'no_batch'
+        bname = r['batch_name'] or 'Unassigned'
+        breceived = r['received_date'] or ''
+
+        if bid not in batches:
+            batches[bid] = {
+                'id': bid,
+                'name': bname,
+                'received_date': breceived,
+                'zones': OrderedDict(),
+                'total_units': 0,
+                'total_defects': 0,
+            }
+
+        zone_key = (r['block'], r['floor'], r['cycle_id'])
+        floor_label = FLOOR_LABELS.get(r['floor'], str(r['floor']))
+        zone_name = '{} {} C{}'.format(r['block'], floor_label, r['cycle_number'])
+
+        if zone_key not in batches[bid]['zones']:
+            batches[bid]['zones'][zone_key] = {
+                'name': zone_name,
+                'block': r['block'],
+                'floor': r['floor'],
+                'floor_label': floor_label,
+                'cycle_number': r['cycle_number'],
+                'cycle_id': r['cycle_id'],
+                'units': [],
+                'total_defects': 0,
+                'reviewed_count': reviewed_counts.get(r['cycle_id'], 0),
+            }
+
+        batches[bid]['zones'][zone_key]['units'].append(r)
+        batches[bid]['zones'][zone_key]['total_defects'] += r['defect_count']
+        batches[bid]['total_units'] += 1
+        batches[bid]['total_defects'] += r['defect_count']
+
+    # Convert zones dict to list
+    for bid in batches:
+        batches[bid]['zones'] = list(batches[bid]['zones'].values())
+
+    total_waiting = len(rows)
+    return render_template('certification/my_reviews.html',
+                           batches=list(batches.values()),
+                           total_waiting=total_waiting)
 
 
 @certification_bp.route('/my-inspections')
