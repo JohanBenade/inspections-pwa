@@ -306,12 +306,13 @@
         <thead>
             <tr>
                 <th class="sortable" data-col="0" onclick="sortTable(0)">Unit <span class="sort-arrow"></span></th>
-                <th class="sortable" data-col="1" onclick="sortTable(1)">Area <span class="sort-arrow"></span></th>
-                <th class="sortable" data-col="2" onclick="sortTable(2)">Category <span class="sort-arrow"></span></th>
-                <th class="sortable" data-col="3" onclick="sortTable(3)">Item <span class="sort-arrow"></span></th>
-                <th class="sortable" data-col="4" onclick="sortTable(4)">Description <span class="sort-arrow"></span></th>
-                <th class="sortable" data-col="5" onclick="sortTable(5)">Type <span class="sort-arrow"></span></th>
-                <th class="sortable" data-col="6" onclick="sortTable(6)">Status <span class="sort-arrow"></span></th>
+                <th class="sortable" data-col="1" onclick="sortTable(1)">Inspector <span class="sort-arrow"></span></th>
+                <th class="sortable" data-col="2" onclick="sortTable(2)">Area <span class="sort-arrow"></span></th>
+                <th class="sortable" data-col="3" onclick="sortTable(3)">Category <span class="sort-arrow"></span></th>
+                <th class="sortable" data-col="4" onclick="sortTable(4)">Item <span class="sort-arrow"></span></th>
+                <th class="sortable" data-col="5" onclick="sortTable(5)">Description <span class="sort-arrow"></span></th>
+                <th class="sortable" data-col="6" onclick="sortTable(6)">Type <span class="sort-arrow"></span></th>
+                <th class="sortable" data-col="7" onclick="sortTable(7)">Status <span class="sort-arrow"></span></th>
                 <th>Actions</th>
             </tr>
         </thead>
@@ -319,6 +320,7 @@
             {% for d in defects %}
             <tr id="row-{{ d.id }}" class="cleanup-row status-{{ d.cleanup_status }}">
                 <td class="col-unit"><a href="/inspection/{{ d.inspection_id }}" style="color: #2563eb; text-decoration: none; font-weight: 700;">{{ d.unit_number }}</a></td>
+                <td style="font-size: 0.75rem; color: #6b7280;">{{ d.inspector_name }}</td>
                 <td class="col-area">{{ d.area_name }}</td>
                 <td class="col-cat">{{ d.category_name }}</td>
                 <td class="col-item">{{ d.item_path }}</td>
