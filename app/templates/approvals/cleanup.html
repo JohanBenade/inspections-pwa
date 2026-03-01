@@ -356,6 +356,13 @@
                         data-area="{{ d.area_name }}"
                         data-cat="{{ d.category_name }}"
                         data-item="{{ d.item_path }}">Edit</button>
+                    <button class="btn-edit" onclick="startMove(this)"
+                        data-id="{{ d.id }}"
+                        data-unit="{{ d.unit_number }}"
+                        data-area="{{ d.area_name }}"
+                        data-cat="{{ d.category_name }}"
+                        data-item="{{ d.item_path }}"
+                        data-desc="{{ d.display_desc or '' }}">Move</button>
                     <button class="btn-delete" onclick="confirmDelete(this)"
                         data-id="{{ d.id }}"
                         data-unit="{{ d.unit_number }}"
@@ -666,4 +673,74 @@ function sortTable(colIdx) {
         </div>
     </div>
 </div>
+
+<!-- Move Modal -->
+<div class="edit-overlay" id="moveOverlay">
+    <div class="edit-panel" style="max-width:480px;">
+        <h3>Move Defect</h3>
+        <div class="edit-context" id="moveContext"></div>
+        <input type="hidden" id="move-defect-id">
+        <label style="display:block;font-size:0.75rem;font-weight:600;color:#374151;margin-bottom:0.5rem;">Select target item:</label>
+        <div id="moveTargets" style="border:1px solid #e5e7eb;border-radius:6px;max-height:300px;overflow-y:auto;background:#fff;">
+            <div style="padding:0.75rem;color:#9ca3af;">Loading...</div>
+        </div>
+        <div class="edit-buttons">
+            <button type="button" class="btn-save" id="btnConfirmMove" onclick="executeMove()" disabled style="opacity:0.5;">Move</button>
+            <button type="button" class="btn-cancel" onclick="closeMove()">Cancel</button>
+        </div>
+    </div>
+</div>
+
+<script>
+let moveTarget = null;
+
+function startMove(btn) {
+    moveTarget = null;
+    document.getElementById('move-defect-id').value = btn.dataset.id;
+    document.getElementById('moveContext').innerHTML =
+        '<strong>Unit ' + btn.dataset.unit + '</strong> &rsaquo; '
+        + btn.dataset.area + ' &rsaquo; ' + btn.dataset.cat
+        + ' &rsaquo; ' + btn.dataset.item
+        + '<br><span style="color:#6b7280;">' + btn.dataset.desc + '</span>';
+    document.getElementById('btnConfirmMove').disabled = true;
+    document.getElementById('btnConfirmMove').style.opacity = '0.5';
+    document.getElementById('moveOverlay').classList.add('active');
+    fetch('/approvals/cleanup/move-targets?defect_id=' + btn.dataset.id)
+        .then(r => r.text())
+        .then(html => {
+            document.getElementById('moveTargets').innerHTML = html;
+            document.querySelectorAll('.move-item').forEach(item => {
+                item.addEventListener('click', function() {
+                    document.querySelectorAll('.move-item').forEach(i => {
+                        i.style.background = '#fff';
+                    });
+                    this.style.background = '#f0fdf4';
+                    moveTarget = this.dataset.tid;
+                    document.getElementById('btnConfirmMove').disabled = false;
+                    document.getElementById('btnConfirmMove').style.opacity = '1';
+                });
+            });
+        });
+}
+
+function closeMove() {
+    document.getElementById('moveOverlay').classList.remove('active');
+}
+
+document.getElementById('moveOverlay').addEventListener('click', function(e) {
+    if (e.target === this) closeMove();
+});
+
+function executeMove() {
+    if (!moveTarget) return;
+    var form = new FormData();
+    form.append('defect_id', document.getElementById('move-defect-id').value);
+    form.append('target_template_id', moveTarget);
+    fetch('/approvals/cleanup/move-defect', {method:'POST', body:form})
+        .then(function(r) {
+            if (r.ok) { location.reload(); } else { alert('Move failed'); }
+        });
+}
+</script>
+
 {% endblock %}

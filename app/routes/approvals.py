@@ -1390,6 +1390,120 @@ def cleanup_delete_defect():
     return '', 200
 
 
+
+
+@approvals_bp.route('/cleanup/move-targets', methods=['GET'])
+@require_team_lead
+def cleanup_move_targets():
+    """Return available items in same unit+category for move modal."""
+    tenant_id = session['tenant_id']
+    defect_id = request.args.get('defect_id', '')
+    if not defect_id:
+        return ''
+
+    defect = query_db("""
+        SELECT d.unit_id, d.item_template_id, d.raised_cycle_id,
+               it.category_id
+        FROM defect d
+        JOIN item_template it ON d.item_template_id = it.id
+        WHERE d.id = ? AND d.tenant_id = ?
+    """, [defect_id, tenant_id], one=True)
+    if not defect:
+        return ''
+
+    items = query_db("""
+        SELECT it.id, it.item_description,
+               pit.item_description AS parent_desc,
+               ii.status AS current_status
+        FROM item_template it
+        LEFT JOIN item_template pit ON it.parent_item_id = pit.id
+        LEFT JOIN inspection_item ii ON ii.item_template_id = it.id
+            AND ii.inspection_id = (
+                SELECT i.id FROM inspection i
+                WHERE i.unit_id = ? AND i.cycle_id = ?
+                AND i.tenant_id = ? ORDER BY i.created_at DESC LIMIT 1)
+        WHERE it.category_id = ? AND it.tenant_id = ?
+        AND it.id != ?
+        ORDER BY it.item_order
+    """, [defect['unit_id'], defect['raised_cycle_id'], tenant_id,
+           defect['category_id'], tenant_id, defect['item_template_id']])
+
+    html = ''
+    for it in items:
+        path = (it['parent_desc'] + ' > ' + it['item_description']) if it['parent_desc'] else it['item_description']
+        st = it['current_status'] or 'pending'
+        badge = 'ok' if st == 'ok' else ('nts' if st in ('not_to_standard', 'not_installed') else '')
+        html += '<div class="move-item" data-tid="' + it['id'] + '" '
+        html += 'style="padding:0.5rem 0.75rem;cursor:pointer;border-bottom:1px solid #f3f4f6;'
+        html += 'display:flex;justify-content:space-between;align-items:center;font-size:0.85rem;">'
+        html += '<span>' + path + '</span>'
+        html += '<span style="font-size:0.7rem;color:#9ca3af;">' + st.replace('_', ' ') + '</span>'
+        html += '</div>'
+    if not items:
+        html = '<div style="padding:0.75rem;color:#9ca3af;font-size:0.85rem;">No other items in this category</div>'
+    return html
+
+
+@approvals_bp.route('/cleanup/move-defect', methods=['POST'])
+@require_team_lead
+def cleanup_move_defect():
+    """Move a defect from one item to another within same unit+category."""
+    tenant_id = session['tenant_id']
+    db = get_db()
+    now = datetime.now(timezone.utc).isoformat()
+
+    defect_id = request.form.get('defect_id', '').strip()
+    target_template_id = request.form.get('target_template_id', '').strip()
+    if not defect_id or not target_template_id:
+        abort(400)
+
+    defect = query_db("""
+        SELECT d.id, d.unit_id, d.item_template_id, d.raised_cycle_id,
+               d.defect_type, d.original_comment, d.reviewed_comment,
+               COALESCE(d.reviewed_comment, d.original_comment) AS display_desc
+        FROM defect d
+        WHERE d.id = ? AND d.tenant_id = ?
+    """, [defect_id, tenant_id], one=True)
+    if not defect:
+        abort(404)
+
+    old_template = defect['item_template_id']
+    insp = query_db("""
+        SELECT id FROM inspection
+        WHERE unit_id = ? AND cycle_id = ? AND tenant_id = ?
+        ORDER BY created_at DESC LIMIT 1
+    """, [defect['unit_id'], defect['raised_cycle_id'], tenant_id], one=True)
+    if not insp:
+        abort(404)
+
+    # 1. Update defect to target item
+    db.execute("""
+        UPDATE defect SET item_template_id = ?, updated_at = ?
+        WHERE id = ? AND tenant_id = ?
+    """, [target_template_id, now, defect_id, tenant_id])
+
+    # 2. Reset source inspection_item to OK
+    db.execute("""
+        UPDATE inspection_item SET status = 'ok', comment = NULL, marked_at = ?
+        WHERE inspection_id = ? AND item_template_id = ? AND tenant_id = ?
+    """, [now, insp['id'], old_template, tenant_id])
+
+    # 3. Mark target inspection_item
+    item_status = 'not_installed' if defect['defect_type'] == 'not_installed' else 'not_to_standard'
+    db.execute("""
+        UPDATE inspection_item SET status = ?, comment = ?, marked_at = ?
+        WHERE inspection_id = ? AND item_template_id = ? AND tenant_id = ?
+    """, [item_status, defect['display_desc'], now, insp['id'], target_template_id, tenant_id])
+
+    # 4. Audit
+    log_audit(db, tenant_id, 'defect', defect_id, 'cleanup_move',
+              old_value='item:' + old_template,
+              new_value='item:' + target_template_id,
+              user_id=session['user_id'], user_name=session['user_name'])
+
+    db.commit()
+    return '', 200
+
 @approvals_bp.route('/cleanup/suggestions', methods=['GET'])
 @require_team_lead
 def cleanup_suggestions():
