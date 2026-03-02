@@ -88,7 +88,7 @@
                         <a href="{{ url_for('approvals.cleanup') }}" class="text-sm text-gray-300 hover:text-white">Defects Cleanup</a>
                         <a href="{{ url_for('approvals.pipeline') }}" class="text-sm text-gray-300 hover:text-white">Approvals</a>
                         <a href="{{ url_for('analytics.dashboard') }}" class="text-sm text-gray-300 hover:text-white">Analytics</a>
-                        <a href="{{ url_for('analytics.reports') }}" class="text-sm text-gray-300 hover:text-white">Reports</a>
+                        <a href="{{ url_for('analytics.unified_report_view') }}" class="text-sm text-gray-300 hover:text-white">Reports</a>
                         <a href="{{ url_for('analytics.inspector_audit') }}" class="text-sm text-gray-300 hover:text-white">Audit Trail</a>
                         <a href="{{ url_for('analytics.login_status') }}" class="text-sm text-gray-300 hover:text-white">Login Status</a>
                         {% if current_user.role == 'admin' %}
@@ -199,7 +199,7 @@
                 <span class="text-xs mt-1">Analytics</span>
             </a>
             <!-- Reports -->
-            <a href="{{ url_for('analytics.reports') }}" 
+            <a href="{{ url_for('analytics.unified_report_view') }}" 
                class="flex flex-col items-center text-gray-600 hover:text-primary tap-target">
                 <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
