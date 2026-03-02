@@ -124,24 +124,20 @@
     <div class="divider"></div>
     <a href="{{ url_for('analytics.rectification') }}" style="text-decoration: none; color: inherit; display: block;">
     <div class="rect-box mb-6" style="cursor: pointer;">
-        <div style="display: flex; flex-wrap: wrap; gap: 1rem; align-items: center; margin-bottom: 0.75rem;">
+        <div style="display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: baseline; margin-bottom: 0.75rem;">
             <div style="font-size: 0.85rem; color: #6B6B6B;">
-                {{ rectification.r2_units }} unit{{ 's' if rectification.r2_units != 1 }} re-inspected | totals across all units
+                {{ rectification.r2_units }} unit{{ 's' if rectification.r2_units != 1 }} re-inspected
+                (<span style="color: #4A7C59; font-weight: 700;">{{ rectification.rectified }} fixed</span>
+                <span style="color: #9A9A9A;">&middot;</span>
+                <span style="color: #C8963E; font-weight: 700;">{{ rectification.new_defects }} new</span>)
             </div>
             <div style="margin-left: auto; font-size: 0.75rem; color: #C8963E; font-weight: 600;">View details &rarr;</div>
         </div>
         {% set bar_total = rectification.rectified + rectification.new_defects %}
         {% if bar_total > 0 %}
-        <div style="display: grid; grid-template-columns: 1fr auto; gap: 0.75rem; align-items: center;">
-            <div style="display: flex; height: 22px; border-radius: 4px; overflow: hidden;">
-                <div style="width: {{ (rectification.rectified / bar_total * 100)|round }}%; background: #4A7C59;" title="Fixed: {{ rectification.rectified }}"></div>
-                <div style="width: {{ (rectification.new_defects / bar_total * 100)|round }}%; background: #C8963E;" title="New: {{ rectification.new_defects }}"></div>
-            </div>
-            <div style="font-size: 0.7rem; white-space: nowrap;">
-                <span style="color: #4A7C59; font-weight: 600;">{{ rectification.rectified }} fixed</span>
-                <span style="color: #9A9A9A;"> &middot; </span>
-                <span style="color: #C8963E; font-weight: 600;">{{ rectification.new_defects }} new</span>
-            </div>
+        <div style="display: flex; height: 8px; border-radius: 3px; overflow: hidden;">
+            <div style="width: {{ (rectification.rectified / bar_total * 100)|round }}%; background: #4A7C59;" title="Fixed: {{ rectification.rectified }}"></div>
+            <div style="width: {{ (rectification.new_defects / bar_total * 100)|round }}%; background: #C8963E;" title="New: {{ rectification.new_defects }}"></div>
         </div>
         {% endif %}
     </div>
