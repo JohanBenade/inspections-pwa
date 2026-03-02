@@ -1527,6 +1527,133 @@ def cleanup_move_defect():
     db.commit()
     return '', 200
 
+
+@approvals_bp.route('/cleanup/exclude-preview', methods=['GET'])
+@require_team_lead
+def cleanup_exclude_preview():
+    """Preview impact of excluding an item from a batch."""
+    import json
+    tenant_id = session['tenant_id']
+    item_template_id = request.args.get('item_template_id', '')
+    batch_id = request.args.get('batch_id', '')
+
+    if not item_template_id or not batch_id:
+        return json.dumps({'error': 'Missing params'}), 400, {'Content-Type': 'application/json'}
+
+    # Get all unit_ids in this batch
+    batch_units = query_db("""
+        SELECT DISTINCT bu.unit_id, u.unit_number
+        FROM batch_unit bu
+        JOIN unit u ON bu.unit_id = u.id
+        WHERE bu.batch_id = ? AND bu.status != 'removed' AND bu.tenant_id = ?
+    """, [batch_id, tenant_id])
+
+    unit_ids = [bu['unit_id'] for bu in batch_units]
+    if not unit_ids:
+        return json.dumps({'defect_count': 0, 'unit_count': 0, 'unit_numbers': []}), 200, {'Content-Type': 'application/json'}
+
+    placeholders = ','.join(['?'] * len(unit_ids))
+    defects = query_db(f"""
+        SELECT d.id, d.unit_id, u.unit_number
+        FROM defect d
+        JOIN unit u ON d.unit_id = u.id
+        WHERE d.item_template_id = ? AND d.status = 'open'
+        AND d.unit_id IN ({placeholders})
+        AND d.tenant_id = ?
+    """, [item_template_id] + unit_ids + [tenant_id])
+
+    affected_units = sorted(set(d['unit_number'] for d in defects))
+
+    return json.dumps({
+        'defect_count': len(defects),
+        'unit_count': len(affected_units),
+        'unit_numbers': affected_units
+    }), 200, {'Content-Type': 'application/json'}
+
+
+@approvals_bp.route('/cleanup/exclude-item', methods=['POST'])
+@require_team_lead
+def cleanup_exclude_item():
+    """Exclude an item from all units in a batch."""
+    import json
+    import uuid
+    tenant_id = session['tenant_id']
+    item_template_id = request.form.get('item_template_id', '')
+    batch_id = request.form.get('batch_id', '')
+
+    if not item_template_id or not batch_id:
+        abort(400)
+
+    db = get_db()
+    now = datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S')
+
+    # Get all units and cycles in this batch
+    batch_units = query_db("""
+        SELECT DISTINCT bu.unit_id, bu.cycle_id
+        FROM batch_unit bu
+        WHERE bu.batch_id = ? AND bu.status != 'removed' AND bu.tenant_id = ?
+    """, [batch_id, tenant_id])
+
+    if not batch_units:
+        abort(404)
+
+    unit_ids = [bu['unit_id'] for bu in batch_units]
+    cycle_ids = set(bu['cycle_id'] for bu in batch_units)
+
+    # Find all open defects with this item_template_id across batch units
+    placeholders = ','.join(['?'] * len(unit_ids))
+    defects = query_db(f"""
+        SELECT d.id, d.unit_id, d.raised_cycle_id,
+               COALESCE(d.reviewed_comment, d.original_comment) AS desc
+        FROM defect d
+        WHERE d.item_template_id = ? AND d.status = 'open'
+        AND d.unit_id IN ({placeholders})
+        AND d.tenant_id = ?
+    """, [item_template_id] + unit_ids + [tenant_id])
+
+    deleted_count = 0
+    for defect in defects:
+        db.execute("DELETE FROM defect_history WHERE defect_id = ? AND tenant_id = ?",
+                   [defect['id'], tenant_id])
+        db.execute("DELETE FROM defect WHERE id = ? AND tenant_id = ?",
+                   [defect['id'], tenant_id])
+        deleted_count += 1
+
+    # Reset inspection_items to skipped
+    for bu in batch_units:
+        db.execute("""
+            UPDATE inspection_item SET status = 'skipped', comment = NULL, marked_at = ?
+            WHERE item_template_id = ? AND inspection_id IN (
+                SELECT i.id FROM inspection i
+                WHERE i.unit_id = ? AND i.cycle_id = ? AND i.tenant_id = ?
+            )
+        """, [now, item_template_id, bu['unit_id'], bu['cycle_id'], tenant_id])
+
+    # Add to cycle_excluded_item for each cycle
+    excl_added = 0
+    for cid in cycle_ids:
+        existing = query_db("""
+            SELECT id FROM cycle_excluded_item
+            WHERE cycle_id = ? AND item_template_id = ? AND tenant_id = ?
+        """, [cid, item_template_id, tenant_id], one=True)
+        if not existing:
+            excl_id = uuid.uuid4().hex[:8]
+            db.execute("""
+                INSERT INTO cycle_excluded_item
+                (id, tenant_id, cycle_id, item_template_id, reason, created_at)
+                VALUES (?, ?, ?, ?, ?, ?)
+            """, [excl_id, tenant_id, cid, item_template_id,
+                  'Excluded via cleanup', now])
+            excl_added += 1
+
+    log_audit(db, tenant_id, 'item_template', item_template_id, 'cleanup_exclude',
+              old_value=f'{deleted_count} defects removed',
+              new_value=f'Excluded from batch {batch_id} ({excl_added} cycles)',
+              user_id=session['user_id'], user_name=session['user_name'])
+
+    db.commit()
+    return json.dumps({'deleted': deleted_count, 'cycles': len(cycle_ids)}), 200, {'Content-Type': 'application/json'}
+
 @approvals_bp.route('/cleanup/suggestions', methods=['GET'])
 @require_team_lead
 def cleanup_suggestions():

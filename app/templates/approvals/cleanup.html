@@ -388,13 +388,41 @@
                         data-cat="{{ d.category_name }}"
                         data-item="{{ d.item_path }}"
                         data-desc="{{ d.display_desc or '' }}">Del</button>
-                    <button class="btn-disabled" title="Coming soon">Excl</button>
+                    {% if filters.batch %}
+                    <button class="btn-edit" onclick="showExclude(this)"
+                        data-template-id="{{ d.item_template_id }}"
+                        data-item="{{ d.item_path }}"
+                        data-area="{{ d.area_name }}"
+                        data-cat="{{ d.category_name }}"
+                        title="Exclude from batch">Excl</button>
+                    {% else %}
+                    <button class="btn-disabled" title="Select a batch first">Excl</button>
+                    {% endif %}
                     <button class="btn-disabled" title="Coming soon">Re-Insp</button>
                 </div></td>
             </tr>
             {% endfor %}
         </tbody>
     </table>
+</div>
+
+<!-- Exclude modal -->
+<div class="edit-overlay" id="exclOverlay">
+    <div class="edit-panel">
+        <h3>Exclude Item from Batch</h3>
+        <div class="edit-context" id="exclContext"></div>
+        <div id="exclPreview" style="padding:0.75rem 0;font-size:0.9rem;color:#374151;">
+            Loading impact...
+        </div>
+        <input type="hidden" id="excl-template-id">
+        <input type="hidden" id="excl-batch-id">
+        <div class="edit-buttons">
+            <button class="btn-save" onclick="executeExclude()" id="exclConfirmBtn" disabled>
+                Exclude
+            </button>
+            <button class="btn-cancel" onclick="closeExclude()">Cancel</button>
+        </div>
+    </div>
 </div>
 
 {% if not defects %}
@@ -588,6 +616,64 @@ function saveAndApplyAll() {
 function hideApplyPreview() {
     document.getElementById('editForm').style.display = 'block';
     document.getElementById('applyPreview').style.display = 'none';
+}
+
+function showExclude(btn) {
+    var templateId = btn.dataset.templateId;
+    var itemPath = btn.dataset.item;
+    var area = btn.dataset.area;
+    var cat = btn.dataset.cat;
+    var batchId = document.getElementById('f-batch').value;
+    var batchName = document.getElementById('f-batch').selectedOptions[0].text;
+
+    document.getElementById('excl-template-id').value = templateId;
+    document.getElementById('excl-batch-id').value = batchId;
+    document.getElementById('exclContext').innerHTML =
+        '<strong>' + area + '</strong> &#8250; ' + cat + ' &#8250; ' + itemPath
+        + '<br><span style="font-size:0.75rem;color:#6b7280;">Batch: ' + batchName + '</span>';
+    document.getElementById('exclPreview').innerHTML = 'Loading impact...';
+    document.getElementById('exclConfirmBtn').disabled = true;
+    document.getElementById('exclOverlay').classList.add('active');
+
+    fetch('/approvals/cleanup/exclude-preview?item_template_id=' + templateId + '&batch_id=' + batchId)
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+            if (data.defect_count === 0) {
+                document.getElementById('exclPreview').innerHTML =
+                    '<span style="color:#6b7280;">No open defects found for this item in this batch.</span>';
+            } else {
+                document.getElementById('exclPreview').innerHTML =
+                    '<span style="color:#dc2626;font-weight:600;">This will remove '
+                    + data.defect_count + ' defect' + (data.defect_count > 1 ? 's' : '')
+                    + ' across ' + data.unit_count + ' unit'
+                    + (data.unit_count > 1 ? 's' : '')
+                    + '</span><br><span style="font-size:0.8rem;color:#6b7280;">Units: '
+                    + data.unit_numbers.join(', ') + '</span>';
+                document.getElementById('exclConfirmBtn').disabled = false;
+            }
+        });
+}
+
+function closeExclude() {
+    document.getElementById('exclOverlay').classList.remove('active');
+}
+
+function executeExclude() {
+    var templateId = document.getElementById('excl-template-id').value;
+    var batchId = document.getElementById('excl-batch-id').value;
+    var form = new FormData();
+    form.append('item_template_id', templateId);
+    form.append('batch_id', batchId);
+
+    document.getElementById('exclConfirmBtn').disabled = true;
+    document.getElementById('exclConfirmBtn').textContent = 'Excluding...';
+
+    fetch('/approvals/cleanup/exclude-item', { method: 'POST', body: form })
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+            closeExclude();
+            window.location.reload();
+        });
 }
 
 function applyFilters() {
