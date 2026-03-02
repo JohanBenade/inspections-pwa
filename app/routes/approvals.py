@@ -975,6 +975,8 @@ def cleanup():
     f_subitem = request.args.get('subitem', '')
     f_type = request.args.get('type', '')
     f_min_defects = request.args.get('min_defects', '')
+    f_batch = request.args.get('batch', '')
+    f_batch = request.args.get('batch', '')
 
     # All defects on submitted inspections
     defects = [dict(r) for r in query_db("""
@@ -988,7 +990,9 @@ def cleanup():
                parent.item_description AS parent_description,
                ct.category_name, ct.id AS category_id,
                at.area_name, at.area_order, ct.category_order, it.item_order,
-               ic.cycle_number, ic.block AS cycle_block, ic.floor AS cycle_floor
+               ic.cycle_number, ic.block AS cycle_block, ic.floor AS cycle_floor,
+               ib.name AS batch_name, ib.id AS batch_id,
+               ib.name AS batch_name, ib.id AS batch_id
         FROM defect d
         JOIN unit u ON d.unit_id = u.id
         JOIN inspection i ON i.unit_id = d.unit_id
@@ -1001,6 +1005,9 @@ def cleanup():
         JOIN area_template at ON ct.area_id = at.id
         JOIN inspection_cycle ic ON d.raised_cycle_id = ic.id
         LEFT JOIN item_template parent ON it.parent_item_id = parent.id
+        LEFT JOIN batch_unit bu_link ON bu_link.unit_id = d.unit_id
+            AND bu_link.cycle_id = d.raised_cycle_id AND bu_link.status != 'removed'
+        LEFT JOIN inspection_batch ib ON bu_link.batch_id = ib.id
         WHERE d.status = 'open' AND d.tenant_id = ?
         AND i.status = 'submitted'
         ORDER BY at.area_order, ct.category_order, it.item_order,
@@ -1070,6 +1077,12 @@ def cleanup():
     all_inspectors = sorted(set(d['inspector_name'] for d in defects
                                 if d['inspector_name']))
     all_cycles = sorted(set(d['cycle_label'] for d in defects))
+    all_batches = sorted(set((d['batch_id'], d['batch_name']) for d in defects
+                             if d.get('batch_name')),
+                         key=lambda x: x[1])
+    all_batches = sorted(set((d['batch_id'], d['batch_name']) for d in defects
+                             if d.get('batch_name')),
+                         key=lambda x: x[1])
 
     # Apply filters
     filtered = defects
@@ -1091,6 +1104,10 @@ def cleanup():
         filtered = [d for d in filtered if d['inspector_name'] == f_inspector]
     if f_cycle:
         filtered = [d for d in filtered if d['cycle_label'] == f_cycle]
+    if f_batch:
+        filtered = [d for d in filtered if d.get('batch_id') == f_batch]
+    if f_batch:
+        filtered = [d for d in filtered if d.get('batch_id') == f_batch]
     if f_min_defects and f_min_defects.isdigit():
         min_d = int(f_min_defects)
         from collections import Counter
@@ -1125,13 +1142,15 @@ def cleanup():
                            filters={'unit': f_unit, 'area': f_area,
                                     'category': f_category, 'item': f_item,
                                     'subitem': f_subitem, 'type': f_type, 'status': f_status,
-                                    'inspector': f_inspector, 'cycle': f_cycle, 'min_defects': f_min_defects},
+                                    'inspector': f_inspector, 'cycle': f_cycle,
+                                    'min_defects': f_min_defects, 'batch': f_batch},
                            options={'units': all_units, 'areas': all_areas,
                                     'categories': all_categories,
                                     'item_names': all_items,
                                     'subitems': all_subitems,
                                     'inspectors': all_inspectors,
-                                    'cycles': all_cycles})
+                                    'cycles': all_cycles,
+                                    'batches': all_batches})
 
 
 @approvals_bp.route('/cleanup/edit-defect', methods=['POST'])

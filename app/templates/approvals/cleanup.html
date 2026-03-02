@@ -253,6 +253,12 @@
 <!-- Filters -->
 <div class="filter-bar">
     <span class="filter-label">Filter:</span>
+    <select onchange="applyFilters()" id="f-batch">
+        <option value="">All Batches</option>
+        {% for bid, bname in options.batches %}
+        <option value="{{ bid }}" {{ 'selected' if filters.batch == bid }}>{{ bname }}</option>
+        {% endfor %}
+    </select>
     <select onchange="applyFilters()" id="f-unit">
         <option value="">All Units</option>
         {% for u in options.units %}
@@ -586,7 +592,7 @@ function hideApplyPreview() {
 
 function applyFilters() {
     const params = new URLSearchParams();
-    ['unit', 'area', 'category', 'item', 'subitem', 'type', 'status', 'min-defects', 'inspector', 'cycle'].forEach(f => {
+    ['batch', 'unit', 'area', 'category', 'item', 'subitem', 'type', 'status', 'min-defects', 'inspector', 'cycle'].forEach(f => {
         const el = document.getElementById('f-' + f);
         if (el && el.value) params.set(f.replace('-', '_'), el.value);
     });
