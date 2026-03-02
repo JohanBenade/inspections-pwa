@@ -282,15 +282,15 @@ body {
     <div class="rect-stats">
         <div>
             <div class="rect-stat-value" style="color: #4A7C59;">{{ rectification.rectified }}</div>
-            <div class="rect-stat-label">Defects cleared</div>
+            <div class="rect-stat-label">Defects cleared (total)</div>
         </div>
         <div>
             <div class="rect-stat-value" style="color: #C44D3F;">{{ rectification.new_defects }}</div>
-            <div class="rect-stat-label">New defects found</div>
+            <div class="rect-stat-label">New defects found (total)</div>
         </div>
         <div>
             <div class="rect-stat-value" style="color: {% if rectification.net_improvement > 0 %}#4A7C59{% else %}#C44D3F{% endif %};">{{ rectification.net_improvement }}</div>
-            <div class="rect-stat-label">Net improvement</div>
+            <div class="rect-stat-label">Net improvement (total)</div>
         </div>
     </div>
 </div>
