@@ -1367,6 +1367,10 @@ def cleanup_delete_defect():
     if not defect:
         abort(404)
 
+    # Delete defect history (FK constraint)
+    db.execute("DELETE FROM defect_history WHERE defect_id = ? AND tenant_id = ?",
+               [defect_id, tenant_id])
+
     # Delete the defect
     db.execute("DELETE FROM defect WHERE id = ? AND tenant_id = ?",
                [defect_id, tenant_id])
