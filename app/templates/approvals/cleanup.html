@@ -80,10 +80,22 @@
     .col-area { width: 90px; font-size: 0.75rem; color: #6b7280; }
     .col-cat { width: 90px; font-size: 0.75rem; color: #6b7280; }
     .col-item { width: 180px; font-size: 0.78rem; color: #374151; }
-    .col-desc { min-width: 200px; }
+    .col-desc { min-width: 120px; max-width: 280px; }
     .col-type { width: 50px; }
     .col-status { width: 80px; }
-    .col-actions { width: 120px; }
+    .col-actions { width: auto; white-space: nowrap; }
+    .col-actions .action-row { display: flex; gap: 3px; align-items: center; }
+    .btn-disabled {
+        padding: 0.3rem 0.5rem; border: 1px solid #e5e7eb; border-radius: 5px;
+        font-size: 0.7rem; background: #f9fafb; color: #d1d5db; cursor: not-allowed;
+    }
+    /* Row flash animations */
+    @keyframes flashGreen { 0% { background: #bbf7d0; } 100% { background: transparent; } }
+    @keyframes flashAmber { 0% { background: #fde68a; } 100% { background: transparent; } }
+    @keyframes flashRedFade { 0% { background: #fecaca; opacity: 1; } 70% { background: #fecaca; opacity: 0.5; } 100% { opacity: 0; height: 0; padding: 0; overflow: hidden; } }
+    .flash-green { animation: flashGreen 1.5s ease-out; }
+    .flash-amber { animation: flashAmber 1.5s ease-out; }
+    .flash-red-fade { animation: flashRedFade 1.2s ease-out forwards; }
 
     .desc-text { color: #1a1a1a; }
     .status-placeholder .desc-text { color: #dc2626; font-style: italic; }
@@ -345,7 +357,7 @@
                         {{ d.cleanup_status|capitalize }}
                     </span>
                 </td>
-                <td class="col-actions">
+                <td class="col-actions"><div class="action-row">
                     <button class="btn-edit" onclick="startEdit(this)"
                         data-id="{{ d.id }}"
                         data-template="{{ d.item_template_id }}"
@@ -370,7 +382,9 @@
                         data-cat="{{ d.category_name }}"
                         data-item="{{ d.item_path }}"
                         data-desc="{{ d.display_desc or '' }}">Del</button>
-                </td>
+                    <button class="btn-disabled" title="Coming soon">Excl</button>
+                    <button class="btn-disabled" title="Coming soon">Re-Insp</button>
+                </div></td>
             </tr>
             {% endfor %}
         </tbody>
@@ -534,6 +548,7 @@ function saveEdit() {
             row.outerHTML = html;
         }
         closeEdit();
+        if (row) { row.classList.add('flash-green'); setTimeout(function(){ row.classList.remove('flash-green'); }, 1600); }
     });
 }
 
@@ -609,8 +624,11 @@ function executeDelete() {
     .then(function(r) {
         if (r.ok) {
             var row = document.getElementById('row-' + defectId);
-            if (row) row.remove();
             closeDelete();
+            if (row) {
+                row.classList.add('flash-red-fade');
+                setTimeout(function(){ row.remove(); }, 1300);
+            }
         } else {
             alert('Delete failed');
         }
@@ -736,9 +754,17 @@ function executeMove() {
     var form = new FormData();
     form.append('defect_id', document.getElementById('move-defect-id').value);
     form.append('target_template_id', moveTarget);
+    var defectId = document.getElementById('move-defect-id').value;
     fetch('/approvals/cleanup/move-defect', {method:'POST', body:form})
         .then(function(r) {
-            if (r.ok) { location.reload(); } else { alert('Move failed'); }
+            if (r.ok) {
+                closeMove();
+                var row = document.getElementById('row-' + defectId);
+                if (row) {
+                    row.classList.add('flash-amber');
+                    setTimeout(function(){ row.classList.remove('flash-amber'); }, 1600);
+                }
+            } else { alert('Move failed'); }
         });
 }
 </script>
