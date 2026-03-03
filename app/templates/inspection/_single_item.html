@@ -1,348 +1,172 @@
-{# Single inspection item partial - Spec-Compliant Two-Step Flow #}
-{# Required context: item, inspection, area, is_followup #}
-{# Optional context: force_expanded (default false) - set by add/remove defect endpoints #}
-{# NOTE: This template renders CONTENT ONLY. The wrapper <div id="item-{id}"> lives in area.html #}
+{# _single_item.html - Inspection Item Partial #}
+{# DESIGN SYSTEM:
+   Button pairs: ALWAYS grid grid-cols-2 gap-2, equal width
+   Button height: ALWAYS h-11 (44px)
+   Button style: rounded-lg text-sm font-semibold border-2
+   Colors: blue=INST  amber=N/I  green=MS  red=NTS
+   Choice: colored border + light bg + colored text
+   Active: solid bg + white text
+   State bar: h-11 rounded-lg, solid light bg, status + action link
+   One visual state per item - no overlapping conditions
+#}
 
 {% set is_parent = item.parent_item_id is none and item.depth == 0 %}
 {% set has_children = item.child_count > 0 %}
 {% set is_child = item.parent_item_id is not none %}
-{% set parent_not_installed = item.parent_status == 'not_installed' %}
+{% set parent_ni = item.parent_status == 'not_installed' %}
 {% set parent_pending = is_child and item.parent_status in [none, 'pending'] %}
 {% set is_skipped = item.status == 'skipped' %}
 {% set has_prior = item.has_prior_defects|default(false) %}
 {% set has_open_prior = item.has_open_prior|default(false) %}
 {% set was_ni = item.was_not_installed|default(false) %}
 {% set show_prior = is_followup and has_prior %}
-{% set has_chips = item.inspection_defects|length > 0 %}
-{% set has_current = item.current_defects|default([])|length > 0 %}
-{% set expanded = force_expanded|default(false) or (item.status == 'not_to_standard' and not has_chips and not show_prior and not has_current) %}
+{% set chips = item.inspection_defects %}
+{% set has_chips = chips|length > 0 %}
+{% set currents = item.current_defects|default([]) %}
+{% set has_current = currents|length > 0 %}
+{% set force = force_expanded|default(false) %}
+
+{# Blocklist JS snippet - reused in every Add button #}
+{% set BL_JS = "var bl=['defect noted','n/a','na','not applicable','not tested','to be tested','to be inspected','as indicated','not applicable yet'];if(bl.indexOf(desc.toLowerCase())>=0){inp.value='';inp.classList.add('border-red-500');inp.placeholder='Be specific - what is wrong?';setTimeout(function(){inp.classList.remove('border-red-500');inp.placeholder='Describe the defect...'},3000);return}" %}
 
 {% if not is_skipped %}
-<div class="p-3 {% if is_child %}pl-8 bg-gray-50{% endif %} {% if parent_not_installed or parent_pending %}opacity-40{% endif %} {% if show_prior and (has_open_prior or has_chips or has_current) %}bg-red-50 border-l-4 border-red-400{% elif show_prior and not has_open_prior and not has_chips and not has_current %}bg-green-50 border-l-4 border-green-400{% elif has_current %}bg-red-50 border-l-4 border-red-400{% elif item.status == 'not_to_standard' %}bg-red-50 border-l-4 border-red-400{% elif item.status == 'not_installed' %}bg-yellow-50 border-l-4 border-yellow-400{% elif item.status == 'ok' %}bg-green-50 border-l-4 border-green-400{% endif %}">
+<div class="px-3 py-2.5 {% if is_child %}pl-8{% endif %} {% if parent_ni or parent_pending %}opacity-40{% endif %} {% if item.status == 'not_to_standard' or has_current %}border-l-4 border-red-400 bg-red-50{% elif item.status == 'not_installed' %}border-l-4 border-amber-400 bg-amber-50{% elif item.status == 'ok' %}border-l-4 border-green-400 bg-green-50{% elif show_prior and has_open_prior %}border-l-4 border-red-400 bg-red-50{% elif show_prior and not has_open_prior %}border-l-4 border-green-400 bg-green-50{% endif %}">
 
-    {# Item description #}
-    <div class="flex justify-between items-start mb-2">
-        <div class="flex-1">
-            {% if is_child %}<span class="text-gray-400 mr-1">-</span>{% endif %}
-            <span class="text-sm {% if is_parent %}font-semibold{% else %}font-medium{% endif %} text-gray-800">
-                {{ item.item_description }}
-            </span>
-        </div>
+    {# ---- ITEM NAME ---- #}
+    <div class="text-sm {% if is_parent and has_children %}font-bold{% else %}font-medium{% endif %} text-gray-800 mb-2">
+        {% if is_child %}<span class="text-gray-300 mr-1">-</span>{% endif %}{{ item.item_description }}
     </div>
 
-    {# ============================================================ #}
-    {# PRIOR DEFECTS SECTION (R2+ only, per-defect Clear/Undo)      #}
-    {# ============================================================ #}
+    {# ---- PRIOR DEFECTS (R2+) ---- #}
     {% if show_prior %}
-    <div class="mb-3 p-2.5 bg-gray-100 rounded border border-gray-200">
-        <div class="text-xs font-medium text-gray-500 uppercase tracking-wide mb-2">Prior Defects</div>
+    <div class="mb-3 p-2.5 bg-gray-100 rounded-lg border border-gray-200">
+        <div class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Prior Defects</div>
         {% for pd in item.prior_defects %}
         <div class="flex items-center justify-between py-1.5 {% if not loop.last %}border-b border-gray-200{% endif %}">
             {% if pd.status == 'cleared' %}
-            <div class="flex-1 mr-2">
-                <span class="text-sm text-gray-400 line-through">{{ pd.comment or 'No comment' }}</span>
-                <span class="ml-1.5 text-xs font-medium text-green-600">Rectified</span>
-            </div>
-            <button type="button"
-                hx-post="{{ url_for('inspection.reopen_prior_defect', inspection_id=inspection.id, defect_id=pd.id) }}"
-                hx-vals='{"area_id": "{{ area.id }}"}'
-                hx-target="#item-{{ item.id }}"
-                hx-swap="innerHTML"
-                class="text-xs text-blue-600 hover:text-blue-800 font-medium flex-shrink-0 px-2 py-1"
-                style="text-decoration:none">Undo</button>
+            <div class="flex-1 mr-2"><span class="text-sm text-gray-400 line-through">{{ pd.comment or 'No comment' }}</span> <span class="text-xs font-semibold text-green-600">Rectified</span></div>
+            <button type="button" hx-post="{{ url_for('inspection.reopen_prior_defect', inspection_id=inspection.id, defect_id=pd.id) }}" hx-vals='{"area_id":"{{ area.id }}"}' hx-target="#item-{{ item.id }}" hx-swap="innerHTML" class="text-xs text-blue-600 font-semibold px-2 py-1" style="text-decoration:none">Undo</button>
             {% else %}
-            <div class="flex-1 mr-2">
-                <span class="text-sm text-gray-700">{{ pd.comment or 'No comment' }}</span>
-                <span class="ml-1.5 text-xs text-gray-400">C{{ pd.cycle }}</span>
-            </div>
-            <button type="button"
-                hx-post="{{ url_for('inspection.clear_prior_defect', inspection_id=inspection.id, defect_id=pd.id) }}"
-                hx-vals='{"area_id": "{{ area.id }}"}'
-                hx-target="#item-{{ item.id }}"
-                hx-swap="innerHTML"
-                class="text-xs font-medium text-green-700 bg-green-100 hover:bg-green-200 rounded px-2.5 py-1.5 flex-shrink-0 transition-colors"
-                style="text-decoration:none">Clear</button>
+            <div class="flex-1 mr-2"><span class="text-sm text-gray-700">{{ pd.comment or 'No comment' }}</span> <span class="text-xs text-gray-400">C{{ pd.cycle }}</span></div>
+            <button type="button" hx-post="{{ url_for('inspection.clear_prior_defect', inspection_id=inspection.id, defect_id=pd.id) }}" hx-vals='{"area_id":"{{ area.id }}"}' hx-target="#item-{{ item.id }}" hx-swap="innerHTML" class="text-xs font-semibold text-green-700 bg-green-100 rounded px-2.5 py-1.5" style="text-decoration:none">Clear</button>
             {% endif %}
         </div>
         {% endfor %}
     </div>
     {% endif %}
 
-    {# ============================================================ #}
-    {# CURRENT-CYCLE DEFECTS (from defect table, for submitted inspections) #}
-    {# ============================================================ #}
+    {# ---- CURRENT-CYCLE DEFECTS (submitted) ---- #}
     {% if has_current %}
     <div class="mb-3">
-        <div class="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1.5">Current Cycle Defects</div>
-        <div class="flex flex-wrap gap-1.5">
-            {% for cd in item.current_defects %}
-            <span class="inline-flex items-center gap-1 px-2.5 py-1.5 bg-red-100 text-red-800 rounded text-xs font-medium">{{ cd.comment }}<button type="button" hx-delete="{{ url_for('inspection.delete_current_defect', inspection_id=inspection.id, defect_id=cd.id) }}?area_id={{ area.id }}" hx-target="#item-{{ item.id }}" hx-swap="innerHTML" class="ml-0.5 text-red-500 hover:text-red-700 font-bold" style="line-height:1">&times;</button></span>
-            {% endfor %}
-        </div>
+        <div class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">Current Cycle</div>
+        <div class="flex flex-wrap gap-1.5">{% for cd in currents %}<span class="inline-flex items-center gap-1 px-2.5 py-1.5 bg-red-100 text-red-800 rounded text-xs font-medium">{{ cd.comment }}<button type="button" hx-delete="{{ url_for('inspection.delete_current_defect', inspection_id=inspection.id, defect_id=cd.id) }}?area_id={{ area.id }}" hx-target="#item-{{ item.id }}" hx-swap="innerHTML" class="ml-0.5 text-red-500 font-bold" style="line-height:1">&times;</button></span>{% endfor %}</div>
     </div>
     {% endif %}
 
     {# ============================================================ #}
-    {# BUTTONS + DEFECT INPUT                                        #}
+    {# EXACTLY ONE ACTION BRANCH PER ITEM                            #}
     {# ============================================================ #}
 
-    {# --- R2: NTS items with prior defects --- #}
+    {# -- R2: NTS with prior defects -- #}
     {% if show_prior and not was_ni %}
-    {% if not has_open_prior and not has_chips and not has_current %}
-    <div class="flex items-center gap-1.5 text-sm text-green-700 font-medium">
-        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
-        All prior defects cleared
-    </div>
-    {% elif has_open_prior and item.status == 'pending' %}
-    <div class="mt-2">
-        <button type="button"
-            hx-post="{{ url_for('inspection.confirm_defects_remain', inspection_id=inspection.id, item_id=item.id) }}"
-            hx-vals='{"area_id": "{{ area.id }}"}'
-            hx-target="#item-{{ item.id }}"
-            hx-swap="innerHTML"
-            class="px-3 py-2 rounded text-xs font-medium bg-red-100 text-red-700 hover:bg-red-200 transition-colors">
-            Defects Remain
-        </button>
-    </div>
-    {% elif has_open_prior and item.status == 'not_to_standard' %}
-    <div class="flex items-center gap-1.5 text-sm text-red-600 font-medium mt-1">
-        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
-        Defects confirmed open
-    </div>
-    {% endif %}
+        {% if not has_open_prior and not has_chips and not has_current %}
+    <div class="h-11 rounded-lg text-sm font-semibold flex items-center justify-center bg-green-100 text-green-700 border border-green-200">All prior defects cleared</div>
+        {% elif has_open_prior and item.status == 'pending' %}
+    <button type="button" hx-post="{{ url_for('inspection.confirm_defects_remain', inspection_id=inspection.id, item_id=item.id) }}" hx-vals='{"area_id":"{{ area.id }}"}' hx-target="#item-{{ item.id }}" hx-swap="innerHTML" class="w-full h-11 rounded-lg text-sm font-semibold bg-red-100 text-red-700 border border-red-200">Defects Remain</button>
+        {% elif has_open_prior and item.status == 'not_to_standard' %}
+    <div class="h-11 rounded-lg text-sm font-semibold flex items-center justify-center bg-red-100 text-red-700 border border-red-200">Defects confirmed open</div>
+        {% endif %}
 
-    {# --- R2: NI items with prior defects --- #}
+    {# -- R2: NI with prior defects -- #}
     {% elif show_prior and was_ni %}
-    <div class="flex flex-wrap gap-2 mt-2">
-        <button type="button" hx-post="{{ url_for('inspection.update_item', inspection_id=inspection.id, item_id=item.id) }}" hx-vals='{"status": "ok", "area_id": "{{ area.id }}", "clear_ni_defects": "1"}' hx-target="#item-{{ item.id }}" hx-swap="innerHTML" class="px-3 py-2 rounded text-xs font-medium transition-colors {% if item.status in ['ok', 'not_to_standard'] %}bg-green-500 text-white{% else %}bg-gray-100 text-gray-600 hover:bg-green-100{% endif %}" style="min-height:44px">INST</button>
-        <button type="button" hx-post="{{ url_for('inspection.update_item', inspection_id=inspection.id, item_id=item.id) }}" hx-vals='{"status": "not_installed", "area_id": "{{ area.id }}"}' hx-target="#item-{{ item.id }}" hx-swap="innerHTML" class="px-3 py-2 rounded text-xs font-medium transition-colors {% if item.status == 'not_installed' %}bg-yellow-500 text-white{% else %}bg-gray-100 text-gray-600 hover:bg-yellow-100{% endif %}" style="min-height:44px">N/I</button>
+    <div class="grid grid-cols-2 gap-2">
+        <button type="button" hx-post="{{ url_for('inspection.update_item', inspection_id=inspection.id, item_id=item.id) }}" hx-vals='{"status":"ok","area_id":"{{ area.id }}","clear_ni_defects":"1"}' hx-target="#item-{{ item.id }}" hx-swap="innerHTML" class="h-11 rounded-lg text-sm font-semibold border-2 {% if item.status in ['ok','not_to_standard'] %}bg-blue-600 text-white border-blue-600{% else %}border-blue-400 text-blue-700 bg-blue-50{% endif %}">INST</button>
+        <button type="button" hx-post="{{ url_for('inspection.update_item', inspection_id=inspection.id, item_id=item.id) }}" hx-vals='{"status":"not_installed","area_id":"{{ area.id }}"}' hx-target="#item-{{ item.id }}" hx-swap="innerHTML" class="h-11 rounded-lg text-sm font-semibold border-2 {% if item.status == 'not_installed' %}bg-amber-500 text-white border-amber-500{% else %}border-amber-400 text-amber-700 bg-amber-50{% endif %}">N/I</button>
     </div>
 
-    {# --- C2: Parent OK carried forward, children handle themselves --- #}
+    {# -- C2 parent carried forward -- #}
     {% elif is_followup and is_parent and has_children and not has_prior and item.status == 'ok' %}
-    {% if item.children_have_defects %}
-    <div class="text-xs text-amber-600 italic">Has defects below</div>
-    {% else %}
-    <div class="text-xs text-green-600 italic">Carried forward</div>
-    {% endif %}
+    <div class="text-xs {% if item.children_have_defects %}text-amber-600{% else %}text-green-600{% endif %} italic">{% if item.children_have_defects %}Has defects in subitems{% else %}Carried forward{% endif %}</div>
 
-    {# --- PARENT ITEMS WITH CHILDREN: INST / N/I --- #}
-    {% elif is_parent and has_children %}
-    <div class="flex flex-wrap gap-2">
-        {% if item.status == 'not_installed' %}
-        <span class="px-3 py-2 rounded text-xs font-medium bg-yellow-500 text-white inline-flex items-center" style="min-height:44px">N/I</span>
-        <button type="button" hx-post="{{ url_for('inspection.update_item', inspection_id=inspection.id, item_id=item.id) }}" hx-vals='{"status": "ok", "area_id": "{{ area.id }}"}' hx-target="#item-{{ item.id }}" hx-swap="innerHTML" class="px-3 py-2 rounded text-xs font-medium bg-blue-100 text-blue-700 hover:bg-blue-200 transition-colors" style="min-height:44px">INST</button>
-        {% elif item.status in ['ok', 'not_to_standard'] %}
-        <span class="px-3 py-2 rounded text-xs font-medium bg-blue-500 text-white inline-flex items-center" style="min-height:44px">INST</span>
-        {% else %}
-        <button type="button" hx-post="{{ url_for('inspection.update_item', inspection_id=inspection.id, item_id=item.id) }}" hx-vals='{"status": "ok", "area_id": "{{ area.id }}"}' hx-target="#item-{{ item.id }}" hx-swap="innerHTML" class="px-3 py-2 rounded text-xs font-medium bg-blue-500 text-white hover:bg-blue-600 transition-colors flex-1 text-center" style="min-height:44px">INST</button>
-        <button type="button" hx-post="{{ url_for('inspection.update_item', inspection_id=inspection.id, item_id=item.id) }}" hx-vals='{"status": "not_installed", "area_id": "{{ area.id }}"}' hx-target="#item-{{ item.id }}" hx-swap="innerHTML" class="px-3 py-2 rounded text-xs font-medium bg-gray-100 text-gray-600 hover:bg-yellow-100 transition-colors" style="min-height:44px">N/I</button>
-        {% endif %}
+    {# -- PARENT pending -- #}
+    {% elif is_parent and has_children and item.status == 'pending' %}
+    <div class="grid grid-cols-2 gap-2">
+        <button type="button" hx-post="{{ url_for('inspection.update_item', inspection_id=inspection.id, item_id=item.id) }}" hx-vals='{"status":"ok","area_id":"{{ area.id }}"}' hx-target="#item-{{ item.id }}" hx-swap="innerHTML" class="h-11 rounded-lg text-sm font-semibold border-2 border-blue-400 text-blue-700 bg-blue-50">INST</button>
+        <button type="button" hx-post="{{ url_for('inspection.update_item', inspection_id=inspection.id, item_id=item.id) }}" hx-vals='{"status":"not_installed","area_id":"{{ area.id }}"}' hx-target="#item-{{ item.id }}" hx-swap="innerHTML" class="h-11 rounded-lg text-sm font-semibold border-2 border-amber-400 text-amber-700 bg-amber-50">N/I</button>
     </div>
 
-    {# --- CHILD: parent not installed --- #}
-    {% elif parent_not_installed %}
+    {# -- PARENT INST'd -- #}
+    {% elif is_parent and has_children and item.status in ['ok','not_to_standard'] %}
+    <div class="h-11 rounded-lg text-sm font-semibold flex items-center justify-between px-4 bg-blue-100 text-blue-800 border border-blue-200"><span>Installed</span><button type="button" hx-post="{{ url_for('inspection.update_item', inspection_id=inspection.id, item_id=item.id) }}" hx-vals='{"status":"pending","area_id":"{{ area.id }}"}' hx-target="#item-{{ item.id }}" hx-swap="innerHTML" class="text-xs text-blue-600 font-semibold" style="text-decoration:none">Change</button></div>
+
+    {# -- PARENT N/I -- #}
+    {% elif is_parent and has_children and item.status == 'not_installed' %}
+    <div class="h-11 rounded-lg text-sm font-semibold flex items-center justify-between px-4 bg-amber-100 text-amber-800 border border-amber-200"><span>Not Installed</span><button type="button" hx-post="{{ url_for('inspection.update_item', inspection_id=inspection.id, item_id=item.id) }}" hx-vals='{"status":"ok","area_id":"{{ area.id }}"}' hx-target="#item-{{ item.id }}" hx-swap="innerHTML" class="text-xs text-blue-600 font-semibold" style="text-decoration:none">Change</button></div>
+
+    {# -- CHILD blocked by parent -- #}
+    {% elif parent_ni %}
     <div class="text-xs text-gray-400 italic">Parent not installed</div>
-
-    {# --- CHILD: parent pending --- #}
     {% elif parent_pending %}
-    <div class="text-xs text-gray-400 italic">Mark parent as Installed first</div>
+    <div class="text-xs text-gray-400 italic">Mark parent first</div>
 
-    {# --- CHILD/SUBITEM: parent INST'd, MS/NTS directly (Spec 3.6) --- #}
+    {# -- CHILD: MS (ok) -- #}
+    {% elif is_child and item.status == 'ok' %}
+    <div class="h-11 rounded-lg text-sm font-semibold flex items-center justify-between px-4 bg-green-100 text-green-800 border border-green-200"><span>MS &#10003;</span><a href="javascript:void(0)" hx-post="{{ url_for('inspection.update_item', inspection_id=inspection.id, item_id=item.id) }}" hx-vals='{"status":"pending","area_id":"{{ area.id }}"}' hx-target="#item-{{ item.id }}" hx-swap="innerHTML" class="text-xs text-blue-600 font-semibold" style="text-decoration:none">Edit</a></div>
+
+    {# -- CHILD: N/I from parent cascade -- #}
+    {% elif is_child and item.status == 'not_installed' %}
+    <div class="h-11 rounded-lg text-sm font-semibold flex items-center justify-between px-4 bg-amber-100 text-amber-800 border border-amber-200"><span>N/I</span><span class="text-xs text-amber-600">via parent</span></div>
+
+    {# -- CHILD: NTS -- #}
+    {% elif is_child and item.status == 'not_to_standard' %}
+    <div class="h-11 rounded-lg text-sm font-semibold flex items-center justify-between px-4 bg-red-100 text-red-800 border border-red-200"><span>NTS</span><button type="button" hx-post="{{ url_for('inspection.update_item', inspection_id=inspection.id, item_id=item.id) }}" hx-vals='{"status":"ok","area_id":"{{ area.id }}"}' hx-target="#item-{{ item.id }}" hx-swap="innerHTML" {% if has_chips %}hx-confirm="Change to MS? Removes {{ chips|length }} defect(s)."{% endif %} class="text-xs text-green-600 font-semibold" style="text-decoration:none">MS</button></div>
+    {% if has_chips %}<div class="flex flex-wrap gap-1.5 mt-2">{% for d in chips %}<span class="inline-flex items-center gap-1 px-2.5 py-1.5 bg-red-100 text-red-800 rounded text-xs font-medium">{{ d.description }}<button type="button" hx-delete="{{ url_for('inspection.remove_defect', inspection_id=inspection.id, item_id=item.id, defect_id=d.id) }}?area_id={{ area.id }}" hx-target="#item-{{ item.id }}" hx-swap="innerHTML" class="ml-0.5 text-red-500 font-bold" style="line-height:1">&times;</button></span>{% endfor %}</div>{% endif %}
+    <div class="mt-2"><div class="flex gap-2"><input type="text" id="defect-input-{{ item.id }}" placeholder="Describe the defect..." autocomplete="off" class="flex-1 px-3 py-2 border-2 border-gray-300 rounded-lg text-sm focus:border-red-500 auto-caps" onkeydown="if(event.key==='Enter'){event.preventDefault();this.nextElementSibling.click()}"><button type="button" onclick="var inp=document.getElementById('defect-input-{{ item.id }}');var desc=inp.value.trim();if(!desc)return;{{ BL_JS }}htmx.ajax('POST','{{ url_for('inspection.add_defect', inspection_id=inspection.id, item_id=item.id) }}',{target:'#item-{{ item.id }}',swap:'innerHTML',values:{description:desc,area_id:'{{ area.id }}'}})" class="px-4 h-10 bg-red-500 text-white rounded-lg text-sm font-semibold flex-shrink-0">Add</button></div><div hx-get="{{ url_for('inspection.get_defect_suggestions', item_template_id=item.template_id, unit_id=inspection.unit_id) }}" hx-trigger="load" hx-swap="innerHTML"></div></div>
+
+    {# -- CHILD: pending -> MS / NTS directly (spec 3.6) -- #}
     {% elif is_child %}
-    <div class="flex flex-wrap gap-2 items-center">
-        {% if item.status == 'not_to_standard' %}
-        <span class="px-3 py-2 rounded text-xs font-medium bg-red-500 text-white inline-flex items-center" style="min-height:44px">NTS</span>
-        <button type="button" hx-post="{{ url_for('inspection.update_item', inspection_id=inspection.id, item_id=item.id) }}" hx-vals='{"status": "ok", "area_id": "{{ area.id }}"}' hx-target="#item-{{ item.id }}" hx-swap="innerHTML" {% if has_chips %}hx-confirm="Change to MS? This will remove {{ item.inspection_defects|length }} defect(s)."{% endif %} class="px-3 py-2 rounded text-xs font-medium bg-gray-100 text-gray-600 hover:bg-green-100 transition-colors" style="min-height:44px">MS</button>
-        {% elif item.status == 'ok' %}
-        <span class="px-3 py-2 rounded text-xs font-medium bg-green-500 text-white inline-flex items-center" style="min-height:44px">MS &#10003;</span>
-        <a href="javascript:void(0)"
-           hx-post="{{ url_for('inspection.update_item', inspection_id=inspection.id, item_id=item.id) }}"
-           hx-vals='{"status": "pending", "area_id": "{{ area.id }}"}'
-           hx-target="#item-{{ item.id }}"
-           hx-swap="innerHTML"
-           class="text-xs text-blue-600 font-medium ml-1" style="text-decoration:none;padding:6px 4px">Edit</a>
-        {% elif item.status == 'not_installed' %}
-        <span class="px-3 py-2 rounded text-xs font-medium bg-yellow-500 text-white inline-flex items-center" style="min-height:44px">N/I</span>
-        <span class="text-xs text-gray-400 italic ml-1">via parent</span>
-        {% else %}
-        {# Pending child: MS and NTS directly #}
-        <button type="button"
-            hx-post="{{ url_for('inspection.update_item', inspection_id=inspection.id, item_id=item.id) }}"
-            hx-vals='{"status": "ok", "area_id": "{{ area.id }}"}'
-            hx-target="#item-{{ item.id }}"
-            hx-swap="innerHTML"
-            class="px-3 py-2 rounded text-xs font-medium bg-green-100 text-green-700 hover:bg-green-200 transition-colors flex-1 text-center"
-            style="min-height:44px">MS</button>
-        <a href="javascript:void(0)" id="nts-btn-{{ item.id }}"
-           onclick="var p=document.getElementById('nts-area-{{ item.id }}');p.style.display='block';this.closest('.flex').style.display='none';var pills=p.querySelector('[hx-trigger]');if(pills&&!pills.dataset.loaded){htmx.trigger(pills,'loadPills');pills.dataset.loaded='1'}"
-           ontouchend="event.preventDefault();this.click()"
-           class="px-3 py-2 rounded text-xs font-medium bg-red-100 text-red-700 hover:bg-red-200 transition-colors flex-1 text-center inline-flex items-center justify-center"
-           style="text-decoration:none;min-height:44px">NTS</a>
-        {% endif %}
+    <div id="child-btns-{{ item.id }}" class="grid grid-cols-2 gap-2">
+        <button type="button" hx-post="{{ url_for('inspection.update_item', inspection_id=inspection.id, item_id=item.id) }}" hx-vals='{"status":"ok","area_id":"{{ area.id }}"}' hx-target="#item-{{ item.id }}" hx-swap="innerHTML" class="h-11 rounded-lg text-sm font-semibold border-2 border-green-400 text-green-700 bg-green-50">MS</button>
+        <a href="javascript:void(0)" onclick="this.closest('.grid').style.display='none';document.getElementById('nts-area-{{ item.id }}').style.display='block';var p=document.getElementById('nts-pills-{{ item.id }}');if(p&&!p.dataset.loaded){htmx.trigger(p,'loadPills');p.dataset.loaded='1'}" ontouchend="event.preventDefault();this.click()" class="h-11 rounded-lg text-sm font-semibold border-2 border-red-400 text-red-700 bg-red-50 flex items-center justify-center" style="text-decoration:none">NTS</a>
     </div>
-    {# NTS defect input for child - shown when NTS tapped on pending child #}
-    {% if item.status not in ['ok', 'not_installed'] %}
-    <div id="nts-area-{{ item.id }}" {% if item.status != 'not_to_standard' and not has_chips %}style="display:none"{% endif %} class="mt-2">
-        {# Defect chips #}
-        {% if has_chips %}
-        <div class="flex flex-wrap gap-1.5 mb-2">
-            {% for d in item.inspection_defects %}
-            <span class="inline-flex items-center gap-1 px-2.5 py-1.5 bg-red-100 text-red-800 rounded text-xs font-medium">{{ d.description }}<button type="button" hx-delete="{{ url_for('inspection.remove_defect', inspection_id=inspection.id, item_id=item.id, defect_id=d.id) }}?area_id={{ area.id }}" hx-target="#item-{{ item.id }}" hx-swap="innerHTML" class="ml-0.5 text-red-500 hover:text-red-700 font-bold" style="line-height:1">&times;</button></span>
-            {% endfor %}
-        </div>
-        {% endif %}
-        <div class="defect-input-wrapper" data-add-url="{{ url_for('inspection.add_defect', inspection_id=inspection.id, item_id=item.id) }}" data-area-id="{{ area.id }}" data-item-id="item-{{ item.id }}">
-            <div class="flex gap-2">
-                <input type="text" id="defect-input-{{ item.id }}" placeholder="Describe the defect..." autocomplete="off" class="flex-1 px-3 py-2 border-2 border-red-300 rounded text-sm focus:ring-2 focus:ring-red-500 auto-caps" onkeydown="if(event.key==='Enter'){event.preventDefault();this.nextElementSibling.click()}">
-                <button type="button" onclick="var inp=document.getElementById('defect-input-{{ item.id }}');var desc=inp.value.trim();if(!desc)return;htmx.ajax('POST','{{ url_for('inspection.add_defect', inspection_id=inspection.id, item_id=item.id) }}',{target:'#item-{{ item.id }}',swap:'innerHTML',values:{description:desc,area_id:'{{ area.id }}'}})" class="px-3 py-2 bg-red-500 text-white rounded text-sm font-medium hover:bg-red-600 flex-shrink-0">Add</button>
-            </div>
-            <div hx-get="{{ url_for('inspection.get_defect_suggestions', item_template_id=item.template_id, unit_id=inspection.unit_id) }}" hx-trigger="loadPills once" hx-swap="innerHTML"></div>
-        </div>
-        {% if has_chips %}
-        <div class="flex gap-2 mt-2">
-            <button type="button"
-                hx-post="{{ url_for('inspection.update_item', inspection_id=inspection.id, item_id=item.id) }}"
-                hx-vals='{"status": "ok", "area_id": "{{ area.id }}"}'
-                hx-target="#item-{{ item.id }}"
-                hx-swap="innerHTML"
-                hx-confirm="Change to MS? This will remove {{ item.inspection_defects|length }} defect(s)."
-                class="px-3 py-2 rounded text-xs font-medium bg-green-100 text-green-700 hover:bg-green-200 transition-colors"
-                style="min-height:44px">MS</button>
-            <a href="javascript:void(0)"
-               onclick="htmx.ajax('POST','{{ url_for('inspection.update_item', inspection_id=inspection.id, item_id=item.id) }}',{target:'#item-{{ item.id }}',swap:'innerHTML',values:{status:'not_to_standard',area_id:'{{ area.id }}'}})"
-               class="px-3 py-2 rounded text-xs font-medium bg-gray-200 text-gray-700 hover:bg-gray-300 transition-colors"
-               style="text-decoration:none;min-height:44px">Done</a>
-        </div>
-        {% endif %}
-    </div>
-    {% endif %}
+    <div id="nts-area-{{ item.id }}" style="display:none" class="mt-2"><div class="flex gap-2"><input type="text" id="defect-input-{{ item.id }}" placeholder="Describe the defect..." autocomplete="off" class="flex-1 px-3 py-2 border-2 border-gray-300 rounded-lg text-sm focus:border-red-500 auto-caps" onkeydown="if(event.key==='Enter'){event.preventDefault();this.nextElementSibling.click()}"><button type="button" onclick="var inp=document.getElementById('defect-input-{{ item.id }}');var desc=inp.value.trim();if(!desc)return;{{ BL_JS }}htmx.ajax('POST','{{ url_for('inspection.add_defect', inspection_id=inspection.id, item_id=item.id) }}',{target:'#item-{{ item.id }}',swap:'innerHTML',values:{description:desc,area_id:'{{ area.id }}'}})" class="px-4 h-10 bg-red-500 text-white rounded-lg text-sm font-semibold flex-shrink-0">Add</button></div><div id="nts-pills-{{ item.id }}" hx-get="{{ url_for('inspection.get_defect_suggestions', item_template_id=item.template_id, unit_id=inspection.unit_id) }}" hx-trigger="loadPills once" hx-swap="innerHTML"></div></div>
 
-    {# --- LEAF ITEM: INST -> MS/NTS two-step (Spec 3.5) --- #}
+    {# -- LEAF: MS (ok) -- #}
+    {% elif item.status == 'ok' %}
+    <div class="h-11 rounded-lg text-sm font-semibold flex items-center justify-between px-4 bg-green-100 text-green-800 border border-green-200"><span>MS &#10003;</span><a href="javascript:void(0)" hx-post="{{ url_for('inspection.update_item', inspection_id=inspection.id, item_id=item.id) }}" hx-vals='{"status":"pending","area_id":"{{ area.id }}"}' hx-target="#item-{{ item.id }}" hx-swap="innerHTML" class="text-xs text-blue-600 font-semibold" style="text-decoration:none">Edit</a></div>
+
+    {# -- LEAF: N/I -- #}
+    {% elif item.status == 'not_installed' %}
+    <div class="h-11 rounded-lg text-sm font-semibold flex items-center justify-between px-4 bg-amber-100 text-amber-800 border border-amber-200"><span>N/I</span><button type="button" hx-post="{{ url_for('inspection.update_item', inspection_id=inspection.id, item_id=item.id) }}" hx-vals='{"status":"pending","area_id":"{{ area.id }}"}' hx-target="#item-{{ item.id }}" hx-swap="innerHTML" class="text-xs text-blue-600 font-semibold" style="text-decoration:none">Change</button></div>
+
+    {# -- LEAF: NTS -- #}
+    {% elif item.status == 'not_to_standard' %}
+    <div class="h-11 rounded-lg text-sm font-semibold flex items-center justify-between px-4 bg-red-100 text-red-800 border border-red-200"><span>NTS</span><button type="button" hx-post="{{ url_for('inspection.update_item', inspection_id=inspection.id, item_id=item.id) }}" hx-vals='{"status":"ok","area_id":"{{ area.id }}"}' hx-target="#item-{{ item.id }}" hx-swap="innerHTML" {% if has_chips %}hx-confirm="Change to MS? Removes {{ chips|length }} defect(s)."{% endif %} class="text-xs text-green-600 font-semibold" style="text-decoration:none">MS</button></div>
+    {% if has_chips %}<div class="flex flex-wrap gap-1.5 mt-2">{% for d in chips %}<span class="inline-flex items-center gap-1 px-2.5 py-1.5 bg-red-100 text-red-800 rounded text-xs font-medium">{{ d.description }}<button type="button" hx-delete="{{ url_for('inspection.remove_defect', inspection_id=inspection.id, item_id=item.id, defect_id=d.id) }}?area_id={{ area.id }}" hx-target="#item-{{ item.id }}" hx-swap="innerHTML" class="ml-0.5 text-red-500 font-bold" style="line-height:1">&times;</button></span>{% endfor %}</div>{% endif %}
+    <div class="mt-2"><div class="flex gap-2"><input type="text" id="defect-input-{{ item.id }}" placeholder="Describe the defect..." autocomplete="off" class="flex-1 px-3 py-2 border-2 border-gray-300 rounded-lg text-sm focus:border-red-500 auto-caps" onkeydown="if(event.key==='Enter'){event.preventDefault();this.nextElementSibling.click()}"><button type="button" onclick="var inp=document.getElementById('defect-input-{{ item.id }}');var desc=inp.value.trim();if(!desc)return;{{ BL_JS }}htmx.ajax('POST','{{ url_for('inspection.add_defect', inspection_id=inspection.id, item_id=item.id) }}',{target:'#item-{{ item.id }}',swap:'innerHTML',values:{description:desc,area_id:'{{ area.id }}'}})" class="px-4 h-10 bg-red-500 text-white rounded-lg text-sm font-semibold flex-shrink-0">Add</button></div><div hx-get="{{ url_for('inspection.get_defect_suggestions', item_template_id=item.template_id, unit_id=inspection.unit_id) }}" hx-trigger="load" hx-swap="innerHTML"></div></div>
+
+    {# -- LEAF: pending -> INST / N/I -> MS / NTS -- #}
     {% else %}
-    <div class="flex flex-wrap gap-2 items-center">
-        {% if item.status == 'not_to_standard' %}
-        {# NTS state: badge + MS to undo #}
-        <span class="px-3 py-2 rounded text-xs font-medium bg-red-500 text-white inline-flex items-center" style="min-height:44px">NTS</span>
-        <button type="button" hx-post="{{ url_for('inspection.update_item', inspection_id=inspection.id, item_id=item.id) }}" hx-vals='{"status": "ok", "area_id": "{{ area.id }}"}' hx-target="#item-{{ item.id }}" hx-swap="innerHTML" {% if has_chips %}hx-confirm="Change to MS? This will remove {{ item.inspection_defects|length }} defect(s)."{% endif %} class="px-3 py-2 rounded text-xs font-medium bg-gray-100 text-gray-600 hover:bg-green-100 transition-colors" style="min-height:44px">MS</button>
-        {% elif item.status == 'ok' %}
-        {# MS state: green badge + Edit to reopen #}
-        <span class="px-3 py-2 rounded text-xs font-medium bg-green-500 text-white inline-flex items-center" style="min-height:44px">MS &#10003;</span>
-        <a href="javascript:void(0)"
-           hx-post="{{ url_for('inspection.update_item', inspection_id=inspection.id, item_id=item.id) }}"
-           hx-vals='{"status": "pending", "area_id": "{{ area.id }}"}'
-           hx-target="#item-{{ item.id }}"
-           hx-swap="innerHTML"
-           class="text-xs text-blue-600 font-medium ml-1" style="text-decoration:none;padding:6px 4px">Edit</a>
-        {% elif item.status == 'not_installed' %}
-        {# NI state: badge + INST to undo (Spec 4.6) #}
-        <span class="px-3 py-2 rounded text-xs font-medium bg-yellow-500 text-white inline-flex items-center" style="min-height:44px">N/I</span>
-        <button type="button" hx-post="{{ url_for('inspection.update_item', inspection_id=inspection.id, item_id=item.id) }}" hx-vals='{"status": "pending", "area_id": "{{ area.id }}"}' hx-target="#item-{{ item.id }}" hx-swap="innerHTML" class="px-3 py-2 rounded text-xs font-medium bg-blue-100 text-blue-700 hover:bg-blue-200 transition-colors" style="min-height:44px">INST</button>
-        {% else %}
-        {# Pending: INST + N/I buttons #}
-        <a href="javascript:void(0)" id="inst-btn-{{ item.id }}"
-           onclick="document.querySelectorAll('[id^=inst-panel-]').forEach(function(el){el.style.display='none'});document.querySelectorAll('[id^=inst-btn-]').forEach(function(el){el.style.display=''});var p=document.getElementById('inst-panel-{{ item.id }}');p.style.display='block';this.style.display='none';var pills=p.querySelector('[hx-trigger]');if(pills&&!pills.dataset.loaded){htmx.trigger(pills,'loadPills');pills.dataset.loaded='1'}"
-           ontouchend="event.preventDefault();this.click()"
-           class="px-3 py-2 rounded text-xs font-medium bg-blue-500 text-white hover:bg-blue-600 inline-flex items-center justify-center flex-1 text-center transition-colors"
-           style="text-decoration:none;min-height:44px">INST</a>
-        <button type="button"
-            hx-post="{{ url_for('inspection.update_item', inspection_id=inspection.id, item_id=item.id) }}"
-            hx-vals='{"status": "not_installed", "area_id": "{{ area.id }}"}'
-            hx-target="#item-{{ item.id }}"
-            hx-swap="innerHTML"
-            class="px-3 py-2 rounded text-xs font-medium bg-gray-100 text-gray-600 hover:bg-yellow-100 transition-colors inline-flex items-center justify-center"
-            style="min-height:44px">N/I</button>
-        {% endif %}
+    <div id="step1-{{ item.id }}" class="grid grid-cols-2 gap-2">
+        <a href="javascript:void(0)" onclick="document.getElementById('step1-{{ item.id }}').style.display='none';document.getElementById('step2-{{ item.id }}').style.display='grid'" ontouchend="event.preventDefault();this.click()" class="h-11 rounded-lg text-sm font-semibold border-2 border-blue-400 text-blue-700 bg-blue-50 flex items-center justify-center" style="text-decoration:none">INST</a>
+        <button type="button" hx-post="{{ url_for('inspection.update_item', inspection_id=inspection.id, item_id=item.id) }}" hx-vals='{"status":"not_installed","area_id":"{{ area.id }}"}' hx-target="#item-{{ item.id }}" hx-swap="innerHTML" class="h-11 rounded-lg text-sm font-semibold border-2 border-amber-400 text-amber-700 bg-amber-50">N/I</button>
+    </div>
+    <div id="step2-{{ item.id }}" class="grid grid-cols-2 gap-2" style="display:none">
+        <button type="button" hx-post="{{ url_for('inspection.update_item', inspection_id=inspection.id, item_id=item.id) }}" hx-vals='{"status":"ok","area_id":"{{ area.id }}"}' hx-target="#item-{{ item.id }}" hx-swap="innerHTML" class="h-11 rounded-lg text-sm font-semibold border-2 border-green-400 text-green-700 bg-green-50">MS</button>
+        <a href="javascript:void(0)" onclick="document.getElementById('step2-{{ item.id }}').style.display='none';document.getElementById('nts-input-{{ item.id }}').style.display='block';var p=document.getElementById('nts-pills-{{ item.id }}');if(p&&!p.dataset.loaded){htmx.trigger(p,'loadPills');p.dataset.loaded='1'}" ontouchend="event.preventDefault();this.click()" class="h-11 rounded-lg text-sm font-semibold border-2 border-red-400 text-red-700 bg-red-50 flex items-center justify-center" style="text-decoration:none">NTS</a>
+    </div>
+    <div id="nts-input-{{ item.id }}" style="display:none" class="mt-2"><div class="flex gap-2"><input type="text" id="defect-input-{{ item.id }}" placeholder="Describe the defect..." autocomplete="off" class="flex-1 px-3 py-2 border-2 border-gray-300 rounded-lg text-sm focus:border-red-500 auto-caps" onkeydown="if(event.key==='Enter'){event.preventDefault();this.nextElementSibling.click()}"><button type="button" onclick="var inp=document.getElementById('defect-input-{{ item.id }}');var desc=inp.value.trim();if(!desc)return;{{ BL_JS }}htmx.ajax('POST','{{ url_for('inspection.add_defect', inspection_id=inspection.id, item_id=item.id) }}',{target:'#item-{{ item.id }}',swap:'innerHTML',values:{description:desc,area_id:'{{ area.id }}'}})" class="px-4 h-10 bg-red-500 text-white rounded-lg text-sm font-semibold flex-shrink-0">Add</button></div><div id="nts-pills-{{ item.id }}" hx-get="{{ url_for('inspection.get_defect_suggestions', item_template_id=item.template_id, unit_id=inspection.unit_id) }}" hx-trigger="loadPills once" hx-swap="innerHTML"></div></div>
+    {% endif %}
+
+    {# ---- R2 defect input section ---- #}
+    {% if (show_prior or has_current) and not (show_prior and not was_ni) %}
+    {% set r2x = force or (item.status == 'pending' and not has_chips) %}
+    <div class="mt-2">
+        {% if has_chips %}<div class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">New defects</div><div class="flex flex-wrap gap-1.5 mb-2">{% for d in chips %}<span class="inline-flex items-center gap-1 px-2.5 py-1.5 bg-red-100 text-red-800 rounded text-xs font-medium">{{ d.description }}<button type="button" hx-delete="{{ url_for('inspection.remove_defect', inspection_id=inspection.id, item_id=item.id, defect_id=d.id) }}?area_id={{ area.id }}" hx-target="#item-{{ item.id }}" hx-swap="innerHTML" class="ml-0.5 text-red-500 font-bold" style="line-height:1">&times;</button></span>{% endfor %}</div>{% endif %}
+        <div id="r2-expand-{{ item.id }}" {% if not r2x %}style="display:none"{% endif %}><div class="flex gap-2"><input type="text" id="defect-input-{{ item.id }}" placeholder="Add new defect..." autocomplete="off" class="flex-1 px-3 py-2 border-2 border-gray-300 rounded-lg text-sm focus:border-red-500 auto-caps" onkeydown="if(event.key==='Enter'){event.preventDefault();this.nextElementSibling.click()}"><button type="button" onclick="var inp=document.getElementById('defect-input-{{ item.id }}');var desc=inp.value.trim();if(!desc)return;{{ BL_JS }}htmx.ajax('POST','{{ url_for('inspection.add_defect', inspection_id=inspection.id, item_id=item.id) }}',{target:'#item-{{ item.id }}',swap:'innerHTML',values:{description:desc,area_id:'{{ area.id }}'}})" class="px-4 h-10 bg-red-500 text-white rounded-lg text-sm font-semibold flex-shrink-0">Add</button></div><div hx-get="{{ url_for('inspection.get_defect_suggestions', item_template_id=item.template_id, unit_id=inspection.unit_id) }}" hx-trigger="load" hx-swap="innerHTML"></div></div>
+        <a href="javascript:void(0)" id="r2-link-{{ item.id }}" {% if r2x %}style="display:none"{% endif %} onclick="document.getElementById('r2-expand-{{ item.id }}').style.display='block';this.style.display='none'" class="inline-block mt-1 text-sm font-medium text-blue-600" style="text-decoration:none;padding:6px 0">{% if has_chips %}+ Add more{% else %}+ Add defect{% endif %}</a>
     </div>
     {% endif %}
 
-    {# ============================================================ #}
-    {# DEFECT INPUT AREAS (non-child items)                          #}
-    {# ============================================================ #}
-
-    {# R2: items with prior or current defects #}
-    {% if show_prior or has_current %}
-    {% set r2_expanded = force_expanded|default(false) or (item.status == 'pending' and not has_chips) %}
-    <div class="mt-2 defect-input-wrapper" data-add-url="{{ url_for('inspection.add_defect', inspection_id=inspection.id, item_id=item.id) }}" data-area-id="{{ area.id }}" data-item-id="item-{{ item.id }}">
-        {% if has_chips %}
-        <div class="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1.5">New defects found</div>
-        <div class="flex flex-wrap gap-1.5 mb-2">
-            {% for d in item.inspection_defects %}
-            <span class="inline-flex items-center gap-1 px-2.5 py-1.5 bg-red-100 text-red-800 rounded text-xs font-medium">{{ d.description }}<button type="button" hx-delete="{{ url_for('inspection.remove_defect', inspection_id=inspection.id, item_id=item.id, defect_id=d.id) }}?area_id={{ area.id }}" hx-target="#item-{{ item.id }}" hx-swap="innerHTML" class="ml-0.5 text-red-500 hover:text-red-700 font-bold" style="line-height:1">&times;</button></span>
-            {% endfor %}
-        </div>
-        {% endif %}
-        <div id="defect-expand-r2-{{ item.id }}" {% if not r2_expanded %}style="display:none"{% endif %}>
-            <div class="flex gap-2">
-                <input type="text" id="defect-input-{{ item.id }}" placeholder="Add new defect found..." autocomplete="off" class="flex-1 px-3 py-2 border-2 border-gray-300 rounded text-sm focus:ring-2 focus:ring-red-500 auto-caps" onkeydown="if(event.key==='Enter'){event.preventDefault();this.nextElementSibling.click()}">
-                <button type="button" onclick="var inp=document.getElementById('defect-input-{{ item.id }}');var desc=inp.value.trim();if(!desc)return;htmx.ajax('POST','{{ url_for('inspection.add_defect', inspection_id=inspection.id, item_id=item.id) }}',{target:'#item-{{ item.id }}',swap:'innerHTML',values:{description:desc,area_id:'{{ area.id }}'}})" class="px-3 py-2 bg-red-500 text-white rounded text-sm font-medium hover:bg-red-600 flex-shrink-0">Add</button>
-            </div>
-            <div hx-get="{{ url_for('inspection.get_defect_suggestions', item_template_id=item.template_id, unit_id=inspection.unit_id) }}" hx-trigger="load" hx-swap="innerHTML"></div>
-            {% if item.status != "pending" %}<a href="javascript:void(0)" onclick="document.getElementById('defect-expand-r2-{{ item.id }}').style.display='none';document.getElementById('defect-addmore-r2-{{ item.id }}').style.display='inline-block'" class="inline-block mt-2 text-sm font-medium text-blue-600" style="text-decoration:none;padding:6px 0">Done</a>{% endif %}
-        </div>
-        <a href="javascript:void(0)" id="defect-addmore-r2-{{ item.id }}" {% if r2_expanded %}style="display:none"{% endif %} onclick="document.getElementById('defect-expand-r2-{{ item.id }}').style.display='block';this.style.display='none'" class="inline-block mt-1 text-sm font-medium text-blue-600" style="text-decoration:none;padding:6px 0">{% if has_chips %}+ Add more{% else %}+ Add new defect{% endif %}</a>
-    </div>
-
-    {# NTS leaf items: defect chips + expandable input #}
-    {% elif item.status == 'not_to_standard' and not has_current and not is_child %}
-    <div class="mt-2 defect-input-wrapper" data-add-url="{{ url_for('inspection.add_defect', inspection_id=inspection.id, item_id=item.id) }}" data-area-id="{{ area.id }}" data-item-id="item-{{ item.id }}">
-        {% if has_chips %}
-        <div class="flex flex-wrap gap-1.5 mb-2">
-            {% for d in item.inspection_defects %}
-            <span class="inline-flex items-center gap-1 px-2.5 py-1.5 bg-red-100 text-red-800 rounded text-xs font-medium">{{ d.description }}<button type="button" hx-delete="{{ url_for('inspection.remove_defect', inspection_id=inspection.id, item_id=item.id, defect_id=d.id) }}?area_id={{ area.id }}" hx-target="#item-{{ item.id }}" hx-swap="innerHTML" class="ml-0.5 text-red-500 hover:text-red-700 font-bold" style="line-height:1">&times;</button></span>
-            {% endfor %}
-        </div>
-        {% endif %}
-        <div id="defect-expand-{{ item.id }}" {% if not expanded %}style="display:none"{% endif %}>
-            <div class="flex gap-2">
-                <input type="text" id="defect-input-{{ item.id }}" placeholder="Describe the defect..." autocomplete="off" class="flex-1 px-3 py-2 border-2 border-red-300 rounded text-sm focus:ring-2 focus:ring-red-500 auto-caps" onkeydown="if(event.key==='Enter'){event.preventDefault();this.nextElementSibling.click()}">
-                <button type="button" onclick="var inp=document.getElementById('defect-input-{{ item.id }}');var desc=inp.value.trim();if(!desc)return;htmx.ajax('POST','{{ url_for('inspection.add_defect', inspection_id=inspection.id, item_id=item.id) }}',{target:'#item-{{ item.id }}',swap:'innerHTML',values:{description:desc,area_id:'{{ area.id }}'}})" class="px-3 py-2 bg-red-500 text-white rounded text-sm font-medium hover:bg-red-600 flex-shrink-0">Add</button>
-            </div>
-            <div hx-get="{{ url_for('inspection.get_defect_suggestions', item_template_id=item.template_id, unit_id=inspection.unit_id) }}" hx-trigger="load" hx-swap="innerHTML"></div>
-            {% if has_chips %}
-            <div class="flex gap-2 mt-2">
-                <button type="button"
-                    hx-post="{{ url_for('inspection.update_item', inspection_id=inspection.id, item_id=item.id) }}"
-                    hx-vals='{"status": "ok", "area_id": "{{ area.id }}"}'
-                    hx-target="#item-{{ item.id }}"
-                    hx-swap="innerHTML"
-                    hx-confirm="Change to MS? This will remove {{ item.inspection_defects|length }} defect(s)."
-                    class="px-3 py-2 rounded text-xs font-medium bg-green-100 text-green-700 hover:bg-green-200 transition-colors"
-                    style="min-height:44px">MS</button>
-                <a href="javascript:void(0)" onclick="document.getElementById('defect-expand-{{ item.id }}').style.display='none';document.getElementById('defect-addmore-{{ item.id }}').style.display='inline-block'" class="px-3 py-2 rounded text-xs font-medium bg-gray-200 text-gray-700 hover:bg-gray-300 transition-colors" style="text-decoration:none;min-height:44px">Done</a>
-            </div>
-            {% endif %}
-        </div>
-        {% if has_chips %}
-        <a href="javascript:void(0)" id="defect-addmore-{{ item.id }}" {% if expanded %}style="display:none"{% endif %} onclick="document.getElementById('defect-expand-{{ item.id }}').style.display='block';this.style.display='none'" class="inline-block mt-1 text-sm font-medium text-blue-600" style="text-decoration:none;padding:6px 0">+ Add more</a>
-        {% endif %}
-    </div>
-
-    {# INST panel for leaf items: MS/NTS second step + defect input #}
-    {% elif not show_prior and not has_current and item.status not in ['not_to_standard', 'ok', 'not_installed'] and not is_child %}
-    <div id="inst-panel-{{ item.id }}" style="display:none" class="mt-2">
-        <div class="flex gap-2 mb-2">
-            <button type="button"
-                hx-post="{{ url_for('inspection.update_item', inspection_id=inspection.id, item_id=item.id) }}"
-                hx-vals='{"status": "ok", "area_id": "{{ area.id }}"}'
-                hx-target="#item-{{ item.id }}"
-                hx-swap="innerHTML"
-                class="px-3 py-2 rounded text-xs font-medium bg-green-100 text-green-700 hover:bg-green-200 transition-colors flex-1 text-center"
-                style="min-height:44px">MS</button>
-            <a href="javascript:void(0)" id="nts-expand-btn-{{ item.id }}"
-               onclick="document.getElementById('nts-input-{{ item.id }}').style.display='block';this.style.display='none';var pills=document.getElementById('nts-pills-{{ item.id }}');if(pills&&!pills.dataset.loaded){htmx.trigger(pills,'loadPills');pills.dataset.loaded='1'}"
-               ontouchend="event.preventDefault();this.click()"
-               class="px-3 py-2 rounded text-xs font-medium bg-red-100 text-red-700 hover:bg-red-200 transition-colors flex-1 text-center inline-flex items-center justify-center"
-               style="text-decoration:none;min-height:44px">NTS</a>
-        </div>
-        <div id="nts-input-{{ item.id }}" style="display:none" class="defect-input-wrapper" data-add-url="{{ url_for('inspection.add_defect', inspection_id=inspection.id, item_id=item.id) }}" data-area-id="{{ area.id }}" data-item-id="item-{{ item.id }}">
-            <div class="flex gap-2">
-                <input type="text" id="defect-input-{{ item.id }}" placeholder="Describe the defect..." autocomplete="off" class="flex-1 px-3 py-2 border-2 border-red-300 rounded text-sm focus:ring-2 focus:ring-red-500 auto-caps" onkeydown="if(event.key==='Enter'){event.preventDefault();this.nextElementSibling.click()}">
-                <button type="button" onclick="var inp=document.getElementById('defect-input-{{ item.id }}');var desc=inp.value.trim();if(!desc)return;htmx.ajax('POST','{{ url_for('inspection.add_defect', inspection_id=inspection.id, item_id=item.id) }}',{target:'#item-{{ item.id }}',swap:'innerHTML',values:{description:desc,area_id:'{{ area.id }}'}})" class="px-3 py-2 bg-red-500 text-white rounded text-sm font-medium hover:bg-red-600 flex-shrink-0">Add</button>
-            </div>
-            <div id="nts-pills-{{ item.id }}" hx-get="{{ url_for('inspection.get_defect_suggestions', item_template_id=item.template_id, unit_id=inspection.unit_id) }}" hx-trigger="loadPills once" hx-swap="innerHTML"></div>
-        </div>
-    </div>
-    {% endif %}
 </div>
 {% endif %}

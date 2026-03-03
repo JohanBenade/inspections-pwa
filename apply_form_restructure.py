@@ -1,13 +1,11 @@
 """
-Form Restructure v2 - Spec-Compliant Apply Script.
-Run from project root on MacBook:
-  python3 apply_form_restructure.py
+Form Restructure v3 - Apply Script
+Run from project root: python3 apply_form_restructure.py
 
 Changes:
-1. _single_item.html - FULL REPLACE (copy separately before running this)
-2. area.html - INST + N/I buttons on categories
-3. inspect.html - Readonly enforcement + pill loading + blocked toast handler
-4. inspection.py - Placeholder blocking (visible) + submit fix + category cascade NI route
+1. area.html - INST + N/I buttons on categories (equal size grid)
+2. inspect.html - Readonly selectors + pill loading
+3. inspection.py - Blocked descriptions + submit fix + category cascade NI
 """
 import sys
 
@@ -15,11 +13,11 @@ def replace_in_file(path, old, new, label):
     with open(path, 'r') as f:
         content = f.read()
     if old not in content:
-        print(f"  FAILED: '{label}' - old string not found in {path}")
-        print(f"  First 80 chars of old: {repr(old[:80])}")
+        print(f"  FAILED: '{label}' - string not found in {path}")
+        print(f"  First 80 chars: {repr(old[:80])}")
         sys.exit(1)
     if content.count(old) > 1:
-        print(f"  FAILED: '{label}' - old string found {content.count(old)} times (expected 1) in {path}")
+        print(f"  FAILED: '{label}' - found {content.count(old)} times (need 1)")
         sys.exit(1)
     content = content.replace(old, new)
     with open(path, 'w') as f:
@@ -28,11 +26,10 @@ def replace_in_file(path, old, new, label):
 
 
 # ============================================================
-# 1. area.html - INST + N/I buttons on each category
+# 1. area.html - Category INST + N/I buttons
 # ============================================================
 print("\n=== area.html ===")
 
-# Replace the counter span with INST + N/I buttons
 replace_in_file(
     'app/templates/inspection/area.html',
     """            <span class="flex items-center gap-2 ml-2 flex-shrink-0">
@@ -52,8 +49,8 @@ replace_in_file(
                 {% if ns.marked < ns.active %}
                 <button type="button"
                     onclick="event.stopPropagation();var h=this.closest('.bg-gray-100');var c=h.nextElementSibling;var ch=h.querySelector('.cat-chevron');if(c)c.classList.remove('hidden');if(ch)ch.classList.add('rotate-90')"
-                    class="px-2.5 py-1.5 rounded text-xs font-bold bg-blue-500 text-white hover:bg-blue-600 transition-colors"
-                    style="min-height:36px;min-width:44px">INST</button>
+                    class="h-8 px-3 rounded-lg text-xs font-bold bg-blue-500 text-white"
+                    style="min-width:44px">INST</button>
                 <button type="button"
                     hx-post="{{ url_for('inspection.category_cascade_ni', inspection_id=inspection.id, category_id=category.id) }}"
                     hx-vals='{"area_id": "{{ area.id }}"}'
@@ -61,8 +58,8 @@ replace_in_file(
                     hx-swap="innerHTML"
                     hx-confirm="Mark all items in {{ category.name }} as N/I?"
                     onclick="event.stopPropagation()"
-                    class="px-2.5 py-1.5 rounded text-xs font-bold bg-yellow-500 text-white hover:bg-yellow-600 transition-colors"
-                    style="min-height:36px;min-width:44px">N/I</button>
+                    class="h-8 px-3 rounded-lg text-xs font-bold bg-amber-500 text-white"
+                    style="min-width:44px">N/I</button>
                 {% endif %}
             </span>""",
     'Category INST + N/I buttons'
@@ -70,15 +67,15 @@ replace_in_file(
 
 
 # ============================================================
-# 2. inspect.html - Readonly enforcement + pill loading + toast
+# 2. inspect.html - Readonly + pill loading
 # ============================================================
 print("\n=== inspect.html ===")
 
 replace_in_file(
     'app/templates/inspection/inspect.html',
     'a[onclick*="inspect-panel"],a[onclick*="defect-expand"],a[onclick*="defect-addmore"],input.auto-caps',
-    'a[onclick*="inspect-panel"],a[onclick*="inst-panel"],a[onclick*="inst-btn"],a[onclick*="nts-input"],a[onclick*="nts-area"],a[onclick*="nts-expand"],a[onclick*="defect-expand"],a[onclick*="defect-addmore"],input.auto-caps',
-    'Readonly enforcement update'
+    'a[onclick*="step1"],a[onclick*="step2"],a[onclick*="nts-input"],a[onclick*="nts-area"],a[onclick*="child-btns"],a[onclick*="defect-expand"],a[onclick*="defect-addmore"],a[onclick*="r2-expand"],input.auto-caps',
+    'Readonly selectors'
 )
 
 replace_in_file(
@@ -107,36 +104,16 @@ replace_in_file(
                     }
                 });
             }""",
-    'afterSettle pill loading for new panels'
-)
-
-
-replace_in_file(
-    'app/templates/inspection/inspect.html',
-    """    })();
-</script>
-{% if readonly %}""",
-    """        /* Toast for blocked descriptions */
-        document.body.addEventListener('blockedDescription', function() {
-            var toast = document.createElement('div');
-            toast.className = 'fixed bottom-20 left-1/2 transform -translate-x-1/2 bg-red-600 text-white px-4 py-2 rounded-lg shadow-lg text-sm font-medium z-50';
-            toast.textContent = 'Invalid description - please be specific';
-            document.body.appendChild(toast);
-            setTimeout(function() { toast.remove(); }, 2500);
-        });
-    })();
-</script>
-{% if readonly %}""",
-    'Blocked description toast handler'
+    'Pill loading for loadPills triggers'
 )
 
 
 # ============================================================
-# 3. inspection.py - All backend changes
+# 3. inspection.py - Backend changes
 # ============================================================
 print("\n=== inspection.py ===")
 
-# 3a. Add BLOCKED_DESCRIPTIONS constant
+# 3a. BLOCKED_DESCRIPTIONS constant
 replace_in_file(
     'app/routes/inspection.py',
     "inspection_bp = Blueprint('inspection', __name__, url_prefix='/inspection')",
@@ -147,10 +124,10 @@ replace_in_file(
 }
 
 inspection_bp = Blueprint('inspection', __name__, url_prefix='/inspection')""",
-    'Add BLOCKED_DESCRIPTIONS constant'
+    'BLOCKED_DESCRIPTIONS constant'
 )
 
-# 3b. Block placeholders in add_defect with visible feedback
+# 3b. Block placeholders in add_defect (server-side backup)
 replace_in_file(
     'app/routes/inspection.py',
     """        description = description[0].upper() + description[1:]
@@ -159,13 +136,11 @@ replace_in_file(
     if inspection['status'] in ('pending_followup', 'approved', 'certified'):""",
     """        description = description[0].upper() + description[1:]
 
-    # Block placeholder descriptions
+    # Block placeholder descriptions (server-side backup for client validation)
     if description.lower().strip() in BLOCKED_DESCRIPTIONS:
         if area_id:
             html = _render_single_item(inspection_id, item_id, tenant_id, area_id, force_expanded=True)
-            response = make_response(html)
-            response.headers['HX-Trigger'] = json.dumps({"areaUpdated": True, "blockedDescription": True})
-            return response
+            return make_response(html)
         return '', 204
 
     # Lock: no edits after sign-off
@@ -173,7 +148,7 @@ replace_in_file(
     'Block placeholders in add_defect'
 )
 
-# 3c. Fix submit fallback
+# 3c. Fix submit fallback for NI items
 replace_in_file(
     'app/routes/inspection.py',
     """        elif not item_defects:
@@ -183,10 +158,10 @@ replace_in_file(
                 item_defects = [{'description': 'Not installed', 'defect_type': item['status']}]
             else:
                 item_defects = [{'description': 'Defect noted - needs review', 'defect_type': item['status']}]""",
-    'Fix submit fallback for NI items'
+    'Submit fallback NI fix'
 )
 
-# 3d. Block placeholder suggestions from defect library
+# 3d. Filter blocked descriptions from pill suggestions
 replace_in_file(
     'app/routes/inspection.py',
     """    if not suggestions:
@@ -202,10 +177,10 @@ replace_in_file(
         return ''
 
     # Filter out open prior defect descriptions""",
-    'Block placeholder suggestions from pills'
+    'Filter blocked pills'
 )
 
-# 3e. Add category cascade NI route
+# 3e. Category cascade NI route
 replace_in_file(
     'app/routes/inspection.py',
     """@inspection_bp.route('/suggestions/<item_template_id>')
@@ -214,48 +189,35 @@ def get_defect_suggestions(item_template_id):""",
     """@inspection_bp.route('/<inspection_id>/category/<category_id>/cascade-ni', methods=['POST'])
 @require_auth
 def category_cascade_ni(inspection_id, category_id):
-    \"\"\"Mark all items in a category as N/I. HTMX endpoint.\"\"\"
+    \"\"\"Mark all items in a category as N/I.\"\"\"
     tenant_id = session['tenant_id']
     db = get_db()
     area_id = request.form.get('area_id')
 
     inspection = query_db(
         "SELECT * FROM inspection WHERE id = ? AND tenant_id = ?",
-        [inspection_id, tenant_id], one=True
-    )
+        [inspection_id, tenant_id], one=True)
     if not inspection:
         abort(404)
-
-    # Lock: no edits after sign-off
     if inspection['status'] in ('pending_followup', 'approved', 'certified'):
         abort(403)
 
     now = datetime.now(timezone.utc).isoformat()
 
-    # Get all non-skipped items in this category for this inspection
     items = query_db(\"\"\"
-        SELECT ii.id, ii.status, it.id as template_id
-        FROM inspection_item ii
+        SELECT ii.id FROM inspection_item ii
         JOIN item_template it ON ii.item_template_id = it.id
         WHERE it.category_id = ? AND ii.inspection_id = ? AND ii.status != 'skipped'
     \"\"\", [category_id, inspection_id])
 
-    count = 0
     for item in (items or []):
-        db.execute(\"\"\"
-            UPDATE inspection_item SET status = 'not_installed', marked_at = ?
-            WHERE id = ?
-        \"\"\", [now, item['id']])
-        # Delete any existing inspection_defect chips for this item
-        db.execute("DELETE FROM inspection_defect WHERE inspection_item_id = ?", [item['id']])
-        count += 1
+        db.execute("UPDATE inspection_item SET status='not_installed', marked_at=? WHERE id=?",
+                   [now, item['id']])
+        db.execute("DELETE FROM inspection_defect WHERE inspection_item_id=?", [item['id']])
 
-    # Auto-transition inspection from not_started to in_progress
     if inspection['status'] == 'not_started':
-        db.execute(\"\"\"
-            UPDATE inspection SET status = 'in_progress', started_at = ?, updated_at = ?
-            WHERE id = ?
-        \"\"\", [now, now, inspection_id])
+        db.execute("UPDATE inspection SET status='in_progress', started_at=?, updated_at=? WHERE id=?",
+                   [now, now, inspection_id])
 
     db.commit()
 
@@ -268,29 +230,12 @@ def category_cascade_ni(inspection_id, category_id):
 @inspection_bp.route('/suggestions/<item_template_id>')
 @require_auth
 def get_defect_suggestions(item_template_id):""",
-    'Add category cascade NI route'
+    'Category cascade NI route'
 )
 
-# 3f. Add json import if not present
-with open('app/routes/inspection.py', 'r') as f:
-    content = f.read()
-if 'import json' not in content:
-    content = content.replace(
-        "from flask import Blueprint",
-        "import json\nfrom flask import Blueprint"
-    )
-    with open('app/routes/inspection.py', 'w') as f:
-        f.write(content)
-    print("  OK: Added json import")
-else:
-    print("  OK: json import already present")
 
-
-print("\n=== ALL CHANGES APPLIED SUCCESSFULLY ===")
-print()
-print("Verify with:")
-print("  grep -n 'BLOCKED_DESCRIPTIONS' app/routes/inspection.py | head -5")
-print("  grep -n 'category_cascade_ni' app/routes/inspection.py | head -5")
-print("  grep -n 'blockedDescription' app/routes/inspection.py")
-print("  grep -c 'INST\\|N/I' app/templates/inspection/area.html")
-print("  grep -c 'Inspect\\|\"OK\"\\|>OK<' app/templates/inspection/_single_item.html")
+print("\n=== ALL CHANGES APPLIED ===")
+print("\nVerify:")
+print("  grep -c 'h-11\\|h-8' app/templates/inspection/_single_item.html")
+print("  grep -c 'BLOCKED_DESCRIPTIONS' app/routes/inspection.py")
+print("  grep -c 'category_cascade_ni' app/routes/inspection.py")
