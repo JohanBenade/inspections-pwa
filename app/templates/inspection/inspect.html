@@ -212,6 +212,12 @@
                         if (url) htmx.ajax('GET', url, {target: el, swap: 'innerHTML'});
                     }
                 });
+                target.querySelectorAll('[hx-trigger="loadPills once"]').forEach(function(el) {
+                    if (!el.dataset.loaded) {
+                        el.dataset.loaded = '1';
+                        htmx.trigger(el, 'loadPills');
+                    }
+                });
             }
 
             /* Rebind auto-caps on any swap that might include inputs */
@@ -250,7 +256,7 @@
         root.querySelectorAll('[hx-post],[hx-put],[hx-delete],button[type="submit"]').forEach(function(el) {
             el.style.display = 'none';
         });
-        root.querySelectorAll('a[onclick*="inspect-panel"],a[onclick*="defect-expand"],a[onclick*="defect-addmore"],input.auto-caps').forEach(function(el) {
+        root.querySelectorAll('a[onclick*="inspect-panel"],a[onclick*="inst-panel"],a[onclick*="nts-input"],a[onclick*="defect-expand"],a[onclick*="defect-addmore"],input.auto-caps').forEach(function(el) {
             el.style.display = 'none';
         });
         root.querySelectorAll('button[onclick*="add_defect"],button[onclick*="htmx.ajax"]').forEach(function(el) {

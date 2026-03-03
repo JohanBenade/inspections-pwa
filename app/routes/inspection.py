@@ -11,6 +11,12 @@ from app.utils.audit import log_audit
 from app.services.db import get_db, query_db
 from app.services.template_loader import get_inspection_template
 
+BLOCKED_DESCRIPTIONS = {
+    'defect noted', 'n/a', 'na', 'not applicable',
+    'not tested', 'to be tested', 'to be inspected',
+    'as indicated', 'not applicable yet', ''
+}
+
 inspection_bp = Blueprint('inspection', __name__, url_prefix='/inspection')
 
 
@@ -976,7 +982,16 @@ def add_defect(inspection_id, item_id):
     if len(description) > 0:
         description = description[0].upper() + description[1:]
 
-        # Lock: no edits after sign-off
+    # Block placeholder descriptions
+    if description.lower().strip() in BLOCKED_DESCRIPTIONS:
+        if area_id:
+            html = _render_single_item(inspection_id, item_id, tenant_id, area_id, force_expanded=True)
+            response = make_response(html)
+            response.headers['HX-Trigger'] = 'areaUpdated'
+            return response
+        return '', 204
+
+    # Lock: no edits after sign-off
     if inspection['status'] in ('pending_followup', 'approved', 'certified'):
         abort(403)
 
@@ -1431,7 +1446,10 @@ def submit_inspection(inspection_id):
         if not item_defects and item['comment']:
             item_defects = [{'description': item['comment'], 'defect_type': item['status']}]
         elif not item_defects:
-            item_defects = [{'description': 'Defect noted', 'defect_type': item['status']}]
+            if item['status'] == 'not_installed':
+                item_defects = [{'description': 'Not installed', 'defect_type': item['status']}]
+            else:
+                item_defects = [{'description': 'Defect noted - needs review', 'defect_type': item['status']}]
 
         existing = all_existing[0] if all_existing else None
         for idx, idef in enumerate(item_defects):
@@ -1689,6 +1707,60 @@ def get_area_badges(inspection_id):
     return '\n'.join(html_parts)
 
 
+@inspection_bp.route('/<inspection_id>/category/<category_id>/cascade-ni', methods=['POST'])
+@require_auth
+def category_cascade_ni(inspection_id, category_id):
+    """Mark all items in a category as N/I. HTMX endpoint."""
+    tenant_id = session['tenant_id']
+    db = get_db()
+    area_id = request.form.get('area_id')
+
+    inspection = query_db(
+        "SELECT * FROM inspection WHERE id = ? AND tenant_id = ?",
+        [inspection_id, tenant_id], one=True
+    )
+    if not inspection:
+        abort(404)
+
+    # Lock: no edits after sign-off
+    if inspection['status'] in ('pending_followup', 'approved', 'certified'):
+        abort(403)
+
+    now = datetime.now(timezone.utc).isoformat()
+
+    # Get all non-skipped items in this category for this inspection
+    items = query_db("""
+        SELECT ii.id, ii.status, it.id as template_id
+        FROM inspection_item ii
+        JOIN item_template it ON ii.item_template_id = it.id
+        WHERE it.category_id = ? AND ii.inspection_id = ? AND ii.status != 'skipped'
+    """, [category_id, inspection_id])
+
+    count = 0
+    for item in (items or []):
+        db.execute("""
+            UPDATE inspection_item SET status = 'not_installed', marked_at = ?
+            WHERE id = ?
+        """, [now, item['id']])
+        # Delete any existing inspection_defect chips for this item
+        db.execute("DELETE FROM inspection_defect WHERE inspection_item_id = ?", [item['id']])
+        count += 1
+
+    # Auto-transition inspection from not_started to in_progress
+    if inspection['status'] == 'not_started':
+        db.execute("""
+            UPDATE inspection SET status = 'in_progress', started_at = ?, updated_at = ?
+            WHERE id = ?
+        """, [now, now, inspection_id])
+
+    db.commit()
+
+    if area_id:
+        return redirect(url_for('inspection.inspect_area',
+                                inspection_id=inspection_id, area_id=area_id))
+    return '', 204
+
+
 @inspection_bp.route('/suggestions/<item_template_id>')
 @require_auth
 def get_defect_suggestions(item_template_id):
@@ -1730,6 +1802,11 @@ def get_defect_suggestions(item_template_id):
                 LIMIT 5
             """, [tenant_id, cat['category_name']])
     
+    if not suggestions:
+        return ''
+
+    # Filter out blocked placeholder descriptions
+    suggestions = [s for s in suggestions if s['description'].lower() not in BLOCKED_DESCRIPTIONS]
     if not suggestions:
         return ''
 
