@@ -46,12 +46,15 @@
     {% else %}
     
     {# Count active items, marked items, and defects (from defect table + chips) for this category #}
-    {% set ns = namespace(active=0, marked=0, defects=0) %}
+    {% set ns = namespace(active=0, marked=0, defects=0, ni=0) %}
     {% for item in category.checklist %}
         {% if item.status != 'skipped' %}
             {% set ns.active = ns.active + 1 %}
             {% if item.status not in ['pending', 'skipped'] %}
                 {% set ns.marked = ns.marked + 1 %}
+            {% endif %}
+            {% if item.status == 'not_installed' %}
+                {% set ns.ni = ns.ni + 1 %}
             {% endif %}
             {% set ns.defects = ns.defects + (item.current_defects|default([])|length) %}
             {% for pd in item.prior_defects|default([]) %}
@@ -87,12 +90,14 @@
                     {{ ns.marked }}/{{ ns.active }}{% if ns.marked == ns.active %} &#10003;{% endif %}
                 </span>
                 {% endif %}
+                {% set cat_has_inst = ns.marked > 0 and ns.ni < ns.marked %}
+                {% set cat_all_ni = ns.marked > 0 and ns.ni == ns.active %}
                 <button type="button" data-btn="cat-inst"
                     onclick="event.stopPropagation();this.className='w-16 h-11 rounded-lg text-sm font-semibold border-2 bg-blue-600 text-white border-blue-600';var ni=this.parentElement.querySelector('[data-btn=cat-ni]');if(ni)ni.className='w-16 h-11 rounded-lg text-sm font-semibold border-2 border-amber-400 text-amber-700 bg-amber-50 opacity-60';var h=this.closest('.bg-gray-100');var c=h.nextElementSibling;var ch=h.querySelector('.cat-chevron');if(c)c.classList.remove('hidden');if(ch)ch.classList.add('rotate-90')"
-                    class="w-16 h-11 rounded-lg text-sm font-semibold border-2 border-blue-400 text-blue-700 bg-blue-50">INST</button>
+                    class="w-16 h-11 rounded-lg text-sm font-semibold border-2 {% if cat_has_inst %}bg-blue-600 text-white border-blue-600{% elif cat_all_ni %}border-blue-400 text-blue-700 bg-blue-50 opacity-60{% else %}border-blue-400 text-blue-700 bg-blue-50{% endif %}">INST</button>
                 <button type="button" data-btn="cat-ni"
                     onclick="event.stopPropagation();this.className='w-16 h-11 rounded-lg text-sm font-semibold border-2 bg-amber-500 text-white border-amber-500';var inst=this.parentElement.querySelector('[data-btn=cat-inst]');if(inst)inst.className='w-16 h-11 rounded-lg text-sm font-semibold border-2 border-blue-400 text-blue-700 bg-blue-50 opacity-60';var m=document.getElementById('confirm-modal');document.getElementById('confirm-msg').textContent='Mark all items in {{ category.name }} as N/I?';var self=this;m.style.display='flex';window._confirmResolve=function(){m.style.display='none';htmx.ajax('POST','{{ url_for('inspection.category_cascade_ni', inspection_id=inspection.id, category_id=category.id) }}',{target:'#area-content',swap:'innerHTML',values:{area_id:'{{ area.id }}'}})};window._confirmReject=function(){m.style.display='none';self.className='w-16 h-11 rounded-lg text-sm font-semibold border-2 border-amber-400 text-amber-700 bg-amber-50';if(inst)inst.className='w-16 h-11 rounded-lg text-sm font-semibold border-2 border-blue-400 text-blue-700 bg-blue-50'}"
-                    class="w-16 h-11 rounded-lg text-sm font-semibold border-2 border-amber-400 text-amber-700 bg-amber-50">N/I</button>
+                    class="w-16 h-11 rounded-lg text-sm font-semibold border-2 {% if cat_all_ni %}bg-amber-500 text-white border-amber-500{% elif cat_has_inst %}border-amber-400 text-amber-700 bg-amber-50 opacity-60{% else %}border-amber-400 text-amber-700 bg-amber-50{% endif %}">N/I</button>
             </span>
             {% endif %}
         </div>
