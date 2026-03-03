@@ -82,8 +82,8 @@
              hx-get="{{ url_for('inspection.get_area_badges', inspection_id=inspection.id) }}"
              hx-trigger="areaUpdated from:body"
              hx-swap="none"></div>
-        <div id="area-content" class="p-4"
-             hx-get="{{ url_for('inspection.inspect_area', inspection_id=inspection.id, area_id=template[0].id) }}{% if is_followup %}?filter=to_inspect{% endif %}"
+        <div id="area-content" class="p-4 pr-6"
+             hx-get="{{ url_for('inspection.inspect_area', inspection_id=inspection.id, area_id=template[0].id) }}"
              hx-trigger="load">
             <div class="text-center py-8 text-gray-500">Loading...</div>
         </div>
