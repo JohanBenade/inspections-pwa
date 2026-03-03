@@ -1834,7 +1834,7 @@ def get_defect_suggestions(item_template_id):
         escaped = desc.replace(chr(39), chr(92)+chr(39))
         pills_html += f'''<button type="button"
             class="px-3 py-2 bg-blue-50 text-blue-700 rounded-lg text-xs hover:bg-blue-100 transition-colors"
-            onclick="var w=this.closest('.defect-input-wrapper');htmx.ajax('POST',w.dataset.addUrl,{{target:'#'+w.dataset.itemId,swap:'innerHTML',values:{{description:'{escaped}',area_id:w.dataset.areaId}}}})"
+            onclick="var w=this.closest('.defect-input-wrapper');htmx.ajax('POST',w.dataset.addUrl,{{target:w.dataset.target,swap:'innerHTML',values:{{description:'{escaped}',area_id:w.dataset.areaId}}}})"
             ontouchend="event.preventDefault();this.click()"
             >{desc}</button>'''
     pills_html += '</div>'
