@@ -379,19 +379,7 @@ def inspect_area(inspection_id, area_id):
     tenant_id = session['tenant_id']
     
     # Peek at cycle number + status to determine default filter
-    insp_peek = query_db("""
-        SELECT ic.cycle_number, i.status as insp_status FROM inspection i
-        JOIN inspection_cycle ic ON i.cycle_id = ic.id
-        WHERE i.id = ?
-    """, [inspection_id], one=True)
-    if insp_peek and insp_peek['cycle_number'] > 1:
-        if insp_peek['insp_status'] in ('submitted', 'reviewed', 'approved'):
-            default_filter = 'defects'
-        else:
-            default_filter = 'to_inspect'
-    else:
-        default_filter = 'all'
-    filter_mode = request.args.get('filter', default_filter)
+    filter_mode = request.args.get('filter', 'all')
     
     inspection = query_db("""
         SELECT i.*, u.unit_type, u.unit_number, ic.cycle_number, ic.id as cycle_id
