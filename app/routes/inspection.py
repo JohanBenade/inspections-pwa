@@ -612,6 +612,8 @@ def inspect_area(inspection_id, area_id):
                 'has_current_defects': has_current,
                 'children_have_defects': is_parent and item['template_id'] in parent_has_active_child,
                 'inspection_defects': item_defects,
+                'category_name': cat['category_name'],
+                'is_sole_parent': len(parent_items) == 1,
             })
         
         # Skip empty categories in filter modes
