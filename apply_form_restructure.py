@@ -1,15 +1,15 @@
 """
-Form Restructure - Apply all changes.
+Form Restructure v2 - Spec-Compliant Apply Script.
 Run from project root on MacBook:
   python3 apply_form_restructure.py
 
 Changes:
-1. _single_item.html - FULL REPLACE (copy separately)
-2. area.html - Add category N/I button
-3. inspect.html - Update readonly enforcement + afterSettle pill loading
-4. inspection.py - Placeholder blocking + submit fix + category cascade NI route
+1. _single_item.html - FULL REPLACE (copy separately before running this)
+2. area.html - INST + N/I buttons on categories
+3. inspect.html - Readonly enforcement + pill loading + blocked toast handler
+4. inspection.py - Placeholder blocking (visible) + submit fix + category cascade NI route
 """
-import sys, os
+import sys
 
 def replace_in_file(path, old, new, label):
     with open(path, 'r') as f:
@@ -28,10 +28,11 @@ def replace_in_file(path, old, new, label):
 
 
 # ============================================================
-# 1. area.html - Add category N/I button to header
+# 1. area.html - INST + N/I buttons on each category
 # ============================================================
 print("\n=== area.html ===")
 
+# Replace the counter span with INST + N/I buttons
 replace_in_file(
     'app/templates/inspection/area.html',
     """            <span class="flex items-center gap-2 ml-2 flex-shrink-0">
@@ -50,29 +51,33 @@ replace_in_file(
                 {% endif %}
                 {% if ns.marked < ns.active %}
                 <button type="button"
+                    onclick="event.stopPropagation();var h=this.closest('.bg-gray-100');var c=h.nextElementSibling;var ch=h.querySelector('.cat-chevron');if(c)c.classList.remove('hidden');if(ch)ch.classList.add('rotate-90')"
+                    class="px-2.5 py-1.5 rounded text-xs font-bold bg-blue-500 text-white hover:bg-blue-600 transition-colors"
+                    style="min-height:36px;min-width:44px">INST</button>
+                <button type="button"
                     hx-post="{{ url_for('inspection.category_cascade_ni', inspection_id=inspection.id, category_id=category.id) }}"
                     hx-vals='{"area_id": "{{ area.id }}"}'
                     hx-target="#area-content"
                     hx-swap="innerHTML"
                     hx-confirm="Mark all items in {{ category.name }} as N/I?"
                     onclick="event.stopPropagation()"
-                    class="px-2 py-1 rounded text-xs font-medium bg-yellow-100 text-yellow-700 hover:bg-yellow-200 transition-colors"
-                    style="min-height:32px">N/I</button>
+                    class="px-2.5 py-1.5 rounded text-xs font-bold bg-yellow-500 text-white hover:bg-yellow-600 transition-colors"
+                    style="min-height:36px;min-width:44px">N/I</button>
                 {% endif %}
             </span>""",
-    'Category N/I button'
+    'Category INST + N/I buttons'
 )
 
 
 # ============================================================
-# 2. inspect.html - Update readonly enforcement + pill loading
+# 2. inspect.html - Readonly enforcement + pill loading + toast
 # ============================================================
 print("\n=== inspect.html ===")
 
 replace_in_file(
     'app/templates/inspection/inspect.html',
     'a[onclick*="inspect-panel"],a[onclick*="defect-expand"],a[onclick*="defect-addmore"],input.auto-caps',
-    'a[onclick*="inspect-panel"],a[onclick*="inst-panel"],a[onclick*="nts-input"],a[onclick*="defect-expand"],a[onclick*="defect-addmore"],input.auto-caps',
+    'a[onclick*="inspect-panel"],a[onclick*="inst-panel"],a[onclick*="inst-btn"],a[onclick*="nts-input"],a[onclick*="nts-area"],a[onclick*="nts-expand"],a[onclick*="defect-expand"],a[onclick*="defect-addmore"],input.auto-caps',
     'Readonly enforcement update'
 )
 
@@ -102,7 +107,27 @@ replace_in_file(
                     }
                 });
             }""",
-    'afterSettle pill loading for inst-panel'
+    'afterSettle pill loading for new panels'
+)
+
+
+replace_in_file(
+    'app/templates/inspection/inspect.html',
+    """    })();
+</script>
+{% if readonly %}""",
+    """        /* Toast for blocked descriptions */
+        document.body.addEventListener('blockedDescription', function() {
+            var toast = document.createElement('div');
+            toast.className = 'fixed bottom-20 left-1/2 transform -translate-x-1/2 bg-red-600 text-white px-4 py-2 rounded-lg shadow-lg text-sm font-medium z-50';
+            toast.textContent = 'Invalid description - please be specific';
+            document.body.appendChild(toast);
+            setTimeout(function() { toast.remove(); }, 2500);
+        });
+    })();
+</script>
+{% if readonly %}""",
+    'Blocked description toast handler'
 )
 
 
@@ -111,7 +136,7 @@ replace_in_file(
 # ============================================================
 print("\n=== inspection.py ===")
 
-# 3a. Add BLOCKED_DESCRIPTIONS constant after blueprint line
+# 3a. Add BLOCKED_DESCRIPTIONS constant
 replace_in_file(
     'app/routes/inspection.py',
     "inspection_bp = Blueprint('inspection', __name__, url_prefix='/inspection')",
@@ -125,7 +150,7 @@ inspection_bp = Blueprint('inspection', __name__, url_prefix='/inspection')""",
     'Add BLOCKED_DESCRIPTIONS constant'
 )
 
-# 3b. Block placeholders in add_defect
+# 3b. Block placeholders in add_defect with visible feedback
 replace_in_file(
     'app/routes/inspection.py',
     """        description = description[0].upper() + description[1:]
@@ -139,7 +164,7 @@ replace_in_file(
         if area_id:
             html = _render_single_item(inspection_id, item_id, tenant_id, area_id, force_expanded=True)
             response = make_response(html)
-            response.headers['HX-Trigger'] = 'areaUpdated'
+            response.headers['HX-Trigger'] = json.dumps({"areaUpdated": True, "blockedDescription": True})
             return response
         return '', 204
 
@@ -180,7 +205,7 @@ replace_in_file(
     'Block placeholder suggestions from pills'
 )
 
-# 3e. Add category cascade NI route before suggestions route
+# 3e. Add category cascade NI route
 replace_in_file(
     'app/routes/inspection.py',
     """@inspection_bp.route('/suggestions/<item_template_id>')
@@ -246,11 +271,26 @@ def get_defect_suggestions(item_template_id):""",
     'Add category cascade NI route'
 )
 
+# 3f. Add json import if not present
+with open('app/routes/inspection.py', 'r') as f:
+    content = f.read()
+if 'import json' not in content:
+    content = content.replace(
+        "from flask import Blueprint",
+        "import json\nfrom flask import Blueprint"
+    )
+    with open('app/routes/inspection.py', 'w') as f:
+        f.write(content)
+    print("  OK: Added json import")
+else:
+    print("  OK: json import already present")
+
 
 print("\n=== ALL CHANGES APPLIED SUCCESSFULLY ===")
 print()
 print("Verify with:")
 print("  grep -n 'BLOCKED_DESCRIPTIONS' app/routes/inspection.py | head -5")
 print("  grep -n 'category_cascade_ni' app/routes/inspection.py | head -5")
-print("  grep -n 'inst-panel' app/templates/inspection/_single_item.html | head -5")
-print("  grep -n 'cascade-ni' app/templates/inspection/area.html | head -5")
+print("  grep -n 'blockedDescription' app/routes/inspection.py")
+print("  grep -c 'INST\\|N/I' app/templates/inspection/area.html")
+print("  grep -c 'Inspect\\|\"OK\"\\|>OK<' app/templates/inspection/_single_item.html")
