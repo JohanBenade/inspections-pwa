@@ -1,21 +1,21 @@
-{% if suggestions %}
-<div class="flex flex-wrap gap-1 mt-2">
-    {% for s in suggestions %}
-    {% if mode == 'guide' %}
+{%- if suggestions -%}
+<div class="flex flex-wrap gap-1.5 mt-2">
+    {%- for s in suggestions -%}
+    {%- if mode == 'guide' -%}
     <button type="button"
             onclick="var w=this.closest('.guide-pills');htmx.ajax('POST',w.dataset.postUrl,{target:'#'+w.dataset.itemId,swap:'innerHTML',values:{status:'not_to_standard',comment:this.textContent.trim(),area_id:w.dataset.areaId}})"
             ontouchend="event.preventDefault();this.click()"
             class="text-sm bg-gray-100 text-gray-500 hover:bg-red-100 hover:text-red-700 px-3 py-2 rounded border border-gray-200 truncate max-w-full">
         {{ s.description }}
     </button>
-    {% else %}
+    {%- else -%}
     <button type="button"
-            onclick="var w=this.closest('.defect-input-wrapper');if(!w)return;var inp=w.querySelector('input');if(!inp)return;inp.value=this.textContent.trim();inp.nextElementSibling.click()"
+            onclick="var w=this.closest('.defect-input-wrapper');if(!w)return;var desc=this.textContent.trim();htmx.ajax('POST',w.dataset.addUrl,{target:w.dataset.target,swap:'innerHTML',values:{description:desc,area_id:w.dataset.areaId}})"
             ontouchend="event.preventDefault();this.click()"
             class="text-sm bg-blue-50 text-blue-700 hover:bg-blue-100 px-3 py-2 rounded border border-blue-200 truncate max-w-full">
         {{ s.description }}
     </button>
-    {% endif %}
-    {% endfor %}
+    {%- endif -%}
+    {%- endfor -%}
 </div>
-{% endif %}
+{%- endif -%}
