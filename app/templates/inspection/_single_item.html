@@ -114,7 +114,7 @@
     {% elif is_parent and has_children %}
     <div class="flex justify-end gap-2 mt-2">
         <button type="button" data-btn="inst" hx-post="{{ url_for('inspection.update_item', inspection_id=inspection.id, item_id=item.id) }}" hx-vals='{"status":"ok","area_id":"{{ area.id }}"}' hx-target="#item-{{ item.id }}" hx-swap="innerHTML" class="{{ INST_SEL if item.status in ['ok','not_to_standard'] else (INST_DIM if item.status == 'not_installed' else INST_UN) }}">INST</button>
-        <button type="button" data-btn="ni" hx-post="{{ url_for('inspection.update_item', inspection_id=inspection.id, item_id=item.id) }}" hx-vals='{"status":"not_installed","area_id":"{{ area.id }}"}' hx-target="#item-{{ item.id }}" hx-swap="innerHTML" hx-confirm="Mark {{ item.item_description }} and all subitems as N/I?" class="{{ NI_SEL if item.status == 'not_installed' else (NI_DIM if item.status in ['ok','not_to_standard'] else NI_UN) }}">N/I</button>
+        <button type="button" data-btn="ni" onclick="var m=document.getElementById('confirm-modal');document.getElementById('confirm-msg').textContent='Mark {{ item.item_description }} and all subitems as N/I?';m.style.display='flex';window._confirmResolve=function(){m.style.display='none';htmx.ajax('POST','{{ url_for('inspection.update_item', inspection_id=inspection.id, item_id=item.id) }}',{target:'#item-{{ item.id }}',swap:'innerHTML',values:{status:'not_installed',area_id:'{{ area.id }}'}})};window._confirmReject=function(){m.style.display='none'}" class="{{ NI_SEL if item.status == 'not_installed' else (NI_DIM if item.status in ['ok','not_to_standard'] else NI_UN) }}">N/I</button>
     </div>
 
     {# -- CHILD (subitem): MS / NTS directly -- #}
