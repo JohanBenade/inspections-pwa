@@ -53,7 +53,9 @@
     <span class="item-meta" data-status="{{ item.status }}" data-defects="{{ (chips|length) + (currents|length) + (item.prior_defects|default([])|selectattr('status','equalto','open')|list|length) }}" style="display:none"></span>
 
     {# ---- ITEM NAME ---- #}
+    {% set hide_parent_name = is_parent and has_children and item.is_sole_parent|default(false) and item.category_name|default('') == item.item_description %}
     {% if is_parent and has_children %}
+    {% if not hide_parent_name %}
     <div class="flex items-center">
         <div onclick="var ch=document.querySelectorAll('[data-parent-id=&quot;{{ item.template_id }}&quot;]');var cv=this.querySelector('.item-chev');var vis=false;ch.forEach(function(c){if(!c.classList.contains('hidden'))vis=true});ch.forEach(function(c){if(vis)c.classList.add('hidden');else c.classList.remove('hidden')});if(cv){if(vis)cv.classList.remove('rotate-90');else cv.classList.add('rotate-90')}"
              class="flex-shrink-0 cursor-pointer flex items-center justify-center" style="width:28px;height:28px;margin-left:-6px">
@@ -61,6 +63,7 @@
         </div>
         <div class="text-sm font-bold text-gray-800 flex-1">{{ item.item_description }}</div>
     </div>
+    {% endif %}
     {% else %}
     <div class="text-sm font-medium text-gray-800">
         {% if is_child %}<span class="text-gray-300 mr-1">-</span>{% endif %}{{ item.item_description }}

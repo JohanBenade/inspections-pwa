@@ -649,9 +649,12 @@ def _build_item_for_render(inspection_id, item_id, tenant_id, unit_id=None, cycl
     item_raw = query_db("""
         SELECT it.id as template_id, it.item_description, it.parent_item_id, it.item_order,
                ii.id, ii.status, ii.comment, ii.marked_at,
-               (SELECT COUNT(*) FROM item_template WHERE parent_item_id = it.id) as child_count
+               (SELECT COUNT(*) FROM item_template WHERE parent_item_id = it.id) as child_count,
+               ct.category_name,
+               (SELECT COUNT(*) FROM item_template it2 WHERE it2.category_id = it.category_id AND it2.parent_item_id IS NULL) as sibling_parent_count
         FROM item_template it
         JOIN inspection_item ii ON it.id = ii.item_template_id
+        JOIN category_template ct ON it.category_id = ct.id
         WHERE ii.id = ? AND ii.inspection_id = ?
     """, [item_id, inspection_id], one=True)
 
@@ -730,6 +733,8 @@ def _build_item_for_render(inspection_id, item_id, tenant_id, unit_id=None, cycl
         'current_defects': current_defects_list,
         'has_current_defects': len(current_defects_list) > 0,
         'inspection_defects': inspection_defects,
+        'category_name': item_raw['category_name'],
+        'is_sole_parent': item_raw['sibling_parent_count'] == 1,
     }
 
 
