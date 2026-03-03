@@ -118,8 +118,7 @@
                 {% if ns.marked < ns.active %}
                 <button type="button"
                     onclick="event.stopPropagation();var h=this.closest('.bg-gray-100');var c=h.nextElementSibling;var ch=h.querySelector('.cat-chevron');if(c)c.classList.remove('hidden');if(ch)ch.classList.add('rotate-90')"
-                    class="h-8 px-3 rounded-lg text-xs font-bold bg-blue-500 text-white"
-                    style="min-width:44px">INST</button>
+                    class="w-16 h-11 rounded-lg text-sm font-semibold border-2 border-blue-400 text-blue-700 bg-blue-50">INST</button>
                 <button type="button"
                     hx-post="{{ url_for('inspection.category_cascade_ni', inspection_id=inspection.id, category_id=category.id) }}"
                     hx-vals='{"area_id": "{{ area.id }}"}'
@@ -127,8 +126,7 @@
                     hx-swap="innerHTML"
                     hx-confirm="Mark all items in {{ category.name }} as N/I?"
                     onclick="event.stopPropagation()"
-                    class="h-8 px-3 rounded-lg text-xs font-bold bg-amber-500 text-white"
-                    style="min-width:44px">N/I</button>
+                    class="w-16 h-11 rounded-lg text-sm font-semibold border-2 border-amber-400 text-amber-700 bg-amber-50">N/I</button>
                 {% endif %}
             </span>
             {% endif %}
@@ -171,7 +169,7 @@
             <div class="divide-y">
                 {% for item in category.checklist %}
                 {% if item.status != 'skipped' %}
-                <div id="item-{{ item.id }}">
+                <div id="item-{{ item.id }}"{% if item.parent_item_id %} data-parent-id="{{ item.parent_item_id }}"{% endif %}>
                 {% include 'inspection/_single_item.html' %}
                 </div>
                 {% endif %}
