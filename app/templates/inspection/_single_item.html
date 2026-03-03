@@ -41,7 +41,7 @@
 {% set NTS_DIM = B ~ " border-red-400 text-red-700 bg-red-50 opacity-60" %}
 
 {# Blocklist JS snippet #}
-{% set BL_JS = "var bl=['defect noted','n/a','na','not applicable','not tested','to be tested','to be inspected','as indicated','not applicable yet'];if(bl.indexOf(desc.toLowerCase())>=0){inp.value='';var row=inp.closest('.flex');var err=row.nextElementSibling;if(!err||!err.classList.contains('defect-err')){err=document.createElement('div');err.className='defect-err text-red-600 text-xs font-semibold mt-1';row.after(err)}err.textContent='Invalid defect description';err.style.display='block';setTimeout(function(){err.style.display='none'},3000);return}" %}
+{% set BL_JS = "var bl=['defect noted','n/a','na','not applicable','not tested','to be tested','to be inspected','as indicated','not applicable yet'];var d=desc.toLowerCase();var rej=false;for(var i=0;i<bl.length;i++){if(window._blSim(d,bl[i])>=0.8){rej=true;break}}if(rej){inp.value='';var t=document.getElementById('defect-toast');if(!t){t=document.createElement('div');t.id='defect-toast';t.className='fixed bottom-4 left-4 right-4 bg-red-500 text-white text-sm font-semibold px-4 py-3 rounded-lg text-center z-50 shadow-lg';document.body.appendChild(t)}t.textContent='Invalid defect description';t.style.display='block';setTimeout(function(){t.style.display='none'},3000);return}" %}
 
 {% if not is_skipped %}
 <div class="px-3 py-2.5 {% if is_child %}pl-8{% endif %} {% if parent_ni or parent_pending %}opacity-40{% endif %}">
@@ -169,4 +169,5 @@
     {% endif %}
 
 </div>
+<script>if(!window._blSim)window._blSim=function(a,b){a=a.toLowerCase();b=b.toLowerCase();if(a===b)return 1;var m=Math.max(a.length,b.length);if(!m)return 1;var d=[];for(var i=0;i<=a.length;i++){d[i]=[i]}for(var j=0;j<=b.length;j++){d[0][j]=j}for(i=1;i<=a.length;i++)for(j=1;j<=b.length;j++)d[i][j]=Math.min(d[i-1][j]+1,d[i][j-1]+1,d[i-1][j-1]+(a[i-1]!==b[j-1]?1:0));return 1-d[a.length][b.length]/m}</script>
 {% endif %}
