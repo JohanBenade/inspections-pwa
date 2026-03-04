@@ -457,19 +457,39 @@ def inspect_area(inspection_id, area_id):
             'comment': d['original_comment'],
         })
 
-    all_inspection_defects = query_db("""
-        SELECT idf.id, idf.inspection_item_id, idf.description, idf.defect_type
-        FROM inspection_defect idf
-        WHERE idf.inspection_id = ? AND idf.tenant_id = ?
-        ORDER BY idf.created_at
-    """, [inspection_id, tenant_id])
     inspection_defects_map = {}
-    for idef in (all_inspection_defects or []):
-        idef_dict = dict(idef)
-        iid = idef_dict['inspection_item_id']
-        if iid not in inspection_defects_map:
-            inspection_defects_map[iid] = []
-        inspection_defects_map[iid].append(idef_dict)
+    if inspection['status'] == 'in_progress':
+        all_inspection_defects = query_db("""
+            SELECT idf.id, idf.inspection_item_id, idf.description, idf.defect_type
+            FROM inspection_defect idf
+            WHERE idf.inspection_id = ? AND idf.tenant_id = ?
+            ORDER BY idf.created_at
+        """, [inspection_id, tenant_id])
+        for idef in (all_inspection_defects or []):
+            idef_dict = dict(idef)
+            iid = idef_dict['inspection_item_id']
+            if iid not in inspection_defects_map:
+                inspection_defects_map[iid] = []
+            inspection_defects_map[iid].append(idef_dict)
+    else:
+        all_defects_for_display = query_db("""
+            SELECT d.id, ii.id as inspection_item_id,
+                   COALESCE(d.reviewed_comment, d.original_comment) as description,
+                   d.defect_type
+            FROM defect d
+            JOIN inspection_item ii ON ii.item_template_id = d.item_template_id
+                AND ii.inspection_id = ?
+            WHERE d.unit_id = (SELECT unit_id FROM inspection WHERE id = ?)
+            AND d.raised_cycle_id = (SELECT cycle_id FROM inspection WHERE id = ?)
+            AND d.status = 'open'
+            ORDER BY d.created_at
+        """, [inspection_id, inspection_id, inspection_id])
+        for idef in (all_defects_for_display or []):
+            idef_dict = dict(idef)
+            iid = idef_dict['inspection_item_id']
+            if iid not in inspection_defects_map:
+                inspection_defects_map[iid] = []
+            inspection_defects_map[iid].append(idef_dict)
     
     # Get category comments
     cat_comments = query_db("""
