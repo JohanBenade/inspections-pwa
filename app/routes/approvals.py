@@ -990,7 +990,6 @@ def cleanup():
     f_type = request.args.get('type', '')
     f_min_defects = request.args.get('min_defects', '')
     f_batch = request.args.get('batch', '')
-    f_batch = request.args.get('batch', '')
 
     # All defects on submitted inspections
     defects = [dict(r) for r in query_db("""
@@ -1091,12 +1090,10 @@ def cleanup():
     all_inspectors = sorted(set(d['inspector_name'] for d in defects
                                 if d['inspector_name']))
     all_cycles = sorted(set(d['cycle_label'] for d in defects))
-    all_batches = sorted(set((d['batch_id'], d['batch_name']) for d in defects
-                             if d.get('batch_name')),
-                         key=lambda x: x[1])
-    all_batches = sorted(set((d['batch_id'], d['batch_name']) for d in defects
-                             if d.get('batch_name')),
-                         key=lambda x: x[1])
+    all_batches_raw = query_db(
+        "SELECT id, name FROM inspection_batch WHERE tenant_id = ? ORDER BY name",
+        [tenant_id])
+    all_batches = [(b['id'], b['name']) for b in all_batches_raw]
 
     # Apply filters
     filtered = defects
