@@ -396,11 +396,15 @@ def _build_review_data(tenant_id, cycle_id):
         lib_by_cat[cat].add(entry['desc_lower'])
 
     # Mark each defect as clean or needs attention
+    reviewed_statuses = {'reviewed', 'pending_followup', 'approved', 'certified', 'closed'}
     for d in defects:
-        desc_lower = (d['display_desc'] or '').lower().strip()
-        cat_name = d['category_name']
-        d['is_clean'] = (cat_name in lib_by_cat
-                         and desc_lower in lib_by_cat[cat_name])
+        if d.get('insp_status') in reviewed_statuses:
+            d['is_clean'] = True
+        else:
+            desc_lower = (d['display_desc'] or '').lower().strip()
+            cat_name = d['category_name']
+            d['is_clean'] = (cat_name in lib_by_cat
+                             and desc_lower in lib_by_cat[cat_name])
         # Build full item path
         if d['parent_description']:
             d['item_path'] = '{} > {}'.format(
