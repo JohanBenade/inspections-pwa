@@ -37,7 +37,7 @@ def _get_cycle_pipeline(tenant_id):
             (SELECT COUNT(DISTINCT i.id)
              FROM inspection i WHERE i.cycle_id = ic.id AND i.status = 'submitted') AS submitted_count,
             (SELECT COUNT(DISTINCT i.id)
-             FROM inspection i WHERE i.cycle_id = ic.id AND i.status = 'reviewed') AS reviewed_count,
+             FROM inspection i WHERE i.cycle_id = ic.id AND i.status IN ('reviewed','pending_followup')) AS reviewed_count,
             (SELECT COUNT(DISTINCT i.id)
              FROM inspection i WHERE i.cycle_id = ic.id
              AND i.status IN ('pending_followup', 'certified', 'closed')) AS signed_off_count,
@@ -179,7 +179,7 @@ def _get_batch_pipeline(tenant_id):
                 SELECT
                     COUNT(DISTINCT i.id) as total_inspections,
                     COUNT(DISTINCT CASE WHEN i.status = 'submitted' THEN i.id END) as submitted_count,
-                    COUNT(DISTINCT CASE WHEN i.status = 'reviewed' THEN i.id END) as reviewed_count,
+                    COUNT(DISTINCT CASE WHEN i.status IN ('reviewed','pending_followup') THEN i.id END) as reviewed_count,
                     COUNT(DISTINCT CASE WHEN i.status IN ('pending_followup', 'certified', 'closed') THEN i.id END) as signed_count,
                     (SELECT COUNT(*) FROM defect d WHERE d.raised_cycle_id = ?
                      AND d.status = 'open' AND d.tenant_id = ?) as defect_count
