@@ -448,17 +448,6 @@ def generate_defects_pdf(tenant_id, unit_id, cycle_id=None):
     html_doc = HTML(string=html_content, base_url=static_folder)
     pdf_bytes = html_doc.write_pdf()
 
-    # Linearize for SharePoint preview compatibility
-    try:
-        import pikepdf, io
-        inp = io.BytesIO(pdf_bytes)
-        out = io.BytesIO()
-        with pikepdf.open(inp) as pdf:
-            pdf.save(out, linearize=True)
-        pdf_bytes = out.getvalue()
-    except Exception:
-        pass  # Fall back to unlinearized if pikepdf fails
-
     return pdf_bytes
 
 

@@ -5,4 +5,3 @@ weasyprint==60.1
 pydyf==0.8.0
 openpyxl
 bleach
-pikepdf
