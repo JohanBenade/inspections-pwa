@@ -1842,3 +1842,36 @@ def get_defect_suggestions(item_template_id):
             >{desc}</button>'''
     pills_html += '</div>'
     return pills_html
+
+
+@inspection_bp.route('/test/reset', methods=['POST'])
+def test_reset_unit999():
+    """Test-only: resets unit 999 to clean state. Token-gated."""
+    data = request.get_json(silent=True) or {}
+    if data.get('token') != 'test-jb-reset-999':
+        abort(403)
+    db = get_db()
+    now = datetime.now(timezone.utc).isoformat()
+    UNIT_ID = '1a65863b'
+    INSP_ID = 'ccf1b4cc'
+    CYCLE_ID = 'c2725b56'
+    db.execute(
+        'DELETE FROM defect WHERE unit_id=? AND raised_cycle_id=?',
+        (UNIT_ID, CYCLE_ID))
+    db.execute(
+        'DELETE FROM inspection_defect WHERE inspection_id=?',
+        (INSP_ID,))
+    db.execute(
+        "UPDATE inspection_item SET status='pending', comment=NULL, marked_at=NULL "
+        "WHERE inspection_id=? AND status != 'skipped'",
+        (INSP_ID,))
+    db.execute(
+        "UPDATE inspection SET status='in_progress', submitted_at=NULL, updated_at=? "
+        "WHERE id=?",
+        (now, INSP_ID))
+    db.commit()
+    rows = db.execute(
+        "SELECT status, COUNT(*) n FROM inspection_item "
+        "WHERE inspection_id=? GROUP BY status",
+        (INSP_ID,)).fetchall()
+    return jsonify({"ok": True, "counts": {r[0]: r[1] for r in rows}})
