@@ -375,12 +375,14 @@ def _build_review_data(tenant_id, cycle_id):
                it.item_description,
                parent.item_description AS parent_description,
                ct.category_name, ct.id AS category_id,
-               at.area_name, at.area_order, ct.category_order, it.item_order
+               at.area_name, at.area_order, ct.category_order, it.item_order,
+               i.status AS insp_status
         FROM defect d
         JOIN item_template it ON d.item_template_id = it.id
         JOIN category_template ct ON it.category_id = ct.id
         JOIN area_template at ON ct.area_id = at.id
         LEFT JOIN item_template parent ON it.parent_item_id = parent.id
+        JOIN inspection i ON i.unit_id = d.unit_id AND i.cycle_id = d.raised_cycle_id
         WHERE d.raised_cycle_id = ? AND d.status = 'open' AND d.tenant_id = ?
         ORDER BY at.area_order, ct.category_order, it.item_order
     """, [cycle_id, tenant_id])]
