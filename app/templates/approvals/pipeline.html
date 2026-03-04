@@ -10,6 +10,46 @@
     <p class="text-sm text-gray-500 mt-1">Review defect descriptions, sign off zones, push PDFs to Raubex.</p>
 </div>
 
+<!-- Move Batch Status -->
+<div class="mb-6 bg-white rounded-xl border border-gray-200 p-4">
+    <p class="text-xs font-medium text-gray-500 uppercase tracking-wide mb-3">Move Batch Status</p>
+    <form method="POST" id="move-batch-form"
+          onsubmit="
+            var b=document.getElementById('mb-batch').value;
+            var m=document.getElementById('mb-milestone').value;
+            if(!b||!m){alert('Select a batch and status.');return false;}
+            fetch('/approvals/batch/'+b+'/set-milestone',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:'milestone='+m})
+            .then(function(){window.location.reload();});
+            return false;">
+        <div class="flex flex-wrap gap-3 items-end">
+            <div>
+                <label class="block text-xs text-gray-500 mb-1">Batch</label>
+                <select id="mb-batch" class="border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-primary/30">
+                    <option value="">Select batch...</option>
+                    {% for b in batches %}
+                    <option value="{{ b.id }}">{{ b.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div>
+                <label class="block text-xs text-gray-500 mb-1">Move to</label>
+                <select id="mb-milestone" class="border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-primary/30">
+                    <option value="">Select status...</option>
+                    <option value="received">Received</option>
+                    <option value="inspected">Inspected</option>
+                    <option value="reviewed">Reviewed</option>
+                    <option value="signed_off">Signed Off</option>
+                    <option value="pushed">Pushed</option>
+                </select>
+            </div>
+            <button type="submit"
+                    class="px-4 py-2 bg-gray-900 text-white text-sm font-medium rounded-lg hover:bg-gray-700 transition-colors">
+                Apply
+            </button>
+        </div>
+    </form>
+</div>
+
 {% macro batch_card(b, border_class) %}
 <div class="bg-white rounded-xl shadow-sm {{ border_class }} p-5">
     <div class="flex items-start justify-between mb-2">
