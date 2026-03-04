@@ -829,6 +829,8 @@ def sign_off(cycle_id):
     block = cycle['block'] or 'Cycle'
     flash('Signed off {} - {} units approved for Raubex.'.format(
         block, updated), 'success')
+    if request.form.get('from_page') == 'pipeline':
+        return redirect(url_for('approvals.pipeline'))
     return redirect(url_for('approvals.review', cycle_id=cycle_id))
 
 
