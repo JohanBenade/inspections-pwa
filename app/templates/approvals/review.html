@@ -136,51 +136,21 @@
 <!-- Action Zone -->
 <div class="mb-4 bg-white rounded-xl border border-gray-200 p-5">
 
-    {% if cycle.pdfs_pushed_at %}
-    <!-- State D: Complete -->
-    <div class="text-center space-y-2">
-        <div class="flex items-center justify-center gap-2 text-green-600">
-            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
-            </svg>
-            <span class="font-medium">Signed off{% if cycle.approved_by %} by {{ cycle.approved_by }}{% endif %}</span>
-            {% if cycle.approved_at %}<span class="text-xs text-gray-400 ml-1">{{ cycle.approved_at|to_sast }}</span>{% endif %}
-        </div>
-        <div class="flex items-center justify-center gap-2 text-green-600">
-            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
-            </svg>
-            <span class="font-medium">{{ stats.total }} PDFs downloaded</span>
-            {% if cycle.pdfs_pushed_at %}<span class="text-xs text-gray-400 ml-1">{{ cycle.pdfs_pushed_at|to_sast }}</span>{% endif %}
-        </div>
-        <p class="text-sm text-gray-500">PDFs downloaded. Send ZIP to Raubex.</p>
-        <form method="POST" action="{{ url_for('approvals.push_pdfs', cycle_id=cycle.id) }}" class="mt-2">
-            <button type="submit"
-                    class="w-full py-2 bg-gray-100 text-gray-700 text-sm font-medium rounded-lg hover:bg-gray-200 transition-colors"
-                    onclick="this.disabled=true;this.textContent='Preparing ZIP...';this.form.submit();">
-                Download Again
-            </button>
-        </form>
-    </div>
-
-    {% elif cycle.approved_at %}
-    <!-- State C: Signed off, push PDFs -->
-    <div class="text-center space-y-3">
-        <div class="flex items-center justify-center gap-2 text-green-600">
-            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
-            </svg>
-            <span class="font-medium">Signed off{% if cycle.approved_by %} by {{ cycle.approved_by }}{% endif %}</span>
-            {% if cycle.approved_at %}<span class="text-xs text-gray-400 ml-1">{{ cycle.approved_at|to_sast }}</span>{% endif %}
+    {% if cycle.approved_at %}
+    <!-- State C+D: Signed off — Push PDFs always available -->
+    <div class="flex items-center justify-between gap-4">
+        <div>
+            <p class="text-sm font-medium text-gray-700">Signed off{% if cycle.approved_by %} by {{ cycle.approved_by }}{% endif %}</p>
+            {% if cycle.approved_at %}<p class="text-xs text-gray-400">{{ cycle.approved_at|to_sast }}</p>{% endif %}
+            {% if cycle.pdfs_pushed_at %}<p class="text-xs text-gray-400 mt-1">Last pushed {{ cycle.pdfs_pushed_at|to_sast }}</p>{% endif %}
         </div>
         <form method="POST" action="{{ url_for('approvals.push_pdfs', cycle_id=cycle.id) }}">
             <button type="submit"
-                    class="w-full py-3 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 transition-colors"
-                    onclick="this.disabled=true;this.textContent='Pushing PDFs...';this.form.submit();">
-                Download {{ stats.total }} PDFs as ZIP
+                    class="px-5 py-2.5 bg-yellow-500 hover:bg-yellow-600 text-white text-sm font-semibold rounded-lg transition-colors whitespace-nowrap"
+                    onclick="this.disabled=true;this.textContent='Preparing...';this.form.submit();">
+                Push PDFs
             </button>
         </form>
-        <p class="text-xs text-gray-400">ZIP downloads to your machine. Send to Raubex manually.</p>
     </div>
 
     {% elif stats.reviewed == stats.total and stats.total > 0 %}
