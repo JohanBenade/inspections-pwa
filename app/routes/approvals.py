@@ -8,6 +8,7 @@ import base64
 import json
 import urllib.request
 import urllib.error
+import requests
 from datetime import datetime, timezone
 from difflib import SequenceMatcher
 from collections import OrderedDict
@@ -833,28 +834,27 @@ def push_pdfs(cycle_id):
                 unit, dict(cycle),
                 inspection_date=unit.get('inspection_date'))
 
-            payload = json.dumps({
-                'filename': filename,
-                'unit_number': unit['unit_number'],
-                'block': unit.get('block', ''),
-                'floor': floor_names.get(unit.get('floor'), ''),
-                'cycle_number': cycle['cycle_number'],
-                'cycle_id': cycle_id,
-                'pdf_base64': base64.b64encode(pdf_bytes).decode('ascii')
-            }).encode('utf-8')
+            resp = requests.post(
+                webhook_url,
+                files={'file': (filename, pdf_bytes, 'application/pdf')},
+                data={
+                    'filename': filename,
+                    'unit_number': unit['unit_number'],
+                    'block': unit.get('block', ''),
+                    'floor': floor_names.get(unit.get('floor'), ''),
+                    'cycle_number': str(cycle['cycle_number']),
+                    'cycle_id': cycle_id
+                },
+                timeout=30
+            )
+            if resp.status_code in (200, 201, 202):
+                success_count += 1
+            else:
+                errors.append('Unit {}: HTTP {}'.format(
+                    unit['unit_number'], resp.status_code))
+                fail_count += 1
 
-            req = urllib.request.Request(
-                webhook_url, data=payload,
-                headers={'Content-Type': 'application/json'})
-            with urllib.request.urlopen(req, timeout=30) as resp:
-                if resp.status in (200, 201, 202):
-                    success_count += 1
-                else:
-                    errors.append('Unit {}: HTTP {}'.format(
-                        unit['unit_number'], resp.status))
-                    fail_count += 1
-
-        except urllib.error.URLError as e:
+        except requests.exceptions.RequestException as e:
             errors.append('Unit {}: {}'.format(
                 unit['unit_number'], str(e)[:100]))
             fail_count += 1
