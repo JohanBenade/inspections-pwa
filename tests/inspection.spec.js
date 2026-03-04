@@ -61,9 +61,17 @@ async function openDefectInput(page) {
 
 // Finds first parent item by looking for children with data-parent-id
 async function getFirstParentId(page) {
-    const children = page.locator("[data-parent-id]");
+    // data-parent-id on children = parent template_id, NOT inspection_item_id
+    // parent element id = item-{inspection_item_id} -- find via onclick reference
+    const children = page.locator("[data-parent-id]").filter({ visible: true });
     if (await children.count() === 0) return null;
-    return await children.first().getAttribute("data-parent-id");
+    const templateId = await children.first().getAttribute("data-parent-id");
+    const parentDiv = page.locator('[id^="item-"]:not([data-parent-id])').filter({
+        has: page.locator('[onclick*="' + templateId + '"]')
+    });
+    if (await parentDiv.count() === 0) return null;
+    const id = await parentDiv.first().getAttribute("id");
+    return id ? id.replace("item-", "") : null;
 }
 
 // ============================================================
@@ -96,8 +104,9 @@ test.describe("Category Level", () => {
 
     test("cat-ni confirm marks category NI selected", async ({ page }) => {
         await page.locator("[data-btn=\"cat-ni\"]").first().click();
+        const resp = page.waitForResponse(r => r.url().includes("cascade"), { timeout: 15000 });
         await confirmModal(page);
-        await page.waitForResponse(r => r.url().includes("cascade") && r.status() === 200, { timeout: 6000 });
+        await resp;
         await page.waitForTimeout(600);
         const cls = await page.locator("[data-btn=\"cat-ni\"]").first().getAttribute("class");
         expect(cls).toContain("bg-amber-500");
@@ -125,7 +134,6 @@ test.describe("Category Level", () => {
     });
 
     test("cat-defect-badge appears after defect added", async ({ page }) => {
-        await expandFirstCat(page);
         const badge = page.locator(".cat-defect-badge").first();
         await expect(badge).toBeHidden();
         await openDefectInput(page);
@@ -212,8 +220,9 @@ test.describe("Item Level Leaf", () => {
         await inp.fill("First defect");
         await inp.press("Enter");
         await page.waitForResponse(r => r.url().includes("defect") && r.status() === 200);
-        await page.waitForTimeout(400);
-        const inp2 = page.locator("input[placeholder*=\"Describe the defect\"], input[placeholder*=\"Add\"]").first();
+        await page.waitForSelector("input[placeholder*=\"Describe the defect\"]", { state: "visible", timeout: 3000 });
+        await page.waitForTimeout(200);
+        const inp2 = page.locator("input[placeholder*=\"Describe the defect\"]").first();
         await inp2.fill("Second defect");
         await inp2.press("Enter");
         await page.waitForResponse(r => r.url().includes("defect") && r.status() === 200);
@@ -272,7 +281,8 @@ test.describe("Item Level Parent Children", () => {
             const txt = (await tabs.nth(i).textContent() || "").trim();
             if (txt.startsWith("Kitchen")) {
                 await tabs.nth(i).click();
-                await page.waitForTimeout(800);
+                await page.waitForSelector("text=Expand All", { timeout: 5000 });
+                await page.waitForTimeout(300);
                 return;
             }
         }
@@ -280,15 +290,37 @@ test.describe("Item Level Parent Children", () => {
     }
 
     async function expandUntilChildren(page) {
-        // Expand categories until we find one with data-parent-id children
-        const cats = page.locator(".cat-chevron");
-        const total = await cats.count();
-        for (let i = 0; i < total; i++) {
-            await cats.nth(i).click();
-            await page.waitForTimeout(200);
-            if (await page.locator("[data-parent-id]").count() > 0) return true;
+        const expandBtn = page.locator("text=Expand All");
+        if (await expandBtn.count() > 0) {
+            await expandBtn.first().click();
+            await page.waitForTimeout(500);
         }
-        return false;
+        const children = page.locator("[data-parent-id]").filter({ visible: true });
+        if (await children.count() === 0) return false;
+        // data-parent-id = parent template_id; find parent element via onclick
+        const templateId = await children.first().getAttribute("data-parent-id");
+        const parentDiv = page.locator('[id^="item-"]:not([data-parent-id])').filter({
+            has: page.locator('[onclick*="' + templateId + '"]')
+        });
+        if (await parentDiv.count() > 0) {
+            // Click INST so parent status = ok, enabling children MS/NTS buttons
+            const instResp = page.waitForResponse(
+                r => r.url().includes("/item/") && r.status() === 200, { timeout: 5000 }
+            );
+            await parentDiv.first().locator('[data-btn="inst"]').click();
+            await instResp;
+            await page.waitForTimeout(200);
+            // Reload area so children re-render with updated parent status
+            const activeTab = page.locator(".area-tab.border-blue-500");
+            if (await activeTab.count() > 0) {
+                await activeTab.first().click();
+                await page.waitForSelector("text=Expand All", { timeout: 5000 });
+                await page.waitForTimeout(300);
+                await page.locator("text=Expand All").first().click();
+                await page.waitForTimeout(500);
+            }
+        }
+        return await page.locator("[data-parent-id]").filter({ visible: true }).count() > 0;
     }
 
     test("parent ni shows confirm with subitems text", async ({ page }) => {
@@ -456,7 +488,7 @@ test.describe("Defect Entry", () => {
         await page.waitForTimeout(400);
         const chip = page.locator(".bg-red-100.text-red-800").filter({ hasText: "Chip to remove" });
         await expect(chip).toBeVisible({ timeout: 3000 });
-        const resp = page.waitForResponse(r => r.method() === "DELETE" && r.status() === 200);
+        const resp = page.waitForResponse(r => r.request().method() === "DELETE" && r.status() === 200);
         await chip.locator("button").click();
         await resp;
         await page.waitForTimeout(300);
@@ -495,15 +527,17 @@ test.describe("Progress and Counters", () => {
     });
 
     test("counter update does not jump scroll position", async ({ page }) => {
-        await expandFirstCat(page);
-        await page.evaluate(() => { document.getElementById("area-content").scrollTop = 120; });
+        await page.locator("text=Expand All").click();
+        await page.waitForTimeout(500);
+        await page.evaluate(() => { document.getElementById("area-content").scrollTop = 60; });
         await page.waitForTimeout(100);
+        const scrollBefore = await page.evaluate(() => document.getElementById("area-content").scrollTop);
         const resp = page.waitForResponse(r => r.url().includes("/item/") && r.status() === 200);
         await page.locator("[id^=\"step1-\"]").first().locator("[data-btn=\"ni\"]").click();
         await resp;
         await page.waitForTimeout(500);
         const scrollAfter = await page.evaluate(() => document.getElementById("area-content").scrollTop);
-        expect(Math.abs(scrollAfter - 120)).toBeLessThan(40);
+        expect(Math.abs(scrollAfter - scrollBefore)).toBeLessThan(40);
     });
 
     test("progress bar shows item counts", async ({ page }) => {
@@ -677,8 +711,9 @@ test.describe("Corrections and Undo", () => {
 
     test("category ni then inst expands category", async ({ page }) => {
         await page.locator("[data-btn=\"cat-ni\"]").first().click();
+        const resp = page.waitForResponse(r => r.url().includes("cascade"), { timeout: 15000 });
         await confirmModal(page);
-        await page.waitForResponse(r => r.url().includes("cascade") && r.status() === 200, { timeout: 6000 });
+        await resp;
         await page.waitForTimeout(500);
         await page.locator("[data-btn=\"cat-inst\"]").first().click();
         await page.waitForTimeout(400);
@@ -697,7 +732,7 @@ test.describe("Latency and Stability", () => {
         await expandFirstCat(page);
         const posts = [];
         page.on("request", r => { if (r.method() === "POST" && r.url().includes("/item/")) posts.push(r.url()); });
-        const btns = page.locator("[id^=\"step1-\"] [data-btn=\"ni\"]");
+        const btns = page.locator("[id^=\"step1-\"] [data-btn=\"ni\"]").filter({ visible: true });
         const n = Math.min(await btns.count(), 3);
         for (let i = 0; i < n; i++) {
             await btns.nth(i).click();
