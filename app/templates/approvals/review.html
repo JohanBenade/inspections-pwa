@@ -154,6 +154,13 @@
             {% if cycle.pdfs_pushed_at %}<span class="text-xs text-gray-400 ml-1">{{ cycle.pdfs_pushed_at|to_sast }}</span>{% endif %}
         </div>
         <p class="text-sm text-gray-500">PDFs downloaded. Send ZIP to Raubex.</p>
+        <form method="POST" action="{{ url_for('approvals.push_pdfs', cycle_id=cycle.id) }}" class="mt-2">
+            <button type="submit"
+                    class="w-full py-2 bg-gray-100 text-gray-700 text-sm font-medium rounded-lg hover:bg-gray-200 transition-colors"
+                    onclick="this.disabled=true;this.textContent='Preparing ZIP...';this.form.submit();">
+                Download Again
+            </button>
+        </form>
     </div>
 
     {% elif cycle.approved_at %}

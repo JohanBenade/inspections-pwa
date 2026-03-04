@@ -796,6 +796,8 @@ def push_pdfs(cycle_id):
         flash('Cycle must be signed off before downloading PDFs.', 'error')
         return redirect(url_for('approvals.review', cycle_id=cycle_id))
 
+    # No block on re-download -- Kevin can download ZIP multiple times
+
     units = [dict(r) for r in query_db("""
         SELECT u.id, u.unit_number, u.block, u.floor,
                i.inspection_date, i.id AS inspection_id
