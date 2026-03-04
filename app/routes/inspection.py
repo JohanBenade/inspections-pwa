@@ -110,8 +110,12 @@ def start_inspection(unit_id):
         """, [unit_id, cycle['cycle_number'] - 1, tenant_id], one=True)
     
     templates = query_db(
-        "SELECT id FROM item_template WHERE tenant_id = ?", [tenant_id]
+        "SELECT id, floor_condition FROM item_template WHERE tenant_id = ?", [tenant_id]
     )
+    
+    # Get unit floor for floor_condition filtering
+    unit_floor = query_db("SELECT floor FROM unit WHERE id = ?", [unit_id], one=True)
+    unit_floor_val = unit_floor['floor'] if unit_floor else 0
     
     # Get current cycle exclusions
     current_exclusions = set()
@@ -137,6 +141,10 @@ def start_inspection(unit_id):
         
         # Scenario 6: Current exclusion wins over everything
         if template_id in current_exclusions:
+            status = 'skipped'
+            comment = None
+        # Floor-based auto-exclusion (e.g. burglar bars ground_only)
+        elif t['floor_condition'] == 'ground_only' and unit_floor_val > 0:
             status = 'skipped'
             comment = None
         elif cycle['cycle_number'] > 1 and prev_item_map:
