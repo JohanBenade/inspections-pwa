@@ -4,6 +4,8 @@ Review defect descriptions, mark units reviewed, sign off cycles, push PDFs.
 Roles: manager + admin only.
 """
 import os
+import io
+import zipfile
 import base64
 import json
 import urllib.request
@@ -13,7 +15,7 @@ from datetime import datetime, timezone
 from difflib import SequenceMatcher
 from collections import OrderedDict
 from flask import (Blueprint, render_template, session, redirect,
-                   url_for, abort, request, flash)
+                   url_for, abort, request, flash, send_file)
 from app.auth import require_manager, require_team_lead
 from app.utils import generate_id
 from app.utils.audit import log_audit
@@ -776,7 +778,7 @@ def sign_off(cycle_id):
 @approvals_bp.route('/<cycle_id>/push-pdfs', methods=['POST'])
 @require_manager
 def push_pdfs(cycle_id):
-    """Generate and push PDFs to SharePoint via Make webhook."""
+    """Generate all PDFs for cycle and return as ZIP download."""
     from app.services.pdf_generator import generate_defects_pdf, generate_pdf_filename
 
     tenant_id = session['tenant_id']
@@ -791,19 +793,9 @@ def push_pdfs(cycle_id):
         abort(404)
 
     if not cycle['approved_at']:
-        flash('Cycle must be signed off before pushing PDFs.', 'error')
+        flash('Cycle must be signed off before downloading PDFs.', 'error')
         return redirect(url_for('approvals.review', cycle_id=cycle_id))
 
-    if cycle['pdfs_pushed_at']:
-        flash('PDFs have already been pushed for this cycle.', 'error')
-        return redirect(url_for('approvals.review', cycle_id=cycle_id))
-
-    webhook_url = os.environ.get('MAKE_WEBHOOK_URL', '')
-    if not webhook_url:
-        flash('Make webhook URL not configured. Set MAKE_WEBHOOK_URL in Render.', 'error')
-        return redirect(url_for('approvals.review', cycle_id=cycle_id))
-
-    # Get all units in this cycle
     units = [dict(r) for r in query_db("""
         SELECT u.id, u.unit_number, u.block, u.floor,
                i.inspection_date, i.id AS inspection_id
@@ -817,82 +809,54 @@ def push_pdfs(cycle_id):
         flash('No units found in this cycle.', 'error')
         return redirect(url_for('approvals.review', cycle_id=cycle_id))
 
-    floor_names = {0: 'Ground Floor', 1: '1st Floor', 2: '2nd Floor', 3: '3rd Floor'}
+    zip_buffer = io.BytesIO()
     success_count = 0
     fail_count = 0
-    errors = []
 
-    for unit in units:
-        try:
-            pdf_bytes = generate_defects_pdf(tenant_id, unit['id'], cycle_id)
-            if not pdf_bytes:
-                errors.append('Unit {}: PDF generation failed'.format(unit['unit_number']))
-                fail_count += 1
-                continue
-
-            filename = generate_pdf_filename(
-                unit, dict(cycle),
-                inspection_date=unit.get('inspection_date'))
-
-            resp = requests.post(
-                webhook_url,
-                files={'file': (filename, pdf_bytes, 'application/pdf')},
-                data={
-                    'filename': filename,
-                    'unit_number': unit['unit_number'],
-                    'block': unit.get('block', ''),
-                    'floor': floor_names.get(unit.get('floor'), ''),
-                    'cycle_number': str(cycle['cycle_number']),
-                    'cycle_id': cycle_id
-                },
-                timeout=30
-            )
-            if resp.status_code in (200, 201, 202):
+    with zipfile.ZipFile(zip_buffer, 'w', zipfile.ZIP_DEFLATED) as zf:
+        for unit in units:
+            try:
+                pdf_bytes = generate_defects_pdf(tenant_id, unit['id'], cycle_id)
+                if not pdf_bytes:
+                    fail_count += 1
+                    continue
+                filename = generate_pdf_filename(
+                    unit, dict(cycle),
+                    inspection_date=unit.get('inspection_date'))
+                zf.writestr(filename, pdf_bytes)
                 success_count += 1
-            else:
-                errors.append('Unit {}: HTTP {}'.format(
-                    unit['unit_number'], resp.status_code))
+            except Exception:
                 fail_count += 1
 
-        except requests.exceptions.RequestException as e:
-            errors.append('Unit {}: {}'.format(
-                unit['unit_number'], str(e)[:100]))
-            fail_count += 1
-        except Exception as e:
-            errors.append('Unit {}: {}'.format(
-                unit['unit_number'], str(e)[:100]))
-            fail_count += 1
+    if success_count == 0:
+        flash('PDF generation failed for all units.', 'error')
+        return redirect(url_for('approvals.review', cycle_id=cycle_id))
 
-    # Update cycle status
-    if success_count > 0:
-        push_status = 'complete' if fail_count == 0 else 'partial'
-        db.execute("""
-            UPDATE inspection_cycle
-            SET pdfs_pushed_at = ?, pdfs_push_status = ?
-            WHERE id = ?
-        """, [now, push_status, cycle_id])
+    # Mark cycle as downloaded
+    db.execute("""
+        UPDATE inspection_cycle
+        SET pdfs_pushed_at = ?, pdfs_push_status = ?
+        WHERE id = ?
+    """, [now, 'complete' if fail_count == 0 else 'partial', cycle_id])
 
-        log_audit(db, tenant_id, 'cycle', cycle_id, 'pdfs_pushed',
-                  new_value='{}/{} PDFs pushed'.format(
-                      success_count, success_count + fail_count),
-                  user_id=session['user_id'], user_name=session['user_name'])
+    log_audit(db, tenant_id, 'cycle', cycle_id, 'pdfs_downloaded',
+              new_value='{}/{} PDFs downloaded'.format(
+                  success_count, success_count + fail_count),
+              user_id=session['user_id'], user_name=session['user_name'])
 
-        db.commit()
+    db.commit()
 
-    block = cycle['block'] or 'Cycle'
-    if fail_count == 0:
-        flash('{} PDFs pushed to SharePoint for {}.'.format(
-            success_count, block), 'success')
-    elif success_count > 0:
-        flash('{} PDFs pushed, {} failed for {}. {}'.format(
-            success_count, fail_count, block,
-            '; '.join(errors[:3])), 'error')
-    else:
-        flash('All {} PDFs failed for {}. {}'.format(
-            fail_count, block,
-            errors[0] if errors else 'Unknown'), 'error')
+    zip_buffer.seek(0)
+    block_label = (cycle['block'] or 'Cycle').replace(' ', '_')
+    zip_filename = 'Defect_Reports_{}_{}.zip'.format(
+        block_label, cycle_id[:8])
 
-    return redirect(url_for('approvals.review', cycle_id=cycle_id))
+    return send_file(
+        zip_buffer,
+        mimetype='application/zip',
+        as_attachment=True,
+        download_name=zip_filename
+    )
 
 
 # ============================================================

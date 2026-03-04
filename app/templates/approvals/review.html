@@ -150,10 +150,10 @@
             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
             </svg>
-            <span class="font-medium">{{ stats.total }} PDFs pushed to SharePoint</span>
+            <span class="font-medium">{{ stats.total }} PDFs downloaded</span>
             {% if cycle.pdfs_pushed_at %}<span class="text-xs text-gray-400 ml-1">{{ cycle.pdfs_pushed_at|to_sast }}</span>{% endif %}
         </div>
-        <p class="text-sm text-gray-500">Cycle complete.</p>
+        <p class="text-sm text-gray-500">PDFs downloaded. Send ZIP to Raubex.</p>
     </div>
 
     {% elif cycle.approved_at %}
@@ -170,10 +170,10 @@
             <button type="submit"
                     class="w-full py-3 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 transition-colors"
                     onclick="this.disabled=true;this.textContent='Pushing PDFs...';this.form.submit();">
-                Push {{ stats.total }} PDFs to Raubex SharePoint
+                Download {{ stats.total }} PDFs as ZIP
             </button>
         </form>
-        <p class="text-xs text-gray-400">PDFs will include reviewed descriptions.</p>
+        <p class="text-xs text-gray-400">ZIP downloads to your machine. Send to Raubex manually.</p>
     </div>
 
     {% elif stats.reviewed == stats.total and stats.total > 0 %}
