@@ -139,7 +139,7 @@
             <div class="divide-y">
                 {% for item in category.checklist %}
                 {% if item.status != 'skipped' %}
-                <div id="item-{{ item.id }}"{% if item.parent_item_id %} data-parent-id="{{ item.parent_item_id }}"{% endif %}>
+                <div id="item-{{ item.id }}"{% if item.parent_item_id %} data-parent-id="{{ item.parent_item_id }}"{% endif %}{% if item.parent_item_id and item.parent_status in [none, "pending"] %} style="display:none"{% endif %}>
                 {% include 'inspection/_single_item.html' %}
                 </div>
                 {% endif %}
