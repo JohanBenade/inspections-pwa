@@ -92,7 +92,10 @@ def _count_needs_attention(tenant_id, cycle_id):
                COALESCE(d.reviewed_comment, d.original_comment) AS display_desc,
                d.item_template_id
         FROM defect d
+        JOIN inspection i ON i.unit_id = d.unit_id AND i.cycle_id = d.raised_cycle_id
+            AND i.tenant_id = d.tenant_id
         WHERE d.raised_cycle_id = ? AND d.status = 'open' AND d.tenant_id = ?
+        AND i.status NOT IN ('reviewed','pending_followup','approved','certified','closed')
     """, [cycle_id, tenant_id])
 
     if not defects:
