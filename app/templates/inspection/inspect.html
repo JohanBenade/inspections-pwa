@@ -91,7 +91,8 @@
 #area-content{scrollbar-width:auto;scrollbar-color:#cbd5e1 #f1f5f9}
 </style>
 <div id="area-content" class="p-4 pr-6" style="-webkit-overflow-scrolling:touch;overflow-y:auto"
-             {% if template %}hx-get="{{ url_for('inspection.inspect_area', inspection_id=inspection.id, area_id=template[0].id) }}" hx-trigger="load"{% endif %}>
+             hx-get="{{ url_for('inspection.inspect_area', inspection_id=inspection.id, area_id=template[0].id) if template else '' }}"
+             hx-trigger="{{ 'load' if template else 'none' }}">
             <div class="text-center py-8 text-gray-500">Loading...</div>
         </div>
     </div>
