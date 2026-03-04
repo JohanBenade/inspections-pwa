@@ -227,7 +227,9 @@ def inspect(inspection_id):
         AND ii.status != 'skipped'
         AND NOT (ii.status = 'ok' AND ii.marked_at IS NULL)
     """, [inspection_id]))
-    template = [a for a in template if a['id'] in active_area_ids]
+    # Only filter if there are active areas — prevents empty template on fresh inspections
+    if active_area_ids:
+        template = [a for a in template if a['id'] in active_area_ids]
     
     progress_raw = query_db("""
         SELECT 
