@@ -522,6 +522,54 @@ def pipeline():
     return render_template('approvals/pipeline.html', batches=batches)
 
 
+@approvals_bp.route('/batch/<batch_id>/set-milestone', methods=['POST'])
+@require_manager
+def set_batch_milestone(batch_id):
+    """Move all units in a batch to a target milestone status."""
+    tenant_id = session['tenant_id']
+    db = get_db()
+    now = datetime.now(timezone.utc).isoformat()
+
+    milestone = request.form.get('milestone')
+    STATUS_MAP = {
+        'received':   'not_started',
+        'inspected':  'submitted',
+        'reviewed':   'reviewed',
+        'signed_off': 'pending_followup',
+        'pushed':     'pending_followup',
+    }
+    if milestone not in STATUS_MAP:
+        abort(400)
+
+    target_status = STATUS_MAP[milestone]
+
+    # Get all units in batch
+    units = query_db("""
+        SELECT bu.id as bu_id, i.id as insp_id
+        FROM batch_unit bu
+        LEFT JOIN inspection i ON i.unit_id = bu.unit_id AND i.cycle_id = bu.cycle_id
+        WHERE bu.batch_id = ? AND bu.tenant_id = ? AND bu.status != 'removed'
+    """, [batch_id, tenant_id])
+
+    for u in units:
+        if u['insp_id']:
+            db.execute("""
+                UPDATE inspection SET status = ?, updated_at = ? WHERE id = ?
+            """, [target_status, now, u['insp_id']])
+        db.execute("""
+            UPDATE batch_unit SET status = ? WHERE id = ?
+        """, [target_status, u['bu_id']])
+
+    log_audit(db, tenant_id, 'batch', batch_id, 'milestone_set',
+              new_value=milestone,
+              user_id=session['user_id'], user_name=session['user_name'])
+
+    db.commit()
+
+    from flask import jsonify
+    return jsonify({'ok': True})
+
+
 @approvals_bp.route('/<cycle_id>/')
 @require_manager
 def review(cycle_id):

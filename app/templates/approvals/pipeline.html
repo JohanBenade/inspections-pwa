@@ -40,12 +40,22 @@
             ('Signed Off', b.signed_off_date, b.signed_off_date is not none),
             ('Pushed', b.pushed_date, b.pushed_date is not none)
         ] %}
+        {% set milestone_keys = ['received', 'inspected', 'reviewed', 'signed_off', 'pushed'] %}
         {% for label, date, done in milestones %}
             {% if not loop.first %}
             <div class="flex-1 h-0.5 {% if done %}bg-green-400{% else %}bg-gray-200{% endif %}"></div>
             {% endif %}
             <div class="flex flex-col items-center" style="min-width:60px;">
-                <div class="w-2.5 h-2.5 rounded-full {% if done %}bg-green-500{% else %}bg-gray-300{% endif %}"></div>
+                <button
+                    hx-post="{{ url_for('approvals.set_batch_milestone', batch_id=b.id) }}"
+                    hx-vals='{"milestone": "{{ milestone_keys[loop.index0] }}"}'
+                    hx-on::after-request="window.location.reload()"
+                    title="Move batch to {{ label }}"
+                    class="w-4 h-4 rounded-full border-2 transition-all
+                        {% if done %}bg-green-500 border-green-500 hover:bg-green-700 hover:border-green-700
+                        {% else %}bg-gray-200 border-gray-300 hover:bg-gray-400 hover:border-gray-400{% endif %}
+                        cursor-pointer focus:outline-none">
+                </button>
                 <span class="text-[10px] text-gray-400 mt-0.5">{{ label }}</span>
                 {% if date %}
                 <span class="text-[10px] text-gray-500 font-medium">{{ date[5:] }}</span>
