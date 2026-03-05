@@ -57,24 +57,21 @@ def _get_cycle_pipeline(tenant_id):
         total = c['total_inspections']
         c['has_inspections'] = total > 0
         # Pipeline stage
-        if c['pdfs_pushed_at']:
-            c['stage'] = 'pushed'
-            c['stage_label'] = 'PDFs Pushed'
-        elif c['approved_at']:
+        if c['approved_at'] or c['pdfs_pushed_at']:
             c['stage'] = 'signed_off'
             c['stage_label'] = 'Signed Off'
         elif c['reviewed_count'] == total and total > 0:
-            c['stage'] = 'all_reviewed'
-            c['stage_label'] = 'All Reviewed'
+            c['stage'] = 'reviewed'
+            c['stage_label'] = 'Reviewed'
         elif c['reviewed_count'] > 0:
             c['stage'] = 'reviewing'
             c['stage_label'] = 'Reviewing'
         elif c['submitted_count'] > 0:
-            c['stage'] = 'submitted'
-            c['stage_label'] = 'Submitted'
+            c['stage'] = 'inspected'
+            c['stage_label'] = 'Inspected'
         else:
-            c['stage'] = 'in_progress'
-            c['stage_label'] = 'In Progress'
+            c['stage'] = 'received'
+            c['stage_label'] = 'Received'
 
         # Count descriptions needing attention
         if total > 0:
@@ -202,24 +199,21 @@ def _get_batch_pipeline(tenant_id):
             total = zone['total_inspections']
             zone['needs_attention'] = _count_needs_attention(tenant_id, zone['cycle_id']) if total > 0 else 0
 
-            if zone.get('pdfs_pushed_at'):
-                zone['stage'] = 'pushed'
-                zone['stage_label'] = 'PDFs Pushed'
-            elif zone.get('approved_at'):
+            if zone.get('approved_at') or zone.get('pdfs_pushed_at'):
                 zone['stage'] = 'signed_off'
                 zone['stage_label'] = 'Signed Off'
             elif zone['reviewed_count'] == zone['batch_unit_count'] and zone['batch_unit_count'] > 0:
-                zone['stage'] = 'all_reviewed'
-                zone['stage_label'] = 'All Reviewed'
+                zone['stage'] = 'reviewed'
+                zone['stage_label'] = 'Reviewed'
             elif zone['reviewed_count'] > 0:
                 zone['stage'] = 'reviewing'
                 zone['stage_label'] = 'Reviewing'
             elif zone['submitted_count'] > 0:
-                zone['stage'] = 'submitted'
-                zone['stage_label'] = 'Submitted'
+                zone['stage'] = 'inspected'
+                zone['stage_label'] = 'Inspected'
             else:
-                zone['stage'] = 'in_progress'
-                zone['stage_label'] = 'In Progress'
+                zone['stage'] = 'received'
+                zone['stage_label'] = 'Received'
 
             # Floor label
             floor_map = {0: 'Ground', 1: '1st Floor', 2: '2nd Floor', 3: '3rd Floor'}
@@ -238,7 +232,7 @@ def _get_batch_pipeline(tenant_id):
 
         # Batch overall stage = worst zone
         if zones:
-            stage_order = ['in_progress', 'submitted', 'reviewing', 'all_reviewed', 'signed_off', 'pushed']
+            stage_order = ['received', 'inspected', 'reviewing', 'reviewed', 'signed_off']
             zone_stages = [z['stage'] for z in zones]
             worst = min(zone_stages, key=lambda s: stage_order.index(s) if s in stage_order else 0)
             batch['stage'] = worst
@@ -289,11 +283,10 @@ def _get_batch_pipeline(tenant_id):
         """, [batch['id'], tenant_id], one=True)
 
         if cycle_dates:
-            batch['signed_off_date'] = cycle_dates['last_approved'][:10] if cycle_dates['last_approved'] else None
-            batch['pushed_date'] = cycle_dates['last_pushed'][:10] if cycle_dates['last_pushed'] else None
+            last_signed = cycle_dates['last_approved'] or cycle_dates['last_pushed']
+            batch['signed_off_date'] = last_signed[:10] if last_signed else None
         else:
             batch['signed_off_date'] = None
-            batch['pushed_date'] = None
 
         # Categorise batch for sections (only count zones with actual inspections)
         active_zones = [z for z in zones if z['total_inspections'] > 0]
@@ -303,31 +296,26 @@ def _get_batch_pipeline(tenant_id):
             batch['stage'] = 'open'
             batch['stage_label'] = 'Open'
         else:
-            all_pushed = all(z['stage'] == 'pushed' for z in active_zones)
-            all_signed = all(z['stage'] in ('signed_off', 'pushed') for z in active_zones)
-            all_reviewed = all(z['stage'] in ('all_reviewed', 'signed_off', 'pushed') for z in active_zones)
-            any_progress = any(z['stage'] in ('in_progress', 'submitted', 'reviewing') for z in active_zones)
+            all_signed = all(z['stage'] == 'signed_off' for z in active_zones)
+            all_reviewed = all(z['stage'] in ('reviewed', 'signed_off') for z in active_zones)
+            any_progress = any(z['stage'] in ('inspected', 'reviewing') for z in active_zones)
 
-            if all_pushed:
-                batch['section'] = 'complete'
-                batch['stage'] = 'pushed'
-                batch['stage_label'] = 'PDFs Pushed'
-            elif all_signed:
+            if all_signed:
                 batch['section'] = 'complete'
                 batch['stage'] = 'signed_off'
                 batch['stage_label'] = 'Signed Off'
             elif all_reviewed:
                 batch['section'] = 'ready'
-                batch['stage'] = 'all_reviewed'
-                batch['stage_label'] = 'All Reviewed'
+                batch['stage'] = 'reviewed'
+                batch['stage_label'] = 'Reviewed'
             elif any_progress:
                 batch['section'] = 'progress'
-                batch['stage'] = 'in_progress'
-                batch['stage_label'] = 'In Progress'
+                batch['stage'] = 'inspected'
+                batch['stage_label'] = 'Inspected'
             else:
                 batch['section'] = 'progress'
-                batch['stage'] = 'submitted'
-                batch['stage_label'] = 'Submitted'
+                batch['stage'] = 'received'
+                batch['stage_label'] = 'Received'
 
         result.append(batch)
 

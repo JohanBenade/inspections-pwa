@@ -38,8 +38,9 @@
                     <option value="received">Received</option>
                     <option value="inspected">Inspected</option>
                     <option value="reviewed">Reviewed</option>
+                    <option value="reviewed">Reviewed</option>
                     <option value="signed_off">Signed Off</option>
-                    <option value="pushed">Pushed</option>
+
                 </select>
             </div>
             <button type="submit"
@@ -84,10 +85,9 @@
             ('Received', b.created_date, true),
             ('Inspected', b.last_submitted_date, b.last_submitted_date is not none),
             ('Reviewed', b.last_reviewed_date, b.last_reviewed_date is not none),
-            ('Signed Off', b.signed_off_date, b.signed_off_date is not none),
-            ('Pushed', b.pushed_date, b.pushed_date is not none)
+            ('Signed Off', b.signed_off_date, b.signed_off_date is not none)
         ] %}
-        {% set milestone_keys = ['received', 'inspected', 'reviewed', 'signed_off', 'pushed'] %}
+        {% set milestone_keys = ['received', 'inspected', 'reviewed', 'signed_off'] %}
         {% for label, date, done in milestones %}
             {% if not loop.first %}
             <div class="flex-1 h-0.5 {% if done %}bg-green-400{% else %}bg-gray-200{% endif %}"></div>
