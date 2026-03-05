@@ -22,12 +22,7 @@
       <td class="desc">{{ d.reviewed_comment or d.original_comment }}</td>
       <td class="time-ago"><span data-created="{{ d.created_at }}"></span></td>
       <td>
-        <button class="btn-edit" onclick="startEdit(
-          '{{ d.id }}',
-          'row-{{ d.id }}',
-          '{{ d.unit_number }} — {{ d.area_name }} › {{ d.category_name }}',
-          {{ (d.reviewed_comment or d.original_comment)|tojson }}
-        )">Edit</button>
+        <button class="btn-edit" onclick="startEdit('{{ d.id }}','row-{{ d.id }}','{{ d.unit_number }} - {{ d.area_name }} - {{ d.category_name }}',{{ (d.reviewed_comment or d.original_comment)|tojson }})">Edit</button>
       </td>
     </tr>
     {% endfor %}
