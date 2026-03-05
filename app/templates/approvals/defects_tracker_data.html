@@ -22,7 +22,7 @@
       <td class="desc">{{ d.reviewed_comment or d.original_comment }}</td>
       <td class="time-ago"><span data-created="{{ d.created_at }}"></span></td>
       <td>
-        <button class="btn-edit" onclick="startEdit('{{ d.id }}','row-{{ d.id }}','{{ d.unit_number }} - {{ d.area_name }} - {{ d.category_name }}',{{ (d.reviewed_comment or d.original_comment)|tojson }})">Edit</button>
+        <button class="btn-edit" data-id="{{ d.id }}" data-row="row-{{ d.id }}" data-ctx="{{ d.unit_number }} - {{ d.area_name }} - {{ d.category_name }}" data-desc="{{ (d.reviewed_comment or d.original_comment)|e }}" onclick="startEdit(this.dataset.id,this.dataset.row,this.dataset.ctx,this.dataset.desc)">Edit</button>
       </td>
     </tr>
     {% endfor %}
