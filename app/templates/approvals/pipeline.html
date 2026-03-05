@@ -129,7 +129,7 @@
                     <div class="flex items-center gap-3 mt-1 text-xs text-gray-500">
                         <span>{{ z.batch_unit_count }} units</span>
                         <span>{{ z.defect_count }} defects</span>
-                        <span class="font-medium {% if z.reviewed_count == z.total_inspections %}text-green-600{% elif z.reviewed_count > 0 %}text-blue-600{% endif %}">
+                        <span class="font-medium {% if z.reviewed_count == z.batch_unit_count %}text-green-600{% elif z.reviewed_count > 0 %}text-blue-600{% endif %}">
                             {{ z.reviewed_count }}/{{ z.batch_unit_count }} reviewed
                         </span>
                     </div>
