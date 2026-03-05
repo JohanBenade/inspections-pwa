@@ -1805,7 +1805,7 @@ def get_defect_suggestions(item_template_id):
         SELECT description, usage_count FROM defect_library
         WHERE tenant_id = ? AND item_template_id = ?
         ORDER BY usage_count DESC
-        LIMIT 8
+        LIMIT 5
     """, [tenant_id, item_template_id])
     
     if not suggestions:

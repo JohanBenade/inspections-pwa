@@ -1835,15 +1835,21 @@ def cleanup_suggestions():
     if not cat:
         return ''
 
-    # Item-specific entries first, then category-level
+    # Item-specific first; category fallback only if no item-specific exist
     entries = [dict(r) for r in query_db("""
-        SELECT id, description, usage_count,
-            CASE WHEN item_template_id = ? THEN 1 ELSE 0 END AS is_item_specific
+        SELECT id, description, usage_count
         FROM defect_library
-        WHERE tenant_id = ? AND (item_template_id = ? OR
-            (item_template_id IS NULL AND category_name = ?))
-        ORDER BY is_item_specific DESC, usage_count DESC
-    """, [item_template_id, tenant_id, item_template_id, cat['category_name']])]
+        WHERE tenant_id = ? AND item_template_id = ?
+        ORDER BY usage_count DESC LIMIT 5
+    """, [tenant_id, item_template_id])]
+
+    if not entries:
+        entries = [dict(r) for r in query_db("""
+            SELECT id, description, usage_count
+            FROM defect_library
+            WHERE tenant_id = ? AND category_name = ? AND item_template_id IS NULL
+            ORDER BY usage_count DESC LIMIT 5
+        """, [tenant_id, cat['category_name']])]
 
     # Filter by query text if provided
     if query_text:
@@ -1853,7 +1859,7 @@ def cleanup_suggestions():
         return '<div class="sugg-empty">No suggestions found</div>'
 
     html = ''
-    for e in entries[:15]:
+    for e in entries[:5]:
         html += ('<div class="sugg-item" '
                  'data-lib-id="' + e['id'] + '" '
                  'data-desc="' + e['description'].replace('"', '&quot;') + '">'
