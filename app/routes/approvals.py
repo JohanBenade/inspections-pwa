@@ -1040,6 +1040,7 @@ def batch_push_pdfs(batch_id):
         JOIN inspection_cycle ic ON bu.cycle_id = ic.id
         LEFT JOIN inspection i ON i.unit_id = u.id AND i.cycle_id = bu.cycle_id
         WHERE bu.batch_id = ? AND bu.tenant_id = ? AND bu.status != 'removed'
+        AND i.id IS NOT NULL
         ORDER BY u.block, u.floor, u.unit_number
     """, [batch_id, tenant_id]) or []]
     print('BATCH_PUSH_PDFS units found: {}'.format(len(units)))
