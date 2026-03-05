@@ -163,7 +163,7 @@ def _get_batch_pipeline(tenant_id):
                    COUNT(DISTINCT bu.unit_id) as batch_unit_count
             FROM batch_unit bu
             JOIN inspection_cycle ic ON bu.cycle_id = ic.id
-            WHERE bu.batch_id = ? AND bu.tenant_id = ?
+            WHERE bu.batch_id = ? AND bu.tenant_id = ? AND bu.removed_at IS NULL
             GROUP BY ic.id
             ORDER BY ic.block, ic.floor, ic.cycle_number
         """, [batch['id'], tenant_id])
