@@ -26,9 +26,6 @@
                 {% endif %}
             </div>
             <div class="flex items-center space-x-2">
-                {% if batch.locked %}
-                <span class="px-2.5 py-1 text-xs font-semibold rounded-full bg-red-100 text-red-700">Locked</span>
-                {% endif %}
                 {% if batch.status == 'open' %}
                 <span class="px-2.5 py-1 text-xs font-semibold rounded-full bg-gray-100 text-gray-600">Open</span>
                 {% elif batch.status == 'in_progress' %}

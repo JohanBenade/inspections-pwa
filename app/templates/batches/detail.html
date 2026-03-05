@@ -30,7 +30,7 @@
     <a href="{{ url_for('batches.live_monitor', batch_id=batch.id) }}" class="px-3 py-1.5 text-xs font-semibold rounded bg-gray-800 text-amber-400 hover:bg-gray-700 mr-2">Live Monitor</a>
     {%- endif %}
 
-    {%- if s in ('open', 'in_progress') %}
+    {%- if s not in ('complete', 'signed_off') %}
     <form method="POST" action="{{ url_for('batches.toggle_lock', batch_id=batch.id) }}" class="inline mr-2">
         {% if batch.locked %}
         <button type="submit" class="px-3 py-1.5 text-xs font-semibold rounded bg-red-50 text-red-600 border border-red-200 hover:bg-red-100">Unlock Batch</button>
