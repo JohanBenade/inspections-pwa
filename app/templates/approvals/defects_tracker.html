@@ -54,7 +54,7 @@ td{padding:0.65rem 1rem;font-size:0.8rem;vertical-align:middle;}
     <div class="topbar-batch">{{ batch.name }}</div>
     <div class="live-badge"><div class="live-dot"></div>LIVE</div>
   </div>
-  <a href="{{ url_for('batches.detail', batch_id=batch.id) }}" class="back-link">Back to Batch</a>
+  <div style="display:flex;gap:1rem;align-items:center;"><a href="{{ url_for('batches.detail', batch_id=batch.id) }}" class="back-link">← Batch</a><a href="{{ url_for('batches.live_monitor', batch_id=batch_id) }}" class="back-link" style="color:#c8963e;">Live Monitor →</a></div>
 </div>
 <div id="tracker-feed"
      hx-get="{{ url_for('approvals.defects_tracker_data', batch_id=batch_id) }}"

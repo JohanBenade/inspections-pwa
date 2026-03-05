@@ -330,7 +330,7 @@
     </div>
     <div class="command-right">
         <span class="clock" id="clock"></span>
-        <a href="{{ url_for('batches.detail', batch_id=batch.id) }}" class="back-link">Back to Batch</a>
+        <div style="display:flex;gap:1rem;align-items:center;"><a href="{{ url_for('batches.detail', batch_id=batch.id) }}" class="back-link">← Batch</a><a href="{{ url_for('approvals.defects_tracker', batch_id=batch.id) }}" class="back-link" style="color:#34d399;">Defects Tracker →</a></div>
     </div>
 </div>
 
