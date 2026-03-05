@@ -85,7 +85,7 @@
                     <span class="text-gray-500">C{{ u.cycle_number }}</span>
                     {% endif %}
                 </td>
-                <td class="px-4 py-3">
+                <td class="px-4 py-3" id="unit-status-{{ u.bu_id }}">
                     {% if u.bu_status == "not_started" and u.inspector_id %}
                     <span class="text-xs text-blue-600">Assigned</span>
                     {% elif u.bu_status == "not_started" %}
