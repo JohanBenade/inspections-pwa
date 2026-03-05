@@ -104,7 +104,7 @@
         </div>
         <div class="rounded-lg py-2 px-1 {% if stats.to_fix > 0 %}bg-amber-50{% else %}bg-green-50{% endif %}">
             <div class="text-lg font-bold {% if stats.to_fix > 0 %}text-amber-600{% else %}text-green-600{% endif %}">{{ stats.to_fix }}</div>
-            <div class="text-[10px] {% if stats.to_fix > 0 %}text-amber-500{% else %}text-green-500{% endif %} uppercase tracking-wide">To Fix</div>
+            <div class="text-[10px] {% if stats.to_fix > 0 %}text-amber-500{% else %}text-green-500{% endif %} uppercase tracking-wide">To Review</div>
         </div>
     </div>
 
@@ -123,7 +123,7 @@
 <!-- Explainer -->
 {% if stats.to_fix > 0 %}
 <div class="bg-amber-50 border border-amber-200 rounded-lg px-4 py-3 mb-4 text-sm text-amber-800">
-    <strong>{{ stats.to_fix }} descriptions need cleaning</strong> before PDFs go to Raubex.
+    <strong>{{ stats.to_fix }} descriptions need reviewing</strong> before PDFs go to Raubex.
     Expand a unit, tap a blue suggestion to accept it, or tap the description to type your own.
     Once all descriptions are clean, mark the unit as reviewed.
 </div>
@@ -217,7 +217,7 @@
         <div class="flex items-center gap-3">
             {% if unit.to_fix > 0 %}
             <span class="text-xs font-medium text-amber-600 bg-amber-50 px-2 py-0.5 rounded-full">
-                {{ unit.to_fix }} to fix
+                {{ unit.to_fix }} to review
             </span>
             {% else %}
             <span class="text-xs font-medium text-green-600 bg-green-50 px-2 py-0.5 rounded-full">
