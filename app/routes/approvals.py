@@ -285,8 +285,7 @@ def _get_batch_pipeline(tenant_id):
         """, [batch['id'], tenant_id], one=True)
 
         if cycle_dates:
-            last_signed = cycle_dates['last_approved'] or cycle_dates['last_pushed']
-            batch['signed_off_date'] = last_signed[:10] if last_signed else None
+            batch['signed_off_date'] = cycle_dates['last_approved'][:10] if cycle_dates['last_approved'] else None
         else:
             batch['signed_off_date'] = None
 
