@@ -75,6 +75,10 @@ def start_inspection(unit_id):
             inspector_id = ?, inspector_name = ?, updated_at = ?
             WHERE id = ?
         """, [now, user_id, user_name, now, inspection_id])
+        db.execute("""
+            UPDATE batch_unit SET status = 'inspecting'
+            WHERE unit_id = ? AND cycle_id = ? AND tenant_id = ? AND status = 'assigned'
+        """, [unit_id, cycle_id, tenant_id])
     else:
         inspection_id = generate_id()
         now = datetime.now(timezone.utc).isoformat()
@@ -925,6 +929,11 @@ def update_item(inspection_id, item_id):
                 UPDATE inspection SET status = 'in_progress', started_at = ?, updated_at = ?
                 WHERE id = ?
             """, [now, now, inspection_id])
+            db.execute("""
+                UPDATE batch_unit SET status = 'inspecting'
+                WHERE unit_id = ? AND cycle_id = (SELECT cycle_id FROM inspection WHERE id = ?)
+                AND tenant_id = ? AND status = 'assigned'
+            """, [inspection['unit_id'], inspection_id, tenant_id])
         
         db.commit()
     
