@@ -1023,6 +1023,7 @@ def batch_push_pdfs(batch_id):
     """Generate PDFs for all units in a batch and return as single ZIP."""
     from app.services.pdf_generator import generate_defects_pdf, generate_pdf_filename
     tenant_id = session['tenant_id']
+    print('BATCH_PUSH_PDFS called: batch_id={} tenant={}'.format(batch_id, tenant_id))
     db = get_db()
     now = datetime.now(timezone.utc).isoformat()
     batch = query_db(
@@ -1041,6 +1042,9 @@ def batch_push_pdfs(batch_id):
         WHERE bu.batch_id = ? AND bu.tenant_id = ? AND bu.status != 'removed'
         ORDER BY u.block, u.floor, u.unit_number
     """, [batch_id, tenant_id]) or []]
+    print('BATCH_PUSH_PDFS units found: {}'.format(len(units)))
+    for u in units:
+        print('  unit={} cycle={}'.format(u.get('unit_number'), u.get('cycle_id')))
     if not units:
         from flask import jsonify
         return jsonify({'ok': False, 'error': 'No units found'}), 400
