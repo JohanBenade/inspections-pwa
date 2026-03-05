@@ -983,6 +983,109 @@ def _render_defect_row(defect_id, cycle_id, tenant_id, is_clean=True):
 # DEFECTS CLEANUP - Power tool for description quality
 # ============================================================
 
+@approvals_bp.route('/batch/<batch_id>/sign-off', methods=['POST'])
+@require_manager
+def batch_sign_off(batch_id):
+    """Sign off all reviewed cycles in a batch."""
+    tenant_id = session['tenant_id']
+    db = get_db()
+    now = datetime.now(timezone.utc).isoformat()
+    cycles = query_db("""
+        SELECT DISTINCT bu.cycle_id, ic.approved_at
+        FROM batch_unit bu
+        JOIN inspection_cycle ic ON bu.cycle_id = ic.id
+        WHERE bu.batch_id = ? AND bu.tenant_id = ? AND bu.status != 'removed'
+    """, [batch_id, tenant_id])
+    signed = 0
+    for cycle in cycles:
+        if cycle['approved_at']:
+            continue
+        db.execute("""
+            UPDATE inspection SET status = 'pending_followup', updated_at = ?
+            WHERE cycle_id = ? AND tenant_id = ? AND status = 'reviewed'
+        """, [now, cycle['cycle_id'], tenant_id])
+        db.execute("""
+            UPDATE inspection_cycle SET approved_at = ?, approved_by = ?
+            WHERE id = ?
+        """, [now, session['user_name'], cycle['cycle_id']])
+        log_audit(db, tenant_id, 'cycle', cycle['cycle_id'], 'approved',
+                  new_value='signed_off',
+                  user_id=session['user_id'], user_name=session['user_name'])
+        signed += 1
+    db.commit()
+    from flask import jsonify
+    return jsonify({'ok': True, 'signed': signed})
+
+
+@approvals_bp.route('/batch/<batch_id>/push-pdfs', methods=['POST'])
+@require_manager
+def batch_push_pdfs(batch_id):
+    """Generate PDFs for all units in a batch and return as single ZIP."""
+    from app.services.pdf_generator import generate_defects_pdf, generate_pdf_filename
+    tenant_id = session['tenant_id']
+    db = get_db()
+    now = datetime.now(timezone.utc).isoformat()
+    batch = query_db(
+        'SELECT * FROM inspection_batch WHERE id = ? AND tenant_id = ?',
+        [batch_id, tenant_id], one=True)
+    if not batch:
+        abort(404)
+    units = query_db("""
+        SELECT u.id, u.unit_number, u.block, u.floor,
+               i.inspection_date, i.id AS inspection_id,
+               bu.cycle_id, ic.cycle_number, ic.approved_at
+        FROM batch_unit bu
+        JOIN unit u ON bu.unit_id = u.id
+        JOIN inspection_cycle ic ON bu.cycle_id = ic.id
+        LEFT JOIN inspection i ON i.unit_id = u.id AND i.cycle_id = bu.cycle_id
+        WHERE bu.batch_id = ? AND bu.tenant_id = ? AND bu.status != 'removed'
+        ORDER BY u.block, u.floor, u.unit_number
+    """, [batch_id, tenant_id])
+    if not units:
+        from flask import jsonify
+        return jsonify({'ok': False, 'error': 'No units found'}), 400
+    zip_buffer = io.BytesIO()
+    success_count = 0
+    fail_count = 0
+    cycle_ids = set()
+    with zipfile.ZipFile(zip_buffer, 'w', zipfile.ZIP_DEFLATED) as zf:
+        for unit in units:
+            cycle_ids.add(unit['cycle_id'])
+            try:
+                pdf_bytes = generate_defects_pdf(tenant_id, unit['id'], unit['cycle_id'])
+                if not pdf_bytes:
+                    fail_count += 1
+                    continue
+                cycle_dict = dict(unit)
+                filename = generate_pdf_filename(
+                    dict(unit), cycle_dict,
+                    inspection_date=unit.get('inspection_date'))
+                zf.writestr(filename, pdf_bytes)
+                success_count += 1
+            except Exception:
+                fail_count += 1
+    if success_count == 0:
+        from flask import jsonify
+        return jsonify({'ok': False, 'error': 'PDF generation failed'}), 500
+    for cycle_id in cycle_ids:
+        db.execute("""
+            UPDATE inspection_cycle SET pdfs_pushed_at = ?, pdfs_push_status = ?
+            WHERE id = ?
+        """, [now, 'complete' if fail_count == 0 else 'partial', cycle_id])
+        log_audit(db, tenant_id, 'cycle', cycle_id, 'pdfs_downloaded',
+                  new_value='{}/{} PDFs'.format(success_count, success_count + fail_count),
+                  user_id=session['user_id'], user_name=session['user_name'])
+    db.commit()
+    zip_buffer.seek(0)
+    batch_name = (batch['name'] or batch_id).replace(' ', '_')
+    return send_file(
+        zip_buffer,
+        mimetype='application/zip',
+        as_attachment=True,
+        download_name='Defect_Reports_{}.zip'.format(batch_name)
+    )
+
+
 @approvals_bp.route('/cleanup/')
 @require_team_lead
 def cleanup():
