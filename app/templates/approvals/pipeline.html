@@ -143,29 +143,14 @@
                         {{ z.needs_attention }}
                     </span>
                     {% endif %}
-                    {% if z.stage == 'all_reviewed' %}
-                    <form method="POST" action="{{ url_for('approvals.sign_off', cycle_id=z.cycle_id) }}" onclick="event.stopPropagation();">
-                        <input type="hidden" name="from_page" value="pipeline">
-                        <button type="submit" onclick="event.stopPropagation(); this.disabled=true; this.textContent='Signing off...'; this.form.submit();"
-                                class="px-3 py-1.5 bg-gray-900 text-white text-xs font-semibold rounded-lg hover:bg-gray-700 transition-colors whitespace-nowrap">
-                            Sign Off
-                        </button>
-                    </form>
-                    {% elif z.stage in ('signed_off', 'pushed') %}
-                    <form method="POST" action="{{ url_for('approvals.push_pdfs', cycle_id=z.cycle_id) }}" onclick="event.stopPropagation();">
-                        <button type="submit" onclick="event.stopPropagation(); this.disabled=true; this.textContent='Preparing...'; this.form.submit();"
-                                class="px-3 py-1.5 bg-yellow-500 text-white text-xs font-semibold rounded-lg hover:bg-yellow-600 transition-colors whitespace-nowrap">
-                            Push PDFs
-                        </button>
-                    </form>
-                    {% else %}
                     <span class="text-xs font-medium px-2 py-0.5 rounded-full
-                        {% if z.stage == 'reviewing' %}bg-purple-100 text-purple-700
+                        {% if z.stage == 'all_reviewed' %}bg-green-100 text-green-700
+                        {% elif z.stage in ('signed_off', 'pushed') %}bg-gray-100 text-gray-600
+                        {% elif z.stage == 'reviewing' %}bg-purple-100 text-purple-700
                         {% elif z.stage == 'submitted' %}bg-yellow-100 text-yellow-700
                         {% else %}bg-gray-100 text-gray-600{% endif %}">
                         {{ z.stage_label }}
                     </span>
-                    {% endif %}
                     <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
                     </svg>

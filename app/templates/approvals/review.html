@@ -137,20 +137,10 @@
 <div class="mb-4 bg-white rounded-xl border border-gray-200 p-5">
 
     {% if cycle.approved_at %}
-    <!-- State C+D: Signed off — Push PDFs always available -->
-    <div class="flex items-center justify-between gap-4">
-        <div>
-            <p class="text-sm font-medium text-gray-700">Signed off{% if cycle.approved_by %} by {{ cycle.approved_by }}{% endif %}</p>
-            {% if cycle.approved_at %}<p class="text-xs text-gray-400">{{ cycle.approved_at|to_sast }}</p>{% endif %}
-            {% if cycle.pdfs_pushed_at %}<p class="text-xs text-gray-400 mt-1">Last pushed {{ cycle.pdfs_pushed_at|to_sast }}</p>{% endif %}
-        </div>
-        <form method="POST" action="{{ url_for('approvals.push_pdfs', cycle_id=cycle.id) }}">
-            <button type="submit"
-                    class="px-5 py-2.5 bg-yellow-500 hover:bg-yellow-600 text-white text-sm font-semibold rounded-lg transition-colors whitespace-nowrap"
-                    onclick="this.disabled=true;this.textContent='Preparing...';this.form.submit();">
-                Push PDFs
-            </button>
-        </form>
+    <!-- State C+D: Signed off — read only -->
+    <div>
+        <p class="text-sm font-medium text-gray-700">Signed off{% if cycle.approved_by %} by {{ cycle.approved_by }}{% endif %}</p>
+        {% if cycle.approved_at %}<p class="text-xs text-gray-400">{{ cycle.approved_at|to_sast }}</p>{% endif %}
     </div>
 
     {% elif stats.reviewed == stats.total and stats.total > 0 %}

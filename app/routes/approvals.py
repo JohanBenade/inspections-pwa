@@ -1062,7 +1062,9 @@ def batch_push_pdfs(batch_id):
                     inspection_date=unit.get('inspection_date'))
                 zf.writestr(filename, pdf_bytes)
                 success_count += 1
-            except Exception:
+            except Exception as e:
+                import traceback
+                print('PDF ERROR unit {}: {}'.format(unit.get('unit_number'), traceback.format_exc()))
                 fail_count += 1
     if success_count == 0:
         from flask import jsonify
