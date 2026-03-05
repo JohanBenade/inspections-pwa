@@ -116,9 +116,7 @@
                 <div>
                     <div class="flex items-center gap-2">
                         <span class="font-medium text-gray-800 text-sm">{{ z.block }} &middot; {{ z.floor_label }}</span>
-                        {% if z.cycle_number > 1 %}
-                        <span class="text-xs px-1.5 py-0.5 rounded bg-amber-100 text-amber-700 font-medium">C{{ z.cycle_number }}</span>
-                        {% endif %}
+
                     </div>
                     <div class="flex items-center gap-3 mt-1 text-xs text-gray-500">
                         <span>{{ z.batch_unit_count }} units</span>
@@ -137,15 +135,15 @@
                         {{ z.needs_attention }}
                     </span>
                     {% endif %}
-                    {% if z.stage not in ('signed_off', 'pushed') %}
                     <span class="text-xs font-medium px-2 py-0.5 rounded-full
-                        {% if z.stage == 'all_reviewed' %}bg-green-100 text-green-700
+                        {% if z.stage in ('signed_off', 'pushed') %}bg-green-100 text-green-700
+                        {% elif z.stage == 'all_reviewed' %}bg-teal-100 text-teal-700
                         {% elif z.stage == 'reviewing' %}bg-purple-100 text-purple-700
                         {% elif z.stage == 'submitted' %}bg-yellow-100 text-yellow-700
-                        {% else %}bg-gray-100 text-gray-600{% endif %}">
+                        {% elif z.stage == 'inspecting' %}bg-blue-100 text-blue-700
+                        {% else %}bg-gray-100 text-gray-500{% endif %}">
                         {{ z.stage_label }}
                     </span>
-                    {% endif %}
                     <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
                     </svg>

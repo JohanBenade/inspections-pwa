@@ -181,13 +181,16 @@ def _get_batch_pipeline(tenant_id):
                     COUNT(DISTINCT CASE WHEN i.status = 'submitted' THEN i.id END) as submitted_count,
                     COUNT(DISTINCT CASE WHEN i.status IN ('reviewed','pending_followup') THEN i.id END) as reviewed_count,
                     COUNT(DISTINCT CASE WHEN i.status IN ('pending_followup', 'certified', 'closed') THEN i.id END) as signed_count,
-                    (SELECT COUNT(*) FROM defect d WHERE d.raised_cycle_id = ?
-                     AND d.status = 'open' AND d.tenant_id = ?) as defect_count
+                    (SELECT COUNT(*) FROM defect d
+                     JOIN batch_unit bu2 ON bu2.unit_id = d.unit_id
+                     WHERE d.raised_cycle_id = ? AND d.status = 'open'
+                     AND d.tenant_id = ? AND bu2.batch_id = ?
+                     AND bu2.removed_at IS NULL) as defect_count
                 FROM inspection i
                 JOIN batch_unit bu ON bu.unit_id = i.unit_id AND bu.cycle_id = i.cycle_id
                 WHERE i.cycle_id = ? AND i.tenant_id = ?
                 AND bu.batch_id = ? AND bu.removed_at IS NULL
-            """, [zone['cycle_id'], tenant_id, zone['cycle_id'], tenant_id, batch['id']], one=True)
+            """, [zone['cycle_id'], tenant_id, batch['id'], zone['cycle_id'], tenant_id, batch['id']], one=True)
 
             if cs:
                 zone.update(dict(cs))
