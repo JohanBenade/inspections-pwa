@@ -89,7 +89,7 @@ def list_batches():
             SUM(CASE WHEN i.status = 'in_progress' THEN 1 ELSE 0 END) AS in_progress,
             SUM(CASE WHEN i.status IS NULL OR i.status = 'not_started' THEN 1 ELSE 0 END) AS pending
         FROM inspection_batch ib
-        LEFT JOIN batch_unit bu ON bu.batch_id = ib.id
+        LEFT JOIN batch_unit bu ON bu.batch_id = ib.id AND bu.removed_at IS NULL
         LEFT JOIN inspection i ON i.unit_id = bu.unit_id AND i.cycle_id = bu.cycle_id
         WHERE ib.tenant_id = ?
         GROUP BY ib.id
