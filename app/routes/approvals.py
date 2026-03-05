@@ -182,12 +182,13 @@ def _get_batch_pipeline(tenant_id):
                     COUNT(DISTINCT CASE WHEN i.status IN ('reviewed','pending_followup') THEN i.id END) as reviewed_count,
                     COUNT(DISTINCT CASE WHEN i.status IN ('pending_followup', 'certified', 'closed') THEN i.id END) as signed_count,
                     (SELECT COUNT(*) FROM defect d WHERE d.raised_cycle_id = ?
-                     AND d.status = 'open' AND d.tenant_id = ?) as defect_count
+                     AND d.status = 'open' AND d.tenant_id = ?
+                     AND d.unit_id IN (SELECT unit_id FROM batch_unit WHERE batch_id = ? AND removed_at IS NULL)) as defect_count
                 FROM inspection i
                 JOIN batch_unit bu ON bu.unit_id = i.unit_id AND bu.cycle_id = i.cycle_id
                 WHERE i.cycle_id = ? AND i.tenant_id = ?
                 AND bu.batch_id = ? AND bu.removed_at IS NULL
-            """, [zone['cycle_id'], tenant_id, zone['cycle_id'], tenant_id, batch['id']], one=True)
+            """, [zone['cycle_id'], tenant_id, batch['id'], zone['cycle_id'], tenant_id, batch['id']], one=True)
 
             if cs:
                 zone.update(dict(cs))
@@ -201,7 +202,7 @@ def _get_batch_pipeline(tenant_id):
             total = zone['total_inspections']
             zone['needs_attention'] = _count_needs_attention(tenant_id, zone['cycle_id']) if total > 0 else 0
 
-            if zone.get('approved_at') or zone.get('pdfs_pushed_at'):
+            if batch.get('signed_off_at'):
                 zone['stage'] = 'signed_off'
                 zone['stage_label'] = 'Signed Off'
             elif zone['reviewed_count'] == zone['batch_unit_count'] and zone['batch_unit_count'] > 0:
