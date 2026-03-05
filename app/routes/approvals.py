@@ -681,8 +681,6 @@ def edit_defect(cycle_id):
     return redirect(url_for('approvals.review', cycle_id=cycle_id))
 
 
-@approvals_bp.route('/<cycle_id>/mark-reviewed', methods=['POST'])
-@require_manager
 def _update_batch_reviewed_milestone(db, tenant_id, cycle_id, now):
     """If all units in the batch containing this cycle are reviewed, write reviewed_at."""
     batch_row = query_db("""
@@ -714,7 +712,7 @@ def _update_batch_reviewed_milestone(db, tenant_id, cycle_id, now):
     if all_signed:
         db.execute("""
             UPDATE inspection_batch SET signed_off_at = COALESCE(signed_off_at, ?),
-                closed_at = COALESCE(closed_at, ?), status = 'complete', updated_at = ?
+                closed_at = COALESCE(closed_at, ?), status = 'signed_off', updated_at = ?
             WHERE id = ? AND tenant_id = ?
         """, [sign_counts['max_approved'], sign_counts['max_approved'], sign_counts['max_approved'], batch_id, tenant_id])
     if counts and counts['total'] > 0 and counts['reviewed_cnt'] == counts['total']:
@@ -724,6 +722,8 @@ def _update_batch_reviewed_milestone(db, tenant_id, cycle_id, now):
         """, [now, now, batch_id])
 
 
+@approvals_bp.route('/<cycle_id>/mark-reviewed', methods=['POST'])
+@require_manager
 def mark_reviewed(cycle_id):
     """Mark a single unit's inspection as reviewed."""
     tenant_id = session['tenant_id']
