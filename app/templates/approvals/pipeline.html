@@ -143,14 +143,15 @@
                         {{ z.needs_attention }}
                     </span>
                     {% endif %}
+                    {% if z.stage not in ('signed_off', 'pushed') %}
                     <span class="text-xs font-medium px-2 py-0.5 rounded-full
                         {% if z.stage == 'all_reviewed' %}bg-green-100 text-green-700
-                        {% elif z.stage in ('signed_off', 'pushed') %}bg-gray-100 text-gray-600
                         {% elif z.stage == 'reviewing' %}bg-purple-100 text-purple-700
                         {% elif z.stage == 'submitted' %}bg-yellow-100 text-yellow-700
                         {% else %}bg-gray-100 text-gray-600{% endif %}">
                         {{ z.stage_label }}
                     </span>
+                    {% endif %}
                     <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
                     </svg>
