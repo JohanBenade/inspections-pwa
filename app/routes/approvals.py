@@ -1030,7 +1030,7 @@ def batch_push_pdfs(batch_id):
         [batch_id, tenant_id], one=True)
     if not batch:
         abort(404)
-    units = query_db("""
+    units = [dict(r) for r in query_db("""
         SELECT u.id, u.unit_number, u.block, u.floor,
                i.inspection_date, i.id AS inspection_id,
                bu.cycle_id, ic.cycle_number, ic.approved_at
@@ -1040,7 +1040,7 @@ def batch_push_pdfs(batch_id):
         LEFT JOIN inspection i ON i.unit_id = u.id AND i.cycle_id = bu.cycle_id
         WHERE bu.batch_id = ? AND bu.tenant_id = ? AND bu.status != 'removed'
         ORDER BY u.block, u.floor, u.unit_number
-    """, [batch_id, tenant_id])
+    """, [batch_id, tenant_id]) or []]
     if not units:
         from flask import jsonify
         return jsonify({'ok': False, 'error': 'No units found'}), 400
