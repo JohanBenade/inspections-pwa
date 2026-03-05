@@ -276,18 +276,8 @@ def _get_batch_pipeline(tenant_id):
             batch['last_submitted_date'] = None
             batch['last_reviewed_date'] = None
 
-        # Signed off / pushed dates from cycles
-        cycle_dates = query_db("""
-            SELECT MAX(ic.approved_at) as last_approved, MAX(ic.pdfs_pushed_at) as last_pushed
-            FROM batch_unit bu
-            JOIN inspection_cycle ic ON bu.cycle_id = ic.id
-            WHERE bu.batch_id = ? AND bu.tenant_id = ?
-        """, [batch['id'], tenant_id], one=True)
-
-        if cycle_dates:
-            batch['signed_off_date'] = cycle_dates['last_approved'][:10] if cycle_dates['last_approved'] else None
-        else:
-            batch['signed_off_date'] = None
+        # Signed off date from batch record only
+        batch['signed_off_date'] = batch['signed_off_at'][:10] if batch.get('signed_off_at') else None
 
         # Categorise batch for sections (only count zones with actual inspections)
         active_zones = [z for z in zones if z['total_inspections'] > 0]
