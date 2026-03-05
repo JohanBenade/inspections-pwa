@@ -388,16 +388,7 @@
                         data-cat="{{ d.category_name }}"
                         data-item="{{ d.item_path }}"
                         data-desc="{{ d.display_desc or '' }}">Del</button>
-                    {% if filters.batch %}
-                    <button class="btn-edit" onclick="showExclude(this)"
-                        data-template-id="{{ d.item_template_id }}"
-                        data-item="{{ d.item_path }}"
-                        data-area="{{ d.area_name }}"
-                        data-cat="{{ d.category_name }}"
-                        title="Exclude from batch">Excl</button>
-                    {% else %}
-                    <button class="btn-disabled" title="Select a batch first">Excl</button>
-                    {% endif %}
+                    <button class="btn-disabled" title="Coming soon">Excl</button>
                     <button class="btn-disabled" title="Coming soon">Re-Insp</button>
                 </div></td>
             </tr>
