@@ -57,7 +57,7 @@
             <h3 class="text-lg font-semibold text-gray-900">{{ b.name }}</h3>
             <p class="text-xs text-gray-400 mt-0.5">
                 {{ b.total_units }} unit{{ 's' if b.total_units != 1 }}
-                &middot; {{ b.zones|selectattr('total_inspections', 'gt', 0)|list|length }} zone{{ 's' if b.zones|selectattr('total_inspections', 'gt', 0)|list|length != 1 }}
+                &middot; {{ b.zones|selectattr('batch_unit_count', 'gt', 0)|list|length }} zone{{ 's' if b.zones|selectattr('batch_unit_count', 'gt', 0)|list|length != 1 }}
                 {% if b.notes %}&middot; {{ b.notes|safe }}{% endif %}
             </p>
         </div>
@@ -115,7 +115,7 @@
     <!-- Zones -->
     <div class="space-y-2">
     {% for z in b.zones %}
-    {% if z.total_inspections > 0 %}
+    {% if z.batch_unit_count > 0 %}
         <a href="{{ url_for('approvals.review', cycle_id=z.cycle_id) }}"
            class="block rounded-lg border border-gray-100 hover:border-primary/40 hover:bg-gray-50 transition-all p-3">
             <div class="flex items-center justify-between">
@@ -127,10 +127,10 @@
                         {% endif %}
                     </div>
                     <div class="flex items-center gap-3 mt-1 text-xs text-gray-500">
-                        <span>{{ z.total_inspections }} units</span>
+                        <span>{{ z.batch_unit_count }} units</span>
                         <span>{{ z.defect_count }} defects</span>
                         <span class="font-medium {% if z.reviewed_count == z.total_inspections %}text-green-600{% elif z.reviewed_count > 0 %}text-blue-600{% endif %}">
-                            {{ z.reviewed_count }}/{{ z.total_inspections }} reviewed
+                            {{ z.reviewed_count }}/{{ z.batch_unit_count }} reviewed
                         </span>
                     </div>
                 </div>

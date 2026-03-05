@@ -208,7 +208,7 @@ def _get_batch_pipeline(tenant_id):
             elif zone.get('approved_at'):
                 zone['stage'] = 'signed_off'
                 zone['stage_label'] = 'Signed Off'
-            elif zone['reviewed_count'] == total and total > 0:
+            elif zone['reviewed_count'] == zone['batch_unit_count'] and zone['batch_unit_count'] > 0:
                 zone['stage'] = 'all_reviewed'
                 zone['stage_label'] = 'All Reviewed'
             elif zone['reviewed_count'] > 0:
