@@ -15,8 +15,11 @@ body{background:#0a0a0a;color:#e5e7eb;font-family:system-ui,sans-serif;min-heigh
 .live-badge{display:flex;align-items:center;gap:0.4rem;font-size:0.7rem;font-weight:700;color:#34d399;letter-spacing:0.1em;}
 .live-dot{width:8px;height:8px;background:#34d399;border-radius:50%;animation:pulse 2s infinite;}
 @keyframes pulse{0%,100%{opacity:1;transform:scale(1);}50%{opacity:0.5;transform:scale(1.3);}}
+.topbar-nav{display:flex;gap:1rem;align-items:center;}
 .back-link{font-size:0.75rem;color:#6b7280;text-decoration:none;}
 .back-link:hover{color:#9ca3af;}
+.back-link.gold{color:#c8963e;}
+.back-link.gold:hover{color:#e0aa50;}
 .counter{font-size:0.75rem;color:#6b7280;padding:0.75rem 1.5rem 0.5rem;}
 .counter span{color:#34d399;font-weight:700;}
 table{width:100%;border-collapse:collapse;}
@@ -32,17 +35,23 @@ td{padding:0.65rem 1rem;font-size:0.8rem;vertical-align:middle;}
 .btn-edit{background:#1f2937;color:#34d399;border:1px solid #374151;border-radius:4px;padding:0.3rem 0.65rem;font-size:0.72rem;cursor:pointer;white-space:nowrap;}
 .btn-edit:hover{background:#374151;}
 .empty{text-align:center;padding:4rem;color:#4b5563;font-size:0.9rem;}
-.overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.8);z-index:200;align-items:center;justify-content:center;}
-.overlay.active{display:flex;}
-.panel{background:#1a1a1a;border:1px solid #2d2d2d;border-radius:8px;padding:1.5rem;width:100%;max-width:480px;}
-.panel h3{color:#f3f4f6;font-size:1rem;margin-bottom:0.25rem;}
-.panel .ctx{font-size:0.75rem;color:#6b7280;margin-bottom:1rem;}
-.panel label{display:block;font-size:0.72rem;color:#9ca3af;margin-bottom:0.3rem;margin-top:0.75rem;}
-.panel input[type=text]{width:100%;background:#0f0f0f;border:1px solid #374151;border-radius:4px;color:#f3f4f6;padding:0.5rem 0.75rem;font-size:0.85rem;outline:none;}
-.panel input[type=text]:focus{border-color:#34d399;}
-.panel-btns{display:flex;gap:0.5rem;margin-top:1rem;}
+.edit-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.85);z-index:200;align-items:center;justify-content:center;}
+.edit-overlay.active{display:flex;}
+.edit-panel{background:#1a1a1a;border:1px solid #2d2d2d;border-radius:8px;padding:1.5rem;width:100%;max-width:520px;max-height:90vh;overflow-y:auto;}
+.edit-panel h3{color:#f3f4f6;font-size:1rem;margin-bottom:0.25rem;}
+.edit-context{font-size:0.75rem;color:#6b7280;margin-bottom:1rem;line-height:1.5;}
+.edit-panel label{display:block;font-size:0.72rem;color:#9ca3af;margin-bottom:0.3rem;margin-top:0.75rem;}
+.edit-panel input[type=text]{width:100%;background:#0f0f0f;border:1px solid #374151;border-radius:4px;color:#f3f4f6;padding:0.5rem 0.75rem;font-size:0.85rem;outline:none;}
+.edit-panel input[type=text]:focus{border-color:#34d399;}
+.edit-panel select{width:100%;background:#0f0f0f;border:1px solid #374151;border-radius:4px;color:#f3f4f6;padding:0.5rem 0.75rem;font-size:0.85rem;outline:none;}
+.sugg-container{margin-top:0.4rem;display:flex;flex-wrap:wrap;gap:0.3rem;min-height:1rem;}
+.sugg-item{background:#1f2937;border:1px solid #374151;border-radius:12px;padding:0.25rem 0.6rem;font-size:0.72rem;color:#d1d5db;cursor:pointer;}
+.sugg-item:hover{background:#374151;}
+.edit-buttons{display:flex;gap:0.5rem;margin-top:1rem;flex-wrap:wrap;}
 .btn-save{background:#1f2937;color:#f3f4f6;border:none;border-radius:4px;padding:0.5rem 1rem;font-size:0.8rem;cursor:pointer;}
 .btn-save:hover{background:#374151;}
+.btn-save-apply{background:#92400e;color:#fef3c7;border:none;border-radius:4px;padding:0.5rem 1rem;font-size:0.8rem;cursor:pointer;}
+.btn-save-apply:hover{background:#b45309;}
 .btn-cancel{background:transparent;color:#6b7280;border:1px solid #374151;border-radius:4px;padding:0.5rem 1rem;font-size:0.8rem;cursor:pointer;}
 .btn-cancel:hover{color:#9ca3af;}
 </style>
@@ -54,7 +63,10 @@ td{padding:0.65rem 1rem;font-size:0.8rem;vertical-align:middle;}
     <div class="topbar-batch">{{ batch.name }}</div>
     <div class="live-badge"><div class="live-dot"></div>LIVE</div>
   </div>
-  <div style="display:flex;gap:1rem;align-items:center;"><a href="{{ url_for('batches.detail', batch_id=batch.id) }}" class="back-link">← Batch</a><a href="{{ url_for('batches.live_monitor', batch_id=batch_id) }}" class="back-link" style="color:#c8963e;">Live Monitor →</a></div>
+  <div class="topbar-nav">
+    <a href="{{ url_for('batches.detail', batch_id=batch.id) }}" class="back-link">← Batch</a>
+    <a href="{{ url_for('batches.live_monitor', batch_id=batch_id) }}" class="back-link gold">Live Monitor →</a>
+  </div>
 </div>
 <div id="tracker-feed"
      hx-get="{{ url_for('approvals.defects_tracker_data', batch_id=batch_id) }}"
@@ -62,21 +74,51 @@ td{padding:0.65rem 1rem;font-size:0.8rem;vertical-align:middle;}
      hx-swap="innerHTML">
   {% include 'approvals/defects_tracker_data.html' %}
 </div>
-<div class="overlay" id="editOverlay">
-  <div class="panel">
-    <h3>Edit Defect Description</h3>
-    <div class="ctx" id="editCtx"></div>
-    <label>Description</label>
-    <input type="text" id="editDesc" autocomplete="off">
-    <input type="hidden" id="editDefectId">
-    <input type="hidden" id="editRowId">
-    <div class="panel-btns">
-      <button class="btn-save" onclick="saveEdit()">Save</button>
-      <button class="btn-cancel" onclick="closeEdit()">Cancel</button>
+<div class="edit-overlay" id="editOverlay">
+  <div class="edit-panel">
+    <h3>Edit Defect</h3>
+    <div class="edit-context" id="editContext"></div>
+    <form id="editForm">
+      <input type="hidden" name="defect_id" id="edit-defect-id">
+      <input type="hidden" name="item_template_id" id="edit-template-id">
+      <input type="hidden" name="library_entry_id" id="edit-lib-id">
+      <label>Description</label>
+      <input type="text" name="description" id="edit-desc" autocomplete="off" oninput="loadSuggestions()">
+      <div class="sugg-container" id="suggBox"></div>
+      <label>Defect Type</label>
+      <select name="defect_type" id="edit-type">
+        <option value="not_to_standard">NTS - Not to Standard</option>
+        <option value="not_installed">NI - Not Installed</option>
+      </select>
+      <div class="edit-buttons">
+        <button type="button" class="btn-save" onclick="saveEdit()">Save</button>
+        <button type="button" class="btn-save-apply" onclick="saveAndApplyAll()">Save &amp; Apply to All</button>
+        <button type="button" class="btn-cancel" onclick="closeEdit()">Cancel</button>
+      </div>
+      <div style="margin-top:0.5rem;font-size:0.72rem;color:#6b7280;line-height:1.5;">
+        <strong style="color:#9ca3af;">Save</strong> = update this defect only &nbsp;|&nbsp;
+        <strong style="color:#9ca3af;">Save &amp; Apply to All</strong> = preview all matching defects before saving
+      </div>
+    </form>
+    <div id="applyPreview" style="display:none;">
+      <div id="applyPreviewContent"></div>
+      <div class="edit-buttons">
+        <form id="applyAllForm" method="POST" action="{{ url_for('approvals.cleanup_apply_all_confirm') }}">
+          <input type="hidden" name="old_comment" id="apply-old">
+          <input type="hidden" name="new_description" id="apply-new">
+          <input type="hidden" name="new_defect_type" id="apply-type">
+          <input type="hidden" name="item_template_id" id="apply-template">
+          <button type="submit" class="btn-save-apply">Confirm &amp; Apply to All</button>
+          <button type="button" class="btn-cancel" onclick="hideApplyPreview()">Back</button>
+        </form>
+      </div>
     </div>
   </div>
 </div>
 <script>
+let currentEdit = {};
+let suggTimeout;
+
 function timeAgo(iso){
   if(!iso)return'';
   const diff=Math.floor((Date.now()-new Date(iso))/1000);
@@ -91,36 +133,121 @@ function updateTimes(){
 }
 setInterval(updateTimes,5000);
 updateTimes();
-function startEdit(defectId,rowId,ctx,desc){
-  document.getElementById('editDefectId').value=defectId;
-  document.getElementById('editRowId').value=rowId;
-  document.getElementById('editCtx').textContent=ctx;
-  document.getElementById('editDesc').value=desc;
+
+function startEdit(btn){
+  currentEdit={
+    id:btn.dataset.id,
+    template:btn.dataset.template,
+    desc:btn.dataset.desc,
+    original:btn.dataset.original,
+    type:btn.dataset.type,
+    unit:btn.dataset.unit,
+    area:btn.dataset.area,
+    cat:btn.dataset.cat,
+    item:btn.dataset.item
+  };
+  document.getElementById('edit-defect-id').value=currentEdit.id;
+  document.getElementById('edit-template-id').value=currentEdit.template;
+  document.getElementById('edit-lib-id').value='';
+  document.getElementById('edit-desc').value=currentEdit.desc;
+  document.getElementById('edit-type').value=currentEdit.type;
+  document.getElementById('editContext').innerHTML=
+    '<strong style="color:#f3f4f6;">Unit '+currentEdit.unit+'</strong> &rsaquo; '
+    +currentEdit.area+' &rsaquo; '+currentEdit.cat+' &rsaquo; '+currentEdit.item
+    +(currentEdit.original!==currentEdit.desc
+      ? '<br><span style="color:#9ca3af;">Original: '+currentEdit.original+'</span>':'');
   document.getElementById('editOverlay').classList.add('active');
-  setTimeout(()=>document.getElementById('editDesc').focus(),100);
+  document.getElementById('editForm').style.display='block';
+  document.getElementById('applyPreview').style.display='none';
+  document.getElementById('edit-desc').focus();
+  loadSuggestions(true);
 }
+
 function closeEdit(){
   document.getElementById('editOverlay').classList.remove('active');
 }
+
+document.getElementById('editOverlay').addEventListener('click',function(e){
+  if(e.target===this)closeEdit();
+});
+
+document.addEventListener('keydown',function(e){
+  if(e.key==='Escape')closeEdit();
+});
+
+function loadSuggestions(showAll){
+  clearTimeout(suggTimeout);
+  suggTimeout=setTimeout(function(){
+    const q=showAll?'':document.getElementById('edit-desc').value;
+    const tmpl=document.getElementById('edit-template-id').value;
+    fetch('{{ url_for("approvals.cleanup_suggestions") }}?item_template_id='+tmpl+'&q='+encodeURIComponent(q))
+      .then(r=>r.text())
+      .then(html=>{
+        document.getElementById('suggBox').innerHTML=html;
+        document.querySelectorAll('.sugg-item').forEach(item=>{
+          item.addEventListener('click',function(){
+            const field=document.getElementById('edit-desc');
+            const current=field.value.trim();
+            const picked=this.dataset.desc;
+            if(current&&current.toLowerCase()!=='defect noted'){
+              field.value=current+', '+picked;
+            }else{
+              field.value=picked;
+            }
+            document.getElementById('edit-lib-id').value=this.dataset.libId;
+            this.style.opacity='0.4';
+            this.style.pointerEvents='none';
+            field.focus();
+          });
+        });
+      });
+  },250);
+}
+
 function saveEdit(){
-  const defectId=document.getElementById('editDefectId').value;
-  const rowId=document.getElementById('editRowId').value;
-  const desc=document.getElementById('editDesc').value.trim();
-  if(!desc)return;
-  const batchId='{{ batch_id }}';
   const form=new FormData();
-  form.append('defect_id',defectId);
-  form.append('description',desc);
-  fetch('/approvals/defects-tracker/'+batchId+'/edit-defect',{
-    method:'POST',body:form,
-    headers:{'X-Requested-With':'XMLHttpRequest'}
+  form.append('defect_id',document.getElementById('edit-defect-id').value);
+  form.append('description',document.getElementById('edit-desc').value);
+  form.append('defect_type',document.getElementById('edit-type').value);
+  form.append('library_entry_id',document.getElementById('edit-lib-id').value);
+  fetch('{{ url_for("approvals.cleanup_edit_defect") }}',{
+    method:'POST',
+    headers:{'HX-Request':'true'},
+    body:form
   }).then(()=>{
-    const row=document.getElementById(rowId);
+    const row=document.getElementById('row-'+currentEdit.id);
     if(row)row.remove();
     const counter=document.getElementById('defect-count');
     if(counter)counter.textContent=Math.max(0,parseInt(counter.textContent)-1);
     closeEdit();
   });
+}
+
+function saveAndApplyAll(){
+  const newDesc=document.getElementById('edit-desc').value.trim();
+  if(!newDesc){alert('Please enter a description');return;}
+  const previewForm=new FormData();
+  previewForm.append('defect_id',currentEdit.id);
+  previewForm.append('old_comment',currentEdit.desc);
+  previewForm.append('new_description',newDesc);
+  previewForm.append('new_defect_type',document.getElementById('edit-type').value);
+  previewForm.append('item_template_id',currentEdit.template);
+  fetch('{{ url_for("approvals.cleanup_apply_all_preview") }}',{
+    method:'POST',body:previewForm
+  }).then(r=>r.text()).then(html=>{
+    document.getElementById('applyPreviewContent').innerHTML=html;
+    document.getElementById('apply-old').value=currentEdit.desc;
+    document.getElementById('apply-new').value=newDesc;
+    document.getElementById('apply-type').value=document.getElementById('edit-type').value;
+    document.getElementById('apply-template').value=currentEdit.template;
+    document.getElementById('editForm').style.display='none';
+    document.getElementById('applyPreview').style.display='block';
+  });
+}
+
+function hideApplyPreview(){
+  document.getElementById('editForm').style.display='block';
+  document.getElementById('applyPreview').style.display='none';
 }
 </script>
 </body>
