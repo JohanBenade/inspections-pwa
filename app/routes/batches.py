@@ -652,7 +652,7 @@ def assign_inspector(batch_id):
 
     db.commit()
 
-    status_html = '<td class="px-4 py-3" id="unit-status-{}" hx-swap-oob="true"><span class="text-xs text-blue-600">Assigned</span></td>'.format(bu_id)
+    status_html = '<td class="px-4 py-3" id="unit-status-{}" hx-swap-oob="outerHTML"><span class="text-xs text-blue-600">Assigned</span></td>'.format(bu_id)
     name_html = '<span class="text-xs text-green-600">{}</span>'.format(inspector['name'])
     return status_html + name_html
 
