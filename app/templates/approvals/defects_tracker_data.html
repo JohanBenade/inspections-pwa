@@ -22,7 +22,16 @@
       <td class="desc">{{ d.reviewed_comment or d.original_comment }}</td>
       <td class="time-ago"><span data-created="{{ d.created_at }}"></span></td>
       <td>
-        <button class="btn-edit" data-id="{{ d.id }}" data-row="row-{{ d.id }}" data-ctx="{{ d.unit_number }} - {{ d.area_name }} - {{ d.category_name }}" data-desc="{{ (d.reviewed_comment or d.original_comment)|e }}" onclick="startEdit(this.dataset.id,this.dataset.row,this.dataset.ctx,this.dataset.desc)">Edit</button>
+        <button class="btn-edit" onclick="startEdit(this)"
+          data-id="{{ d.id }}"
+          data-template="{{ d.item_template_id }}"
+          data-desc="{{ (d.reviewed_comment or d.original_comment)|e }}"
+          data-original="{{ d.original_comment|e }}"
+          data-type="{{ d.defect_type }}"
+          data-unit="{{ d.unit_number }}"
+          data-area="{{ d.area_name }}"
+          data-cat="{{ d.category_name }}"
+          data-item="{{ d.item_description|e }}">Edit</button>
       </td>
     </tr>
     {% endfor %}
