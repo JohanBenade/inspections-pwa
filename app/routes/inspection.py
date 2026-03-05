@@ -52,17 +52,6 @@ def start_inspection(unit_id):
     if not unit:
         abort(404)
 
-    # Check if this unit belongs to a locked batch
-    locked_batch = query_db("""
-        SELECT ib.locked FROM inspection_batch ib
-        JOIN batch_unit bu ON bu.batch_id = ib.id
-        WHERE bu.unit_id = ? AND bu.cycle_id = ? AND ib.tenant_id = ?
-        AND ib.locked = 1
-        LIMIT 1
-    """, [unit_id, cycle_id, tenant_id], one=True)
-    if locked_batch:
-        return render_template('inspection/locked.html')
-
     existing = query_db(
         "SELECT * FROM inspection WHERE unit_id = ? AND cycle_id = ? AND tenant_id = ?",
         [unit_id, cycle_id, tenant_id], one=True
