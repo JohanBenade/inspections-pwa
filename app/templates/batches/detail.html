@@ -28,6 +28,7 @@
 
     {%- if s in ('received', 'inspected', 'reviewed', 'open', 'in_progress') %}
     <a href="{{ url_for('batches.live_monitor', batch_id=batch.id) }}" class="px-3 py-1.5 text-xs font-semibold rounded bg-gray-800 text-amber-400 hover:bg-gray-700 mr-2">Live Monitor</a>
+    <a href="{{ url_for('approvals.defects_tracker', batch_id=batch.id) }}" class="px-3 py-1.5 text-xs font-semibold rounded bg-gray-800 text-emerald-400 hover:bg-gray-700 mr-2">Defects Tracker</a>
     {%- endif %}
 
 

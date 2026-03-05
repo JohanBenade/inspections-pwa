@@ -1,0 +1,38 @@
+<div class="counter">
+  <span id="defect-count">{{ defects|length }}</span> unreviewed defect descriptions
+</div>
+{% if defects %}
+<table>
+  <thead>
+    <tr>
+      <th>Unit</th>
+      <th>Inspector</th>
+      <th>Area / Category / Item</th>
+      <th>Description</th>
+      <th>Time</th>
+      <th></th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for d in defects %}
+    <tr id="row-{{ d.id }}">
+      <td class="unit">{{ d.unit_number }}</td>
+      <td class="inspector">{{ d.inspector_name or '—' }}</td>
+      <td class="area">{{ d.area_name }} › {{ d.category_name }}<br><span style="color:#6b7280;">{{ d.item_description }}</span></td>
+      <td class="desc">{{ d.reviewed_comment or d.original_comment }}</td>
+      <td class="time-ago"><span data-created="{{ d.created_at }}"></span></td>
+      <td>
+        <button class="btn-edit" onclick="startEdit(
+          '{{ d.id }}',
+          'row-{{ d.id }}',
+          '{{ d.unit_number }} — {{ d.area_name }} › {{ d.category_name }}',
+          {{ (d.reviewed_comment or d.original_comment)|tojson }}
+        )">Edit</button>
+      </td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% else %}
+<div class="empty">No unreviewed defect descriptions</div>
+{% endif %}

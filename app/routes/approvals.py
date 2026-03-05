@@ -1974,3 +1974,109 @@ def _render_cleanup_row(defect_id, tenant_id):
         '</td>'
         '</tr>'
     )
+
+# ============================================================
+# DEFECTS TRACKER
+# ============================================================
+
+def _get_tracker_defects(batch_id, tenant_id):
+    """Get all manually typed defect descriptions not yet fixed, newest first."""
+    return query_db("""
+        SELECT d.id, d.original_comment, d.reviewed_comment, d.defect_type,
+               d.created_at, d.item_template_id,
+               u.unit_number,
+               insp.name as inspector_name,
+               at.area_name, ct.category_name, it.item_description
+        FROM defect d
+        JOIN unit u ON d.unit_id = u.id
+        JOIN item_template it ON d.item_template_id = it.id
+        JOIN category_template ct ON it.category_id = ct.id
+        JOIN area_template at ON ct.area_id = at.id
+        LEFT JOIN inspector insp ON insp.id = (
+            SELECT i.inspector_id FROM inspection i
+            JOIN batch_unit bu ON bu.unit_id = i.unit_id AND bu.cycle_id = i.cycle_id
+            WHERE i.unit_id = d.unit_id AND bu.batch_id = ?
+            LIMIT 1
+        )
+        WHERE d.tenant_id = ?
+        AND d.original_comment != 'Not installed'
+        AND d.unit_id IN (
+            SELECT unit_id FROM batch_unit
+            WHERE batch_id = ? AND removed_at IS NULL
+        )
+        AND (d.reviewed_comment IS NULL OR d.reviewed_comment = d.original_comment)
+        ORDER BY d.created_at DESC
+        LIMIT 50
+    """, [batch_id, tenant_id, batch_id])
+
+
+@approvals_bp.route('/defects-tracker/<batch_id>')
+@require_team_lead
+def defects_tracker(batch_id):
+    """Live defects tracker — standalone dark page."""
+    tenant_id = session['tenant_id']
+    batch = query_db(
+        "SELECT * FROM inspection_batch WHERE id = ? AND tenant_id = ?",
+        [batch_id, tenant_id], one=True)
+    if not batch:
+        abort(404)
+    defects = _get_tracker_defects(batch_id, tenant_id)
+    from flask import make_response
+    resp = make_response(render_template(
+        'approvals/defects_tracker.html',
+        batch=batch, defects=defects, batch_id=batch_id))
+    resp.headers['Cache-Control'] = 'no-store, no-cache, must-revalidate'
+    return resp
+
+
+@approvals_bp.route('/defects-tracker/<batch_id>/data')
+@require_team_lead
+def defects_tracker_data(batch_id):
+    """HTMX polling partial — returns defect rows only."""
+    tenant_id = session['tenant_id']
+    defects = _get_tracker_defects(batch_id, tenant_id)
+    return render_template(
+        'approvals/defects_tracker_data.html',
+        defects=defects, batch_id=batch_id)
+
+
+@approvals_bp.route('/defects-tracker/<batch_id>/edit-defect', methods=['POST'])
+@require_team_lead
+def tracker_edit_defect(batch_id):
+    """Save edited defect description. Returns empty string to remove row from feed."""
+    tenant_id = session['tenant_id']
+    db = get_db()
+    now = datetime.now(timezone.utc).isoformat()
+
+    defect_id = request.form.get('defect_id')
+    new_desc = request.form.get('description', '').strip()
+
+    if not defect_id or not new_desc:
+        abort(400)
+
+    defect = query_db("""
+        SELECT d.*, ct.category_name FROM defect d
+        JOIN item_template it ON d.item_template_id = it.id
+        JOIN category_template ct ON it.category_id = ct.id
+        WHERE d.id = ? AND d.tenant_id = ?
+    """, [defect_id, tenant_id], one=True)
+    if not defect:
+        abort(404)
+
+    old_desc = defect['reviewed_comment'] or defect['original_comment']
+
+    db.execute("UPDATE defect SET reviewed_comment = ?, updated_at = ? WHERE id = ?",
+               [new_desc, now, defect_id])
+
+    _ensure_in_library(db, tenant_id, defect['item_template_id'],
+                       defect['category_name'], new_desc, now)
+
+    if new_desc != old_desc:
+        log_audit(db, tenant_id, 'defect', defect_id, 'tracker_edit',
+                  old_value=old_desc, new_value=new_desc,
+                  user_id=session['user_id'], user_name=session['user_name'])
+
+    db.commit()
+    # Return empty — HTMX removes the row
+    return ''
+
