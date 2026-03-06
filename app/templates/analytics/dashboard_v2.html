@@ -53,9 +53,11 @@
             </div>
             <a href="{{ url_for('analytics.explore') }}" class="explore-btn">Explore &rarr;</a>
         </div>
-        <div style="display: flex; gap: 0; margin-top: 1rem; border-bottom: 2px solid #e5e5e5;">
-            <span style="padding: 0.5rem 1.25rem; font-size: 0.85rem; font-weight: 600; color: #C8963E; border-bottom: 2px solid #C8963E; margin-bottom: -2px; cursor: default;">Analytics (New)</span>
-            <a href="{{ url_for('analytics.dashboard_legacy') }}" style="padding: 0.5rem 1.25rem; font-size: 0.85rem; font-weight: 500; color: #9A9A9A; text-decoration: none; border-bottom: 2px solid transparent; margin-bottom: -2px;" onmouseover="this.style.color='#6B6B6B'" onmouseout="this.style.color='#9A9A9A'">Analytics (Legacy)</a>
+        <div style="display: flex; gap: 0; margin-top: 1rem; border-bottom: 2px solid #e5e5e5; overflow-x: auto;">
+            <a href="{{ url_for('analytics.dashboard') }}" style="padding: 0.5rem 1.25rem; font-size: 0.85rem; font-weight: 600; color: #C8963E; border-bottom: 2px solid #C8963E; margin-bottom: -2px; cursor: default; text-decoration: none; white-space: nowrap;">Project Overview</a>
+            {% for b in all_batches %}
+            <a href="{{ url_for('analytics.batch_analytics', batch_id=b.id) }}" style="padding: 0.5rem 1.25rem; font-size: 0.85rem; font-weight: 500; color: #9A9A9A; text-decoration: none; border-bottom: 2px solid transparent; margin-bottom: -2px; white-space: nowrap;" onmouseover="this.style.color='#6B6B6B'" onmouseout="this.style.color='#9A9A9A'">{{ b.name }}</a>
+            {% endfor %}
         </div>
     </div>
 

@@ -510,6 +510,14 @@ def dashboard():
         if card['inspected'] > 0:
             active_blocks.add(card['block'])
 
+    # Batch list for view selector
+    all_batches_raw = query_db("""
+        SELECT id, name, status FROM inspection_batch
+        WHERE tenant_id = ?
+        ORDER BY created_at DESC
+    """, [tenant_id])
+    all_batches = [dict(r) for r in all_batches_raw]
+
     return render_template('analytics/dashboard_v2.html',
                            has_data=True,
                            cards=cards,
@@ -538,7 +546,219 @@ def dashboard():
                            grid_floors=grid_floors,
                            block_floor_grid=block_floor_grid,
                            grid_median=grid_median,
-                           inspector_cards=inspector_cards)
+                           inspector_cards=inspector_cards,
+                           all_batches=all_batches)
+
+
+@analytics_bp.route('/batch/<batch_id>')
+@require_manager
+def batch_analytics(batch_id):
+    """Batch-level analytics dashboard."""
+    tenant_id = session.get('tenant_id', 'MONOGRAPH')
+
+    # 1. Batch metadata
+    batch_row = query_db("""
+        SELECT ib.id, ib.name, ib.status, ib.created_at,
+               COUNT(DISTINCT bu.id) as total_units
+        FROM inspection_batch ib
+        LEFT JOIN batch_unit bu ON bu.batch_id = ib.id AND bu.removed_at IS NULL
+        WHERE ib.id = ? AND ib.tenant_id = ?
+        GROUP BY ib.id
+    """, [batch_id, tenant_id], one=True)
+    if not batch_row:
+        return "Batch not found", 404
+    batch = dict(batch_row)
+
+    # 2. Project average benchmark
+    proj_avg_row = query_db("""
+        SELECT AVG(sub.defect_count) as project_avg
+        FROM (
+            SELECT i.unit_id, COUNT(d.id) as defect_count
+            FROM inspection i
+            JOIN unit u ON i.unit_id = u.id
+            LEFT JOIN defect d ON d.unit_id = i.unit_id
+                AND d.raised_cycle_id = i.cycle_id
+                AND d.status = 'open'
+                AND d.tenant_id = i.tenant_id
+            WHERE i.tenant_id = ?
+            AND i.status IN ('reviewed','approved','certified','pending_followup')
+            AND u.unit_number NOT LIKE 'TEST%'
+            AND i.cycle_id NOT LIKE 'test-%'
+            GROUP BY i.unit_id
+        ) sub
+    """, [tenant_id], one=True)
+    project_avg = round(proj_avg_row['project_avg'] or 0, 1) if proj_avg_row and proj_avg_row['project_avg'] else 0
+
+    # 3. Zones in this batch
+    zones_raw = [dict(r) for r in query_db("""
+        SELECT ic.block, ic.floor, ic.id as cycle_id, ic.cycle_number,
+               COUNT(DISTINCT bu.unit_id) as zone_units
+        FROM batch_unit bu
+        JOIN inspection_cycle ic ON bu.cycle_id = ic.id
+        WHERE bu.batch_id = ? AND bu.removed_at IS NULL AND bu.tenant_id = ?
+        GROUP BY ic.block, ic.floor, ic.id, ic.cycle_number
+        ORDER BY ic.block, ic.floor
+    """, [batch_id, tenant_id])]
+    all_cycle_ids = [z['cycle_id'] for z in zones_raw]
+
+    # 4. Build zone data
+    zones = []
+    batch_total_defects = 0
+    batch_total_inspected = 0
+    reviewed_statuses = ('reviewed', 'approved', 'certified', 'pending_followup')
+
+    for z in zones_raw:
+        cycle_id = z['cycle_id']
+        block = z['block']
+        floor = z['floor']
+        cycle_number = z['cycle_number']
+
+        unit_rows = [dict(r) for r in query_db("""
+            SELECT u.unit_number, u.id as unit_id,
+                   COUNT(d.id) as defect_count,
+                   i.status as insp_status
+            FROM batch_unit bu
+            JOIN unit u ON bu.unit_id = u.id
+            LEFT JOIN defect d ON d.unit_id = u.id
+                AND d.raised_cycle_id = ?
+                AND d.status = 'open'
+                AND d.tenant_id = u.tenant_id
+            LEFT JOIN inspection i ON i.unit_id = u.id AND i.cycle_id = ?
+            WHERE bu.batch_id = ? AND bu.removed_at IS NULL
+            AND bu.cycle_id = ? AND bu.tenant_id = ?
+            GROUP BY u.id, u.unit_number, i.status
+            ORDER BY u.unit_number
+        """, [cycle_id, cycle_id, batch_id, cycle_id, tenant_id])]
+
+        inspected_units = [u for u in unit_rows if u['insp_status'] in reviewed_statuses]
+        zone_inspected = len(inspected_units)
+        zone_defects = sum(u['defect_count'] for u in inspected_units)
+        zone_avg = round(zone_defects / zone_inspected, 1) if zone_inspected > 0 else 0
+
+        # Rectification context (R2+)
+        rectification = None
+        if cycle_number > 1 and inspected_units:
+            prev_cycle_row = query_db("""
+                SELECT id FROM inspection_cycle
+                WHERE block = ? AND floor = ? AND cycle_number = ? AND tenant_id = ?
+            """, [block, floor, cycle_number - 1, tenant_id], one=True)
+            if prev_cycle_row:
+                prev_cycle_id = prev_cycle_row['id']
+                unit_ids = [u['unit_id'] for u in inspected_units]
+                ph = ','.join('?' * len(unit_ids))
+                r1_row = query_db(
+                    'SELECT COUNT(*) as cnt FROM defect WHERE raised_cycle_id = ? AND unit_id IN (' + ph + ') AND tenant_id = ?',
+                    [prev_cycle_id] + unit_ids + [tenant_id], one=True)
+                cleared_row = query_db(
+                    'SELECT COUNT(*) as cnt FROM defect WHERE cleared_cycle_id = ? AND unit_id IN (' + ph + ') AND tenant_id = ?',
+                    [cycle_id] + unit_ids + [tenant_id], one=True)
+                new_row = query_db(
+                    'SELECT COUNT(*) as cnt FROM defect WHERE raised_cycle_id = ? AND unit_id IN (' + ph + ') AND tenant_id = ?',
+                    [cycle_id] + unit_ids + [tenant_id], one=True)
+                r1_count = r1_row['cnt'] if r1_row else 0
+                cleared_count = cleared_row['cnt'] if cleared_row else 0
+                new_count = new_row['cnt'] if new_row else 0
+                still_open = max(r1_count - cleared_count, 0)
+                clearance_pct = round(cleared_count / r1_count * 100) if r1_count > 0 else 0
+                rectification = {
+                    'r1_raised': r1_count, 'cleared': cleared_count,
+                    'new': new_count, 'still_open': still_open,
+                    'clearance_pct': clearance_pct,
+                }
+
+        # Traffic light vs project avg
+        if project_avg > 0 and zone_inspected > 0:
+            if zone_avg <= project_avg:
+                zone_traffic = 'green'
+            elif zone_avg <= project_avg * 1.25:
+                zone_traffic = 'amber'
+            else:
+                zone_traffic = 'red'
+            zone_delta = round(zone_avg - project_avg, 1)
+        else:
+            zone_traffic = 'green'
+            zone_delta = 0
+
+        floor_label = FLOOR_LABELS.get(floor, 'Floor {}'.format(floor))
+        zones.append({
+            'block': block, 'floor': floor, 'floor_label': floor_label,
+            'label': '{} {}'.format(block, floor_label),
+            'cycle_id': cycle_id, 'cycle_number': cycle_number,
+            'total_units': z['zone_units'], 'inspected': zone_inspected,
+            'defects': zone_defects, 'avg': zone_avg,
+            'traffic': zone_traffic, 'delta': zone_delta,
+            'units': unit_rows, 'rectification': rectification,
+            'block_slug': _block_to_slug(block),
+        })
+        batch_total_defects += zone_defects
+        batch_total_inspected += zone_inspected
+
+    # 5. Batch KPIs
+    batch_avg = round(batch_total_defects / batch_total_inspected, 1) if batch_total_inspected > 0 else 0
+    batch_items = ITEMS_PER_UNIT * batch_total_inspected
+    batch_defect_rate = round(batch_total_defects / batch_items * 100, 1) if batch_items > 0 else 0
+    proj_defect_rate = round(project_avg / ITEMS_PER_UNIT * 100, 1) if project_avg > 0 else 0
+
+    if project_avg > 0 and batch_total_inspected > 0:
+        if batch_avg <= project_avg:
+            batch_traffic = 'green'
+            delta_val = round(batch_avg - project_avg, 1)
+            delta_label = '{} below project avg'.format(abs(delta_val))
+        elif batch_avg <= project_avg * 1.25:
+            batch_traffic = 'amber'
+            delta_val = round(batch_avg - project_avg, 1)
+            delta_label = '{} above project avg'.format(delta_val)
+        else:
+            batch_traffic = 'red'
+            delta_val = round(batch_avg - project_avg, 1)
+            delta_label = '{} above project avg'.format(delta_val)
+    else:
+        batch_traffic = 'green'
+        delta_val = 0
+        delta_label = 'Inspections not yet reviewed'
+
+    kpis = {
+        'total_units': batch['total_units'], 'inspected': batch_total_inspected,
+        'total_defects': batch_total_defects, 'avg_defects': batch_avg,
+        'defect_rate': batch_defect_rate, 'project_avg': project_avg,
+        'proj_defect_rate': proj_defect_rate, 'traffic': batch_traffic,
+        'delta_val': delta_val, 'delta_label': delta_label,
+    }
+
+    # 6. Area breakdown scoped to batch cycles
+    area_data = []
+    if all_cycle_ids:
+        ph = ','.join('?' * len(all_cycle_ids))
+        area_raw = query_db("""
+            SELECT at2.area_name AS area, COUNT(d.id) AS defect_count
+            FROM defect d
+            JOIN item_template it ON d.item_template_id = it.id
+            JOIN category_template ct ON it.category_id = ct.id
+            JOIN area_template at2 ON ct.area_id = at2.id
+            WHERE d.tenant_id = ? AND d.status = 'open'
+            AND d.unit_id IN (
+                SELECT unit_id FROM batch_unit
+                WHERE batch_id = ? AND removed_at IS NULL AND tenant_id = ?
+            )
+            AND d.raised_cycle_id IN (''' + ph + ''')
+            GROUP BY at2.area_name
+            ORDER BY defect_count DESC
+        """, [tenant_id, batch_id, tenant_id] + all_cycle_ids)
+        area_data = [dict(r) for r in area_raw]
+    area_max = area_data[0]['defect_count'] if area_data else 1
+
+    # 7. All batches for selector
+    all_batches = [dict(r) for r in query_db("""
+        SELECT id, name, status FROM inspection_batch
+        WHERE tenant_id = ? ORDER BY created_at DESC
+    """, [tenant_id])]
+
+    return render_template('analytics/batch_detail.html',
+                           batch=batch, zones=zones, kpis=kpis,
+                           area_data=area_data, area_max=area_max,
+                           area_colours=AREA_COLOURS, project_avg=project_avg,
+                           all_batches=all_batches, floor_labels=FLOOR_LABELS,
+                           batch_id=batch_id)
 
 
 @analytics_bp.route('/<block_slug>/<int:floor>')
