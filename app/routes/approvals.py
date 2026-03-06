@@ -1223,7 +1223,8 @@ def cleanup():
                             + ' C' + str(d['cycle_number']))
 
     # Build filter options from actual data
-    all_units = sorted(set(d['unit_number'] for d in defects))
+    units_pool = [d for d in defects if not f_batch or d.get('batch_id') == f_batch]
+    all_units = sorted(set(d['unit_number'] for d in units_pool))
     all_areas = sorted(set(d['area_name'] for d in defects),
                        key=lambda a: next((d['area_order'] for d in defects
                                            if d['area_name'] == a), 0))
