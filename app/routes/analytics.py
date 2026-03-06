@@ -737,6 +737,7 @@ def batch_analytics(batch_id):
             "JOIN area_template at2 ON ct.area_id = at2.id "
             "WHERE d.tenant_id = ? AND d.status = 'open' "
             "AND d.unit_id IN (SELECT unit_id FROM batch_unit WHERE batch_id = ? AND removed_at IS NULL AND tenant_id = ?) "
+            "AND EXISTS (SELECT 1 FROM inspection i2 WHERE i2.unit_id = d.unit_id AND i2.cycle_id = d.raised_cycle_id AND i2.status IN ('reviewed','approved','certified','pending_followup')) "
             "AND d.raised_cycle_id IN ({}) "
             "GROUP BY at2.area_name ORDER BY defect_count DESC"
         ).format(ph)
@@ -1152,6 +1153,7 @@ def block_detail(block_slug):
         JOIN unit u ON d.unit_id = u.id
         WHERE d.status = 'open' AND d.tenant_id = ? AND u.block = ?
         AND u.unit_number NOT LIKE 'TEST%'
+        AND EXISTS (SELECT 1 FROM inspection i2 WHERE i2.unit_id = d.unit_id AND i2.cycle_id = d.raised_cycle_id AND i2.status IN ('reviewed','approved','certified','pending_followup'))
         GROUP BY at2.area_name
         ORDER BY defect_count DESC
     """, [tenant_id, block])]
@@ -1170,6 +1172,7 @@ def block_detail(block_slug):
         JOIN unit u ON d.unit_id = u.id
         WHERE d.status = 'open' AND d.tenant_id = ? AND u.block = ?
         AND u.unit_number NOT LIKE 'TEST%'
+        AND EXISTS (SELECT 1 FROM inspection i2 WHERE i2.unit_id = d.unit_id AND i2.cycle_id = d.raised_cycle_id AND i2.status IN ('reviewed','approved','certified','pending_followup'))
         GROUP BY d.original_comment
         ORDER BY count DESC
         LIMIT 10
@@ -1206,7 +1209,7 @@ def explore():
     f_round = request.args.get('round', type=int)
 
     # Build WHERE clauses and params
-    where_parts = ["d.tenant_id = ?", "d.status = 'open'", "u.unit_number NOT LIKE 'TEST%'"]
+    where_parts = ["d.tenant_id = ?", "d.status = 'open'", "u.unit_number NOT LIKE 'TEST%'", "EXISTS (SELECT 1 FROM inspection i2 WHERE i2.unit_id = d.unit_id AND i2.cycle_id = d.raised_cycle_id AND i2.status IN ('reviewed','approved','certified','pending_followup'))"]
     params = [tenant_id]
 
     if f_block:
@@ -1787,7 +1790,7 @@ def dashboard_legacy():
     # --- ALL MODE: Project-wide aggregate view ---
     if selected_cycle_id == 'all':
         total_units = query_db(
-            "SELECT COUNT(DISTINCT u.id) FROM unit u JOIN inspection i ON i.unit_id = u.id WHERE i.tenant_id = ? AND i.cycle_id NOT LIKE 'test-%'",
+            "SELECT COUNT(DISTINCT u.id) FROM unit u JOIN inspection i ON i.unit_id = u.id WHERE i.tenant_id = ? AND i.cycle_id NOT LIKE 'test-%' AND i.status IN ('reviewed','approved','certified','pending_followup')",
             [tenant_id], one=True)[0]
         total_defects = query_db(
             "SELECT COUNT(*) FROM defect WHERE tenant_id = ? AND status = 'open' AND raised_cycle_id NOT LIKE 'test-%'",
@@ -1796,7 +1799,7 @@ def dashboard_legacy():
 
         unit_defect_counts = query_db(
             "SELECT u.unit_number, COUNT(*) as cnt FROM defect d JOIN unit u ON d.unit_id = u.id "
-            "WHERE d.tenant_id = ? AND d.status = 'open' AND d.raised_cycle_id NOT LIKE 'test-%' GROUP BY d.unit_id ORDER BY cnt DESC",
+            "WHERE d.tenant_id = ? AND d.status = 'open' AND d.raised_cycle_id NOT LIKE 'test-%' AND EXISTS (SELECT 1 FROM inspection i2 WHERE i2.unit_id = d.unit_id AND i2.cycle_id = d.raised_cycle_id AND i2.status IN ('reviewed','approved','certified','pending_followup')) GROUP BY d.unit_id ORDER BY cnt DESC",
             [tenant_id])
         worst_unit = unit_defect_counts[0] if unit_defect_counts else None
         best_unit = unit_defect_counts[-1] if unit_defect_counts else None
@@ -1822,6 +1825,7 @@ def dashboard_legacy():
             "JOIN inspection i ON i.cycle_id = ic.id "
             "LEFT JOIN defect d ON d.raised_cycle_id = ic.id AND d.unit_id = i.unit_id AND d.status = 'open' "
             "WHERE ic.tenant_id = ? AND ic.id NOT LIKE 'test-%' "
+            "AND i.status IN ('reviewed','approved','certified','pending_followup') "
             "GROUP BY ic.id ORDER BY ic.block, ic.floor",
             [tenant_id])]
 
@@ -1859,6 +1863,7 @@ def dashboard_legacy():
             "JOIN area_template at2 ON ct.area_id = at2.id "
             "JOIN inspection_cycle ic ON d.raised_cycle_id = ic.id "
             "WHERE d.tenant_id = ? AND d.status = 'open' AND ic.id NOT LIKE 'test-%' "
+            "AND EXISTS (SELECT 1 FROM inspection i2 WHERE i2.unit_id = d.unit_id AND i2.cycle_id = d.raised_cycle_id AND i2.status IN ('reviewed','approved','certified','pending_followup')) "
             "GROUP BY at2.area_name, batch_label ORDER BY at2.area_name",
             [tenant_id])
         # Build {area: {batch_label: count}} structure
@@ -1888,6 +1893,7 @@ def dashboard_legacy():
             "FROM defect d "
             "JOIN inspection_cycle ic ON d.raised_cycle_id = ic.id "
             "WHERE d.tenant_id = ? AND d.status = 'open' AND ic.id NOT LIKE 'test-%' "
+            "AND EXISTS (SELECT 1 FROM inspection i2 WHERE i2.unit_id = d.unit_id AND i2.cycle_id = d.raised_cycle_id AND i2.status IN ('reviewed','approved','certified','pending_followup')) "
             "GROUP BY d.original_comment, batch_label ORDER BY cnt DESC",
             [tenant_id])
         # Aggregate: {desc: {total, batches: {label: count}}}
@@ -1911,6 +1917,7 @@ def dashboard_legacy():
             "JOIN category_template ct ON it.category_id = ct.id "
             "JOIN inspection_cycle ic ON d.raised_cycle_id = ic.id "
             "WHERE d.tenant_id = ? AND d.status = 'open' AND ic.id NOT LIKE 'test-%' "
+            "AND EXISTS (SELECT 1 FROM inspection i2 WHERE i2.unit_id = d.unit_id AND i2.cycle_id = d.raised_cycle_id AND i2.status IN ('reviewed','approved','certified','pending_followup')) "
             "GROUP BY ct.category_name, batch_label ORDER BY cnt DESC",
             [tenant_id])
         cat_by_batch = {}
@@ -1940,6 +1947,7 @@ def dashboard_legacy():
             "JOIN category_template ct ON it.category_id = ct.id "
             "JOIN area_template at ON ct.area_id = at.id "
             "WHERE d.tenant_id = ? AND d.status = 'open' AND d.raised_cycle_id NOT LIKE 'test-%' "
+            "AND EXISTS (SELECT 1 FROM inspection i2 WHERE i2.unit_id = d.unit_id AND i2.cycle_id = d.raised_cycle_id AND i2.status IN ('reviewed','approved','certified','pending_followup')) "
             "GROUP BY at.area_name ORDER BY cnt DESC", [tenant_id])
         area_data = {
             'labels': [r['area_name'] for r in by_area],
@@ -1963,6 +1971,7 @@ def dashboard_legacy():
             "FROM defect d JOIN item_template it ON d.item_template_id = it.id "
             "JOIN category_template ct ON it.category_id = ct.id "
             "WHERE d.tenant_id = ? AND d.status = 'open' AND d.raised_cycle_id NOT LIKE 'test-%' "
+            "AND EXISTS (SELECT 1 FROM inspection i2 WHERE i2.unit_id = d.unit_id AND i2.cycle_id = d.raised_cycle_id AND i2.status IN ('reviewed','approved','certified','pending_followup')) "
             "GROUP BY ct.category_name ORDER BY cnt DESC", [tenant_id])
         category_data = {
             'labels': [r['category_name'].upper() for r in by_category],
@@ -1992,6 +2001,7 @@ def dashboard_legacy():
             "FROM defect d JOIN unit u ON d.unit_id = u.id "
             "JOIN inspection i ON i.unit_id = u.id AND i.cycle_id = d.raised_cycle_id "
             "WHERE d.tenant_id = ? AND d.status = 'open' AND d.raised_cycle_id NOT LIKE 'test-%' "
+            "AND i.status IN ('reviewed','approved','certified','pending_followup') "
             "GROUP BY u.unit_number, i.inspector_name ORDER BY cnt DESC", [tenant_id])
 
         # Block/Floor grid (replaces item-level heatmap in all-view)
@@ -2037,6 +2047,7 @@ def dashboard_legacy():
             "JOIN item_template it ON d.item_template_id = it.id "
             "JOIN category_template ct ON it.category_id = ct.id "
             "WHERE d.tenant_id = ? AND d.status = 'open' AND d.raised_cycle_id NOT LIKE 'test-%' "
+            "AND EXISTS (SELECT 1 FROM inspection i2 WHERE i2.unit_id = d.unit_id AND i2.cycle_id = d.raised_cycle_id AND i2.status IN ('reviewed','approved','certified','pending_followup')) "
             "GROUP BY d.original_comment HAVING COUNT(DISTINCT u.id) >= 3 "
             "ORDER BY cnt DESC", [tenant_id])
 
@@ -2047,7 +2058,7 @@ def dashboard_legacy():
             "ROUND(CAST(COUNT(d.id) AS FLOAT) / COUNT(DISTINCT i.unit_id), 1) as avg_per_unit "
             "FROM inspection i LEFT JOIN defect d ON d.unit_id = i.unit_id "
             "AND d.raised_cycle_id = i.cycle_id AND d.status = 'open' "
-            "WHERE i.tenant_id = ? AND i.cycle_id NOT LIKE 'test-%' GROUP BY i.inspector_name ORDER BY avg_per_unit DESC",
+            "WHERE i.tenant_id = ? AND i.cycle_id NOT LIKE 'test-%' AND i.status IN ('reviewed','approved','certified','pending_followup') GROUP BY i.inspector_name ORDER BY avg_per_unit DESC",
             [tenant_id])
 
         # Defect rate
@@ -2123,6 +2134,7 @@ def dashboard_legacy():
             "SELECT d.original_comment as description, COUNT(*) as cnt "
             "FROM defect d WHERE d.tenant_id = ? AND d.status = 'open' "
             "AND d.raised_cycle_id NOT LIKE 'test-%' "
+            "AND EXISTS (SELECT 1 FROM inspection i2 WHERE i2.unit_id = d.unit_id AND i2.cycle_id = d.raised_cycle_id AND i2.status IN ('reviewed','approved','certified','pending_followup')) "
             "GROUP BY d.original_comment ORDER BY cnt DESC LIMIT 10", [tenant_id])
         td_counts = sorted([r['cnt'] for r in top_defects]) if top_defects else []
         if not td_counts:
@@ -2140,6 +2152,7 @@ def dashboard_legacy():
             "LEFT JOIN defect d ON d.unit_id = u.id AND d.status = 'open' "
             "AND d.raised_cycle_id = i.cycle_id "
             "WHERE i.tenant_id = ? AND i.cycle_id NOT LIKE 'test-%' "
+            "AND i.status IN ('reviewed','approved','certified','pending_followup') "
             "GROUP BY u.unit_number, u.block, u.floor, i.status ORDER BY u.unit_number",
             [tenant_id])
         unit_summary = []
@@ -2164,6 +2177,7 @@ def dashboard_legacy():
             "JOIN area_template at2 ON ct.area_id = at2.id "
             "JOIN inspection_cycle ic ON d.raised_cycle_id = ic.id "
             "WHERE d.tenant_id = ? AND d.status = 'open' AND ic.id NOT LIKE 'test-%' "
+            "AND EXISTS (SELECT 1 FROM inspection i2 WHERE i2.unit_id = d.unit_id AND i2.cycle_id = d.raised_cycle_id AND i2.status IN ('reviewed','approved','certified','pending_followup')) "
             "GROUP BY at2.area_name, d.original_comment, batch_label "
             "ORDER BY at2.area_name, cnt DESC",
             [tenant_id])
@@ -2636,6 +2650,7 @@ def reports():
                COUNT(DISTINCT d.id) AS defect_count
         FROM inspection_cycle ic
         LEFT JOIN inspection i ON i.cycle_id = ic.id
+        LEFT JOIN inspection i ON i.cycle_id = ic.id AND i.status IN ('reviewed','approved','certified','pending_followup')
         LEFT JOIN defect d ON d.raised_cycle_id = ic.id AND d.status = 'open'
         WHERE ic.tenant_id = ?
         GROUP BY ic.id
