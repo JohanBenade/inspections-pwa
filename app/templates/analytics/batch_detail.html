@@ -48,12 +48,13 @@
                 <div class="text-sm text-gray-400 mt-1">Power Park Student Housing &middot; Inspection Analytics</div>
             </div>
         </div>
-        <div class="view-selector">
-            <a href="{{ url_for('analytics.dashboard') }}" class="view-tab">Project Overview</a>
-            {% for b in all_batches %}
-            <a href="{{ url_for('analytics.batch_analytics', batch_id=b.id) }}"
-               class="view-tab {% if b.id == batch_id %}active{% endif %}">{{ b.name }}</a>
-            {% endfor %}
+        <div style="margin-top: 1rem;">
+            <select onchange="if(this.value) window.location=this.value;" style="padding: 0.4rem 0.75rem; font-size: 0.85rem; border: 1px solid #e5e5e5; border-radius: 6px; background: #fff; color: #1A1A1A; cursor: pointer;">
+                <option value="{{ url_for('analytics.dashboard') }}">Project Overview</option>
+                {% for b in all_batches %}
+                <option value="{{ url_for('analytics.batch_analytics', batch_id=b.id) }}" {% if b.id == batch_id %}selected{% endif %}>{{ b.name }}</option>
+                {% endfor %}
+            </select>
         </div>
     </div>
 
