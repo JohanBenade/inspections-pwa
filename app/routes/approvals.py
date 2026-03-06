@@ -2006,6 +2006,12 @@ def _get_tracker_defects(batch_id, tenant_id):
         )
         WHERE d.tenant_id = ?
         AND d.original_comment != 'Not installed'
+        AND NOT EXISTS (
+            SELECT 1 FROM defect_library dl
+            WHERE dl.item_template_id = d.item_template_id
+            AND dl.tenant_id = d.tenant_id
+            AND LOWER(TRIM(dl.description)) = LOWER(TRIM(d.original_comment))
+        )
         AND d.unit_id IN (
             SELECT unit_id FROM batch_unit
             WHERE batch_id = ? AND removed_at IS NULL
