@@ -666,18 +666,9 @@ def batch_analytics(batch_id):
                     'clearance_pct': clearance_pct,
                 }
 
-        # Traffic light vs project avg
-        if project_avg > 0 and zone_inspected > 0:
-            if zone_avg <= project_avg:
-                zone_traffic = 'green'
-            elif zone_avg <= project_avg * 1.25:
-                zone_traffic = 'amber'
-            else:
-                zone_traffic = 'red'
-            zone_delta = round(zone_avg - project_avg, 1)
-        else:
-            zone_traffic = 'green'
-            zone_delta = 0
+        # Traffic light assigned after quartiles calculated (placeholder)
+        zone_traffic = 'green'
+        zone_delta = 0
 
         floor_label = FLOOR_LABELS.get(floor, 'Floor {}'.format(floor))
         zones.append({
@@ -699,23 +690,60 @@ def batch_analytics(batch_id):
     batch_defect_rate = round(batch_total_defects / batch_items * 100, 1) if batch_items > 0 else 0
     proj_defect_rate = round(project_avg / ITEMS_PER_UNIT * 100, 1) if project_avg > 0 else 0
 
-    if project_avg > 0 and batch_total_inspected > 0:
-        if batch_avg <= project_avg:
+    # Quartile banding across all inspected units in batch
+    all_unit_counts = []
+    for z in zones:
+        for u in z['units']:
+            if u['insp_status'] in reviewed_statuses:
+                all_unit_counts.append(u['defect_count'])
+    if len(all_unit_counts) >= 4:
+        all_unit_counts_sorted = sorted(all_unit_counts)
+        n_units = len(all_unit_counts_sorted)
+        q1 = all_unit_counts_sorted[n_units // 4]
+        q3 = all_unit_counts_sorted[(n_units * 3) // 4]
+    elif all_unit_counts:
+        q1 = min(all_unit_counts)
+        q3 = max(all_unit_counts)
+    else:
+        q1 = q3 = 0
+
+    # Apply quartile traffic to zones
+    for z in zones:
+        if z['inspected'] > 0 and q3 > 0:
+            if z['avg'] <= q1:
+                z['traffic'] = 'green'
+            elif z['avg'] <= q3:
+                z['traffic'] = 'amber'
+            else:
+                z['traffic'] = 'red'
+        else:
+            z['traffic'] = 'green'
+
+    # Apply quartile traffic to individual units
+    for z in zones:
+        for u in z['units']:
+            if u['insp_status'] in reviewed_statuses and q3 > 0:
+                if u['defect_count'] <= q1:
+                    u['traffic'] = 'green'
+                elif u['defect_count'] <= q3:
+                    u['traffic'] = 'amber'
+                else:
+                    u['traffic'] = 'red'
+            else:
+                u['traffic'] = 'grey'
+
+    # Batch-level traffic
+    if batch_avg > 0 and q3 > 0:
+        if batch_avg <= q1:
             batch_traffic = 'green'
-            delta_val = round(batch_avg - project_avg, 1)
-            delta_label = '{} below project avg'.format(abs(delta_val))
-        elif batch_avg <= project_avg * 1.25:
+        elif batch_avg <= q3:
             batch_traffic = 'amber'
-            delta_val = round(batch_avg - project_avg, 1)
-            delta_label = '{} above project avg'.format(delta_val)
         else:
             batch_traffic = 'red'
-            delta_val = round(batch_avg - project_avg, 1)
-            delta_label = '{} above project avg'.format(delta_val)
     else:
         batch_traffic = 'green'
-        delta_val = 0
-        delta_label = 'Inspections not yet reviewed'
+    delta_val = 0
+    delta_label = 'Q1: {} | Q3: {}'.format(q1, q3)
 
     kpis = {
         'total_units': batch['total_units'], 'inspected': batch_total_inspected,
