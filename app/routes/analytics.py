@@ -729,21 +729,18 @@ def batch_analytics(batch_id):
     area_data = []
     if all_cycle_ids:
         ph = ','.join('?' * len(all_cycle_ids))
-        area_raw = query_db("""
-            SELECT at2.area_name AS area, COUNT(d.id) AS defect_count
-            FROM defect d
-            JOIN item_template it ON d.item_template_id = it.id
-            JOIN category_template ct ON it.category_id = ct.id
-            JOIN area_template at2 ON ct.area_id = at2.id
-            WHERE d.tenant_id = ? AND d.status = 'open'
-            AND d.unit_id IN (
-                SELECT unit_id FROM batch_unit
-                WHERE batch_id = ? AND removed_at IS NULL AND tenant_id = ?
-            )
-            AND d.raised_cycle_id IN (''' + ph + ''')
-            GROUP BY at2.area_name
-            ORDER BY defect_count DESC
-        """, [tenant_id, batch_id, tenant_id] + all_cycle_ids)
+        area_query = (
+            "SELECT at2.area_name AS area, COUNT(d.id) AS defect_count "
+            "FROM defect d "
+            "JOIN item_template it ON d.item_template_id = it.id "
+            "JOIN category_template ct ON it.category_id = ct.id "
+            "JOIN area_template at2 ON ct.area_id = at2.id "
+            "WHERE d.tenant_id = ? AND d.status = 'open' "
+            "AND d.unit_id IN (SELECT unit_id FROM batch_unit WHERE batch_id = ? AND removed_at IS NULL AND tenant_id = ?) "
+            "AND d.raised_cycle_id IN ({}) "
+            "GROUP BY at2.area_name ORDER BY defect_count DESC"
+        ).format(ph)
+        area_raw = query_db(area_query, [tenant_id, batch_id, tenant_id] + all_cycle_ids)
         area_data = [dict(r) for r in area_raw]
     area_max = area_data[0]['defect_count'] if area_data else 1
 
