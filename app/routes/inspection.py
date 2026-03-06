@@ -11,11 +11,12 @@ from app.utils.audit import log_audit
 from app.services.db import get_db, query_db
 from app.services.template_loader import get_inspection_template
 
-BLOCKED_DESCRIPTIONS = {
-    'defect noted', 'n/a', 'na', 'not applicable',
-    'not tested', 'to be tested', 'to be inspected',
-    'as indicated', 'not applicable yet', ''
-}
+# BLOCKED_DESCRIPTIONS = {
+#     'defect noted', 'n/a', 'na', 'not applicable',
+#     'not tested', 'to be tested', 'to be inspected',
+#     'as indicated', 'not applicable yet', ''
+# }
+BLOCKED_DESCRIPTIONS = set()  # Temporarily disabled
 
 inspection_bp = Blueprint('inspection', __name__, url_prefix='/inspection')
 
@@ -1005,14 +1006,14 @@ def add_defect(inspection_id, item_id):
     if len(description) > 0:
         description = description[0].upper() + description[1:]
 
-    # Block placeholder descriptions
-    if description.lower().strip() in BLOCKED_DESCRIPTIONS:
-        if area_id:
-            html = _render_single_item(inspection_id, item_id, tenant_id, area_id, force_expanded=True)
-            response = make_response(html)
-            response.headers['HX-Trigger'] = 'areaUpdated'
-            return response
-        return '', 204
+    # Block placeholder descriptions (temporarily disabled)
+    # if description.lower().strip() in BLOCKED_DESCRIPTIONS:
+    #     if area_id:
+    #         html = _render_single_item(inspection_id, item_id, tenant_id, area_id, force_expanded=True)
+    #         response = make_response(html)
+    #         response.headers['HX-Trigger'] = 'areaUpdated'
+    #         return response
+    #     return '', 204
 
     # Lock: no edits after sign-off
     if inspection['status'] in ('pending_followup', 'approved', 'certified'):
@@ -1828,10 +1829,10 @@ def get_defect_suggestions(item_template_id):
     if not suggestions:
         return ''
 
-    # Filter out blocked placeholder descriptions
-    suggestions = [s for s in suggestions if s['description'].lower() not in BLOCKED_DESCRIPTIONS]
-    if not suggestions:
-        return ''
+    # Filter out blocked placeholder descriptions (temporarily disabled)
+    # suggestions = [s for s in suggestions if s['description'].lower() not in BLOCKED_DESCRIPTIONS]
+    # if not suggestions:
+    #     return ''
 
     # Filter out open prior defect descriptions
     if exclude_descs:
