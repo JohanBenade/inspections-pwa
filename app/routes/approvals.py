@@ -565,6 +565,18 @@ def set_batch_milestone(batch_id):
             UPDATE batch_unit SET status = ? WHERE id = ?
         """, [bu_target, u['bu_id']])
 
+    # Auto-advance batch status based on actual batch_unit statuses
+    bu_statuses = [r[0] for r in db.execute(
+        "SELECT status FROM batch_unit WHERE batch_id = ? AND status != 'removed'",
+        [batch_id]).fetchall()]
+    if bu_statuses and all(s == 'signed' for s in bu_statuses):
+        batch_target = 'complete'
+    elif bu_statuses and all(s in ('reviewed', 'signed') for s in bu_statuses):
+        batch_target = 'reviewed'
+    elif bu_statuses and any(s in ('inspected', 'reviewed', 'signed') for s in bu_statuses):
+        batch_target = 'inspected'
+    else:
+        batch_target = 'received'
     db.execute("""
         UPDATE inspection_batch SET status = ?, updated_at = ? WHERE id = ?
     """, [batch_target, now, batch_id])
