@@ -520,17 +520,33 @@ def set_batch_milestone(batch_id):
     now = datetime.now(timezone.utc).isoformat()
 
     milestone = request.form.get('milestone')
-    STATUS_MAP = {
+    INSPECTION_STATUS_MAP = {
         'received':   'not_started',
         'inspected':  'submitted',
         'reviewed':   'reviewed',
         'signed_off': 'pending_followup',
         'pushed':     'pending_followup',
     }
-    if milestone not in STATUS_MAP:
+    BATCH_UNIT_STATUS_MAP = {
+        'received':   'received',
+        'inspected':  'inspected',
+        'reviewed':   'reviewed',
+        'signed_off': 'signed',
+        'pushed':     'signed',
+    }
+    BATCH_STATUS_MAP = {
+        'received':   'received',
+        'inspected':  'inspected',
+        'reviewed':   'reviewed',
+        'signed_off': 'complete',
+        'pushed':     'complete',
+    }
+    if milestone not in INSPECTION_STATUS_MAP:
         abort(400)
 
-    target_status = STATUS_MAP[milestone]
+    insp_target = INSPECTION_STATUS_MAP[milestone]
+    bu_target = BATCH_UNIT_STATUS_MAP[milestone]
+    batch_target = BATCH_STATUS_MAP[milestone]
 
     # Get all units in batch
     units = query_db("""
@@ -544,10 +560,14 @@ def set_batch_milestone(batch_id):
         if u['insp_id']:
             db.execute("""
                 UPDATE inspection SET status = ?, updated_at = ? WHERE id = ?
-            """, [target_status, now, u['insp_id']])
+            """, [insp_target, now, u['insp_id']])
         db.execute("""
             UPDATE batch_unit SET status = ? WHERE id = ?
-        """, [target_status, u['bu_id']])
+        """, [bu_target, u['bu_id']])
+
+    db.execute("""
+        UPDATE inspection_batch SET status = ?, updated_at = ? WHERE id = ?
+    """, [batch_target, now, batch_id])
 
     log_audit(db, tenant_id, 'batch', batch_id, 'milestone_set',
               new_value=milestone,

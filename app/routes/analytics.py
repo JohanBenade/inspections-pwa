@@ -513,7 +513,7 @@ def dashboard():
     # Batch list for view selector
     all_batches_raw = query_db("""
         SELECT id, name, status FROM inspection_batch
-        WHERE tenant_id = ? AND status = 'complete'
+        WHERE tenant_id = ? AND status IN ('reviewed', 'complete')
         ORDER BY created_at DESC
     """, [tenant_id])
     all_batches = [dict(r) for r in all_batches_raw]
@@ -748,7 +748,7 @@ def batch_analytics(batch_id):
     # 7. All batches for selector
     all_batches = [dict(r) for r in query_db("""
         SELECT id, name, status FROM inspection_batch
-        WHERE tenant_id = ? AND status = 'complete' ORDER BY created_at DESC
+        WHERE tenant_id = ? AND status IN ('reviewed', 'complete') ORDER BY created_at DESC
     """, [tenant_id])]
 
     return render_template('analytics/batch_detail.html',
