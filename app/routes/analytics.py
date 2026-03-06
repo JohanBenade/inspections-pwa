@@ -2649,7 +2649,6 @@ def reports():
                COUNT(DISTINCT i.unit_id) AS unit_count,
                COUNT(DISTINCT d.id) AS defect_count
         FROM inspection_cycle ic
-        LEFT JOIN inspection i ON i.cycle_id = ic.id
         LEFT JOIN inspection i ON i.cycle_id = ic.id AND i.status IN ('reviewed','approved','certified','pending_followup')
         LEFT JOIN defect d ON d.raised_cycle_id = ic.id AND d.status = 'open'
         WHERE ic.tenant_id = ?
