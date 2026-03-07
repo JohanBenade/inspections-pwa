@@ -1255,23 +1255,23 @@ def cleanup():
                             + ' C' + str(d['cycle_number']))
 
     # Build filter options from actual data
-    units_pool = [d for d in defects if not f_batch or d.get('batch_id') == f_batch]
-    all_units = sorted(set(d['unit_number'] for d in units_pool))
-    all_areas = sorted(set(d['area_name'] for d in defects),
-                       key=lambda a: next((d['area_order'] for d in defects
+    batch_pool = [d for d in defects if not f_batch or d.get('batch_id') == f_batch]
+    all_units = sorted(set(d['unit_number'] for d in batch_pool))
+    all_areas = sorted(set(d['area_name'] for d in batch_pool),
+                       key=lambda a: next((d['area_order'] for d in batch_pool
                                            if d['area_name'] == a), 0))
-    all_categories = sorted(set(d['category_name'] for d in defects))
+    all_categories = sorted(set(d['category_name'] for d in batch_pool))
     # Cascading: items filtered by selected area+category
-    items_pool = [d for d in defects
+    items_pool = [d for d in batch_pool
                   if (not f_area or d['area_name'] == f_area)
                   and (not f_category or d['category_name'] == f_category)]
     all_items = sorted(set(d['item_name'] for d in items_pool if d['item_name']))
     # Cascading: subitems filtered by selected item
     subitems_pool = [d for d in items_pool if (not f_item or d['item_name'] == f_item)]
     all_subitems = sorted(set(d['subitem_name'] for d in subitems_pool if d['subitem_name']))
-    all_inspectors = sorted(set(d['inspector_name'] for d in defects
+    all_inspectors = sorted(set(d['inspector_name'] for d in batch_pool
                                 if d['inspector_name']))
-    all_cycles = sorted(set(d['cycle_label'] for d in defects))
+    all_cycles = sorted(set(d['cycle_label'] for d in batch_pool))
     all_batches_raw = query_db(
         "SELECT id, name FROM inspection_batch WHERE tenant_id = ? ORDER BY name",
         [tenant_id])
