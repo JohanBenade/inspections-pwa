@@ -888,20 +888,41 @@ def batch_analytics(batch_id):
     if all_cycle_ids:
         ph = ','.join('?' * len(all_cycle_ids))
         rec_query = (
-            "SELECT d.original_comment, ct.category_name, "
+            "SELECT d.original_comment, "
             "COUNT(d.id) AS cnt, COUNT(DISTINCT d.unit_id) AS unit_count "
             "FROM defect d "
             "JOIN unit u ON d.unit_id = u.id "
-            "JOIN item_template it ON d.item_template_id = it.id "
-            "JOIN category_template ct ON it.category_id = ct.id "
             "WHERE d.tenant_id = ? AND d.status = 'open' "
             "AND d.unit_id IN (SELECT unit_id FROM batch_unit WHERE batch_id = ? AND removed_at IS NULL AND tenant_id = ?) "
             "AND EXISTS (SELECT 1 FROM inspection i2 WHERE i2.unit_id = d.unit_id AND i2.cycle_id = d.raised_cycle_id AND i2.status IN ('reviewed','approved','certified','pending_followup')) "
             "AND d.raised_cycle_id IN ({}) "
-            "GROUP BY d.original_comment, ct.category_name "
+            "GROUP BY d.original_comment "
             "HAVING unit_count >= 2 ORDER BY cnt DESC LIMIT 10"
         ).format(ph)
         recurring = [dict(r) for r in query_db(rec_query, [tenant_id, batch_id, tenant_id] + all_cycle_ids)]
+        if recurring:
+            top_comments = [r['original_comment'] for r in recurring]
+            cat_ph = ','.join('?' * len(top_comments))
+            batch_ph = ','.join('?' * len(all_cycle_ids))
+            cat_raw = query_db(
+                "SELECT d.original_comment, ct.category_name, COUNT(d.id) AS cat_cnt "
+                "FROM defect d "
+                "JOIN item_template it ON d.item_template_id = it.id "
+                "JOIN category_template ct ON it.category_id = ct.id "
+                "WHERE d.tenant_id = ? AND d.status = 'open' "
+                "AND d.unit_id IN (SELECT unit_id FROM batch_unit WHERE batch_id = ? AND removed_at IS NULL AND tenant_id = ?) "
+                "AND d.raised_cycle_id IN ({}) "
+                "AND d.original_comment IN ({}) "
+                "AND EXISTS (SELECT 1 FROM inspection i2 WHERE i2.unit_id = d.unit_id AND i2.cycle_id = d.raised_cycle_id AND i2.status IN ('reviewed','approved','certified','pending_followup')) "
+                "GROUP BY d.original_comment, ct.category_name "
+                "ORDER BY d.original_comment, cat_cnt DESC"
+            .format(batch_ph, cat_ph), [tenant_id, batch_id, tenant_id] + all_cycle_ids + top_comments)
+            from collections import defaultdict as _dd
+            cat_map = _dd(list)
+            for row in cat_raw:
+                cat_map[row['original_comment']].append({'cat': row['category_name'], 'cnt': row['cat_cnt']})
+            for r in recurring:
+                r['cat_breakdown'] = cat_map.get(r['original_comment'], [])
 
     # 7e. Category/trade breakdown scoped to batch
     category_data = []
