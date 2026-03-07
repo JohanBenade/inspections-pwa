@@ -785,6 +785,12 @@ def batch_analytics(batch_id):
         area_raw = query_db(area_query, [tenant_id, batch_id, tenant_id] + all_cycle_ids)
         area_data = [dict(r) for r in area_raw]
     area_max = area_data[0]['defect_count'] if area_data else 1
+    area_counts_sorted = sorted([a['defect_count'] for a in area_data])
+    if area_counts_sorted:
+        mid = len(area_counts_sorted) // 2
+        area_median = area_counts_sorted[mid] if len(area_counts_sorted) % 2 else (area_counts_sorted[mid - 1] + area_counts_sorted[mid]) / 2
+    else:
+        area_median = 0
 
     # 7. All batches for selector
     all_batches = [dict(r) for r in query_db("""
@@ -796,6 +802,8 @@ def batch_analytics(batch_id):
                            batch=batch, zones=zones, kpis=kpis,
                            area_data=area_data, area_max=area_max,
                            area_colours=AREA_COLOURS, project_avg=project_avg,
+                           area_median=area_median,
+                           q1=q1, q3=q3,
                            all_batches=all_batches, floor_labels=FLOOR_LABELS,
                            batch_id=batch_id)
 

@@ -3,24 +3,18 @@
 {% block content %}
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;600;700&family=DM+Sans:wght@400;500;600;700&display=swap');
-    .font-display { font-family: 'Cormorant Garamond', Georgia, serif; }
-    .font-body { font-family: 'DM Sans', system-ui, sans-serif; }
+    .font-display { font-family: "Cormorant Garamond", Georgia, serif; }
+    .font-body { font-family: "DM Sans", system-ui, sans-serif; }
     .gold-accent { color: #C8963E; }
-    .section-num { font-family: 'Cormorant Garamond', serif; font-size: 0.75rem; font-weight: 600; letter-spacing: 0.15em; color: #C8963E; text-transform: uppercase; }
+    .section-num { font-family: "Cormorant Garamond", serif; font-size: 0.75rem; font-weight: 600; letter-spacing: 0.15em; color: #C8963E; text-transform: uppercase; }
     .divider { height: 1px; background: #e5e5e5; margin: 0.25rem 0 1rem 0; }
-    .kpi-card { border-left: 3px solid #C8963E; background: #FAFAF8; border-radius: 6px; padding: 1rem 1.25rem; }
-    .kpi-card.green { border-left-color: #4A7C59; }
-    .kpi-card.amber { border-left-color: #C8963E; }
-    .kpi-card.red { border-left-color: #C44D3F; }
-    .kpi-value { font-family: 'DM Sans', system-ui, sans-serif; font-weight: 700; font-size: 2rem; line-height: 1; letter-spacing: -0.02em; }
-    .kpi-label { font-family: 'DM Sans', system-ui, sans-serif; font-size: 0.75rem; color: #6B6B6B; margin-top: 0.25rem; }
-    .kpi-sub { font-family: 'DM Sans', system-ui, sans-serif; font-size: 0.7rem; color: #9A9A9A; margin-top: 0.15rem; }
+    .kpi-card { border-left: 3px solid #e5e5e5; background: #FAFAF8; border-radius: 6px; padding: 1rem 1.25rem; }
+    .kpi-value { font-family: "DM Sans", system-ui, sans-serif; font-weight: 700; font-size: 2rem; line-height: 1; letter-spacing: -0.02em; }
+    .kpi-label { font-family: "DM Sans", system-ui, sans-serif; font-size: 0.75rem; color: #6B6B6B; margin-top: 0.25rem; }
+    .kpi-sub { font-family: "DM Sans", system-ui, sans-serif; font-size: 0.7rem; color: #9A9A9A; margin-top: 0.15rem; }
     .traffic-green { color: #4A7C59; font-weight: 700; }
     .traffic-amber { color: #C8963E; font-weight: 700; }
     .traffic-red { color: #C44D3F; font-weight: 700; }
-    .traffic-dot-green { display: inline-block; width: 10px; height: 10px; border-radius: 50%; background: #4A7C59; margin-right: 5px; vertical-align: middle; }
-    .traffic-dot-amber { display: inline-block; width: 10px; height: 10px; border-radius: 50%; background: #C8963E; margin-right: 5px; vertical-align: middle; }
-    .traffic-dot-red { display: inline-block; width: 10px; height: 10px; border-radius: 50%; background: #C44D3F; margin-right: 5px; vertical-align: middle; }
     .zone-card { background: #FAFAF8; border: 1px solid #e5e5e5; border-radius: 8px; overflow: hidden; margin-bottom: 1rem; }
     .zone-header { padding: 1rem 1.25rem; border-bottom: 1px solid #e5e5e5; }
     .unit-row { display: flex; align-items: center; justify-content: space-between; padding: 0.5rem 1.25rem; border-top: 1px solid #f0f0f0; font-size: 0.82rem; }
@@ -31,22 +25,17 @@
     .area-label { font-size: 0.8rem; font-weight: 500; min-width: 90px; color: #1A1A1A; }
     .area-count { font-size: 0.8rem; font-weight: 700; min-width: 36px; text-align: right; }
     .area-pct { font-size: 0.7rem; color: #9A9A9A; min-width: 36px; text-align: right; }
-    .benchmark-box { background: #f8f8f6; border: 1px solid #e5e5e5; border-radius: 6px; padding: 0.6rem 1rem; font-size: 0.75rem; color: #6B6B6B; margin-top: 1rem; }
-    .view-selector { display: flex; gap: 0; border-bottom: 2px solid #e5e5e5; margin-top: 1rem; }
-    .view-tab { padding: 0.5rem 1.25rem; font-size: 0.85rem; font-weight: 500; color: #9A9A9A; text-decoration: none; border-bottom: 2px solid transparent; margin-bottom: -2px; }
-    .view-tab.active { color: #C8963E; border-bottom-color: #C8963E; font-weight: 600; }
-    .view-tab:hover { color: #6B6B6B; }
+    .legend-item { display: inline-flex; align-items: center; gap: 0.25rem; font-size: 0.7rem; color: #6B6B6B; }
+    .legend-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; }
 </style>
 
 <div class="font-body" style="max-width: 1280px; margin: 0 auto;">
 
     <!-- HEADER + SELECTOR -->
     <div class="mb-6">
-        <div class="flex items-center justify-between">
-            <div>
-                <h1 class="font-display text-3xl lg:text-4xl font-bold text-gray-900" style="letter-spacing: -0.01em;">PPSH Phase 3</h1>
-                <div class="text-sm text-gray-400 mt-1">Power Park Student Housing &middot; Inspection Analytics</div>
-            </div>
+        <div>
+            <h1 class="font-display text-3xl lg:text-4xl font-bold text-gray-900" style="letter-spacing: -0.01em;">PPSH Phase 3</h1>
+            <div class="text-sm text-gray-400 mt-1">Power Park Student Housing &middot; Inspection Analytics</div>
         </div>
         <div style="margin-top: 1rem;">
             <select onchange="if(this.value) window.location=this.value;" style="padding: 0.4rem 0.75rem; font-size: 0.85rem; border: 1px solid #e5e5e5; border-radius: 6px; background: #fff; color: #1A1A1A; cursor: pointer;">
@@ -58,14 +47,18 @@
         </div>
     </div>
 
-    <!-- BATCH HEADER -->
+    <!-- BATCH TITLE -->
     <div style="margin-bottom: 1.5rem;">
-        <div style="font-size: 0.75rem; color: #C8963E; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase;">Batch</div>
+        <div style="font-size: 0.75rem; color: #C8963E; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; margin-bottom: 0.25rem;">Batch</div>
         <div class="divider"></div>
-        <div style="display: flex; gap: 2rem; flex-wrap: wrap;">
+        <div style="display: flex; gap: 2rem; flex-wrap: wrap; align-items: center;">
+            <div>
+                <div style="font-size: 0.7rem; color: #9A9A9A; text-transform: uppercase; letter-spacing: 0.08em;">Name</div>
+                <div style="font-size: 1rem; font-weight: 700; color: #1A1A1A; margin-top: 0.15rem;">{{ batch.name }}</div>
+            </div>
             <div>
                 <div style="font-size: 0.7rem; color: #9A9A9A; text-transform: uppercase; letter-spacing: 0.08em;">Status</div>
-                <div style="font-size: 0.9rem; font-weight: 600; color: #1A1A1A; margin-top: 0.15rem;">{{ batch.status | replace('_', ' ') | title }}</div>
+                <div style="font-size: 0.9rem; font-weight: 600; color: #1A1A1A; margin-top: 0.15rem;">{{ batch.status | replace("_", " ") | title }}</div>
             </div>
             <div>
                 <div style="font-size: 0.7rem; color: #9A9A9A; text-transform: uppercase; letter-spacing: 0.08em;">Zones</div>
@@ -78,10 +71,10 @@
         </div>
     </div>
 
-    <!-- KPIs -->
-    <div class="mb-2"><span class="section-num">Batch KPIs</span></div>
+    <!-- PROGRESS -->
+    <div class="mb-2"><span class="section-num">Progress</span></div>
     <div class="divider"></div>
-    <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
+    <div class="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-6">
         <div class="kpi-card">
             <div class="kpi-value text-gray-900">{{ kpis.inspected }} <span style="font-size: 1rem; font-weight: 400; color: #9A9A9A;">/ {{ kpis.total_units }}</span></div>
             <div class="kpi-label">Units inspected</div>
@@ -89,33 +82,39 @@
         </div>
         <div class="kpi-card">
             <div class="kpi-value {% if kpis.total_defects > 0 %}text-red-600{% else %}text-emerald-600{% endif %}">{{ kpis.total_defects }}</div>
-            <div class="kpi-label">Defects raised</div>
-            <div class="kpi-sub">this batch</div>
+            <div class="kpi-label">Open defects</div>
+            <div class="kpi-sub">across {{ kpis.inspected }} inspected units</div>
         </div>
-        <div class="kpi-card {{ kpis.traffic }}">
+        <div class="kpi-card">
+            <div class="kpi-value text-gray-900">{{ kpis.defect_rate }}%</div>
+            <div class="kpi-label">Defect rate</div>
+            <div class="kpi-sub">project avg: {{ kpis.proj_defect_rate }}%</div>
+        </div>
+    </div>
+
+    <!-- QUALITY -->
+    <div class="mb-2"><span class="section-num">Quality (inspected units only)</span></div>
+    <div class="divider"></div>
+    <div class="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-6">
+        <div class="kpi-card">
             <div class="kpi-value traffic-{{ kpis.traffic }}">{{ kpis.avg_defects }}</div>
             <div class="kpi-label">Avg defects / unit</div>
-            <div class="kpi-sub">
-                <span class="traffic-dot-{{ kpis.traffic }}"></span>{{ kpis.delta_label }}
-            </div>
+            <div class="kpi-sub">project avg: {{ kpis.project_avg }}</div>
         </div>
-        <div class="kpi-card {{ kpis.traffic }}">
-            <div class="kpi-value traffic-{{ kpis.traffic }}">{{ kpis.defect_rate }}%</div>
-            <div class="kpi-label">Defect rate</div>
-            <div class="kpi-sub">Project avg: {{ kpis.proj_defect_rate }}%</div>
+        <div class="kpi-card">
+            <div class="kpi-value text-gray-900">{{ q1 }}</div>
+            <div class="kpi-label">Q1 threshold</div>
+            <div class="kpi-sub">bottom 25% of batch units</div>
+        </div>
+        <div class="kpi-card">
+            <div class="kpi-value text-gray-900">{{ q3 }}</div>
+            <div class="kpi-label">Q3 threshold</div>
+            <div class="kpi-sub">top 25% of batch units</div>
         </div>
     </div>
 
-    <!-- BENCHMARK EXPLANATION -->
-    <div class="benchmark-box mb-6">
-        <strong>Benchmark</strong> &mdash; Traffic light vs project average ({{ kpis.project_avg }} defects/unit):
-        <span class="traffic-dot-green"></span><span class="traffic-green">Green</span> = at or below average &nbsp;|&nbsp;
-        <span class="traffic-dot-amber"></span><span class="traffic-amber">Amber</span> = up to 25% above average &nbsp;|&nbsp;
-        <span class="traffic-dot-red"></span><span class="traffic-red">Red</span> = more than 25% above average
-    </div>
-
-    <!-- ZONE BREAKDOWN -->
-    <div class="mb-2"><span class="section-num">Zone Breakdown</span></div>
+    <!-- 01 ZONE BREAKDOWN -->
+    <div class="mb-2 mt-2"><span class="section-num">01 &mdash; Zone Breakdown</span></div>
     <div class="divider"></div>
 
     {% for zone in zones %}
@@ -124,7 +123,7 @@
             <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 0.5rem;">
                 <div>
                     <div style="font-weight: 700; font-size: 1rem; color: #1A1A1A;">
-                        <span class="traffic-dot-{{ zone.traffic }}"></span>{{ zone.label }}
+                        <span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:{%if zone.traffic=='green'%}#4A7C59{%elif zone.traffic=='amber'%}#C8963E{%else%}#C44D3F{%endif%};margin-right:5px;vertical-align:middle;"></span>{{ zone.label }}
                         <span style="font-size: 0.75rem; color: #9A9A9A; font-weight: 400; margin-left: 0.5rem;">Round {{ zone.cycle_number }}</span>
                     </div>
                     <div style="font-size: 0.78rem; color: #6B6B6B; margin-top: 0.2rem;">
@@ -151,46 +150,60 @@
             </div>
             {% endif %}
         </div>
-
-        <!-- UNIT TABLE -->
         {% if zone.units %}
         <div>
             <div style="display: flex; justify-content: space-between; padding: 0.35rem 1.25rem; background: #f5f5f3; font-size: 0.68rem; color: #9A9A9A; font-weight: 600; text-transform: uppercase; letter-spacing: 0.07em;">
-                <span>Unit</span>
-                <span>Defects</span>
+                <span>Unit</span><span>Defects</span>
             </div>
             {% for u in zone.units %}
             <div class="unit-row">
                 <span style="font-weight: 600; color: #1A1A1A;">{{ u.unit_number }}</span>
                 <span>
-                    {% if u.insp_status in ['reviewed','approved','certified','pending_followup'] %}
-                    <span style="font-weight: 700; {% if u.defect_count == 0 %}color:#4A7C59{% elif u.defect_count > kpis.project_avg %}color:#C44D3F{% else %}color:#1A1A1A{% endif %}">
-                        {{ u.defect_count }}
-                    </span>
+                    {% if u.insp_status in ["reviewed","approved","certified","pending_followup"] %}
+                    {% set uc = "#4A7C59" if u.defect_count <= q1 else "#C44D3F" if u.defect_count > q3 else "#C8963E" %}
+                    <span style="font-weight: 700; color: {{ uc }};">{{ u.defect_count }}</span>
                     {% else %}
-                    <span style="color: #9A9A9A; font-style: italic;">{{ u.insp_status | replace('_',' ') | default('not inspected') }}</span>
+                    <span style="color: #9A9A9A; font-style: italic;">{{ u.insp_status | replace("_"," ") | default("not inspected") }}</span>
                     {% endif %}
                 </span>
             </div>
             {% endfor %}
+            <div style="font-size: 0.7rem; color: #9A9A9A; padding: 0.4rem 1.25rem; border-top: 1px solid #f0f0f0;">
+                <span class="legend-item"><span class="legend-dot" style="background:#4A7C59;"></span> Bottom 25%</span>&ensp;
+                <span class="legend-item"><span class="legend-dot" style="background:#C8963E;"></span> Middle 50%</span>&ensp;
+                <span class="legend-item"><span class="legend-dot" style="background:#C44D3F;"></span> Top 25%</span>&ensp;
+                <span style="color:#BABABA;">&middot;</span>&ensp;
+                Q1: {{ q1 }} &middot; Q3: {{ q3 }} defects/unit
+            </div>
         </div>
         {% endif %}
     </div>
     {% endfor %}
 
-    <!-- AREA HOTSPOTS -->
+    <!-- 02 AREA HOTSPOTS -->
     {% if area_data %}
-    <div class="mb-2 mt-6"><span class="section-num">Area Hotspots</span></div>
+    <div class="mb-2 mt-6"><span class="section-num">02 &mdash; Hot Spots</span></div>
     <div class="divider"></div>
     <div style="background: #FAFAF8; border: 1px solid #e5e5e5; border-radius: 8px; padding: 1.25rem; margin-bottom: 2rem;">
+        <div style="font-size: 0.9rem; font-weight: 600; color: #1A1A1A; margin-bottom: 0.75rem;">Defects by Area</div>
         {% for a in area_data %}
+        {% set area_pct = (a.defect_count / kpis.total_defects * 100)|round(1) if kpis.total_defects > 0 else 0 %}
         <div class="area-row">
-            <div class="area-label">{{ a.area | title }}</div>
-            <div class="area-bar" style="width: {{ [([a.defect_count, 1] | max) * 200 // ([area_max, 1] | max), 200] | min }}px; background: {{ area_colours.get(a.area, '#9A9A9A') }};"></div>
-            <div class="area-count">{{ a.defect_count }}</div>
-            <div class="area-pct">{{ ((a.defect_count / ([kpis.total_defects, 1] | max)) * 100) | round | int }}%</div>
+            <span class="area-label">{{ a.area | title }}</span>
+            <div style="flex: 1;">
+                <div class="area-bar" style="width: {{ (a.defect_count / area_max * 100)|round }}%; background: {% if a.defect_count > area_median %}#C44D3F{% elif a.defect_count == area_median %}#C8963E{% else %}#4A7C59{% endif %};"></div>
+            </div>
+            <span class="area-pct">{{ area_pct }}%</span>
+            <span class="area-count">{{ a.defect_count }}</span>
         </div>
         {% endfor %}
+        <div style="font-size: 0.7rem; color: #9A9A9A; margin-top: 0.5rem; padding-top: 0.4rem; border-top: 1px solid #f0f0f0;">
+            <span class="legend-item"><span class="legend-dot" style="background:#4A7C59;"></span> Below median</span>&ensp;
+            <span class="legend-item"><span class="legend-dot" style="background:#C8963E;"></span> At median</span>&ensp;
+            <span class="legend-item"><span class="legend-dot" style="background:#C44D3F;"></span> Above median</span>&ensp;
+            <span style="color:#BABABA;">&middot;</span>&ensp;
+            median: {{ area_median|round|int }}
+        </div>
     </div>
     {% endif %}
 
