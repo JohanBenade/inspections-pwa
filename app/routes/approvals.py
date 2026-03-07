@@ -1172,7 +1172,7 @@ def cleanup():
     f_min_defects = request.args.get('min_defects', '')
     f_batch = request.args.get('batch', '')
 
-    # All defects on submitted inspections
+    # All defects on submitted + in_progress inspections
     defects = [dict(r) for r in query_db("""
         SELECT d.id, d.unit_id, d.item_template_id,
                d.original_comment, d.reviewed_comment,
@@ -1185,7 +1185,6 @@ def cleanup():
                ct.category_name, ct.id AS category_id,
                at.area_name, at.area_order, ct.category_order, it.item_order,
                ic.cycle_number, ic.block AS cycle_block, ic.floor AS cycle_floor,
-               ib.name AS batch_name, ib.id AS batch_id,
                ib.name AS batch_name, ib.id AS batch_id
         FROM defect d
         JOIN unit u ON d.unit_id = u.id
@@ -1204,9 +1203,34 @@ def cleanup():
         LEFT JOIN inspection_batch ib ON bu_link.batch_id = ib.id
         WHERE d.status = 'open' AND d.tenant_id = ?
         AND i.status IN ('submitted','reviewed','pending_followup','in_progress')
+        UNION
+        SELECT idef.id, i.unit_id, idef.item_template_id,
+               idef.description AS original_comment, NULL AS reviewed_comment,
+               idef.description AS display_desc,
+               idef.defect_type, i.cycle_id AS raised_cycle_id, idef.created_at, i.id AS inspection_id,
+               u.unit_number, u.block, u.floor,
+               i.inspector_name, i.status AS insp_status,
+               it.item_description,
+               parent.item_description AS parent_description,
+               ct.category_name, ct.id AS category_id,
+               at.area_name, at.area_order, ct.category_order, it.item_order,
+               ic.cycle_number, ic.block AS cycle_block, ic.floor AS cycle_floor,
+               ib.name AS batch_name, ib.id AS batch_id
+        FROM inspection_defect idef
+        JOIN inspection i ON idef.inspection_id = i.id
+        JOIN unit u ON i.unit_id = u.id
+        JOIN item_template it ON idef.item_template_id = it.id
+        JOIN category_template ct ON it.category_id = ct.id
+        JOIN area_template at ON ct.area_id = at.id
+        JOIN inspection_cycle ic ON i.cycle_id = ic.id
+        LEFT JOIN item_template parent ON it.parent_item_id = parent.id
+        LEFT JOIN batch_unit bu_link ON bu_link.unit_id = i.unit_id
+            AND bu_link.cycle_id = i.cycle_id AND bu_link.status != 'removed'
+        LEFT JOIN inspection_batch ib ON bu_link.batch_id = ib.id
+        WHERE idef.tenant_id = ? AND i.status = 'in_progress'
         ORDER BY at.area_order, ct.category_order, it.item_order,
                  u.unit_number
-    """, [tenant_id])]
+    """, [tenant_id, tenant_id])]
 
     # Build library lookup
     lib_all = query_db("""
