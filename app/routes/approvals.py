@@ -1203,7 +1203,7 @@ def cleanup():
             AND bu_link.cycle_id = d.raised_cycle_id AND bu_link.status != 'removed'
         LEFT JOIN inspection_batch ib ON bu_link.batch_id = ib.id
         WHERE d.status = 'open' AND d.tenant_id = ?
-        AND i.status IN ('submitted','reviewed','pending_followup')
+        AND i.status IN ('submitted','reviewed','pending_followup','in_progress')
         ORDER BY at.area_order, ct.category_order, it.item_order,
                  u.unit_number
     """, [tenant_id])]
@@ -1439,7 +1439,7 @@ def cleanup_apply_all_preview():
         JOIN category_template ct ON it.category_id = ct.id
         JOIN area_template at ON ct.area_id = at.id
         WHERE d.tenant_id = ? AND d.status = 'open'
-        AND i.status IN ('submitted','reviewed','pending_followup')
+        AND i.status IN ('submitted','reviewed','pending_followup','in_progress')
         AND d.item_template_id = ?
         AND LOWER(TRIM(COALESCE(d.reviewed_comment, d.original_comment))) = LOWER(TRIM(?))
         ORDER BY u.unit_number
@@ -1512,7 +1512,7 @@ def cleanup_apply_all_confirm():
         JOIN inspection i ON i.unit_id = d.unit_id
             AND i.cycle_id = d.raised_cycle_id AND i.tenant_id = d.tenant_id
         WHERE d.tenant_id = ? AND d.status = 'open'
-        AND i.status IN ('submitted','reviewed','pending_followup')
+        AND i.status IN ('submitted','reviewed','pending_followup','in_progress')
         AND d.item_template_id = ?
         AND LOWER(TRIM(COALESCE(d.reviewed_comment, d.original_comment))) = LOWER(TRIM(?))
     """, [tenant_id, item_template_id, old_comment])
