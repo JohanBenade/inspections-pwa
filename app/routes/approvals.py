@@ -1297,7 +1297,7 @@ def cleanup():
                                 if d['inspector_name']))
     all_cycles = sorted(set(d['cycle_label'] for d in batch_pool))
     all_batches_raw = query_db(
-        "SELECT id, name FROM inspection_batch WHERE tenant_id = ? ORDER BY name",
+        "SELECT id, name FROM inspection_batch WHERE tenant_id = ? ORDER BY name DESC",
         [tenant_id])
     all_batches = [(b['id'], b['name']) for b in all_batches_raw]
 
