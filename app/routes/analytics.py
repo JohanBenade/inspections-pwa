@@ -233,6 +233,17 @@ def dashboard():
         project['min_defects'] = 0
         project['max_defects'] = 0
 
+    # Q1/Q3 for unit-level traffic lights
+    def _quartile(data, q):
+        if not data:
+            return 0
+        idx = (len(data) - 1) * q / 100
+        lo, hi = int(idx), min(int(idx) + 1, len(data) - 1)
+        return data[lo] + (data[hi] - data[lo]) * (idx - lo)
+
+    q1 = round(_quartile(unit_counts_list, 25), 1) if unit_counts_list else 0
+    q3 = round(_quartile(unit_counts_list, 75), 1) if unit_counts_list else 0
+
     # 8. Rectification pulse (R2+ data)
     rect_raw = query_db("""
         SELECT
@@ -545,6 +556,8 @@ def dashboard():
                            grid_blocks=grid_blocks,
                            grid_floors=grid_floors,
                            block_floor_grid=block_floor_grid,
+                           q1=q1,
+                           q3=q3,
                            grid_median=grid_median,
                            inspector_cards=inspector_cards,
                            all_batches=all_batches)

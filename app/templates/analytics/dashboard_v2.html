@@ -199,9 +199,9 @@
             </table>
         </div>
         <div style="font-size: 0.7rem; color: #9A9A9A; margin-top: 0.5rem; padding-top: 0.4rem; border-top: 1px solid #f0f0f0;">
-            <span class="legend-item"><span class="legend-dot" style="background: rgba(74,124,89,0.25);"></span> Below avg</span>&ensp;
-            <span class="legend-item"><span class="legend-dot" style="background: rgba(200,150,62,0.25);"></span> At avg</span>&ensp;
-            <span class="legend-item"><span class="legend-dot" style="background: rgba(196,77,63,0.25);"></span> Above avg</span>&ensp;
+            <span class="legend-item"><span class="legend-dot" style="background: rgba(74,124,89,0.25);"></span> Below median</span>&ensp;
+            <span class="legend-item"><span class="legend-dot" style="background: rgba(200,150,62,0.25);"></span> At median</span>&ensp;
+            <span class="legend-item"><span class="legend-dot" style="background: rgba(196,77,63,0.25);"></span> Above median</span>&ensp;
             <span style="color: #BABABA;">&middot;</span>&ensp;
             <span style="font-size: 0.7rem; color: #9A9A9A;">project avg: {{ grid_median }} defects/unit</span>
         </div>
@@ -227,7 +227,7 @@
             <a href="{{ url_for('analytics.explore', area=area.area) }}" class="area-row">
                 <span class="area-label">{{ area.area|title }}</span>
                 <div style="flex: 1;">
-                    <div class="area-bar" style="width: {{ (area.defect_count / area_max * 100)|round }}%; background: {% if area.defect_count > area_median * 1.5 %}#C44D3F{% elif area.defect_count > area_median %}#C8963E{% else %}#4A7C59{% endif %};"></div>
+                    <div class="area-bar" style="width: {{ (area.defect_count / area_max * 100)|round }}%; background: {% if area.defect_count > area_median %}#C44D3F{% elif area.defect_count == area_median %}#C8963E{% else %}#4A7C59{% endif %};"></div>
                 </div>
                 <span class="area-pct">{{ area_pct }}%</span>
                 <span class="area-count">{{ area.defect_count }}</span>
@@ -253,7 +253,7 @@
             </div>
             {% for unit in worst_units %}
             {% set unit_block_slug = unit.block|lower|replace(' ', '-') %}
-            {% set unit_colour = '#C44D3F' if unit.defect_count > project.median_defects * 1.5 else '#C8963E' if unit.defect_count > project.median_defects else '#4A7C59' %}
+            {% set unit_colour = '#C44D3F' if unit.defect_count > q3 else '#C8963E' if unit.defect_count > q1 else '#4A7C59' %}
             <a href="{{ url_for('certification.view_unit', unit_id=unit.unit_id, **{'from': 'analytics'}) }}" class="area-row">
                 <span class="area-label" style="min-width: 130px;">
                     <span style="font-weight: 700;">{{ unit.unit_number }}</span>
@@ -265,6 +265,13 @@
                 <span class="area-count" style="color: {{ unit_colour }};">{{ unit.defect_count }}</span>
             </a>
             {% endfor %}
+            <div style="font-size: 0.7rem; color: #9A9A9A; margin-top: 0.5rem; padding-bottom: 0.4rem;">
+                <span class="legend-item"><span class="legend-dot" style="background: #4A7C59;"></span> Bottom 25%</span>&ensp;
+                <span class="legend-item"><span class="legend-dot" style="background: #C8963E;"></span> Middle 50%</span>&ensp;
+                <span class="legend-item"><span class="legend-dot" style="background: #C44D3F;"></span> Top 25%</span>&ensp;
+                <span style="color: #BABABA;">&middot;</span>&ensp;
+                <span style="font-size: 0.7rem; color: #9A9A9A;">Q1: {{ q1 }} &middot; Q3: {{ q3 }} defects/unit</span>
+            </div>
             <div style="font-size: 0.7rem; color: #9A9A9A; margin-top: 0.5rem; padding-top: 0.4rem; border-top: 1px solid #f0f0f0;">
                 <span class="legend-item"><span class="legend-dot" style="background: #4A7C59;"></span> &lt;{{ project.median_defects|round|int }}</span>&ensp;
                 <span class="legend-item"><span class="legend-dot" style="background: #C8963E;"></span> {{ project.median_defects|round|int }}&ndash;{{ (project.median_defects * 1.5)|round|int }}</span>&ensp;
