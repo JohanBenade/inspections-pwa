@@ -203,7 +203,7 @@
             <span class="legend-item"><span class="legend-dot" style="background: rgba(200,150,62,0.25);"></span> At median</span>&ensp;
             <span class="legend-item"><span class="legend-dot" style="background: rgba(196,77,63,0.25);"></span> Above median</span>&ensp;
             <span style="color: #BABABA;">&middot;</span>&ensp;
-            <span style="font-size: 0.7rem; color: #9A9A9A;">project avg: {{ grid_median }} defects/unit</span>
+            <span style="font-size: 0.7rem; color: #9A9A9A;">project median: {{ project.median_defects }} defects/unit</span>
         </div>
     </div>
     {% endif %}
@@ -235,9 +235,9 @@
             {% endfor %}
             <div style="font-size: 0.7rem; color: #9A9A9A; margin-top: 0.5rem; padding-top: 0.4rem; border-top: 1px solid #f0f0f0;">
                 <div style="margin-bottom: 0.25rem;">
-                    <span class="legend-item"><span class="legend-dot" style="background: #4A7C59;"></span> &lt;{{ area_median|round|int }}</span>&ensp;
-                    <span class="legend-item"><span class="legend-dot" style="background: #C8963E;"></span> {{ area_median|round|int }}&ndash;{{ (area_median * 1.5)|round|int }}</span>&ensp;
-                    <span class="legend-item"><span class="legend-dot" style="background: #C44D3F;"></span> &gt;{{ (area_median * 1.5)|round|int }}</span>&ensp;
+                    <span class="legend-item"><span class="legend-dot" style="background: #4A7C59;"></span> Below median</span>&ensp;
+                    <span class="legend-item"><span class="legend-dot" style="background: #C8963E;"></span> At median</span>&ensp;
+                    <span class="legend-item"><span class="legend-dot" style="background: #C44D3F;"></span> Above median</span>&ensp;
                     <span style="color: #BABABA;">&middot;</span>&ensp;
                     median: {{ area_median|round|int }}
                 </div>
@@ -272,13 +272,7 @@
                 <span style="color: #BABABA;">&middot;</span>&ensp;
                 <span style="font-size: 0.7rem; color: #9A9A9A;">Q1: {{ q1 }} &middot; Q3: {{ q3 }} defects/unit</span>
             </div>
-            <div style="font-size: 0.7rem; color: #9A9A9A; margin-top: 0.5rem; padding-top: 0.4rem; border-top: 1px solid #f0f0f0;">
-                <span class="legend-item"><span class="legend-dot" style="background: #4A7C59;"></span> &lt;{{ project.median_defects|round|int }}</span>&ensp;
-                <span class="legend-item"><span class="legend-dot" style="background: #C8963E;"></span> {{ project.median_defects|round|int }}&ndash;{{ (project.median_defects * 1.5)|round|int }}</span>&ensp;
-                <span class="legend-item"><span class="legend-dot" style="background: #C44D3F;"></span> &gt;{{ (project.median_defects * 1.5)|round|int }}</span>&ensp;
-                <span style="color: #BABABA;">&middot;</span>&ensp;
-                median: {{ project.median_defects }}
-                </div>
+
                 <div style="font-size: 0.7rem; color: #9A9A9A; margin-bottom: 0.25rem;">These 5 units hold {{ worst_pct }}% of all open defects &middot; {{ worst_dominant_count }} of 5 are {{ worst_dominant_zone }}</div>
                 <div style="font-size: 0.7rem; color: #9A9A9A;">Tap any unit to drill down &rarr;</div>
             </div>
@@ -426,9 +420,9 @@
         </div>
         {% endfor %}
         <div style="font-size: 0.7rem; color: #9A9A9A; margin-top: 0.5rem; padding-top: 0.4rem; border-top: 1px solid #f0f0f0;">
-            <span class="legend-item"><span class="legend-dot" style="background: #4A7C59;"></span> &lt;{{ cat_median|round|int }}</span>&ensp;
-            <span class="legend-item"><span class="legend-dot" style="background: #C8963E;"></span> {{ cat_median|round|int }}</span>&ensp;
-            <span class="legend-item"><span class="legend-dot" style="background: #C44D3F;"></span> &gt;{{ cat_median|round|int }}</span>&ensp;
+            <span class="legend-item"><span class="legend-dot" style="background: #4A7C59;"></span> Below median</span>&ensp;
+            <span class="legend-item"><span class="legend-dot" style="background: #C8963E;"></span> At median</span>&ensp;
+            <span class="legend-item"><span class="legend-dot" style="background: #C44D3F;"></span> Above median</span>&ensp;
             <span style="color: #BABABA;">&middot;</span>&ensp;
             median: {{ cat_median|round|int }}
         </div>
