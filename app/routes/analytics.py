@@ -427,17 +427,7 @@ def dashboard():
         SELECT d.original_comment,
             COUNT(d.id) AS cnt,
             COUNT(DISTINCT d.unit_id) AS unit_count,
-            GROUP_CONCAT(DISTINCT u.unit_number) AS affected_units,
-            (SELECT ct2.category_name
-             FROM defect d2
-             JOIN item_template it2 ON d2.item_template_id = it2.id
-             JOIN category_template ct2 ON it2.category_id = ct2.id
-             WHERE d2.original_comment = d.original_comment
-             AND d2.tenant_id = d.tenant_id AND d2.status = 'open'
-             AND d2.raised_cycle_id NOT LIKE 'test-%'
-             GROUP BY ct2.category_name
-             ORDER BY COUNT(d2.id) DESC
-             LIMIT 1) AS category_name
+            GROUP_CONCAT(DISTINCT u.unit_number) AS affected_units
         FROM defect d
         JOIN unit u ON d.unit_id = u.id
         WHERE d.tenant_id = ? AND d.status = 'open'
@@ -449,6 +439,28 @@ def dashboard():
         LIMIT 10
     """, [tenant_id])
     recurring = [dict(r) for r in recurring_raw]
+    # Category breakdown for top 10 descriptions
+    if recurring:
+        top_comments = [r['original_comment'] for r in recurring]
+        placeholders = ','.join('?' * len(top_comments))
+        cat_raw = query_db("""
+            SELECT d.original_comment, ct.category_name, COUNT(d.id) AS cat_cnt
+            FROM defect d
+            JOIN item_template it ON d.item_template_id = it.id
+            JOIN category_template ct ON it.category_id = ct.id
+            WHERE d.tenant_id = ? AND d.status = 'open'
+            AND d.raised_cycle_id NOT LIKE 'test-%'
+            AND d.original_comment IN ({})
+            AND EXISTS (SELECT 1 FROM inspection i2 WHERE i2.unit_id = d.unit_id AND i2.cycle_id = d.raised_cycle_id AND i2.status IN ('reviewed','approved','certified','pending_followup'))
+            GROUP BY d.original_comment, ct.category_name
+            ORDER BY d.original_comment, cat_cnt DESC
+        """.format(placeholders), [tenant_id] + top_comments)
+        from collections import defaultdict
+        cat_map = defaultdict(list)
+        for row in cat_raw:
+            cat_map[row['original_comment']].append({'cat': row['category_name'], 'cnt': row['cat_cnt']})
+        for r in recurring:
+            r['cat_breakdown'] = cat_map.get(r['original_comment'], [])
 
     # 14. Build density grid from cards
     grid_blocks = sorted(set(c['block'] for c in cards if c['inspected'] > 0))

@@ -343,8 +343,7 @@
         <a href="{{ url_for('analytics.explore', q=r.original_comment) }}" style="display: block; padding: 0.5rem 0; text-decoration: none; color: inherit; {% if not loop.last %}border-bottom: 1px solid #f0f0f0;{% endif %}">
             <div style="display: flex; align-items: center; gap: 0.4rem; margin-bottom: 0.3rem;">
                 <span style="display: inline-block; width: 20px; height: 20px; line-height: 20px; border-radius: 50%; text-align: center; font-size: 0.65rem; font-weight: 700; color: white; background: #C44D3F; flex-shrink: 0;">{{ loop.index }}</span>
-                <span style="font-size: 0.8rem; font-weight: 500; color: #1A1A1A; flex: 1; min-width: 0;">{{ r.original_comment }}</span>
-                {% if r.category_name %}<span style="font-size: 0.65rem; font-weight: 600; color: #9A9A9A; background: #f0ede8; border-radius: 3px; padding: 0.1rem 0.35rem; white-space: nowrap; flex-shrink: 0;">{{ r.category_name }}</span>{% endif %}
+                <span style="font-size: 0.8rem; font-weight: 500; color: #1A1A1A; flex: 1; min-width: 0;">{{ r.original_comment }}{% if r.cat_breakdown %} <span style="font-size: 0.7rem; font-weight: 400; color: #6B6B6B;">({% for c in r.cat_breakdown %}{{ c.cat }} {{ c.cnt }}{% if not loop.last %} &middot; {% endif %}{% endfor %})</span>{% endif %}</span>
                 <span style="font-size: 0.8rem; font-weight: 700; color: #C44D3F; flex-shrink: 0;">{{ r.cnt }}</span>
                 <span style="font-size: 0.7rem; color: #9A9A9A; width: 40px; text-align: right; flex-shrink: 0;">{{ r.unit_count }}u</span>
             </div>
