@@ -517,17 +517,6 @@
     {% endfor %}
     </div>
 
-    <!-- Awaiting inspection (no data yet) -->
-    {% if ns.awaiting_blocks %}
-    <div class="awaiting-section mb-4">
-        <div style="font-size: 0.75rem; font-weight: 600; color: #9A9A9A; text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 0.5rem;">Awaiting Inspection</div>
-        <div style="display: flex; flex-wrap: wrap; gap: 0.5rem;">
-            {% for bname, bcount in ns.awaiting_blocks|dictsort %}
-            <span style="font-size: 0.8rem; color: #6B6B6B; background: white; border: 1px solid #e5e5e5; border-radius: 4px; padding: 0.3rem 0.65rem;">{{ bname }} <span style="color: #9A9A9A;">({{ bcount }} units)</span></span>
-            {% endfor %}
-        </div>
-    </div>
-    {% endif %}
 
     {% endif %}
 
