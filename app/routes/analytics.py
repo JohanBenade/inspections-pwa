@@ -424,17 +424,26 @@ def dashboard():
 
     # 13. Systemic/recurring defects (3+ units)
     recurring_raw = query_db("""
-        SELECT d.original_comment, ct.category_name,
-            COUNT(d.id) AS cnt, COUNT(DISTINCT d.unit_id) AS unit_count,
-            GROUP_CONCAT(DISTINCT u.unit_number) AS affected_units
+        SELECT d.original_comment,
+            COUNT(d.id) AS cnt,
+            COUNT(DISTINCT d.unit_id) AS unit_count,
+            GROUP_CONCAT(DISTINCT u.unit_number) AS affected_units,
+            (SELECT ct2.category_name
+             FROM defect d2
+             JOIN item_template it2 ON d2.item_template_id = it2.id
+             JOIN category_template ct2 ON it2.category_id = ct2.id
+             WHERE d2.original_comment = d.original_comment
+             AND d2.tenant_id = d.tenant_id AND d2.status = 'open'
+             AND d2.raised_cycle_id NOT LIKE 'test-%'
+             GROUP BY ct2.category_name
+             ORDER BY COUNT(d2.id) DESC
+             LIMIT 1) AS category_name
         FROM defect d
         JOIN unit u ON d.unit_id = u.id
-        JOIN item_template it ON d.item_template_id = it.id
-        JOIN category_template ct ON it.category_id = ct.id
         WHERE d.tenant_id = ? AND d.status = 'open'
         AND d.raised_cycle_id NOT LIKE 'test-%'
         AND EXISTS (SELECT 1 FROM inspection i2 WHERE i2.unit_id = d.unit_id AND i2.cycle_id = d.raised_cycle_id AND i2.status IN ('reviewed','approved','certified','pending_followup'))
-        GROUP BY d.original_comment, ct.category_name
+        GROUP BY d.original_comment
         HAVING unit_count >= 3
         ORDER BY cnt DESC
         LIMIT 10
