@@ -262,6 +262,128 @@
     </div>
     {% endif %}
 
+    <!-- 03 AREA DEEP DIVE -->
+    {% if area_deep_dive %}
+    <div class="mb-2 mt-4"><span class="section-num">03 &mdash; Area Deep Dive</span></div>
+    <div class="divider"></div>
+    <div style="font-size: 0.8rem; color: #6B6B6B; margin-bottom: 1rem;">Top 3 defect types in the highest-defect areas</div>
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.25rem; margin-bottom: 0.75rem;">
+    {% for area in area_deep_dive %}
+        <div class="hotspot-panel" style="border-left: 3px solid {{ area.colour }};">
+            <div style="display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 0.75rem;">
+                <span style="font-size: 0.95rem; font-weight: 700; color: #1A1A1A;">{{ area.area }}</span>
+                <span style="font-size: 0.75rem; color: #6B6B6B;">{{ area.total }} defects ({{ area.pct }}%)</span>
+            </div>
+            {% for d in area.defects %}
+            <div style="margin-bottom: 0.6rem;">
+                <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.2rem;">
+                    <span style="display: inline-block; width: 20px; height: 20px; border-radius: 50%; background: {{ area.colour }}; color: #fff; font-size: 0.65rem; font-weight: 700; text-align: center; line-height: 20px;">{{ loop.index }}</span>
+                    <span style="font-size: 0.8rem; color: #1A1A1A;">{{ d.description }}</span>
+                    <span style="margin-left: auto; font-size: 0.8rem; font-weight: 700; color: #1A1A1A;">{{ d.count }}</span>
+                </div>
+                <div style="height: 8px; background: #f0ede8; border-radius: 3px; overflow: hidden;">
+                    <div style="width: {{ d.bar_pct }}%; height: 100%; background: {{ area.colour }}; border-radius: 4px;"></div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    {% endfor %}
+    </div>
+    {% if dd_callout %}
+    <div style="border-left: 3px solid #C8963E; background: rgba(200,150,62,0.08); padding: 0.75rem 1rem; border-radius: 0 6px 6px 0; margin-bottom: 2rem;">
+        <span style="font-size: 0.75rem; font-weight: 700; color: #C8963E;">Key finding:</span>
+        <span style="font-size: 0.8rem; color: #1A1A1A;">{{ dd_callout }}</span>
+    </div>
+    {% endif %}
+    {% endif %}
+
+    <!-- 04 TOP DEFECT TYPES -->
+    {% if top_defects %}
+    <div class="mb-2"><span class="section-num">04 &mdash; Top Defect Types</span></div>
+    <div class="divider"></div>
+    <div class="hotspot-panel mb-6">
+        <div style="margin-bottom: 0.75rem;">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+                <span style="font-size: 0.9rem; font-weight: 600; color: #1A1A1A;">Top 10 most common defect descriptions</span>
+                <span style="font-size: 0.7rem; color: #9A9A9A;">median: {{ td_median|round|int }}</span>
+            </div>
+            <div style="font-size: 0.75rem; color: #6B6B6B; margin-top: 0.15rem;">Ranked by total count across all units in this batch</div>
+        </div>
+        {% set td_max = top_defects[0].cnt if top_defects else 1 %}
+        {% for d in top_defects %}
+        {% set td_pct = (d.cnt / kpis.total_defects * 100)|round(1) if kpis.total_defects > 0 else 0 %}
+        <div style="margin-bottom: 0.75rem;">
+            <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.2rem;">
+                <span style="display: inline-block; width: 20px; height: 20px; line-height: 20px; border-radius: 50%; text-align: center; font-size: 0.65rem; font-weight: 700; color: white; background: {% if d.cnt > td_median %}#C44D3F{% elif d.cnt == td_median %}#C8963E{% else %}#4A7C59{% endif %}; flex-shrink: 0;">{{ loop.index }}</span>
+                <span style="font-size: 0.82rem; color: #1A1A1A; flex: 1;">{{ d.description }}</span>
+                <span style="font-size: 0.8rem; font-weight: 700; color: {% if d.cnt > td_median %}#C44D3F{% elif d.cnt == td_median %}#C8963E{% else %}#4A7C59{% endif %}; flex-shrink: 0;">{{ d.cnt }}</span>
+                <span style="font-size: 0.7rem; color: #9A9A9A; min-width: 3rem; text-align: right;">{{ td_pct }}%</span>
+            </div>
+            <div style="height: 6px; background: #f0ede8; border-radius: 3px; overflow: hidden;">
+                <div style="width: {{ (d.cnt / td_max * 100)|round }}%; height: 100%; background: {% if d.cnt > td_median %}#C44D3F{% elif d.cnt == td_median %}#C8963E{% else %}#4A7C59{% endif %}; border-radius: 3px;"></div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    <!-- 05 SYSTEMIC ISSUES -->
+    {% if recurring %}
+    <div class="mb-2"><span class="section-num">05 &mdash; Systemic Issues</span></div>
+    <div class="divider"></div>
+    <div class="hotspot-panel mb-6">
+        <div style="margin-bottom: 0.75rem;">
+            <div style="font-size: 0.9rem; font-weight: 600; color: #1A1A1A;">Top recurring defects (2+ units)</div>
+            <div style="font-size: 0.75rem; color: #6B6B6B; margin-top: 0.15rem;">Ranked by spread across units &mdash; address these batch-wide</div>
+        </div>
+        {% set rec_max = recurring[0].cnt if recurring else 1 %}
+        {% for r in recurring %}
+        <div style="margin-bottom: 0.75rem;">
+            <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.2rem;">
+                <span style="font-size: 0.9rem; font-weight: 700; color: #C44D3F; min-width: 2rem;">{{ r.cnt }}</span>
+                <span style="font-size: 0.82rem; color: #1A1A1A; flex: 1;">{{ r.original_comment }}</span>
+                <span style="font-size: 0.7rem; color: #9A9A9A;">{{ r.unit_count }} units</span>
+                <span style="font-size: 0.65rem; font-weight: 600; color: #9A9A9A; text-transform: uppercase; letter-spacing: 0.05em;">{{ r.category_name }}</span>
+            </div>
+            <div style="height: 6px; background: #f0ede8; border-radius: 3px; overflow: hidden;">
+                <div style="width: {{ (r.cnt / rec_max * 100)|round }}%; height: 100%; background: #C44D3F; border-radius: 3px;"></div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    <!-- 06 DEFECTS BY TRADE -->
+    {% if category_data %}
+    <div class="mb-2"><span class="section-num">06 &mdash; Defects by Trade</span></div>
+    <div class="divider"></div>
+    <div class="hotspot-panel mb-6">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem;">
+            <span style="font-size: 0.9rem; font-weight: 600; color: #1A1A1A;">Construction trade breakdown</span>
+            <span style="font-size: 0.7rem; color: #9A9A9A;">median: {{ cat_median|round|int }}</span>
+        </div>
+        {% set cat_max = category_data[0].count if category_data else 1 %}
+        {% for cat in category_data %}
+        {% set cat_pct = (cat.count / kpis.total_defects * 100)|round(1) if kpis.total_defects > 0 else 0 %}
+        <div class="area-row">
+            <span style="font-size: 0.8rem; font-weight: 600; min-width: 110px; color: #1A1A1A; text-transform: uppercase; letter-spacing: 0.04em;">{{ cat.category }}</span>
+            <div style="flex: 1;">
+                <div class="area-bar" style="width: {{ (cat.count / cat_max * 100)|round }}%; background: {% if cat.count > cat_median %}#C44D3F{% elif cat.count == cat_median %}#C8963E{% else %}#4A7C59{% endif %};"></div>
+            </div>
+            <span class="area-pct">{{ cat_pct }}%</span>
+            <span class="area-count">{{ cat.count }}</span>
+        </div>
+        {% endfor %}
+        <div style="font-size: 0.7rem; color: #9A9A9A; margin-top: 0.5rem; padding-top: 0.4rem; border-top: 1px solid #f0f0f0;">
+            <span class="legend-item"><span class="legend-dot" style="background: #4A7C59;"></span> Below median</span>&ensp;
+            <span class="legend-item"><span class="legend-dot" style="background: #C8963E;"></span> At median</span>&ensp;
+            <span class="legend-item"><span class="legend-dot" style="background: #C44D3F;"></span> Above median</span>&ensp;
+            <span style="color: #BABABA;">&middot;</span>&ensp;
+            median: {{ cat_median|round|int }}
+        </div>
+    </div>
+    {% endif %}
+
     <!-- FOOTER -->
     <div class="text-center text-xs text-gray-400 py-4" style="border-top: 1px solid #e5e5e5;">
         Monograph Architects &middot; PPSH Phase 3 &middot; Generated live

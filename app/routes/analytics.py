@@ -804,6 +804,106 @@ def batch_analytics(batch_id):
     else:
         area_median = 0
 
+    # 7b. Area deep dive scoped to batch
+    area_deep_dive = []
+    dd_colours = ['#C8963E', '#3D6B8E']
+    for idx, area_row in enumerate(area_data[:2]):
+        area_name = area_row['area']
+        if all_cycle_ids:
+            ph = ','.join('?' * len(all_cycle_ids))
+            dd_query = (
+                "SELECT d.original_comment AS description, COUNT(*) AS count "
+                "FROM defect d "
+                "JOIN item_template it ON d.item_template_id = it.id "
+                "JOIN category_template ct ON it.category_id = ct.id "
+                "JOIN area_template at2 ON ct.area_id = at2.id "
+                "WHERE d.tenant_id = ? AND d.status = 'open' "
+                "AND d.unit_id IN (SELECT unit_id FROM batch_unit WHERE batch_id = ? AND removed_at IS NULL AND tenant_id = ?) "
+                "AND EXISTS (SELECT 1 FROM inspection i2 WHERE i2.unit_id = d.unit_id AND i2.cycle_id = d.raised_cycle_id AND i2.status IN ('reviewed','approved','certified','pending_followup')) "
+                "AND d.raised_cycle_id IN ({}) "
+                "AND at2.area_name = ? "
+                "GROUP BY d.original_comment ORDER BY count DESC LIMIT 3"
+            ).format(ph)
+            dd_raw = [dict(r) for r in query_db(dd_query, [tenant_id, batch_id, tenant_id] + all_cycle_ids + [area_name])]
+        else:
+            dd_raw = []
+        max_dd = dd_raw[0]['count'] if dd_raw else 1
+        for d in dd_raw:
+            d['bar_pct'] = round(d['count'] / max_dd * 100)
+        area_pct = round(area_row['defect_count'] / batch_total_defects * 100, 1) if batch_total_defects > 0 else 0
+        area_deep_dive.append({'area': area_name, 'total': area_row['defect_count'], 'pct': area_pct, 'colour': dd_colours[idx], 'defects': dd_raw})
+    dd_callout = ''
+    if area_deep_dive and area_deep_dive[0]['defects']:
+        a1 = area_deep_dive[0]
+        d1 = a1['defects'][0]
+        dd_callout = 'The most frequent defect in {} is {} ({} occurrences).'.format(a1['area'].title(), d1['description'].lower(), d1['count'])
+        if len(area_deep_dive) >= 2 and area_deep_dive[1]['defects']:
+            a2 = area_deep_dive[1]
+            d2 = a2['defects'][0]
+            dd_callout += ' In {}, {} leads with {} occurrences.'.format(a2['area'].title(), d2['description'].lower(), d2['count'])
+
+    # 7c. Top defect types scoped to batch
+    top_defects = []
+    td_median = 0
+    if all_cycle_ids:
+        ph = ','.join('?' * len(all_cycle_ids))
+        td_query = (
+            "SELECT original_comment AS description, COUNT(*) AS cnt "
+            "FROM defect "
+            "WHERE tenant_id = ? AND status = 'open' "
+            "AND unit_id IN (SELECT unit_id FROM batch_unit WHERE batch_id = ? AND removed_at IS NULL AND tenant_id = ?) "
+            "AND EXISTS (SELECT 1 FROM inspection i2 WHERE i2.unit_id = defect.unit_id AND i2.cycle_id = defect.raised_cycle_id AND i2.status IN ('reviewed','approved','certified','pending_followup')) "
+            "AND raised_cycle_id IN ({}) "
+            "GROUP BY original_comment ORDER BY cnt DESC LIMIT 10"
+        ).format(ph)
+        top_defects = [dict(r) for r in query_db(td_query, [tenant_id, batch_id, tenant_id] + all_cycle_ids)]
+    td_counts = sorted([d['cnt'] for d in top_defects])
+    if td_counts:
+        mid = len(td_counts) // 2
+        td_median = td_counts[mid] if len(td_counts) % 2 else (td_counts[mid - 1] + td_counts[mid]) / 2
+
+    # 7d. Recurring defects scoped to batch
+    recurring = []
+    if all_cycle_ids:
+        ph = ','.join('?' * len(all_cycle_ids))
+        rec_query = (
+            "SELECT d.original_comment, ct.category_name, "
+            "COUNT(d.id) AS cnt, COUNT(DISTINCT d.unit_id) AS unit_count "
+            "FROM defect d "
+            "JOIN unit u ON d.unit_id = u.id "
+            "JOIN item_template it ON d.item_template_id = it.id "
+            "JOIN category_template ct ON it.category_id = ct.id "
+            "WHERE d.tenant_id = ? AND d.status = 'open' "
+            "AND d.unit_id IN (SELECT unit_id FROM batch_unit WHERE batch_id = ? AND removed_at IS NULL AND tenant_id = ?) "
+            "AND EXISTS (SELECT 1 FROM inspection i2 WHERE i2.unit_id = d.unit_id AND i2.cycle_id = d.raised_cycle_id AND i2.status IN ('reviewed','approved','certified','pending_followup')) "
+            "AND d.raised_cycle_id IN ({}) "
+            "GROUP BY d.original_comment, ct.category_name "
+            "HAVING unit_count >= 2 ORDER BY cnt DESC LIMIT 10"
+        ).format(ph)
+        recurring = [dict(r) for r in query_db(rec_query, [tenant_id, batch_id, tenant_id] + all_cycle_ids)]
+
+    # 7e. Category/trade breakdown scoped to batch
+    category_data = []
+    cat_median = 0
+    if all_cycle_ids:
+        ph = ','.join('?' * len(all_cycle_ids))
+        cat_query = (
+            "SELECT ct.category_name AS category, COUNT(d.id) AS count "
+            "FROM defect d "
+            "JOIN item_template it ON d.item_template_id = it.id "
+            "JOIN category_template ct ON it.category_id = ct.id "
+            "WHERE d.tenant_id = ? AND d.status = 'open' "
+            "AND d.unit_id IN (SELECT unit_id FROM batch_unit WHERE batch_id = ? AND removed_at IS NULL AND tenant_id = ?) "
+            "AND EXISTS (SELECT 1 FROM inspection i2 WHERE i2.unit_id = d.unit_id AND i2.cycle_id = d.raised_cycle_id AND i2.status IN ('reviewed','approved','certified','pending_followup')) "
+            "AND d.raised_cycle_id IN ({}) "
+            "GROUP BY ct.category_name ORDER BY count DESC"
+        ).format(ph)
+        category_data = [dict(r) for r in query_db(cat_query, [tenant_id, batch_id, tenant_id] + all_cycle_ids)]
+    cat_counts = sorted([c['count'] for c in category_data])
+    if cat_counts:
+        mid = len(cat_counts) // 2
+        cat_median = cat_counts[mid] if len(cat_counts) % 2 else (cat_counts[mid - 1] + cat_counts[mid]) / 2
+
     # 7. All batches for selector
     all_batches = [dict(r) for r in query_db("""
         SELECT id, name, status FROM inspection_batch
@@ -815,6 +915,10 @@ def batch_analytics(batch_id):
                            area_data=area_data, area_max=area_max,
                            area_colours=AREA_COLOURS, project_avg=project_avg,
                            area_median=area_median,
+                           area_deep_dive=area_deep_dive, dd_callout=dd_callout,
+                           top_defects=top_defects, td_median=td_median,
+                           recurring=recurring,
+                           category_data=category_data, cat_median=cat_median,
                            q1=q1, q3=q3,
                            all_batches=all_batches, floor_labels=FLOOR_LABELS,
                            batch_id=batch_id)
