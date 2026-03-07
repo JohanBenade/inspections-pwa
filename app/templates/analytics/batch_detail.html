@@ -262,30 +262,30 @@
     {% if recurring %}
     <div class="mb-2"><span class="section-num">05 &mdash; Systemic Issues</span></div>
     <div class="divider"></div>
-    <div class="hotspot-panel mb-6" style="border-left: 3px solid #C44D3F;">
+    <div class="hotspot-panel mb-6">
         <div style="margin-bottom: 0.75rem;">
-            <span style="font-size: 0.9rem; font-weight: 600; color: #1A1A1A;">Top 10 recurring defects</span>
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+                <span style="font-size: 0.9rem; font-weight: 600; color: #1A1A1A;">Top 10 recurring defects</span>
+                <span style="font-size: 0.7rem; color: #9A9A9A;">{{ recurring|sum(attribute='cnt') }} occurrences</span>
+            </div>
             <div style="font-size: 0.75rem; color: #6B6B6B; margin-top: 0.15rem;">Ranked by spread across units &mdash; address these batch-wide, not unit-by-unit</div>
         </div>
         {% set rec_max = recurring[0].cnt if recurring else 1 %}
         {% for r in recurring %}
-        <div style="padding: 0.5rem 0; {% if not loop.last %}border-bottom: 1px solid #f0f0f0;{% endif %}">
-            <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.25rem;">
-                <span style="display: inline-block; min-width: 32px; height: 24px; line-height: 24px; text-align: center; font-size: 0.8rem; font-weight: 700; color: #C44D3F; background: rgba(196,77,63,0.1); border-radius: 4px;">{{ r.cnt }}</span>
-                <span style="font-size: 0.8rem; font-weight: 500; color: #1A1A1A; flex: 1; min-width: 0;">{{ r.original_comment }}</span>
-                <span style="font-size: 0.7rem; color: #9A9A9A; white-space: nowrap;">{{ r.unit_count }} units</span>
+        <a href="{{ url_for('analytics.explore', q=r.original_comment) }}" style="display: block; padding: 0.5rem 0; text-decoration: none; color: inherit; {% if not loop.last %}border-bottom: 1px solid #f0f0f0;{% endif %}">
+            <div style="display: flex; align-items: center; gap: 0.4rem; margin-bottom: 0.3rem;">
+                <span style="display: inline-block; width: 20px; height: 20px; line-height: 20px; border-radius: 50%; text-align: center; font-size: 0.65rem; font-weight: 700; color: white; background: #C44D3F; flex-shrink: 0;">{{ loop.index }}</span>
+                <span style="font-size: 0.8rem; font-weight: 500; color: #1A1A1A; flex: 1; min-width: 0;">{{ r.original_comment }}{% if r.cat_breakdown %} <span style="font-size: 0.7rem; font-weight: 400; color: #6B6B6B;">({% for c in r.cat_breakdown %}{{ c.cat }} {{ c.cnt }}{% if not loop.last %} &middot; {% endif %}{% endfor %})</span>{% endif %}</span>
+                <span style="font-size: 0.8rem; font-weight: 700; color: #C44D3F; flex-shrink: 0;">{{ r.cnt }}</span>
+                <span style="font-size: 0.7rem; color: #9A9A9A; width: 40px; text-align: right; flex-shrink: 0;">{{ r.unit_count }}u</span>
             </div>
-            <div style="display: flex; align-items: center; gap: 0.5rem;">
-                <div style="width: 32px;"></div>
-                <div style="flex: 1; height: 8px; background: #f0ede8; border-radius: 3px; overflow: hidden;">
-                    <div style="height: 8px; width: {{ (r.cnt / rec_max * 100)|round }}%; background: #C44D3F; border-radius: 3px;"></div>
-                </div>
-                <span style="font-size: 0.65rem; color: #9A9A9A; min-width: 60px; text-align: right;">{{ r.category_name }}</span>
+            <div style="height: 8px; background: #f0f0f0; border-radius: 3px;">
+                <div style="height: 100%; width: {{ (r.cnt / rec_max * 100)|round }}%; background: #C44D3F; border-radius: 3px;"></div>
             </div>
-        </div>
+        </a>
         {% endfor %}
         <div style="font-size: 0.7rem; color: #9A9A9A; margin-top: 0.5rem; padding-top: 0.4rem; border-top: 1px solid #f0f0f0;">
-            {{ recurring|length }} defect type{{ 's' if recurring|length != 1 }} found across 2 or more units &middot; {{ recurring|sum(attribute='cnt') }} total occurrences
+            {{ recurring|length }} defect type{{ 's' if recurring|length != 1 }} found across 2 or more units &middot; Tap any row to explore &rarr;
         </div>
     </div>
     {% endif %}
