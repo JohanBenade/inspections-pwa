@@ -368,7 +368,7 @@
 
     <div class="hotspot-panel mb-6" style="border-left: 3px solid #C44D3F;">
         <div style="margin-bottom: 0.75rem;">
-            <span style="font-size: 0.9rem; font-weight: 600; color: #1A1A1A;">Top {{ recurring|length }} recurring defects (3+ units)</span>
+            <span style="font-size: 0.9rem; font-weight: 600; color: #1A1A1A;">Top 10 recurring defects</span>
             <div style="font-size: 0.75rem; color: #6B6B6B; margin-top: 0.15rem;">Ranked by spread across units &mdash; address these project-wide, not unit-by-unit</div>
         </div>
         {% set rec_max = recurring[0].cnt if recurring else 1 %}
