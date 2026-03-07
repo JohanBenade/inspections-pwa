@@ -186,7 +186,7 @@
             {% for zone in zones %}
                 {% for u in zone.units %}
                     {% if u.insp_status in ['reviewed','approved','certified','pending_followup'] %}
-                        {% set _ = reviewed_units.append({'unit_number': u.unit_number, 'defect_count': u.defect_count, 'zone_label': zone.label}) %}
+                        {% set _ = reviewed_units.append({'unit_number': u.unit_number, 'defect_count': u.defect_count, 'zone_label': zone.label, 'cycle_number': zone.cycle_number}) %}
                     {% endif %}
                 {% endfor %}
             {% endfor %}
@@ -198,6 +198,7 @@
             <div class="area-row">
                 <span class="area-label" style="min-width: 130px;">
                     <span style="font-weight: 700;">{{ u.unit_number }}</span>
+                    {% if u.cycle_number > 1 %}<span style="font-size: 0.65rem; font-weight: 700; color: #3D6B8E; background: rgba(61,107,142,0.1); border-radius: 3px; padding: 0 4px; margin-left: 0.2rem;">C{{ u.cycle_number }}</span>{% endif %}
                     <span style="font-size: 0.7rem; color: #9A9A9A; margin-left: 0.2rem;">{{ u.zone_label }}</span>
                 </span>
                 <div style="flex: 1;">
