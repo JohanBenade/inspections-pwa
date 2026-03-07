@@ -621,7 +621,8 @@ def batch_analytics(batch_id):
             GROUP BY i.unit_id
         ) sub
     """, [tenant_id], one=True)
-    project_avg = round(proj_avg_row['project_avg'] or 0, 1) if proj_avg_row and proj_avg_row['project_avg'] else 0
+    project_avg_raw = proj_avg_row['project_avg'] or 0 if proj_avg_row and proj_avg_row['project_avg'] else 0
+    project_avg = round(project_avg_raw, 1)
 
     # 3. Zones in this batch
     zones_raw = [dict(r) for r in query_db("""
@@ -722,7 +723,7 @@ def batch_analytics(batch_id):
     batch_avg = round(batch_total_defects / batch_total_inspected, 1) if batch_total_inspected > 0 else 0
     batch_items = ITEMS_PER_UNIT * batch_total_inspected
     batch_defect_rate = round(batch_total_defects / batch_items * 100, 1) if batch_items > 0 else 0
-    proj_defect_rate = round(project_avg / ITEMS_PER_UNIT * 100, 1) if project_avg > 0 else 0
+    proj_defect_rate = round(project_avg_raw / ITEMS_PER_UNIT * 100, 1) if project_avg_raw > 0 else 0
 
     # Quartile banding across all inspected units in batch
     all_unit_counts = []
