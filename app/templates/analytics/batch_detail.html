@@ -3,41 +3,46 @@
 {% block content %}
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;600;700&family=DM+Sans:wght@400;500;600;700&display=swap');
-    .font-display { font-family: "Cormorant Garamond", Georgia, serif; }
-    .font-body { font-family: "DM Sans", system-ui, sans-serif; }
+    .font-display { font-family: 'Cormorant Garamond', Georgia, serif; }
+    .font-body { font-family: 'DM Sans', system-ui, sans-serif; }
     .gold-accent { color: #C8963E; }
-    .section-num { font-family: "Cormorant Garamond", serif; font-size: 0.75rem; font-weight: 600; letter-spacing: 0.15em; color: #C8963E; text-transform: uppercase; }
+    .section-num { font-family: 'Cormorant Garamond', serif; font-size: 0.75rem; font-weight: 600; letter-spacing: 0.15em; color: #C8963E; text-transform: uppercase; }
     .divider { height: 1px; background: #e5e5e5; margin: 0.25rem 0 1rem 0; }
-    .kpi-card { border-left: 3px solid #e5e5e5; background: #FAFAF8; border-radius: 6px; padding: 1rem 1.25rem; }
-    .kpi-value { font-family: "DM Sans", system-ui, sans-serif; font-weight: 700; font-size: 2rem; line-height: 1; letter-spacing: -0.02em; }
-    .kpi-label { font-family: "DM Sans", system-ui, sans-serif; font-size: 0.75rem; color: #6B6B6B; margin-top: 0.25rem; }
-    .kpi-sub { font-family: "DM Sans", system-ui, sans-serif; font-size: 0.7rem; color: #9A9A9A; margin-top: 0.15rem; }
-    .progress-bar-track { height: 6px; background: #e5e5e5; border-radius: 3px; margin-top: 0.4rem; }
-    .progress-bar-fill { height: 6px; border-radius: 3px; }
-    .traffic-green { color: #4A7C59; font-weight: 700; }
-    .traffic-amber { color: #C8963E; font-weight: 700; }
-    .traffic-red { color: #C44D3F; font-weight: 700; }
+    .kpi-card { border-left: 3px solid #C8963E; background: #FAFAF8; border-radius: 6px; padding: 1rem 1.25rem; }
+    .kpi-value { font-family: 'DM Sans', system-ui, sans-serif; font-weight: 700; font-size: 2rem; line-height: 1; letter-spacing: -0.02em; }
+    .kpi-label { font-family: 'DM Sans', system-ui, sans-serif; font-size: 0.75rem; color: #6B6B6B; margin-top: 0.25rem; }
+    .kpi-sub { font-family: 'DM Sans', system-ui, sans-serif; font-size: 0.7rem; color: #9A9A9A; margin-top: 0.15rem; }
+    .progress-bar-track { height: 8px; background: #e5e5e5; border-radius: 4px; overflow: hidden; }
+    .progress-bar-fill { height: 100%; border-radius: 4px; }
+    .hotspot-panel { background: #FAFAF8; border: 1px solid #e5e5e5; border-radius: 8px; padding: 1.25rem; }
+    .area-row { display: flex; align-items: center; gap: 0.5rem; padding: 0.4rem 0; text-decoration: none; color: inherit; }
+    .area-row:hover { opacity: 0.8; }
+    .area-bar { height: 8px; border-radius: 3px; min-width: 3px; }
+    .area-label { font-size: 0.8rem; font-weight: 500; min-width: 90px; color: #1A1A1A; }
+    .area-count { font-size: 0.8rem; font-weight: 700; min-width: 36px; text-align: right; color: #1A1A1A; }
+    .area-pct { font-size: 0.7rem; color: #9A9A9A; min-width: 36px; text-align: right; }
+    .legend-item { display: inline-flex; align-items: center; gap: 0.25rem; font-size: 0.7rem; color: #6B6B6B; }
+    .legend-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; }
     .zone-card { background: #FAFAF8; border: 1px solid #e5e5e5; border-radius: 8px; overflow: hidden; margin-bottom: 1rem; }
     .zone-header { padding: 1rem 1.25rem; border-bottom: 1px solid #e5e5e5; }
     .unit-row { display: flex; align-items: center; justify-content: space-between; padding: 0.5rem 1.25rem; border-top: 1px solid #f0f0f0; font-size: 0.82rem; }
     .unit-row:hover { background: rgba(200,150,62,0.04); }
     .rect-strip { background: #f0f4f0; border-top: 1px solid #e5e5e5; padding: 0.6rem 1.25rem; font-size: 0.78rem; color: #4A7C59; }
-    .area-row { display: flex; align-items: center; gap: 0.5rem; padding: 0.35rem 0; }
-    .area-bar { height: 8px; border-radius: 3px; min-width: 3px; }
-    .area-label { font-size: 0.8rem; font-weight: 500; min-width: 90px; color: #1A1A1A; }
-    .area-count { font-size: 0.8rem; font-weight: 700; min-width: 36px; text-align: right; }
-    .area-pct { font-size: 0.7rem; color: #9A9A9A; min-width: 36px; text-align: right; }
-    .legend-item { display: inline-flex; align-items: center; gap: 0.25rem; font-size: 0.7rem; color: #6B6B6B; }
-    .legend-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; }
+    .rect-box { background: #FAFAF8; border: 1px solid #e5e5e5; border-left: 3px solid #4A7C59; border-radius: 8px; padding: 1.25rem; }
+    .traffic-green { color: #4A7C59; font-weight: 700; }
+    .traffic-amber { color: #C8963E; font-weight: 700; }
+    .traffic-red { color: #C44D3F; font-weight: 700; }
 </style>
 
 <div class="font-body" style="max-width: 1280px; margin: 0 auto;">
 
-    <!-- HEADER + SELECTOR -->
+    <!-- HEADER -->
     <div class="mb-6">
-        <div>
-            <h1 class="font-display text-3xl lg:text-4xl font-bold text-gray-900" style="letter-spacing: -0.01em;">PPSH Phase 3</h1>
-            <div class="text-sm text-gray-400 mt-1">Power Park Student Housing &middot; Inspection Analytics</div>
+        <div class="flex items-center justify-between">
+            <div>
+                <h1 class="font-display text-3xl lg:text-4xl font-bold text-gray-900" style="letter-spacing: -0.01em;">PPSH Phase 3</h1>
+                <div class="text-sm text-gray-400 mt-1">Power Park Student Housing &middot; Inspection Analytics</div>
+            </div>
         </div>
         <div style="margin-top: 1rem;">
             <select onchange="if(this.value) window.location=this.value;" style="padding: 0.4rem 0.75rem; font-size: 0.85rem; border: 1px solid #e5e5e5; border-radius: 6px; background: #fff; color: #1A1A1A; cursor: pointer;">
@@ -49,25 +54,9 @@
         </div>
     </div>
 
-    <!-- BATCH TITLE -->
-    <div style="margin-bottom: 1.5rem;">
-        <div style="font-size: 0.75rem; color: #C8963E; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; margin-bottom: 0.25rem;">Batch</div>
-        <div class="divider"></div>
-        <div style="display: flex; gap: 2rem; flex-wrap: wrap; align-items: center;">
-            <div>
-                <div style="font-size: 0.7rem; color: #9A9A9A; text-transform: uppercase; letter-spacing: 0.08em;">Name</div>
-                <div style="font-size: 1rem; font-weight: 700; color: #1A1A1A; margin-top: 0.15rem;">{{ batch.name }}</div>
-            </div>
-            <div>
-                <div style="font-size: 0.7rem; color: #9A9A9A; text-transform: uppercase; letter-spacing: 0.08em;">Status</div>
-                <div style="font-size: 0.9rem; font-weight: 600; color: #1A1A1A; margin-top: 0.15rem;">{{ batch.status | replace("_", " ") | title }}</div>
-            </div>
-            <div>
-                <div style="font-size: 0.7rem; color: #9A9A9A; text-transform: uppercase; letter-spacing: 0.08em;">Zones</div>
-                <div style="font-size: 0.9rem; font-weight: 600; color: #1A1A1A; margin-top: 0.15rem;">{{ zones | length }}</div>
-            </div>
-        </div>
-    </div>
+    <!-- BATCH LABEL -->
+    <div style="font-size: 0.75rem; color: #C8963E; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; margin-bottom: 0.25rem;">{{ batch.name }} &middot; {{ batch.status | replace('_', ' ') | title }} &middot; {{ zones | length }} zone{{ 's' if zones | length != 1 }}</div>
+    <div class="divider"></div>
 
     <!-- PROGRESS -->
     <div class="mb-2"><span class="section-num">Progress</span></div>
@@ -76,8 +65,8 @@
             <div class="kpi-value text-gray-900">{{ kpis.inspected }} <span style="font-size: 1rem; font-weight: 400; color: #9A9A9A;">/ {{ kpis.total_units }}</span></div>
             <div class="kpi-label">Units inspected</div>
             <div style="margin-top: 0.5rem;">
+                {% set pct = ((kpis.inspected / kpis.total_units) * 100)|round|int if kpis.total_units > 0 else 0 %}
                 <div class="progress-bar-track">
-                    {% set pct = ((kpis.inspected / kpis.total_units) * 100)|round|int if kpis.total_units > 0 else 0 %}
                     <div class="progress-bar-fill" style="width: {{ pct }}%; background: #C8963E;"></div>
                 </div>
                 <div class="kpi-sub">{{ pct }}% of batch</div>
@@ -120,8 +109,33 @@
         </div>
     </div>
 
+    <!-- RECTIFICATION (zones with R2+ data) -->
+    {% set has_rect = zones | selectattr('rectification') | list %}
+    {% if has_rect %}
+    <div class="mb-2"><span class="section-num">Rectification</span></div>
+    <div class="divider"></div>
+    {% for zone in has_rect %}
+    <div class="rect-box mb-4">
+        <div style="font-size: 0.85rem; font-weight: 600; color: #1A1A1A; margin-bottom: 0.5rem;">{{ zone.label }} &mdash; R{{ zone.cycle_number }} vs R{{ zone.cycle_number - 1 }}</div>
+        <div style="display: flex; flex-wrap: wrap; gap: 1rem; font-size: 0.82rem; color: #6B6B6B;">
+            <span>R{{ zone.cycle_number - 1 }} raised <strong>{{ zone.rectification.r1_raised }}</strong></span>
+            <span style="color: #4A7C59; font-weight: 700;">{{ zone.rectification.cleared }} fixed ({{ zone.rectification.clearance_pct }}%)</span>
+            <span style="color: #C8963E; font-weight: 700;">{{ zone.rectification.new }} new</span>
+            <span>{{ zone.rectification.still_open }} still open</span>
+        </div>
+        {% set bar_total = zone.rectification.cleared + zone.rectification.new %}
+        {% if bar_total > 0 %}
+        <div style="display: flex; height: 8px; border-radius: 3px; overflow: hidden; margin-top: 0.75rem;">
+            <div style="width: {{ (zone.rectification.cleared / bar_total * 100)|round }}%; background: #4A7C59;"></div>
+            <div style="width: {{ (zone.rectification.new / bar_total * 100)|round }}%; background: #C8963E;"></div>
+        </div>
+        {% endif %}
+    </div>
+    {% endfor %}
+    {% endif %}
+
     <!-- 01 ZONE BREAKDOWN -->
-    <div class="mb-2 mt-2"><span class="section-num">01 &mdash; Zone Breakdown</span></div>
+    <div class="mb-2"><span class="section-num">01 &mdash; Zone Breakdown</span></div>
     <div class="divider"></div>
 
     {% for zone in zones %}
@@ -130,7 +144,7 @@
             <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 0.5rem;">
                 <div>
                     <div style="font-weight: 700; font-size: 1rem; color: #1A1A1A;">
-                        <span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:{% if zone.traffic=="green" %}#4A7C59{% elif zone.traffic=="amber" %}#C8963E{% else %}#C44D3F{% endif %};margin-right:5px;vertical-align:middle;"></span>{{ zone.label }}
+                        <span style="display: inline-block; width: 10px; height: 10px; border-radius: 50%; background: {% if zone.traffic == 'green' %}#4A7C59{% elif zone.traffic == 'amber' %}#C8963E{% else %}#C44D3F{% endif %}; margin-right: 5px; vertical-align: middle;"></span>{{ zone.label }}
                         <span style="font-size: 0.75rem; color: #9A9A9A; font-weight: 400; margin-left: 0.5rem;">Round {{ zone.cycle_number }}</span>
                     </div>
                     <div style="font-size: 0.78rem; color: #6B6B6B; margin-top: 0.2rem;">
@@ -144,15 +158,6 @@
                     Zone detail &rarr;
                 </a>
             </div>
-            {% if zone.rectification %}
-            <div class="rect-strip" style="margin: 0.75rem -1.25rem -1rem -1.25rem; padding: 0.6rem 1.25rem;">
-                <strong>Rectification (R{{ zone.cycle_number }} vs R{{ zone.cycle_number - 1 }}):</strong>
-                R{{ zone.cycle_number - 1 }} raised {{ zone.rectification.r1_raised }} &nbsp;&middot;&nbsp;
-                Cleared {{ zone.rectification.cleared }} ({{ zone.rectification.clearance_pct }}%) &nbsp;&middot;&nbsp;
-                New {{ zone.rectification.new }} &nbsp;&middot;&nbsp;
-                Still open {{ zone.rectification.still_open }}
-            </div>
-            {% endif %}
         </div>
         {% if zone.units %}
         <div>
@@ -163,20 +168,20 @@
             <div class="unit-row">
                 <span style="font-weight: 600; color: #1A1A1A;">{{ u.unit_number }}</span>
                 <span>
-                    {% if u.insp_status in ["reviewed","approved","certified","pending_followup"] %}
-                    {% set uc = "#4A7C59" if u.defect_count <= q1 else "#C44D3F" if u.defect_count > q3 else "#C8963E" %}
+                    {% if u.insp_status in ['reviewed','approved','certified','pending_followup'] %}
+                    {% set uc = '#4A7C59' if u.defect_count <= q1 else '#C44D3F' if u.defect_count > q3 else '#C8963E' %}
                     <span style="font-weight: 700; color: {{ uc }};">{{ u.defect_count }}</span>
                     {% else %}
-                    <span style="color: #9A9A9A; font-style: italic;">{{ u.insp_status | replace("_"," ") | default("not inspected") }}</span>
+                    <span style="color: #9A9A9A; font-style: italic;">{{ u.insp_status | replace('_', ' ') | default('not inspected') }}</span>
                     {% endif %}
                 </span>
             </div>
             {% endfor %}
             <div style="font-size: 0.7rem; color: #9A9A9A; padding: 0.4rem 1.25rem; border-top: 1px solid #f0f0f0;">
-                <span class="legend-item"><span class="legend-dot" style="background:#4A7C59;"></span> Bottom 25%</span>&ensp;
-                <span class="legend-item"><span class="legend-dot" style="background:#C8963E;"></span> Middle 50%</span>&ensp;
-                <span class="legend-item"><span class="legend-dot" style="background:#C44D3F;"></span> Top 25%</span>&ensp;
-                <span style="color:#BABABA;">&middot;</span>&ensp;
+                <span class="legend-item"><span class="legend-dot" style="background: #4A7C59;"></span> Bottom 25%</span>&ensp;
+                <span class="legend-item"><span class="legend-dot" style="background: #C8963E;"></span> Middle 50%</span>&ensp;
+                <span class="legend-item"><span class="legend-dot" style="background: #C44D3F;"></span> Top 25%</span>&ensp;
+                <span style="color: #BABABA;">&middot;</span>&ensp;
                 Q1: {{ q1 }} &middot; Q3: {{ q3 }} defects/unit
             </div>
         </div>
@@ -186,30 +191,81 @@
 
     <!-- 02 HOT SPOTS -->
     {% if area_data %}
-    <div class="mb-2 mt-6"><span class="section-num">02 &mdash; Hot Spots</span></div>
+    <div class="mb-2 mt-4"><span class="section-num">02 &mdash; Hot Spots</span></div>
     <div class="divider"></div>
-    <div style="background: #FAFAF8; border: 1px solid #e5e5e5; border-radius: 8px; padding: 1.25rem; margin-bottom: 2rem;">
-        <div style="font-size: 0.9rem; font-weight: 600; color: #1A1A1A; margin-bottom: 0.75rem;">Defects by Area</div>
-        {% for a in area_data %}
-        {% set area_pct = (a.defect_count / kpis.total_defects * 100)|round(1) if kpis.total_defects > 0 else 0 %}
-        <div class="area-row">
-            <span class="area-label">{{ a.area | title }}</span>
-            <div style="flex: 1;">
-                <div class="area-bar" style="width: {{ (a.defect_count / area_max * 100)|round }}%; background: {% if a.defect_count > area_median %}#C44D3F{% elif a.defect_count == area_median %}#C8963E{% else %}#4A7C59{% endif %};"></div>
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
+
+        <!-- DEFECTS BY AREA -->
+        <div class="hotspot-panel">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+                <span style="font-size: 0.9rem; font-weight: 600; color: #1A1A1A;">Defects by Area</span>
             </div>
-            <span class="area-pct">{{ area_pct }}%</span>
-            <span class="area-count">{{ a.defect_count }}</span>
+            {% for a in area_data %}
+            {% set area_pct = (a.defect_count / kpis.total_defects * 100)|round(1) if kpis.total_defects > 0 else 0 %}
+            <div class="area-row">
+                <span class="area-label">{{ a.area | title }}</span>
+                <div style="flex: 1;">
+                    <div class="area-bar" style="width: {{ (a.defect_count / area_max * 100)|round }}%; background: {% if a.defect_count > area_median %}#C44D3F{% elif a.defect_count == area_median %}#C8963E{% else %}#4A7C59{% endif %};"></div>
+                </div>
+                <span class="area-pct">{{ area_pct }}%</span>
+                <span class="area-count">{{ a.defect_count }}</span>
+            </div>
+            {% endfor %}
+            <div style="font-size: 0.7rem; color: #9A9A9A; margin-top: 0.5rem; padding-top: 0.4rem; border-top: 1px solid #f0f0f0;">
+                <div style="margin-bottom: 0.25rem;">
+                    <span class="legend-item"><span class="legend-dot" style="background: #4A7C59;"></span> Below median</span>&ensp;
+                    <span class="legend-item"><span class="legend-dot" style="background: #C8963E;"></span> At median</span>&ensp;
+                    <span class="legend-item"><span class="legend-dot" style="background: #C44D3F;"></span> Above median</span>&ensp;
+                    <span style="color: #BABABA;">&middot;</span>&ensp;
+                    median: {{ area_median|round|int }}
+                </div>
+            </div>
         </div>
-        {% endfor %}
-        <div style="font-size: 0.7rem; color: #9A9A9A; margin-top: 0.5rem; padding-top: 0.4rem; border-top: 1px solid #f0f0f0;">
-            <span class="legend-item"><span class="legend-dot" style="background:#4A7C59;"></span> Below median</span>&ensp;
-            <span class="legend-item"><span class="legend-dot" style="background:#C8963E;"></span> At median</span>&ensp;
-            <span class="legend-item"><span class="legend-dot" style="background:#C44D3F;"></span> Above median</span>&ensp;
-            <span style="color:#BABABA;">&middot;</span>&ensp;
-            median: {{ area_median|round|int }}
+
+        <!-- TOP UNITS IN BATCH -->
+        <div class="hotspot-panel">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+                <span style="font-size: 0.9rem; font-weight: 600; color: #1A1A1A;">Units by Defect Count</span>
+            </div>
+            {% set reviewed_units = [] %}
+            {% for zone in zones %}
+                {% for u in zone.units %}
+                    {% if u.insp_status in ['reviewed','approved','certified','pending_followup'] %}
+                        {% set _ = reviewed_units.append({'unit_number': u.unit_number, 'defect_count': u.defect_count, 'zone_label': zone.label}) %}
+                    {% endif %}
+                {% endfor %}
+            {% endfor %}
+            {% set sorted_units = reviewed_units | sort(attribute='defect_count', reverse=True) %}
+            {% set max_count = sorted_units[0].defect_count if sorted_units else 1 %}
+            {% for u in sorted_units %}
+            {% set uc = '#4A7C59' if u.defect_count <= q1 else '#C44D3F' if u.defect_count > q3 else '#C8963E' %}
+            <div class="area-row">
+                <span class="area-label" style="min-width: 130px;">
+                    <span style="font-weight: 700;">{{ u.unit_number }}</span>
+                    <span style="font-size: 0.7rem; color: #9A9A9A; margin-left: 0.2rem;">{{ u.zone_label }}</span>
+                </span>
+                <div style="flex: 1;">
+                    <div class="area-bar" style="width: {{ (u.defect_count / max_count * 100)|round }}%; background: {{ uc }};"></div>
+                </div>
+                <span class="area-count" style="color: {{ uc }};">{{ u.defect_count }}</span>
+            </div>
+            {% endfor %}
+            <div style="font-size: 0.7rem; color: #9A9A9A; margin-top: 0.5rem; padding-top: 0.4rem; border-top: 1px solid #f0f0f0;">
+                <span class="legend-item"><span class="legend-dot" style="background: #4A7C59;"></span> Bottom 25%</span>&ensp;
+                <span class="legend-item"><span class="legend-dot" style="background: #C8963E;"></span> Middle 50%</span>&ensp;
+                <span class="legend-item"><span class="legend-dot" style="background: #C44D3F;"></span> Top 25%</span>&ensp;
+                <span style="color: #BABABA;">&middot;</span>&ensp;
+                Q1: {{ q1 }} &middot; Q3: {{ q3 }} defects/unit
+            </div>
         </div>
+
     </div>
     {% endif %}
+
+    <!-- FOOTER -->
+    <div class="text-center text-xs text-gray-400 py-4" style="border-top: 1px solid #e5e5e5;">
+        Monograph Architects &middot; PPSH Phase 3 &middot; Generated live
+    </div>
 
 </div>
 {% endblock %}
