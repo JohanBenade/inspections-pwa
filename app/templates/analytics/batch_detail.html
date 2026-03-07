@@ -308,7 +308,8 @@
                 <div class="area-bar" style="width: {{ (cat.count / cat_max * 100)|round }}%; background: {% if cat.count > cat_median %}#C44D3F{% elif cat.count == cat_median %}#C8963E{% else %}#4A7C59{% endif %};"></div>
             </div>
             <span class="area-pct">{{ cat_pct }}%</span>
-            <span class="area-count">{{ cat.count }}</span>
+            <span style="font-size: 0.7rem; color: #9A9A9A; min-width: 72px; text-align: right; flex-shrink: 0;">{{ (cat.count / kpis.inspected)|round(1) if kpis.inspected > 0 else 0 }} per unit</span>
+            <span class="area-count" style="color: {% if cat.count > cat_median %}#C44D3F{% elif cat.count == cat_median %}#C8963E{% else %}#4A7C59{% endif %};">{{ cat.count }}</span>
         </div>
         {% endfor %}
         <div style="font-size: 0.7rem; color: #9A9A9A; margin-top: 0.5rem; padding-top: 0.4rem; border-top: 1px solid #f0f0f0;">
