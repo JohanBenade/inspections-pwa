@@ -758,12 +758,24 @@ def batch_analytics(batch_id):
     delta_val = 0
     delta_label = 'Q1: {} | Q3: {}'.format(q1, q3)
 
+    all_unit_counts_sorted2 = sorted(all_unit_counts) if all_unit_counts else []
+    if all_unit_counts_sorted2:
+        n2 = len(all_unit_counts_sorted2)
+        batch_median = all_unit_counts_sorted2[n2 // 2] if n2 % 2 else (all_unit_counts_sorted2[n2 // 2 - 1] + all_unit_counts_sorted2[n2 // 2]) / 2
+        batch_min = all_unit_counts_sorted2[0]
+        batch_max = all_unit_counts_sorted2[-1]
+    else:
+        batch_median = batch_min = batch_max = 0
+
     kpis = {
         'total_units': batch['total_units'], 'inspected': batch_total_inspected,
         'total_defects': batch_total_defects, 'avg_defects': batch_avg,
         'defect_rate': batch_defect_rate, 'project_avg': project_avg,
         'proj_defect_rate': proj_defect_rate, 'traffic': batch_traffic,
         'delta_val': delta_val, 'delta_label': delta_label,
+        'median_defects': round(batch_median, 1),
+        'min_defects': batch_min, 'max_defects': batch_max,
+        'items_inspected': ITEMS_PER_UNIT * batch_total_inspected,
     }
 
     # 6. Area breakdown scoped to batch cycles
