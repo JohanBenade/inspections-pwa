@@ -166,12 +166,12 @@
                 </div>
             </div>
             {% if area_data %}
-            {% set bad_areas = area_data | selectattr('defect_count', 'gt', area_median) | list %}
+            {% set bad_areas = (area_data | selectattr('defect_count', 'gt', area_median) | list)[:2] %}
             {% if bad_areas %}
             {% set bad_sum = bad_areas | sum(attribute='defect_count') %}
             {% set bad_pct = (bad_sum / kpis.total_defects * 100)|round(1) if kpis.total_defects > 0 else 0 %}
             <div class="callout callout-red" style="margin-top: 0.75rem; font-size: 0.8rem;">
-                <strong>Finding:</strong> {% for a in bad_areas %}{{ a.area | title }}{% if not loop.last %}, {% endif %}{% endfor %} account for {{ bad_pct }}% of all defects.
+                <strong>Finding:</strong> {% for a in bad_areas %}{{ a.area | title }}{% if not loop.last %} and {% endif %}{% endfor %} account for {{ bad_pct }}% of all defects.
             </div>
             {% endif %}
             {% endif %}
@@ -214,16 +214,7 @@
                 <span style="color: #BABABA;">&middot;</span>&ensp;
                 Q1: {{ q1 }} &middot; Q3: {{ q3 }} defects/unit
             </div>
-            {% if sorted_units %}
-            {% set red_units = sorted_units | selectattr('defect_count', 'gt', q3) | list %}
-            {% if red_units %}
-            {% set red_sum = red_units | sum(attribute='defect_count') %}
-            {% set red_pct = (red_sum / kpis.total_defects * 100)|round(1) if kpis.total_defects > 0 else 0 %}
-            <div class="callout callout-red" style="margin-top: 0.75rem; font-size: 0.8rem;">
-                <strong>Finding:</strong> {% for u in red_units %}Unit {{ u.unit_number }}{% if not loop.last %}, {% endif %}{% endfor %} account for {{ red_pct }}% of the batch total.
-            </div>
-            {% endif %}
-            {% endif %}
+
         </div>
 
     </div>
