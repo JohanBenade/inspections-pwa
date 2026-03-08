@@ -565,6 +565,7 @@ body {
             <div style="height: 8px; width: {{ (c.count / cat_max * 100)|round }}%; background: {% if c.count > cat_median %}#C44D3F{% elif c.count == cat_median %}#C8963E{% else %}#4A7C59{% endif %}; border-radius: 2px;"></div>
         </div>
         <span style="font-size: 9px; color: #9A9A9A; width: 30px; text-align: right;">{{ cat_pct }}%</span>
+        <span style="font-size: 9px; color: #9A9A9A; width: 45px; text-align: right;">{{ (c.count / project.units_inspected)|round(1) }} /unit</span>
         <span style="font-size: 10px; font-weight: 700; width: 35px; text-align: right; color: {% if c.count > cat_median %}#C44D3F{% elif c.count == cat_median %}#C8963E{% else %}#4A7C59{% endif %};">{{ c.count }}</span>
     </div>
     {% endfor %}
