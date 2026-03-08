@@ -436,7 +436,7 @@ body {
             <div style="padding: 3px 0;">
                 <div style="display: flex; align-items: center; gap: 4px; margin-bottom: 2px;">
                     <span style="font-size: 10px; font-weight: 700; min-width: 28px;">{{ unit.unit_number }}</span>
-                    <span style="font-size: 8px; color: #9A9A9A;">{{ unit.block }} {{ floor_map.get(unit.floor, 'Floor ' ~ unit.floor) }}</span>
+                    <span style="font-size: 10px; color: #9A9A9A;">{{ unit.block }} {{ floor_map.get(unit.floor, 'Floor ' ~ unit.floor) }}</span>
                     <span style="margin-left: auto; font-size: 10px; font-weight: 700; color: {{ unit_colour }};">{{ unit.defect_count }}</span>
                 </div>
                 <div style="height: 8px; background: #E8E6E1; border-radius: 3px; overflow: hidden;">
@@ -565,7 +565,7 @@ body {
             <div style="flex: 1; height: 8px; background: #E8E6E1; border-radius: 3px; overflow: hidden;">
                 <div style="height: 8px; width: {{ (r.cnt / rec_max * 100)|round }}%; background: #C44D3F; border-radius: 3px;"></div>
             </div>
-            <span style="font-size: 8px; color: #9A9A9A; min-width: 60px; text-align: right;">{{ r.category_name }}</span>
+            <span style="font-size: 10px; color: #9A9A9A; min-width: 60px; text-align: right;">{{ r.category_name }}</span>
         </div>
     </div>
     {% endfor %}
