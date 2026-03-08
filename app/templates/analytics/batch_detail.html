@@ -116,9 +116,9 @@
     <div class="divider"></div>
     {% for zone in has_rect %}
     <div class="rect-box mb-4">
-        <div style="font-size: 0.85rem; font-weight: 600; color: #1A1A1A; margin-bottom: 0.5rem;">{{ zone.label }} &mdash; R{{ zone.cycle_number }} vs R{{ zone.cycle_number - 1 }}</div>
+        <div style="font-size: 0.85rem; font-weight: 600; color: #1A1A1A; margin-bottom: 0.5rem;">{{ zone.label }} &mdash; C{{ zone.cycle_number }} vs C{{ zone.cycle_number - 1 }}</div>
         <div style="display: flex; flex-wrap: wrap; gap: 1rem; font-size: 0.82rem; color: #6B6B6B;">
-            <span>R{{ zone.cycle_number - 1 }} raised <strong>{{ zone.rectification.r1_raised }}</strong></span>
+            <span>C{{ zone.cycle_number - 1 }} raised <strong>{{ zone.rectification.r1_raised }}</strong></span>
             <span style="color: #4A7C59; font-weight: 700;">{{ zone.rectification.cleared }} fixed ({{ zone.rectification.clearance_pct }}%)</span>
             <span style="color: #C8963E; font-weight: 700;">{{ zone.rectification.new }} new</span>
             <span>{{ zone.rectification.still_open }} still open</span>
