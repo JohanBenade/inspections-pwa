@@ -801,10 +801,11 @@ def main():
         cur.execute("""
             INSERT INTO inspection
             (id, tenant_id, unit_id, cycle_id, inspection_date,
-             inspector_id, inspector_name, status, started_at, created_at, updated_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?, 'in_progress', ?, ?, ?)
+             inspector_id, inspector_name, status, started_at, created_at, updated_at,
+             exclusion_list_id)
+            VALUES (?, ?, ?, ?, ?, ?, ?, 'in_progress', ?, ?, ?, ?)
         """, (insp_id, TENANT, unit_id, cycle_id, inspection_date,
-              inspector_id, inspector_name, now, now, now))
+              inspector_id, inspector_name, now, now, now, EXCLUSION_LIST_ID))
         print(f"Created inspection: {insp_id}")
 
     # Update inspector
