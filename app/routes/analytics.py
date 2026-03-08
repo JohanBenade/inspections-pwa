@@ -3678,7 +3678,7 @@ def _build_batch_report_data(batch_id):
         "AND EXISTS (SELECT 1 FROM inspection i2 WHERE i2.unit_id = d.unit_id "
         "AND i2.cycle_id = d.raised_cycle_id "
         "AND i2.status IN ('reviewed','approved','certified','pending_followup')) "
-        "GROUP BY u.id ORDER BY defect_count DESC LIMIT 5".format(ph),
+        "GROUP BY u.id ORDER BY defect_count DESC".format(ph),
         [tenant_id, batch_id, tenant_id] + all_cycle_ids)]
     worst_sum = sum(u['defect_count'] for u in worst_units)
     worst_pct = round(worst_sum / batch_total_defects * 100) if batch_total_defects > 0 else 0

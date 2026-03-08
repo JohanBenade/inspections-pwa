@@ -327,12 +327,19 @@ body {
                 <span class="legend-swatch" style="background: rgba(196,77,63,0.25); width: 8px; height: 8px;"></span><span class="legend-text">&gt;{{ area_median|round|int }}</span>&ensp;
                 median: {{ area_median|round|int }}
             </div>
+            {% set bad_areas = area_data | selectattr('defect_count', 'gt', area_median) | list %}
+            {% if bad_areas %}
+            {% set bad_pct = bad_areas | sum(attribute='pct') | round(1) %}
+            <div style="font-size: 10px; color: #6B6B6B; margin-top: 6px; font-style: italic;">
+                <strong>Finding:</strong> {% for a in bad_areas %}{{ a.area | title }}{% if not loop.last %} and {% endif %}{% endfor %} account for {{ bad_pct }}% of all defects.
+            </div>
+            {% endif %}
         </div>
 
         <!-- RIGHT PANEL: Top 5 Units -->
         <div style="float: right; width: 48%; background: #F5F3EE; padding: 14px 16px; border-radius: 4px;">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-                <span style="font-size: 11px; font-weight: 600; color: #1A1A1A;">Top 5 Units by Defect Count</span>
+                <span style="font-size: 11px; font-weight: 600; color: #1A1A1A;">Units by Defect Count</span>
             </div>
             {% for unit in worst_units %}
             {% set unit_colour = '#C44D3F' if unit.defect_count > kpis.median_defects * 1.5 else '#C8963E' if unit.defect_count > kpis.median_defects else '#4A7C59' %}
@@ -352,7 +359,7 @@ body {
                 <span class="legend-swatch" style="background: rgba(200,150,62,0.25); width: 8px; height: 8px;"></span><span class="legend-text">{{ kpis.median_defects|round|int }}&ndash;{{ (kpis.median_defects * 1.5)|round|int }}</span>&ensp;
                 <span class="legend-swatch" style="background: rgba(196,77,63,0.25); width: 8px; height: 8px;"></span><span class="legend-text">&gt;{{ (kpis.median_defects * 1.5)|round|int }}</span>
             </div>
-            <div style="font-size: 10px; color: #9A9A9A; margin-top: 2px;">These 5 units hold {{ worst_pct }}% of all open defects{% if worst_dominant_zone %} &middot; {{ worst_dominant_count }} of 5 are {{ worst_dominant_zone }}{% endif %}</div>
+
         </div>
     </div>
 </div>
