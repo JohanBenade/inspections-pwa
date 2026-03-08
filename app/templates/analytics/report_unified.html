@@ -504,41 +504,6 @@ body {
     {% endif %}
 </div>
 
-<!-- ============ 04: TOP DEFECT TYPES ============ -->
-<div class="section" style="page-break-before: always;">
-    <div class="section-header">
-        <span class="section-number">04</span>
-        <span class="section-title">Most Common Defect Types</span>
-    </div>
-
-    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
-        <span style="font-size: 11px; font-weight: 600; color: #1A1A1A;">Top 10 most common defect descriptions</span>
-        <span style="font-size: 9px; color: #9A9A9A;">median: {{ td_median|round|int }}</span>
-    </div>
-    <div style="font-size: 10px; color: #6B6B6B; margin-bottom: 12px;">Ranked by total count across all units</div>
-
-    {% for d in top_defects %}
-    {% set td_pct = (d.cnt / project.open_defects * 100)|round(1) if project.open_defects > 0 else 0 %}
-    <div style="padding: 5px 0; {% if not loop.last %}border-bottom: 1px solid #F0F0F0;{% endif %}">
-        <div style="display: flex; align-items: center; gap: 6px; margin-bottom: 3px;">
-            <span style="display: inline-block; width: 20px; height: 20px; line-height: 20px; border-radius: 50%; text-align: center; font-size: 9px; font-weight: 700; color: white; background: {% if d.cnt > td_median %}#C44D3F{% elif d.cnt == td_median %}#C8963E{% else %}#4A7C59{% endif %};">{{ loop.index }}</span>
-            <span style="font-size: 10px; font-weight: 500; color: #1A1A1A; flex: 1;">{{ d.description }}</span>
-            <span style="font-size: 10px; font-weight: 700; color: {% if d.cnt > td_median %}#C44D3F{% elif d.cnt == td_median %}#C8963E{% else %}#4A7C59{% endif %};">{{ d.cnt }}</span>
-            <span style="font-size: 9px; color: #9A9A9A; width: 35px; text-align: right;">{{ td_pct }}%</span>
-        </div>
-        <div style="height: 8px; background: #E8E6E1; border-radius: 3px; overflow: hidden;">
-            <div style="height: 8px; width: {{ (d.cnt / td_max * 100)|round }}%; background: {% if d.cnt > td_median %}#C44D3F{% elif d.cnt == td_median %}#C8963E{% else %}#4A7C59{% endif %}; border-radius: 3px;"></div>
-        </div>
-    </div>
-    {% endfor %}
-
-    <div style="font-size: 9px; color: #9A9A9A; margin-top: 8px; padding-top: 6px; border-top: 1px solid #F0F0F0;">
-        {% set top3_sum = top_defects[:3]|sum(attribute='cnt') %}
-        {% set top3_pct = (top3_sum / project.open_defects * 100)|round|int if project.open_defects > 0 else 0 %}
-        Top 3 defect types account for {{ top3_pct }}% of all open defects
-    </div>
-</div>
-
 <!-- ============ 05: SYSTEMIC ISSUES ============ -->
 <div class="section">
     <div class="section-header">
