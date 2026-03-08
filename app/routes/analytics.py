@@ -3097,6 +3097,10 @@ def _build_unified_report_data():
         'certified': total_certified_project,
     }
 
+    project['avg_defects_inspected'] = project['avg_defects']
+    project['defect_rate_inspected'] = project['defect_rate']
+    project['items_inspected'] = items_inspected_total
+
     # Median, min, max defects per unit
     unit_defect_counts_raw = query_db("""
         SELECT COUNT(d.id) as defect_count
