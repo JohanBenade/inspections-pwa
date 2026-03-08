@@ -1591,7 +1591,7 @@ def cleanup_delete_defect():
     if not defect_id:
         abort(400)
 
-    # Get defect details for audit
+    # Try defect table first (submitted inspections)
     defect = query_db("""
         SELECT d.id, d.unit_id, d.item_template_id, d.raised_cycle_id,
                d.original_comment, d.reviewed_comment,
@@ -1600,30 +1600,57 @@ def cleanup_delete_defect():
         WHERE d.id = ? AND d.tenant_id = ?
     """, [defect_id, tenant_id], one=True)
 
-    if not defect:
+    if defect:
+        # Delete defect history (FK constraint)
+        db.execute("DELETE FROM defect_history WHERE defect_id = ? AND tenant_id = ?",
+                   [defect_id, tenant_id])
+
+        # Delete the defect
+        db.execute("DELETE FROM defect WHERE id = ? AND tenant_id = ?",
+                   [defect_id, tenant_id])
+
+        # Reset inspection item to OK
+        db.execute("""
+            UPDATE inspection_item SET status = 'ok', comment = NULL, marked_at = ?
+            WHERE item_template_id = ? AND inspection_id IN (
+                SELECT i.id FROM inspection i
+                WHERE i.unit_id = ? AND i.cycle_id = ? AND i.tenant_id = ?
+            )
+        """, [now, defect['item_template_id'], defect['unit_id'],
+               defect['raised_cycle_id'], tenant_id])
+
+        log_audit(db, tenant_id, 'defect', defect_id, 'cleanup_delete',
+                  old_value=defect['display_desc'], new_value='DELETED',
+                  user_id=session['user_id'], user_name=session['user_name'])
+
+        db.commit()
+        return '', 200
+
+    # Fallback: try inspection_defect table (in_progress inspections)
+    insp_defect = query_db("""
+        SELECT id.id, id.inspection_id, id.inspection_item_id,
+               id.item_template_id, id.description, id.defect_type,
+               i.unit_id, i.cycle_id
+        FROM inspection_defect id
+        JOIN inspection i ON id.inspection_id = i.id
+        WHERE id.id = ? AND id.tenant_id = ?
+    """, [defect_id, tenant_id], one=True)
+
+    if not insp_defect:
         abort(404)
 
-    # Delete defect history (FK constraint)
-    db.execute("DELETE FROM defect_history WHERE defect_id = ? AND tenant_id = ?",
+    # Delete from inspection_defect
+    db.execute("DELETE FROM inspection_defect WHERE id = ? AND tenant_id = ?",
                [defect_id, tenant_id])
 
-    # Delete the defect
-    db.execute("DELETE FROM defect WHERE id = ? AND tenant_id = ?",
-               [defect_id, tenant_id])
-
-    # Reset inspection item to OK
+    # Reset inspection_item to OK using direct inspection_item_id
     db.execute("""
         UPDATE inspection_item SET status = 'ok', comment = NULL, marked_at = ?
-        WHERE item_template_id = ? AND inspection_id IN (
-            SELECT i.id FROM inspection i
-            WHERE i.unit_id = ? AND i.cycle_id = ? AND i.tenant_id = ?
-        )
-    """, [now, defect['item_template_id'], defect['unit_id'],
-           defect['raised_cycle_id'], tenant_id])
+        WHERE id = ? AND tenant_id = ?
+    """, [now, insp_defect['inspection_item_id'], tenant_id])
 
-    # Audit trail
-    log_audit(db, tenant_id, 'defect', defect_id, 'cleanup_delete',
-              old_value=defect['display_desc'], new_value='DELETED',
+    log_audit(db, tenant_id, 'inspection_defect', defect_id, 'cleanup_delete',
+              old_value=insp_defect['description'], new_value='DELETED',
               user_id=session['user_id'], user_name=session['user_name'])
 
     db.commit()
