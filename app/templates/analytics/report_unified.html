@@ -287,7 +287,7 @@ body {
     <td class="kpi-cell" style="width: 25%;">
         <div class="kpi-label">Median Defects / Unit</div>
         <div class="kpi-value">{{ project.median_defects }}</div>
-        <div class="kpi-sub">middle unit ranked by defects</div>
+        <div class="kpi-sub">Midpoint of {{ project.units_inspected }} units ranked by defect count</div>
     </td>
     <td class="kpi-cell" style="width: 25%;">
         <div class="kpi-label">Defect Rate</div>
@@ -379,7 +379,7 @@ body {
 
     <table class="legend-table">
     <tr>
-        <td><span class="legend-swatch" style="background: rgba(74,124,89,0.25);"></span><span class="legend-text">Below median</span></td>
+        <td><span class="legend-swatch" style="background: rgba(74,124,89,0.25);"></span><span class="legend-text">Relative to median across all areas &mdash; Below median</span></td>
         <td style="padding-left: 10px;"><span class="legend-swatch" style="background: rgba(200,150,62,0.25);"></span><span class="legend-text">At median</span></td>
         <td style="padding-left: 10px;"><span class="legend-swatch" style="background: rgba(196,77,63,0.25);"></span><span class="legend-text">Above median</span></td>
     </tr>
