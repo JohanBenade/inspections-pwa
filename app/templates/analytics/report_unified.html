@@ -481,7 +481,7 @@ body {
                     {% for d in area_info.defects %}
                     <tr>
                         <td style="width: 18px; vertical-align: top; padding: 4px 0;">
-                            <div style="width: 18px; height: 18px; border-radius: 50%; background: {% if loop.first %}{{ area_info.colour }}{% else %}#F5F3EE; border: 1px solid #E8E6E1{% endif %}; color: {% if loop.first %}white{% else %}#6B6B6B{% endif %}; text-align: center; line-height: 18px; font-size: 10px; font-weight: 600;">{{ loop.index }}</div>
+                            <div style="width: 18px; height: 18px; border-radius: 50%; background: {% if loop.index <= 3 %}{{ area_info.colour }}{% else %}#F5F3EE; border: 1px solid #E8E6E1{% endif %}; color: {% if loop.index <= 3 %}white{% else %}#6B6B6B{% endif %}; text-align: center; line-height: 18px; font-size: 10px; font-weight: 600;">{{ loop.index }}</div>
                         </td>
                         <td style="padding: 4px 8px; vertical-align: top;">
                             <div style="font-size: 10px; color: #1A1A1A; margin-bottom: 3px;">{{ d.description }}</div>
