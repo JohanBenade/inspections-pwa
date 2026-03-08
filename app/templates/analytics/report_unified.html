@@ -414,8 +414,8 @@ body {
                 <div style="flex: 1; height: 8px; background: #E8E6E1; border-radius: 3px; overflow: hidden;">
                     <div style="height: 8px; width: {{ (a.defect_count / area_max * 100)|round }}%; background: {% if a.defect_count > area_median %}#C44D3F{% elif a.defect_count == area_median %}#C8963E{% else %}#4A7C59{% endif %}; border-radius: 2px;"></div>
                 </div>
-                <span style="font-size: 10px; font-weight: 700; width: 30px; text-align: right; color: {% if a.defect_count > area_median %}#C44D3F{% elif a.defect_count == area_median %}#C8963E{% else %}#4A7C59{% endif %};">{{ a.defect_count }}</span>
                 <span style="font-size: 9px; color: #9A9A9A; width: 30px; text-align: right;">{{ a.pct }}%</span>
+                <span style="font-size: 10px; font-weight: 700; width: 30px; text-align: right; color: {% if a.defect_count > area_median %}#C44D3F{% elif a.defect_count == area_median %}#C8963E{% else %}#4A7C59{% endif %};">{{ a.defect_count }}</span>
             </div>
             {% endfor %}
             <div style="font-size: 10px; color: #9A9A9A; margin-top: 8px; padding-top: 6px; border-top: 1px solid #E8E6E1;">
