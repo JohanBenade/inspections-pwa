@@ -1,0 +1,506 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Batch Inspection Report - {{ batch.name }}</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;400;500;600&family=DM+Sans:wght@400;500;600;700&display=swap');
+
+@page {
+    size: A4;
+    margin: 18mm 16mm 20mm 16mm;
+    @bottom-center {
+        content: "Page " counter(page) " of " counter(pages);
+        font-family: 'DM Sans', Helvetica, Arial, sans-serif;
+        font-size: 8pt;
+        color: #9A9A9A;
+    }
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+    font-family: 'DM Sans', 'Helvetica Neue', Helvetica, Arial, sans-serif;
+    color: #1A1A1A;
+    background: #FAFAF8;
+    font-size: 11px;
+    line-height: 1.5;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+}
+
+.page { max-width: 800px; margin: 0 auto; padding: 0; }
+.clearfix::after { content: ""; display: table; clear: both; }
+
+/* -- TOOLBAR (HTML view only) -- */
+.toolbar {
+    position: fixed; top: 16px; right: 16px;
+    display: flex; gap: 8px; z-index: 100;
+}
+.toolbar a, .toolbar button {
+    padding: 8px 16px; font-family: 'DM Sans', Helvetica, Arial, sans-serif;
+    font-size: 12px; font-weight: 600; border: none; border-radius: 4px;
+    cursor: pointer; text-decoration: none; display: inline-block;
+}
+.btn-pdf { background: #C8963E; color: white; }
+.btn-pdf:hover { background: #D4A94F; }
+.btn-print { background: #F5F3EE; color: #1A1A1A; border: 1px solid #E8E6E1; }
+.btn-print:hover { background: #E8E6E1; }
+.btn-back { background: #F5F3EE; color: #1A1A1A; border: 1px solid #E8E6E1; }
+.btn-back:hover { background: #E8E6E1; }
+@media print { .toolbar { display: none !important; } }
+
+/* -- HEADER -- */
+.report-header { padding-bottom: 16px; border-bottom: 3px solid #0A0A0A; margin-bottom: 20px; }
+.header-top { margin-bottom: 20px; }
+.header-top::after { content: ""; display: table; clear: both; }
+.logo-area { float: left; }
+.logo-area img { height: 36px; width: auto; }
+.logo-fallback {
+    font-family: 'Cormorant Garamond', Georgia, serif;
+    font-size: 22px; font-weight: 300; letter-spacing: 6px;
+    text-transform: uppercase; color: #0A0A0A;
+}
+.header-meta { float: right; text-align: right; font-size: 10px; letter-spacing: 1.5px; text-transform: uppercase; color: #6B6B6B; }
+.header-meta .date { font-size: 11px; letter-spacing: 0; text-transform: none; color: #1A1A1A; margin-top: 2px; }
+.report-title { font-family: 'Cormorant Garamond', Georgia, serif; font-size: 32px; font-weight: 300; color: #0A0A0A; letter-spacing: 1px; margin-bottom: 6px; }
+.report-subtitle { font-size: 13px; color: #6B6B6B; letter-spacing: 2px; text-transform: uppercase; }
+
+/* -- SECTION HEADERS -- */
+.section { margin-bottom: 28px; page-break-inside: avoid; }
+.section-header { margin-bottom: 14px; border-bottom: 1px solid #C8963E; padding-bottom: 8px; }
+.section-number { font-family: 'DM Sans', sans-serif; font-size: 11px; font-weight: 600; letter-spacing: 3px; color: #C8963E; text-transform: uppercase; margin-right: 10px; }
+.section-title { font-family: 'Cormorant Garamond', Georgia, serif; font-size: 22px; font-weight: 300; letter-spacing: 0.5px; color: #0A0A0A; }
+
+/* -- KPI CARDS -- */
+.kpi-table { width: 100%; border-collapse: separate; border-spacing: 8px 0; margin-bottom: 12px; }
+.kpi-cell { background: #F5F3EE; border-left: 3px solid #C8963E; padding: 12px 14px; vertical-align: top; }
+.kpi-value { font-family: 'Cormorant Garamond', Georgia, serif; font-size: 28px; font-weight: 300; color: #0A0A0A; line-height: 1; }
+.kpi-value-red { color: #C44D3F; }
+.kpi-value-green { color: #4A7C59; }
+.kpi-sub { font-size: 9px; color: #9A9A9A; margin-top: 3px; }
+.kpi-label { font-size: 9px; color: #6B6B6B; text-transform: uppercase; letter-spacing: 1px; margin-top: 4px; }
+.progress-track { height: 8px; background: #E8E6E1; border-radius: 3px; overflow: hidden; margin-top: 6px; }
+.progress-fill { height: 100%; border-radius: 3px; background: #C8963E; }
+
+/* -- CALLOUT BOXES -- */
+.callout { padding: 10px 14px; margin: 12px 0; font-size: 11px; line-height: 1.5; }
+.callout-gold { border-left: 3px solid #C8963E; background: rgba(200,150,62,0.08); }
+.callout-blue { border-left: 3px solid #3D6B8E; background: rgba(61,107,142,0.08); }
+.callout-red { border-left: 3px solid #C44D3F; background: rgba(196,77,63,0.08); }
+.callout-green { border-left: 3px solid #4A7C59; background: rgba(74,124,89,0.08); }
+
+/* -- DATA TABLES -- */
+.data-table { width: 100%; border-collapse: collapse; font-size: 10px; }
+.data-table th { padding: 7px 8px; text-align: left; font-weight: 600; font-size: 10px; letter-spacing: 1.2px; text-transform: uppercase; color: #6B6B6B; border-bottom: 2px solid #0A0A0A; }
+.data-table th.text-right { text-align: right; }
+.data-table th.text-center { text-align: center; }
+.data-table td { padding: 6px 8px; border-bottom: 1px solid #F0F0F0; vertical-align: middle; }
+.data-table tbody tr:nth-child(even) td { background: #F5F3EE; }
+.data-table tfoot td { padding: 7px 8px; font-weight: 600; border-top: 2px solid #0A0A0A; }
+.text-right { text-align: right; }
+.text-center { text-align: center; }
+.font-bold { font-weight: 700; }
+
+/* -- LEGEND -- */
+.legend-swatch { display: inline-block; width: 12px; height: 12px; border-radius: 2px; vertical-align: middle; margin-right: 4px; }
+.legend-text { font-size: 10px; color: #6B6B6B; vertical-align: middle; }
+
+/* -- RECTIFICATION BOX -- */
+.rect-box { background: #F5F3EE; border: 1px solid #e5e5e5; border-left: 3px solid #4A7C59; border-radius: 4px; padding: 14px 18px; margin-bottom: 20px; }
+.rect-label { font-size: 10px; font-weight: 600; letter-spacing: 2px; text-transform: uppercase; color: #6B6B6B; margin-bottom: 8px; }
+.rect-stats { display: flex; gap: 24px; }
+.rect-stat-value { font-family: 'Cormorant Garamond', Georgia, serif; font-size: 24px; font-weight: 300; line-height: 1; }
+.rect-stat-label { font-size: 9px; color: #9A9A9A; margin-top: 2px; }
+
+/* -- TRAFFIC LIGHT DOT -- */
+.tl-dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; vertical-align: middle; margin-right: 4px; }
+.tl-green { background: #4A7C59; }
+.tl-amber { background: #C8963E; }
+.tl-red { background: #C44D3F; }
+.tl-grey { background: #9A9A9A; }
+
+/* -- FOOTER -- */
+.report-footer { margin-top: 28px; padding-top: 14px; border-top: 3px solid #0A0A0A; page-break-inside: avoid; }
+.report-footer::after { content: ""; display: table; clear: both; }
+.footer-left { float: left; }
+.footer-right { float: right; text-align: right; font-size: 9px; color: #9A9A9A; line-height: 1.7; }
+.footer-disclaimer { margin-top: 14px; padding: 8px 12px; background: #F5F3EE; font-size: 9px; color: #9A9A9A; text-align: center; letter-spacing: 0.3px; }
+</style>
+</head>
+<body>
+
+{% if not is_pdf %}
+<div class="toolbar">
+    <a href="{{ url_for('analytics.batch_analytics', batch_id=batch_id) }}" class="btn-back">Back</a>
+    <button onclick="window.print()" class="btn-print">Print</button>
+    <a href="{{ url_for('analytics.batch_report_pdf', batch_id=batch_id) }}" class="btn-pdf">Download PDF</a>
+</div>
+{% endif %}
+
+<div class="page" style="padding: 20px 10px;">
+
+<!-- ============ HEADER ============ -->
+<div class="report-header">
+    <div class="header-top clearfix">
+        <div class="logo-area">
+            {% if logo_b64 %}
+            <img src="data:image/jpeg;base64,{{ logo_b64 }}" alt="Monograph Architects">
+            {% else %}
+            <span class="logo-fallback">MONOGRAPH</span>
+            {% endif %}
+        </div>
+        <div class="header-meta">
+            <div>BATCH INSPECTION REPORT</div>
+            <div class="date">{{ report_date }}</div>
+        </div>
+    </div>
+    <div class="report-title">{{ batch.name }}</div>
+    <div class="report-subtitle">
+        {% for z in zones %}{{ z.label }} C{{ z.cycle_number }}{% if not loop.last %} &bull; {% endif %}{% endfor %}
+        &bull; {{ kpis.inspected }} of {{ kpis.total_units }} Units Inspected
+    </div>
+</div>
+
+<!-- ============ PROGRESS KPIs ============ -->
+<table class="kpi-table"><tr>
+    <td class="kpi-cell" style="width: 25%;">
+        <div class="kpi-label">Units Inspected</div>
+        <div class="kpi-value">{{ kpis.inspected }} <span style="font-size: 14px; font-weight: 300; color: #9A9A9A;">/ {{ kpis.total_units }}</span></div>
+        <div class="progress-track"><div class="progress-fill" style="width: {{ (kpis.inspected / kpis.total_units * 100)|round if kpis.total_units > 0 else 0 }}%;"></div></div>
+        <div class="kpi-sub">{{ (kpis.inspected / kpis.total_units * 100)|round|int if kpis.total_units > 0 else 0 }}% of batch</div>
+    </td>
+    <td class="kpi-cell" style="width: 25%;">
+        <div class="kpi-label">Open Defects</div>
+        <div class="kpi-value kpi-value-red">{{ kpis.total_defects }}</div>
+        <div class="kpi-sub">across {{ kpis.inspected }} inspected units</div>
+    </td>
+    <td class="kpi-cell" style="width: 25%;">
+        <div class="kpi-label">Avg Defects / Unit</div>
+        <div class="kpi-value">{{ kpis.avg_defects }}</div>
+        <div class="kpi-sub">project avg: {{ kpis.project_avg }} &middot; range: {{ kpis.min_defects }}&ndash;{{ kpis.max_defects }}</div>
+    </td>
+    <td class="kpi-cell" style="width: 25%;">
+        <div class="kpi-label">Defect Rate</div>
+        <div class="kpi-value" style="color: #C8963E;">{{ kpis.defect_rate }}%</div>
+        <div class="kpi-sub">project rate: {{ kpis.proj_defect_rate }}% &middot; {{ kpis.items_inspected }} items</div>
+    </td>
+</tr></table>
+
+<!-- ============ QUALITY SECTION ============ -->
+<div style="margin: 1.5rem 0 0.5rem 0; font-size: 0.65rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: #888;">Quality (Inspected Units Only)</div>
+<table style="width: 100%; border-collapse: collapse; margin-bottom: 1.5rem;">
+<tr>
+    <td class="kpi-cell" style="width: 25%;">
+        <div class="kpi-label">Avg Defects / Unit</div>
+        <div class="kpi-value">{{ kpis.avg_defects }}</div>
+        <div class="kpi-sub">{{ kpis.inspected }} units inspected</div>
+    </td>
+    <td class="kpi-cell" style="width: 25%;">
+        <div class="kpi-label">Median Defects / Unit</div>
+        <div class="kpi-value">{{ kpis.median_defects }}</div>
+        <div class="kpi-sub">Q1: {{ kpis.q1 }} &middot; Q3: {{ kpis.q3 }}</div>
+    </td>
+    <td class="kpi-cell" style="width: 25%;">
+        <div class="kpi-label">Defect Rate</div>
+        <div class="kpi-value" style="color: #C8963E;">{{ kpis.defect_rate }}%</div>
+        <div class="kpi-sub">{{ kpis.items_inspected }} items inspected</div>
+    </td>
+    <td class="kpi-cell" style="width: 25%;">
+        <div class="kpi-label">Worst Unit</div>
+        <div class="kpi-value">{% if worst_units %}{{ worst_units[0].defect_count }}{% else %}&mdash;{% endif %}</div>
+        <div class="kpi-sub">{% if worst_units %}{{ worst_units[0].unit_number }} &middot; min: {{ kpis.min_defects }}{% endif %}</div>
+    </td>
+</tr>
+</table>
+
+<!-- ============ RECTIFICATION ============ -->
+{% if batch_rectification %}
+<div class="rect-box">
+    <div class="rect-label">Rectification &mdash; {{ batch_rectification.zone_units }} units re-inspected</div>
+    <div class="rect-stats">
+        <div>
+            <div class="rect-stat-value" style="color: #6B6B6B;">{{ batch_rectification.r1_raised }}</div>
+            <div class="rect-stat-label">C1 defects raised</div>
+        </div>
+        <div>
+            <div class="rect-stat-value" style="color: #4A7C59;">{{ batch_rectification.cleared }}</div>
+            <div class="rect-stat-label">Cleared this cycle</div>
+        </div>
+        <div>
+            <div class="rect-stat-value" style="color: #C44D3F;">{{ batch_rectification.new }}</div>
+            <div class="rect-stat-label">New defects found</div>
+        </div>
+        <div>
+            <div class="rect-stat-value" style="color: #C44D3F;">{{ batch_rectification.still_open }}</div>
+            <div class="rect-stat-label">Still open</div>
+        </div>
+        <div>
+            <div class="rect-stat-value" style="color: #4A7C59;">{{ batch_rectification.clearance_pct }}%</div>
+            <div class="rect-stat-label">Clearance rate</div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<!-- ============ 01: ZONE SUMMARY ============ -->
+<div class="section">
+    <div class="section-header">
+        <span class="section-number">01</span>
+        <span class="section-title">Zone Summary</span>
+    </div>
+    <table class="data-table">
+        <thead>
+            <tr>
+                <th>Zone</th>
+                <th class="text-center">Cycle</th>
+                <th class="text-right">Units</th>
+                <th class="text-right">Inspected</th>
+                <th class="text-right">Avg / Unit</th>
+                <th class="text-right">Defects</th>
+                <th class="text-right">Rate</th>
+            </tr>
+        </thead>
+        <tbody>
+        {% set batch_rate_denom = kpis.total_defects %}
+        {% for z in zones %}
+        {% set zone_rate = (z.defects / (437 * z.inspected) * 100)|round(1) if z.inspected > 0 else 0 %}
+        <tr>
+            <td style="font-weight: 600;">{{ z.label }}</td>
+            <td class="text-center">
+                <span style="display: inline-block; padding: 2px 8px; border-radius: 3px; font-size: 9px; font-weight: 700; background: {% if z.cycle_number > 1 %}rgba(61,107,142,0.15); color: #3D6B8E{% else %}rgba(200,150,62,0.15); color: #C8963E{% endif %};">C{{ z.cycle_number }}</span>
+            </td>
+            <td class="text-right">{{ z.total_units }}</td>
+            <td class="text-right">{{ z.inspected }}</td>
+            <td class="text-right">
+                <span style="font-weight: 700; color: {% if z.avg > kpis.avg_defects %}#C44D3F{% elif z.avg < kpis.avg_defects %}#4A7C59{% else %}#C8963E{% endif %};">{{ z.avg }}</span>
+            </td>
+            <td class="text-right font-bold">{{ z.defects }}</td>
+            <td class="text-right" style="color: #9A9A9A;">{{ zone_rate }}%</td>
+        </tr>
+        {% endfor %}
+        </tbody>
+        <tfoot>
+            <tr>
+                <td colspan="3" style="font-weight: 600;">Batch Total</td>
+                <td class="text-right font-bold">{{ kpis.inspected }}</td>
+                <td class="text-right font-bold">{{ kpis.avg_defects }}</td>
+                <td class="text-right font-bold">{{ kpis.total_defects }}</td>
+                <td class="text-right" style="color: #9A9A9A;">{{ kpis.defect_rate }}%</td>
+            </tr>
+        </tfoot>
+    </table>
+    <div class="callout callout-gold" style="margin-top: 10px;">
+        Batch avg {{ kpis.avg_defects }} defects/unit vs project avg {{ kpis.project_avg }}. Q1: {{ kpis.q1 }} &middot; Q3: {{ kpis.q3 }}.
+    </div>
+</div>
+
+<!-- ============ 02: HOT SPOTS ============ -->
+<div class="section">
+    <div class="section-header">
+        <span class="section-number">02</span>
+        <span class="section-title">Hot Spots</span>
+    </div>
+
+    <div class="clearfix" style="margin-bottom: 14px;">
+        <!-- LEFT PANEL: Defects by Area -->
+        <div style="float: left; width: 48%; background: #F5F3EE; padding: 14px 16px; border-radius: 4px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                <span style="font-size: 11px; font-weight: 600; color: #1A1A1A;">Defects by Area</span>
+            </div>
+            {% for a in area_data %}
+            <div style="display: flex; align-items: center; gap: 4px; padding: 3px 0;">
+                <span style="font-size: 10px; color: #1A1A1A; min-width: 75px; white-space: nowrap;">
+                    <span style="display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: {{ area_colours[loop.index0 % area_colours|length] }}; margin-right: 3px; vertical-align: middle;"></span>{{ a.area }}
+                </span>
+                <div style="flex: 1; height: 8px; background: #E8E6E1; border-radius: 3px; overflow: hidden;">
+                    <div style="height: 8px; width: {{ (a.defect_count / area_max * 100)|round }}%; background: {% if a.defect_count > area_median %}#C44D3F{% elif a.defect_count == area_median %}#C8963E{% else %}#4A7C59{% endif %}; border-radius: 2px;"></div>
+                </div>
+                <span style="font-size: 9px; color: #9A9A9A; width: 30px; text-align: right;">{{ a.pct }}%</span>
+                <span style="font-size: 10px; font-weight: 700; width: 30px; text-align: right; color: {% if a.defect_count > area_median %}#C44D3F{% elif a.defect_count == area_median %}#C8963E{% else %}#4A7C59{% endif %};">{{ a.defect_count }}</span>
+            </div>
+            {% endfor %}
+            <div style="font-size: 10px; color: #9A9A9A; margin-top: 8px; padding-top: 6px; border-top: 1px solid #E8E6E1;">
+                <span class="legend-swatch" style="background: rgba(74,124,89,0.25); width: 8px; height: 8px;"></span><span class="legend-text">&lt;{{ area_median|round|int }}</span>&ensp;
+                <span class="legend-swatch" style="background: rgba(200,150,62,0.25); width: 8px; height: 8px;"></span><span class="legend-text">{{ area_median|round|int }}</span>&ensp;
+                <span class="legend-swatch" style="background: rgba(196,77,63,0.25); width: 8px; height: 8px;"></span><span class="legend-text">&gt;{{ area_median|round|int }}</span>&ensp;
+                median: {{ area_median|round|int }}
+            </div>
+        </div>
+
+        <!-- RIGHT PANEL: Top 5 Units -->
+        <div style="float: right; width: 48%; background: #F5F3EE; padding: 14px 16px; border-radius: 4px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                <span style="font-size: 11px; font-weight: 600; color: #1A1A1A;">Top 5 Units by Defect Count</span>
+            </div>
+            {% for unit in worst_units %}
+            {% set unit_colour = '#C44D3F' if unit.defect_count > kpis.median_defects * 1.5 else '#C8963E' if unit.defect_count > kpis.median_defects else '#4A7C59' %}
+            <div style="padding: 3px 0;">
+                <div style="display: flex; align-items: center; gap: 4px; margin-bottom: 2px;">
+                    <span style="font-size: 10px; font-weight: 700; min-width: 28px;">{{ unit.unit_number }}</span>
+                    <span style="font-size: 10px; color: #9A9A9A;">{{ unit.block }} {{ floor_labels.get(unit.floor, 'Floor ' ~ unit.floor|string) }}</span>
+                    <span style="margin-left: auto; font-size: 10px; font-weight: 700; color: {{ unit_colour }};">{{ unit.defect_count }}</span>
+                </div>
+                <div style="height: 8px; background: #E8E6E1; border-radius: 3px; overflow: hidden;">
+                    <div style="height: 8px; width: {{ (unit.defect_count / worst_units[0].defect_count * 100)|round }}%; background: {{ unit_colour }}; border-radius: 2px;"></div>
+                </div>
+            </div>
+            {% endfor %}
+            <div style="font-size: 10px; color: #9A9A9A; margin-top: 8px; padding-top: 6px; border-top: 1px solid #E8E6E1;">
+                <span class="legend-swatch" style="background: rgba(74,124,89,0.25); width: 8px; height: 8px;"></span><span class="legend-text">&lt;{{ kpis.median_defects|round|int }}</span>&ensp;
+                <span class="legend-swatch" style="background: rgba(200,150,62,0.25); width: 8px; height: 8px;"></span><span class="legend-text">{{ kpis.median_defects|round|int }}&ndash;{{ (kpis.median_defects * 1.5)|round|int }}</span>&ensp;
+                <span class="legend-swatch" style="background: rgba(196,77,63,0.25); width: 8px; height: 8px;"></span><span class="legend-text">&gt;{{ (kpis.median_defects * 1.5)|round|int }}</span>
+            </div>
+            <div style="font-size: 10px; color: #9A9A9A; margin-top: 2px;">These 5 units hold {{ worst_pct }}% of all open defects{% if worst_dominant_zone %} &middot; {{ worst_dominant_count }} of 5 are {{ worst_dominant_zone }}{% endif %}</div>
+        </div>
+    </div>
+</div>
+
+<!-- ============ 03: AREA DEEP DIVE ============ -->
+<div class="section">
+    <div class="section-header">
+        <span class="section-number">03</span>
+        <span class="section-title">Area Deep Dive</span>
+    </div>
+    <div class="clearfix">
+        {% for area_info in area_deep_dive %}
+        <div style="float: {% if loop.first %}left{% else %}right{% endif %}; width: 48%;">
+            <div style="background: #F5F3EE; border-left: 3px solid {{ area_info.colour }}; padding: 14px 16px;">
+                <div style="font-size: 10px; font-weight: 600; letter-spacing: 2px; text-transform: uppercase; color: #6B6B6B; margin-bottom: 2px;">{{ area_info.area }}</div>
+                <div style="margin-bottom: 10px;">
+                    <span style="font-family: 'Cormorant Garamond', Georgia, serif; font-size: 24px; font-weight: 300; color: #0A0A0A;">{{ area_info.total }}</span>
+                    <span style="font-size: 10px; color: #9A9A9A; margin-left: 4px;">of {{ kpis.total_defects }} defects ({{ area_info.pct }}%)</span>
+                </div>
+                <table style="width: 100%; border-collapse: collapse;">
+                    {% for d in area_info.defects %}
+                    <tr>
+                        <td style="width: 18px; vertical-align: top; padding: 4px 0;">
+                            <div style="width: 18px; height: 18px; border-radius: 50%; background: {% if loop.first %}{{ area_info.colour }}{% else %}#F5F3EE; border: 1px solid #E8E6E1{% endif %}; color: {% if loop.first %}white{% else %}#6B6B6B{% endif %}; text-align: center; line-height: 18px; font-size: 10px; font-weight: 600;">{{ loop.index }}</div>
+                        </td>
+                        <td style="padding: 4px 8px; vertical-align: top;">
+                            <div style="font-size: 10px; color: #1A1A1A; margin-bottom: 3px;">{{ d.description }}</div>
+                            <div style="height: 8px; background: #E8E6E1; border-radius: 3px; overflow: hidden;">
+                                <div style="height: 8px; border-radius: 3px; width: {{ d.bar_pct }}%; background: {{ area_info.colour }};"></div>
+                            </div>
+                        </td>
+                        <td style="width: 40px; text-align: right; vertical-align: top; padding: 4px 0;">
+                            <div style="font-size: 10px; font-weight: 600; color: #0A0A0A;">{{ d.count }}</div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </table>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% if dd_callout %}
+    <div class="callout callout-gold" style="margin-top: 12px;">
+        <strong>Key finding:</strong> {{ dd_callout }}
+    </div>
+    {% endif %}
+</div>
+
+<!-- ============ 04: SYSTEMIC ISSUES ============ -->
+<div class="section">
+    <div class="section-header">
+        <span class="section-number">04</span>
+        <span class="section-title">Systemic Issues</span>
+    </div>
+
+    {% if recurring %}
+    <div style="display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 2px;">
+        <div style="font-size: 11px; font-weight: 600; color: #1A1A1A;">Top {{ recurring|length }} recurring defects (2+ units)</div>
+        <div style="font-size: 10px; color: #9A9A9A;">{{ recurring|sum(attribute='cnt') }} occurrences</div>
+    </div>
+    <div style="font-size: 10px; color: #6B6B6B; margin-bottom: 12px;">Ranked by spread across units &mdash; address these across the batch, not unit-by-unit</div>
+
+    {% set rec_max = recurring[0].cnt if recurring else 1 %}
+    {% for r in recurring %}
+    <div style="padding: 6px 0; {% if not loop.last %}border-bottom: 1px solid #F0F0F0;{% endif %}">
+        <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 4px;">
+            <span style="display: inline-block; width: 22px; height: 22px; line-height: 22px; text-align: center; font-size: 10px; font-weight: 700; color: white; background: #C44D3F; border-radius: 50%; flex-shrink: 0;">{{ loop.index }}</span>
+            <span style="font-size: 10px; font-weight: 500; color: #1A1A1A; flex: 1;">{{ r.original_comment }}{% if r.cat_breakdown %} <span style="font-size: 9px; color: #9A9A9A; font-weight: 400;">({% for cb in r.cat_breakdown %}{{ cb.cat }} {{ cb.cnt }}{% if not loop.last %} &middot; {% endif %}{% endfor %})</span>{% endif %}</span>
+            <span style="font-size: 10px; font-weight: 700; color: #C44D3F; width: 30px; text-align: right;">{{ r.cnt }}</span>
+            <span style="font-size: 10px; color: #9A9A9A; width: 40px; text-align: right;">{{ r.unit_count }}u</span>
+        </div>
+        <div style="display: flex; align-items: center; gap: 8px;">
+            <div style="width: 22px; flex-shrink: 0;"></div>
+            <div style="flex: 1; height: 8px; background: #E8E6E1; border-radius: 3px; overflow: hidden;">
+                <div style="height: 8px; width: {{ (r.cnt / rec_max * 100)|round }}%; background: #C44D3F; border-radius: 3px;"></div>
+            </div>
+            <div style="width: 72px;"></div>
+        </div>
+    </div>
+    {% endfor %}
+    <div style="font-size: 10px; color: #9A9A9A; margin-top: 8px; padding-top: 6px; border-top: 1px solid #F0F0F0;">
+        {{ recurring|length }} defect type{{ 's' if recurring|length != 1 else '' }} found across 2 or more units &middot; {{ recurring|sum(attribute='cnt') }} total occurrences
+    </div>
+    {% else %}
+    <div class="callout callout-green">No recurring defects found across 2 or more units in this batch.</div>
+    {% endif %}
+</div>
+
+<!-- ============ 05: DEFECTS BY TRADE ============ -->
+<div class="section">
+    <div class="section-header">
+        <span class="section-number">05</span>
+        <span class="section-title">Defects by Trade</span>
+    </div>
+
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+        <span style="font-size: 11px; font-weight: 600; color: #1A1A1A;">Construction trade breakdown</span>
+        <span style="font-size: 9px; color: #9A9A9A;">median: {{ cat_median|round|int }}</span>
+    </div>
+
+    {% for c in category_data %}
+    {% set cat_pct = (c.count / kpis.total_defects * 100)|round(1) if kpis.total_defects > 0 else 0 %}
+    <div style="display: flex; align-items: center; gap: 6px; padding: 4px 0;">
+        <span style="font-size: 10px; color: #1A1A1A; min-width: 100px;">{{ c.category }}</span>
+        <div style="flex: 1; height: 8px; background: #E8E6E1; border-radius: 3px; overflow: hidden;">
+            <div style="height: 8px; width: {{ (c.count / cat_max * 100)|round }}%; background: {% if c.count > cat_median %}#C44D3F{% elif c.count == cat_median %}#C8963E{% else %}#4A7C59{% endif %}; border-radius: 2px;"></div>
+        </div>
+        <span style="font-size: 9px; color: #9A9A9A; width: 30px; text-align: right;">{{ cat_pct }}%</span>
+        <span style="font-size: 9px; color: #9A9A9A; width: 45px; text-align: right;">{{ (c.count / kpis.inspected)|round(1) if kpis.inspected > 0 else 0 }} /unit</span>
+        <span style="font-size: 10px; font-weight: 700; width: 35px; text-align: right; color: {% if c.count > cat_median %}#C44D3F{% elif c.count == cat_median %}#C8963E{% else %}#4A7C59{% endif %};">{{ c.count }}</span>
+    </div>
+    {% endfor %}
+
+    <div style="font-size: 9px; color: #9A9A9A; margin-top: 8px; padding-top: 6px; border-top: 1px solid #F0F0F0;">
+        <span class="legend-swatch" style="background: rgba(74,124,89,0.25); width: 8px; height: 8px;"></span><span class="legend-text">&lt;{{ cat_median|round|int }}</span>&ensp;
+        <span class="legend-swatch" style="background: rgba(200,150,62,0.25); width: 8px; height: 8px;"></span><span class="legend-text">{{ cat_median|round|int }}</span>&ensp;
+        <span class="legend-swatch" style="background: rgba(196,77,63,0.25); width: 8px; height: 8px;"></span><span class="legend-text">&gt;{{ cat_median|round|int }}</span>&ensp;
+        <span style="color: #BABABA;">&middot;</span>&ensp;
+        median: {{ cat_median|round|int }}
+    </div>
+</div>
+
+<!-- ============ FOOTER ============ -->
+<div class="report-footer clearfix">
+    <div class="footer-left">
+        {% if logo_b64 %}
+        <img src="data:image/jpeg;base64,{{ logo_b64 }}" alt="Monograph" style="height: 24px; width: auto;">
+        {% else %}
+        <span style="font-family: 'Cormorant Garamond', Georgia, serif; font-size: 16px; font-weight: 300; letter-spacing: 4px; text-transform: uppercase;">MONOGRAPH</span>
+        {% endif %}
+        <div style="font-size: 9px; color: #9A9A9A; margin-top: 4px;">
+            Power Park Student Housing - Phase 3 &middot; {{ batch.name }}
+        </div>
+    </div>
+    <div class="footer-right">
+        {% if sig_b64 %}
+        <img src="data:image/png;base64,{{ sig_b64 }}" alt="Signature" style="height: 32px; width: auto; margin-bottom: 4px; display: block; margin-left: auto;">
+        {% endif %}
+        <div>Kevin Coetzee</div>
+        <div>Monograph Architects</div>
+        <div>Generated {{ report_date }}</div>
+    </div>
+</div>
+<div class="footer-disclaimer">
+    This report is generated from live inspection data. All figures are as recorded at time of generation.
+    For queries, contact Monograph Architects.
+</div>
+
+</div><!-- /.page -->
+</body>
+</html>

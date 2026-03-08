@@ -52,13 +52,15 @@
                 <div class="text-sm text-gray-400 mt-1">Power Park Student Housing &middot; Inspection Analytics</div>
             </div>
         </div>
-        <div style="margin-top: 1rem;">
+        <div style="margin-top: 1rem; display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap;">
             <select onchange="if(this.value) window.location=this.value;" style="padding: 0.4rem 0.75rem; font-size: 0.85rem; border: 1px solid #e5e5e5; border-radius: 6px; background: #fff; color: #1A1A1A; cursor: pointer;">
                 <option value="{{ url_for('analytics.dashboard') }}" selected>Project Overview</option>
                 {% for b in all_batches %}
                 <option value="{{ url_for('analytics.batch_analytics', batch_id=b.id) }}">{{ b.name }}</option>
                 {% endfor %}
             </select>
+            <a href="{{ url_for('analytics.unified_report_view') }}" target="_blank" style="padding: 0.4rem 1rem; font-size: 0.85rem; font-weight: 600; border-radius: 6px; background: #F5F3EE; color: #1A1A1A; border: 1px solid #e5e5e5; text-decoration: none; white-space: nowrap;">View Report</a>
+            <a href="{{ url_for('analytics.unified_report_pdf') }}" style="padding: 0.4rem 1rem; font-size: 0.85rem; font-weight: 600; border-radius: 6px; background: #C8963E; color: white; text-decoration: none; white-space: nowrap;">Download PDF</a>
         </div>
     </div>
 
