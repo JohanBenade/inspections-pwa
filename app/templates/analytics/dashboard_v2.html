@@ -64,7 +64,7 @@
                     data-pdf="{{ url_for('analytics.batch_report_pdf', batch_id=b.id) }}">{{ b.name }}</option>
                 {% endfor %}
             </select>
-            <a id="btn-view-report" href="{{ url_for('analytics.unified_report_view') }}" target="_blank" style="padding: 0.4rem 1rem; font-size: 0.85rem; font-weight: 600; border-radius: 6px; background: #F5F3EE; color: #1A1A1A; border: 1px solid #e5e5e5; text-decoration: none; white-space: nowrap;">View Report</a>
+            <a id="btn-view-report" href="{{ url_for('analytics.unified_report_view') }}" style="padding: 0.4rem 1rem; font-size: 0.85rem; font-weight: 600; border-radius: 6px; background: #F5F3EE; color: #1A1A1A; border: 1px solid #e5e5e5; text-decoration: none; white-space: nowrap;">View Report</a>
             <a id="btn-download-pdf" href="{{ url_for('analytics.unified_report_pdf') }}" style="padding: 0.4rem 1rem; font-size: 0.85rem; font-weight: 600; border-radius: 6px; background: #C8963E; color: white; text-decoration: none; white-space: nowrap;">Download PDF</a>
         </div>
         <script>
