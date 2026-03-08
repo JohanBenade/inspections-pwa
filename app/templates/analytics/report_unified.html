@@ -275,6 +275,32 @@ body {
     </td>
 </tr></table>
 
+<!-- ============ QUALITY SECTION ============ -->
+<div style="margin: 1.5rem 0 0.5rem 0; font-size: 0.65rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: #888;">Quality (Inspected Units Only)</div>
+<table style="width: 100%; border-collapse: collapse; margin-bottom: 1.5rem;">
+<tr>
+    <td class="kpi-cell" style="width: 25%;">
+        <div class="kpi-label">Avg Defects / Unit</div>
+        <div class="kpi-value">{{ project.avg_defects_inspected }}</div>
+        <div class="kpi-sub">{{ project.units_inspected }} units inspected</div>
+    </td>
+    <td class="kpi-cell" style="width: 25%;">
+        <div class="kpi-label">Median Defects / Unit</div>
+        <div class="kpi-value">{{ project.median_defects }}</div>
+        <div class="kpi-sub">middle unit ranked by defects</div>
+    </td>
+    <td class="kpi-cell" style="width: 25%;">
+        <div class="kpi-label">Defect Rate</div>
+        <div class="kpi-value" style="color: #C8963E;">{{ project.defect_rate_inspected }}%</div>
+        <div class="kpi-sub">{{ project.items_inspected }} items inspected</div>
+    </td>
+    <td class="kpi-cell" style="width: 25%;">
+        <div class="kpi-label">Worst Unit</div>
+        <div class="kpi-value">{% if worst_units %}{{ worst_units[0].defect_count }}{% else %}—{% endif %}</div>
+        <div class="kpi-sub">range: {{ project.min_defects }}–{{ project.max_defects }} across {{ project.units_inspected }} units</div>
+    </td>
+</tr></table>
+
 <!-- ============ RECTIFICATION PULSE ============ -->
 {% if rectification %}
 <div class="rect-box">
