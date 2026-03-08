@@ -347,10 +347,10 @@ body {
             <div style="display: flex; align-items: center; gap: 4px; padding: 3px 0;">
                 <span style="font-size: 10px; font-weight: 700; min-width: 28px; flex-shrink: 0;">{{ unit.unit_number }}</span>
                 <span style="font-size: 10px; color: #9A9A9A; min-width: 80px; flex-shrink: 0;">{{ unit.block }} {{ floor_labels.get(unit.floor, 'Floor ' ~ unit.floor|string) }}</span>
-                <span style="font-size: 9px; color: #9A9A9A; min-width: 32px; text-align: right; flex-shrink: 0;">{{ unit_pct }}%</span>
                 <div style="flex: 1; height: 8px; background: #E8E6E1; border-radius: 3px; overflow: hidden;">
                     <div style="height: 8px; width: {{ (unit.defect_count / worst_units[0].defect_count * 100)|round }}%; background: {{ unit_colour }}; border-radius: 2px;"></div>
                 </div>
+                <span style="font-size: 9px; color: #9A9A9A; min-width: 32px; text-align: right; flex-shrink: 0;">{{ unit_pct }}%</span>
                 <span style="font-size: 10px; font-weight: 700; min-width: 24px; text-align: right; flex-shrink: 0; color: {{ unit_colour }};">{{ unit.defect_count }}</span>
             </div>
             {% endfor %}
