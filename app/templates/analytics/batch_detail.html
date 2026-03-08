@@ -97,7 +97,7 @@
         <div class="kpi-card">
             <div class="kpi-value text-gray-900">{{ kpis.median_defects }}</div>
             <div class="kpi-label">Median defects/unit</div>
-            <div class="kpi-sub">middle unit when {{ kpis.inspected }} ranked by defects</div>
+            <div class="kpi-sub">Midpoint of {{ kpis.inspected }} units ranked by defect count</div>
         </div>
         <div class="kpi-card">
             <div class="kpi-value gold-accent">{{ kpis.defect_rate }}%</div>
@@ -160,7 +160,7 @@
             {% endfor %}
             <div style="font-size: 0.7rem; color: #9A9A9A; margin-top: 0.5rem; padding-top: 0.4rem; border-top: 1px solid #f0f0f0;">
                 <div style="margin-bottom: 0.25rem;">
-                    <span class="legend-item"><span class="legend-dot" style="background: #4A7C59;"></span> Below median</span>&ensp;
+                    <span style="font-size: 0.7rem; color: #9A9A9A;">Relative to median across all areas &mdash;</span>&ensp;<span class="legend-item"><span class="legend-dot" style="background: #4A7C59;"></span> Below median</span>&ensp;
                     <span class="legend-item"><span class="legend-dot" style="background: #C8963E;"></span> At median</span>&ensp;
                     <span class="legend-item"><span class="legend-dot" style="background: #C44D3F;"></span> Above median</span>&ensp;
                     <span style="color: #BABABA;">&middot;</span>&ensp;
@@ -316,7 +316,7 @@
         </div>
         {% endfor %}
         <div style="font-size: 0.7rem; color: #9A9A9A; margin-top: 0.5rem; padding-top: 0.4rem; border-top: 1px solid #f0f0f0;">
-            <span class="legend-item"><span class="legend-dot" style="background: #4A7C59;"></span> Below median</span>&ensp;
+            <span style="font-size: 0.7rem; color: #9A9A9A;">Relative to median across all trades &mdash;</span>&ensp;<span class="legend-item"><span class="legend-dot" style="background: #4A7C59;"></span> Below median</span>&ensp;
             <span class="legend-item"><span class="legend-dot" style="background: #C8963E;"></span> At median</span>&ensp;
             <span class="legend-item"><span class="legend-dot" style="background: #C44D3F;"></span> Above median</span>&ensp;
             <span style="color: #BABABA;">&middot;</span>&ensp;
