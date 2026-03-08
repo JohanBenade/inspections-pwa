@@ -86,23 +86,71 @@
         </div>
     </div>
 
+    <!-- BATCH VS PROJECT VERDICT -->
+    {% set avg_delta = kpis.avg_defects - kpis.project_avg %}
+    {% set avg_pct = ((avg_delta / kpis.project_avg) * 100)|round|int if kpis.project_avg > 0 else 0 %}
+    {% set worse = kpis.avg_defects > kpis.project_avg %}
+    {% set avg_max = [kpis.avg_defects, kpis.project_avg]|max %}
+    {% set rate_max = [kpis.defect_rate|float, kpis.proj_defect_rate|float]|max %}
+    <div class="mb-6" style="border: 1.5px solid {% if worse %}#C44D3F{% else %}#4A7C59{% endif %}; border-radius: 8px; background: {% if worse %}#FDF0EF{% else %}#EFF5F1{% endif %}; padding: 1rem 1.25rem;">
+        <div class="mb-3">
+            <div style="font-size: 0.7rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: {% if worse %}#C44D3F{% else %}#4A7C59{% endif %};">
+                {% if worse %}▲{% else %}▼{% endif %} This batch is {{ avg_pct|abs }}% {% if worse %}above{% else %}below{% endif %} project average
+            </div>
+            <div style="font-size: 0.75rem; color: #6B6B6B; margin-top: 0.25rem;">
+                This batch averaged {{ avg_delta|abs|round(1) }} {% if worse %}more{% else %}fewer{% endif %} defects per unit than the project average of {{ kpis.project_avg }}.
+            </div>
+        </div>
+        <div class="grid grid-cols-2 gap-4">
+            <div>
+                <div style="font-size: 0.65rem; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: #9A9A9A; margin-bottom: 0.4rem;">Avg Defects / Unit</div>
+                <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 4px;">
+                    <span style="font-size: 0.7rem; color: #1A1A1A; min-width: 60px;">This batch</span>
+                    <div style="flex: 1; height: 8px; background: #E8E6E1; border-radius: 3px; overflow: hidden;">
+                        <div style="height: 8px; width: {{ (kpis.avg_defects / avg_max * 100)|round }}%; background: {% if worse %}#C44D3F{% else %}#4A7C59{% endif %}; border-radius: 2px;"></div>
+                    </div>
+                    <span style="font-size: 0.7rem; font-weight: 700; color: {% if worse %}#C44D3F{% else %}#4A7C59{% endif %}; min-width: 32px; text-align: right;">{{ kpis.avg_defects }}</span>
+                </div>
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    <span style="font-size: 0.7rem; color: #9A9A9A; min-width: 60px;">Project</span>
+                    <div style="flex: 1; height: 8px; background: #E8E6E1; border-radius: 3px; overflow: hidden;">
+                        <div style="height: 8px; width: {{ (kpis.project_avg / avg_max * 100)|round }}%; background: #9A9A9A; border-radius: 2px;"></div>
+                    </div>
+                    <span style="font-size: 0.7rem; color: #9A9A9A; min-width: 32px; text-align: right;">{{ kpis.project_avg }}</span>
+                </div>
+            </div>
+            <div>
+                <div style="font-size: 0.65rem; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: #9A9A9A; margin-bottom: 0.4rem;">Defect Rate</div>
+                <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 4px;">
+                    <span style="font-size: 0.7rem; color: #1A1A1A; min-width: 60px;">This batch</span>
+                    <div style="flex: 1; height: 8px; background: #E8E6E1; border-radius: 3px; overflow: hidden;">
+                        <div style="height: 8px; width: {{ (kpis.defect_rate|float / rate_max * 100)|round if rate_max > 0 else 0 }}%; background: {% if worse %}#C44D3F{% else %}#4A7C59{% endif %}; border-radius: 2px;"></div>
+                    </div>
+                    <span style="font-size: 0.7rem; font-weight: 700; color: {% if worse %}#C44D3F{% else %}#4A7C59{% endif %}; min-width: 32px; text-align: right;">{{ kpis.defect_rate }}%</span>
+                </div>
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    <span style="font-size: 0.7rem; color: #9A9A9A; min-width: 60px;">Project</span>
+                    <div style="flex: 1; height: 8px; background: #E8E6E1; border-radius: 3px; overflow: hidden;">
+                        <div style="height: 8px; width: {{ (kpis.proj_defect_rate|float / rate_max * 100)|round if rate_max > 0 else 0 }}%; background: #9A9A9A; border-radius: 2px;"></div>
+                    </div>
+                    <span style="font-size: 0.7rem; color: #9A9A9A; min-width: 32px; text-align: right;">{{ kpis.proj_defect_rate }}%</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- QUALITY -->
     <div class="mb-2"><span class="section-num">Quality (inspected units only)</span></div>
-    <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
-        <div class="kpi-card">
-            <div class="kpi-value traffic-{{ kpis.traffic }}">{{ kpis.avg_defects }}</div>
-            <div class="kpi-label">Average defects/unit</div>
-            <div class="kpi-sub">{{ kpis.total_defects }} defects / {{ kpis.inspected }} units</div>
-        </div>
+    <div class="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-6">
         <div class="kpi-card">
             <div class="kpi-value text-gray-900">{{ kpis.median_defects }}</div>
             <div class="kpi-label">Median defects/unit</div>
             <div class="kpi-sub">Midpoint of {{ kpis.inspected }} units ranked by defect count</div>
         </div>
         <div class="kpi-card">
-            <div class="kpi-value gold-accent">{{ kpis.defect_rate }}%</div>
-            <div class="kpi-label">Defect rate</div>
-            <div class="kpi-sub">{{ kpis.items_inspected }} items inspected</div>
+            <div class="kpi-value text-gray-900">{{ kpis.min_defects }}&ndash;{{ kpis.max_defects }}</div>
+            <div class="kpi-label">Range</div>
+            <div class="kpi-sub">min &ndash; max across {{ kpis.inspected }} units</div>
         </div>
         <div class="kpi-card">
             <div class="kpi-value text-gray-900">{{ kpis.max_defects }}</div>
