@@ -132,7 +132,7 @@ body {
 /* -- DATA TABLES -- */
 .data-table { width: 100%; border-collapse: collapse; font-size: 10px; }
 .data-table th {
-    padding: 7px 8px; text-align: left; font-weight: 600; font-size: 8px;
+    padding: 7px 8px; text-align: left; font-weight: 600; font-size: 10px;
     letter-spacing: 1.2px; text-transform: uppercase; color: #6B6B6B;
     border-bottom: 2px solid #0A0A0A;
 }
@@ -181,7 +181,7 @@ body {
     border-left: 3px solid #4A7C59; border-radius: 4px;
     padding: 14px 18px; margin-bottom: 20px;
 }
-.rect-label { font-size: 8px; font-weight: 600; letter-spacing: 2px; text-transform: uppercase; color: #6B6B6B; margin-bottom: 8px; }
+.rect-label { font-size: 10px; font-weight: 600; letter-spacing: 2px; text-transform: uppercase; color: #6B6B6B; margin-bottom: 8px; }
 .rect-stats { display: flex; gap: 24px; }
 .rect-stat-value {
     font-family: 'Cormorant Garamond', Georgia, serif;
@@ -192,7 +192,7 @@ body {
 /* -- ZONE TABLE -- */
 .zone-table { width: 100%; border-collapse: collapse; font-size: 10px; }
 .zone-table th {
-    padding: 7px 8px; text-align: left; font-weight: 600; font-size: 8px;
+    padding: 7px 8px; text-align: left; font-weight: 600; font-size: 10px;
     letter-spacing: 1.2px; text-transform: uppercase; color: #6B6B6B;
     border-bottom: 2px solid #0A0A0A;
 }
@@ -418,7 +418,7 @@ body {
                 <span style="font-size: 9px; color: #9A9A9A; width: 30px; text-align: right;">{{ a.pct }}%</span>
             </div>
             {% endfor %}
-            <div style="font-size: 8px; color: #9A9A9A; margin-top: 8px; padding-top: 6px; border-top: 1px solid #E8E6E1;">
+            <div style="font-size: 10px; color: #9A9A9A; margin-top: 8px; padding-top: 6px; border-top: 1px solid #E8E6E1;">
                 <span class="legend-swatch" style="background: rgba(74,124,89,0.25); width: 8px; height: 8px;"></span><span class="legend-text">&lt;{{ area_median|round|int }}</span>&ensp;
                 <span class="legend-swatch" style="background: rgba(200,150,62,0.25); width: 8px; height: 8px;"></span><span class="legend-text">{{ area_median|round|int }}</span>&ensp;
                 <span class="legend-swatch" style="background: rgba(196,77,63,0.25); width: 8px; height: 8px;"></span><span class="legend-text">&gt;{{ area_median|round|int }}</span>&ensp;
@@ -444,12 +444,12 @@ body {
                 </div>
             </div>
             {% endfor %}
-            <div style="font-size: 8px; color: #9A9A9A; margin-top: 8px; padding-top: 6px; border-top: 1px solid #E8E6E1;">
+            <div style="font-size: 10px; color: #9A9A9A; margin-top: 8px; padding-top: 6px; border-top: 1px solid #E8E6E1;">
                 <span class="legend-swatch" style="background: rgba(74,124,89,0.25); width: 8px; height: 8px;"></span><span class="legend-text">&lt;{{ project.median_defects|round|int }}</span>&ensp;
                 <span class="legend-swatch" style="background: rgba(200,150,62,0.25); width: 8px; height: 8px;"></span><span class="legend-text">{{ project.median_defects|round|int }}&ndash;{{ (project.median_defects * 1.5)|round|int }}</span>&ensp;
                 <span class="legend-swatch" style="background: rgba(196,77,63,0.25); width: 8px; height: 8px;"></span><span class="legend-text">&gt;{{ (project.median_defects * 1.5)|round|int }}</span>
             </div>
-            <div style="font-size: 8px; color: #9A9A9A; margin-top: 2px;">These 5 units hold {{ worst_pct }}% of all open defects{% if worst_dominant_zone %} &middot; {{ worst_dominant_count }} of 5 are {{ worst_dominant_zone }}{% endif %}</div>
+            <div style="font-size: 10px; color: #9A9A9A; margin-top: 2px;">These 5 units hold {{ worst_pct }}% of all open defects{% if worst_dominant_zone %} &middot; {{ worst_dominant_count }} of 5 are {{ worst_dominant_zone }}{% endif %}</div>
         </div>
     </div>
 
@@ -470,7 +470,7 @@ body {
         {% for area_info in area_deep_dive %}
         <div style="float: {% if loop.first %}left{% else %}right{% endif %}; width: 48%;">
             <div style="background: #F5F3EE; border-left: 3px solid {{ area_info.colour }}; padding: 14px 16px;">
-                <div style="font-size: 8px; font-weight: 600; letter-spacing: 2px; text-transform: uppercase; color: #6B6B6B; margin-bottom: 2px;">{{ area_info.area }}</div>
+                <div style="font-size: 10px; font-weight: 600; letter-spacing: 2px; text-transform: uppercase; color: #6B6B6B; margin-bottom: 2px;">{{ area_info.area }}</div>
                 <div style="margin-bottom: 10px;">
                     <span style="font-family: 'Cormorant Garamond', Georgia, serif; font-size: 24px; font-weight: 300; color: #0A0A0A;">{{ area_info.total }}</span>
                     <span style="font-size: 10px; color: #9A9A9A; margin-left: 4px;">of {{ project.open_defects }} defects ({{ area_info.pct }}%)</span>
@@ -479,7 +479,7 @@ body {
                     {% for d in area_info.defects %}
                     <tr>
                         <td style="width: 18px; vertical-align: top; padding: 4px 0;">
-                            <div style="width: 18px; height: 18px; border-radius: 50%; background: {% if loop.first %}{{ area_info.colour }}{% else %}#F5F3EE; border: 1px solid #E8E6E1{% endif %}; color: {% if loop.first %}white{% else %}#6B6B6B{% endif %}; text-align: center; line-height: 18px; font-size: 8px; font-weight: 600;">{{ loop.index }}</div>
+                            <div style="width: 18px; height: 18px; border-radius: 50%; background: {% if loop.first %}{{ area_info.colour }}{% else %}#F5F3EE; border: 1px solid #E8E6E1{% endif %}; color: {% if loop.first %}white{% else %}#6B6B6B{% endif %}; text-align: center; line-height: 18px; font-size: 10px; font-weight: 600;">{{ loop.index }}</div>
                         </td>
                         <td style="padding: 4px 8px; vertical-align: top;">
                             <div style="font-size: 10px; color: #1A1A1A; margin-bottom: 3px;">{{ d.description }}</div>
