@@ -432,7 +432,7 @@ body {
                 <span style="font-size: 11px; font-weight: 600; color: #1A1A1A;">Top 5 Units by Defect Count</span>
             </div>
             {% for unit in worst_units %}
-            {% set unit_colour = '#C44D3F' if unit.defect_count > project.median_defects * 1.5 else '#C8963E' if unit.defect_count > project.median_defects else '#4A7C59' %}
+            {% set unit_colour = '#C44D3F' if unit.defect_count > q3 else '#C8963E' if unit.defect_count > q1 else '#4A7C59' %}
             <div style="padding: 3px 0;">
                 <div style="display: flex; align-items: center; gap: 4px; margin-bottom: 2px;">
                     <span style="font-size: 10px; font-weight: 700; min-width: 28px;">{{ unit.unit_number }}</span>
@@ -445,9 +445,11 @@ body {
             </div>
             {% endfor %}
             <div style="font-size: 10px; color: #9A9A9A; margin-top: 8px; padding-top: 6px; border-top: 1px solid #E8E6E1;">
-                <span class="legend-swatch" style="background: rgba(74,124,89,0.25); width: 8px; height: 8px;"></span><span class="legend-text">&lt;{{ project.median_defects|round|int }}</span>&ensp;
-                <span class="legend-swatch" style="background: rgba(200,150,62,0.25); width: 8px; height: 8px;"></span><span class="legend-text">{{ project.median_defects|round|int }}&ndash;{{ (project.median_defects * 1.5)|round|int }}</span>&ensp;
-                <span class="legend-swatch" style="background: rgba(196,77,63,0.25); width: 8px; height: 8px;"></span><span class="legend-text">&gt;{{ (project.median_defects * 1.5)|round|int }}</span>
+                <span style="font-size: 9px; color: #9A9A9A;">Units ranked by defect count quartile &mdash;</span>&ensp;
+                <span class="legend-swatch" style="background: rgba(74,124,89,0.25); width: 8px; height: 8px;"></span><span class="legend-text">Bottom 25%</span>&ensp;
+                <span class="legend-swatch" style="background: rgba(200,150,62,0.25); width: 8px; height: 8px;"></span><span class="legend-text">Middle 50%</span>&ensp;
+                <span class="legend-swatch" style="background: rgba(196,77,63,0.25); width: 8px; height: 8px;"></span><span class="legend-text">Top 25%</span>&ensp;
+                <span style="font-size: 9px; color: #BABABA;">&middot;</span>&ensp;<span class="legend-text">Q1: {{ q1 }} &middot; Q3: {{ q3 }} defects/unit</span>
             </div>
             <div style="font-size: 10px; color: #9A9A9A; margin-top: 2px;">These 5 units hold {{ worst_pct }}% of all open defects{% if worst_dominant_zone %} &middot; {{ worst_dominant_count }} of 5 are {{ worst_dominant_zone }}{% endif %}</div>
         </div>

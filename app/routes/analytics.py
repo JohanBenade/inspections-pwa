@@ -3365,6 +3365,32 @@ def _build_unified_report_data():
         worst_blocks[key] = worst_blocks.get(key, 0) + 1
     worst_dominant = max(worst_blocks.items(), key=lambda x: x[1]) if worst_blocks else ('', 0)
 
+    # Quartile banding for unit colouring in unified report
+    all_unit_counts_ur = [dict(r)['defect_count'] for r in query_db("""
+        SELECT COUNT(d.id) as defect_count
+        FROM inspection i
+        JOIN unit u ON i.unit_id = u.id
+        LEFT JOIN defect d ON d.unit_id = i.unit_id
+            AND d.raised_cycle_id = i.cycle_id
+            AND d.status = 'open'
+            AND d.tenant_id = i.tenant_id
+        WHERE i.tenant_id = ?
+        AND i.status IN ('reviewed','approved','certified','pending_followup')
+        AND u.unit_number NOT LIKE 'TEST%'
+        AND i.cycle_id NOT LIKE 'test-%'
+        GROUP BY i.unit_id
+    """, [tenant_id])]
+    sorted_ur = sorted(all_unit_counts_ur) if all_unit_counts_ur else []
+    if len(sorted_ur) >= 4:
+        n_ur = len(sorted_ur)
+        q1 = sorted_ur[n_ur // 4]
+        q3 = sorted_ur[(n_ur * 3) // 4]
+    elif sorted_ur:
+        q1 = min(sorted_ur)
+        q3 = max(sorted_ur)
+    else:
+        q1 = q3 = 0
+
     # Zone performance (ranked worst to best)
     active_zones = [c for c in zone_cards if c['inspected'] > 0]
     active_zones.sort(key=lambda x: x['avg_defects'], reverse=True)
@@ -3428,6 +3454,8 @@ def _build_unified_report_data():
         'worst_pct': worst_pct,
         'worst_dominant_zone': worst_dominant[0],
         'worst_dominant_count': worst_dominant[1],
+        'q1': q1,
+        'q3': q3,
     }
 
 
