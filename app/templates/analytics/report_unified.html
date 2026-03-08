@@ -523,7 +523,7 @@ body {
     <div style="padding: 6px 0; {% if not loop.last %}border-bottom: 1px solid #F0F0F0;{% endif %}">
         <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 4px;">
             <span style="display: inline-block; width: 22px; height: 22px; line-height: 22px; text-align: center; font-size: 10px; font-weight: 700; color: white; background: #C44D3F; border-radius: 50%; flex-shrink: 0;">{{ loop.index }}</span>
-            <span style="font-size: 10px; font-weight: 500; color: #1A1A1A; flex: 1;">{{ r.original_comment }}{% if r.cat_breakdown %} <span style="font-size: 9px; color: #9A9A9A; font-weight: 400;">({% for cb in r.cat_breakdown %}{{ cb.category_name }} {{ cb.count }}{% if not loop.last %} &middot; {% endif %}{% endfor %})</span>{% endif %}</span>
+            <span style="font-size: 10px; font-weight: 500; color: #1A1A1A; flex: 1;">{{ r.original_comment }}{% if r.cat_breakdown %} <span style="font-size: 9px; color: #9A9A9A; font-weight: 400;">({% for cb in r.cat_breakdown %}{{ cb.cat }} {{ cb.cnt }}{% if not loop.last %} &middot; {% endif %}{% endfor %})</span>{% endif %}</span>
             <span style="font-size: 10px; font-weight: 700; color: #C44D3F; width: 30px; text-align: right;">{{ r.cnt }}</span>
             <span style="font-size: 10px; color: #9A9A9A; width: 40px; text-align: right;">{{ r.unit_count }}u</span>
         </div>
