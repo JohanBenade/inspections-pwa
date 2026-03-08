@@ -333,17 +333,17 @@ body {
     <table class="data-table" style="font-size: 11px;">
     <thead>
     <tr>
-        <th style="width: 100px;">Floor</th>
-        {% for blk in grid_blocks %}
-        <th class="text-center">{{ blk }}</th>
+        <th style="width: 100px;">Block</th>
+        {% for flr in grid_floors %}
+        <th class="text-center">{{ floor_map.get(flr, 'Floor ' ~ flr) }}</th>
         {% endfor %}
     </tr>
     </thead>
     <tbody>
-    {% for flr in grid_floors %}
+    {% for blk in grid_blocks %}
     <tr>
-        <td style="font-weight: 600; color: #6B6B6B;">{{ floor_map.get(flr, 'Floor ' ~ flr) }}</td>
-        {% for blk in grid_blocks %}
+        <td style="font-weight: 600; color: #1A1A1A;">{{ blk }}</td>
+        {% for flr in grid_floors %}
         {% if block_floor_grid.get(blk, {}).get(flr) %}
         {% set cell = block_floor_grid[blk][flr] %}
         {% if cell.avg > grid_median %}
@@ -379,14 +379,14 @@ body {
 
     <table class="legend-table">
     <tr>
-        <td><span class="legend-swatch" style="background: rgba(74,124,89,0.25);"></span><span class="legend-text">Below avg ({{ grid_median }})</span></td>
-        <td style="padding-left: 10px;"><span class="legend-swatch" style="background: rgba(200,150,62,0.25);"></span><span class="legend-text">At avg</span></td>
-        <td style="padding-left: 10px;"><span class="legend-swatch" style="background: rgba(196,77,63,0.25);"></span><span class="legend-text">Above avg</span></td>
+        <td><span class="legend-swatch" style="background: rgba(74,124,89,0.25);"></span><span class="legend-text">Below median</span></td>
+        <td style="padding-left: 10px;"><span class="legend-swatch" style="background: rgba(200,150,62,0.25);"></span><span class="legend-text">At median</span></td>
+        <td style="padding-left: 10px;"><span class="legend-swatch" style="background: rgba(196,77,63,0.25);"></span><span class="legend-text">Above median</span></td>
     </tr>
     </table>
 
     <div class="callout callout-gold">
-        <strong>Project average: {{ grid_median }} defects per unit.</strong> Values are coloured relative to this benchmark across all block/floor zones.
+        <strong>Median: {{ grid_median }} defects per unit.</strong> Values are coloured relative to the median across all block/floor zones.
     </div>
     {% else %}
     <div class="callout callout-gold">Density grid requires inspection data from multiple zones.</div>
