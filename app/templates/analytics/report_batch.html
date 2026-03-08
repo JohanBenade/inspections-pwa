@@ -165,23 +165,18 @@ body {
 
 <!-- ============ PROGRESS KPIs ============ -->
 <table class="kpi-table"><tr>
-    <td class="kpi-cell" style="width: 25%;">
+    <td class="kpi-cell" style="width: 33.33%;">
         <div class="kpi-label">Units Inspected</div>
         <div class="kpi-value">{{ kpis.inspected }} <span style="font-size: 14px; font-weight: 300; color: #9A9A9A;">/ {{ kpis.total_units }}</span></div>
         <div class="progress-track"><div class="progress-fill" style="width: {{ (kpis.inspected / kpis.total_units * 100)|round if kpis.total_units > 0 else 0 }}%;"></div></div>
         <div class="kpi-sub">{{ (kpis.inspected / kpis.total_units * 100)|round|int if kpis.total_units > 0 else 0 }}% of batch</div>
     </td>
-    <td class="kpi-cell" style="width: 25%;">
+    <td class="kpi-cell" style="width: 33.33%;">
         <div class="kpi-label">Open Defects</div>
         <div class="kpi-value kpi-value-red">{{ kpis.total_defects }}</div>
         <div class="kpi-sub">across {{ kpis.inspected }} inspected units</div>
     </td>
-    <td class="kpi-cell" style="width: 25%;">
-        <div class="kpi-label">Avg Defects / Unit</div>
-        <div class="kpi-value">{{ kpis.avg_defects }}</div>
-        <div class="kpi-sub">project avg: {{ kpis.project_avg }} &middot; range: {{ kpis.min_defects }}&ndash;{{ kpis.max_defects }}</div>
-    </td>
-    <td class="kpi-cell" style="width: 25%;">
+    <td class="kpi-cell" style="width: 33.33%;">
         <div class="kpi-label">Defect Rate</div>
         <div class="kpi-value" style="color: #C8963E;">{{ kpis.defect_rate }}%</div>
         <div class="kpi-sub">project rate: {{ kpis.proj_defect_rate }}% &middot; {{ kpis.items_inspected }} items</div>
@@ -195,7 +190,7 @@ body {
     <td class="kpi-cell" style="width: 25%;">
         <div class="kpi-label">Avg Defects / Unit</div>
         <div class="kpi-value">{{ kpis.avg_defects }}</div>
-        <div class="kpi-sub">{{ kpis.inspected }} units inspected</div>
+        <div class="kpi-sub">project avg: {{ kpis.project_avg }} &middot; range: {{ kpis.min_defects }}&ndash;{{ kpis.max_defects }}</div>
     </td>
     <td class="kpi-cell" style="width: 25%;">
         <div class="kpi-label">Median Defects / Unit</div>
