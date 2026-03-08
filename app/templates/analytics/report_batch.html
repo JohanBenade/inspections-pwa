@@ -195,12 +195,9 @@ body {
 {% set avg_max = [kpis.avg_defects, kpis.project_avg]|max %}
 {% set rate_max = [kpis.defect_rate|float, kpis.proj_defect_rate|float]|max %}
 <div style="margin: 1rem 0; border: 1.5px solid {{ verdict_border }}; border-radius: 4px; background: {{ verdict_bg }}; padding: 14px 16px;">
-    <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px;">
-        <div>
-            <div style="font-size: 0.65rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: {{ verdict_colour }};">{{ verdict_arrow }} This batch is {{ avg_pct|abs }}% {{ verdict_word }} project average</div>
-            <div style="font-size: 0.7rem; color: #6B6B6B; margin-top: 3px;">{{ kpis.avg_defects }} defects/unit &nbsp;&middot;&nbsp; project avg {{ kpis.project_avg }} &nbsp;&middot;&nbsp; delta {{ '+' if avg_delta > 0 else '' }}{{ avg_delta|round(1) }} per unit</div>
-        </div>
-        <div style="font-size: 2rem; font-weight: 700; color: {{ verdict_colour }}; font-family: 'Cormorant Garamond', Georgia, serif; line-height: 1;">{{ kpis.avg_defects }}</div>
+    <div style="margin-bottom: 12px;">
+        <div style="font-size: 0.7rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: {{ verdict_colour }};">{{ verdict_arrow }} This batch is {{ avg_pct|abs }}% {{ verdict_word }} project average</div>
+        <div style="font-size: 0.7rem; color: #6B6B6B; margin-top: 4px;">This batch averaged {{ avg_delta|abs|round(1) }} {{ 'more' if worse else 'fewer' }} defects per unit than the project average of {{ kpis.project_avg }}.</div>
     </div>
     <div style="display: flex; gap: 24px;">
         <div style="flex: 1;">
