@@ -21,7 +21,7 @@
     {% endif %}
     <span></span>
 </div>
-{% if pct >= 100 and insp_status == 'in_progress' %}
+{% if progress.completed >= progress.active and insp_status == 'in_progress' %}
 <div class="mt-3 bg-green-50 border border-green-200 rounded-lg p-3 flex justify-between items-center">
     <span class="text-green-700 font-medium text-sm">All items marked</span>
     <a href="javascript:void(0)"
