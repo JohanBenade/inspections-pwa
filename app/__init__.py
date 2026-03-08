@@ -68,6 +68,10 @@ def create_app():
     # Data Quality blueprint (admin only)
     from app.routes.data_quality import data_quality_bp
     app.register_blueprint(data_quality_bp)
+
+    # Exclusion Lists blueprint (manager + admin)
+    from app.routes.exclusion_lists import exclusion_lists_bp
+    app.register_blueprint(exclusion_lists_bp)
     
     # PDF blueprint (optional - requires weasyprint + system libs)
     try:

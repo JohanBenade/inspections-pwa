@@ -7,10 +7,16 @@
         <h1 class="text-2xl font-bold text-gray-800">Batches</h1>
         <p class="text-gray-500 mt-1">Operational containers for inspection work</p>
     </div>
-    <a href="{{ url_for('batches.create_batch') }}"
-       class="px-4 py-2.5 bg-primary text-white rounded-lg text-sm font-medium hover:bg-opacity-90 transition-colors tap-target">
-        + New Batch
-    </a>
+    <div class="flex gap-2">
+        <a href="{{ url_for('exclusion_lists.list_all') }}"
+           class="px-4 py-2.5 bg-white border border-gray-300 text-gray-700 rounded-lg text-sm font-medium hover:bg-gray-50 transition-colors tap-target">
+            Exclusion Lists
+        </a>
+        <a href="{{ url_for('batches.create_batch') }}"
+           class="px-4 py-2.5 bg-primary text-white rounded-lg text-sm font-medium hover:bg-opacity-90 transition-colors tap-target">
+            + New Batch
+        </a>
+    </div>
 </div>
 
 {% if batches %}
