@@ -122,13 +122,15 @@ def create_batch():
         batch_name = request.form.get('name', '').strip()
         notes = request.form.get('notes', '').strip() or None
         unit_input = request.form.get('units', '').strip()
+        exclusion_list_id = request.form.get('exclusion_list_id', '').strip() or None
 
         if not batch_name:
             batch_name = datetime.now().strftime('%Y-%m-%d')
 
         if not unit_input:
             flash('Enter at least one unit number.', 'error')
-            return render_template('batches/create.html', name=batch_name, notes=notes)
+            excl_lists = [dict(r) for r in query_db("SELECT id, name, item_count FROM exclusion_list WHERE tenant_id = ? AND is_active = 1 ORDER BY created_at DESC", [tenant_id])]
+            return render_template('batches/create.html', name=batch_name, notes=notes, excl_lists=excl_lists)
 
         raw_numbers = []
         for part in unit_input.replace(',', ' ').replace('\n', ' ').split():
@@ -138,7 +140,8 @@ def create_batch():
 
         if not raw_numbers:
             flash('No valid unit numbers found.', 'error')
-            return render_template('batches/create.html', name=batch_name, notes=notes)
+            excl_lists = [dict(r) for r in query_db("SELECT id, name, item_count FROM exclusion_list WHERE tenant_id = ? AND is_active = 1 ORDER BY created_at DESC", [tenant_id])]
+            return render_template('batches/create.html', name=batch_name, notes=notes, excl_lists=excl_lists)
 
         seen = set()
         unit_numbers = []
@@ -197,9 +200,9 @@ def create_batch():
             bu_id = generate_id()
             cur.execute("""
                 INSERT INTO batch_unit
-                (id, tenant_id, batch_id, unit_id, cycle_id, inspector_id, status, created_at)
-                VALUES (?, ?, ?, ?, ?, NULL, 'pending', ?)
-            """, (bu_id, tenant_id, batch_id, unit_row['id'], cycle_id, now))
+                (id, tenant_id, batch_id, unit_id, cycle_id, inspector_id, status, created_at, exclusion_list_id)
+                VALUES (?, ?, ?, ?, ?, NULL, 'pending', ?, ?)
+            """, (bu_id, tenant_id, batch_id, unit_row['id'], cycle_id, now, exclusion_list_id))
 
             floor_label = FLOOR_LABELS.get(unit_row['floor'], str(unit_row['floor']))
             results.append({
@@ -229,7 +232,11 @@ def create_batch():
         return redirect(url_for('batches.detail', batch_id=batch_id))
 
     today = datetime.now().strftime('%Y-%m-%d')
-    return render_template('batches/create.html', name=today, notes='')
+    excl_lists = query_db(
+        "SELECT id, name, item_count FROM exclusion_list WHERE tenant_id = ? AND is_active = 1 ORDER BY created_at DESC",
+        [tenant_id])
+    excl_lists = [dict(r) for r in excl_lists]
+    return render_template('batches/create.html', name=today, notes='', excl_lists=excl_lists)
 
 
 @batches_bp.route('/<batch_id>')
