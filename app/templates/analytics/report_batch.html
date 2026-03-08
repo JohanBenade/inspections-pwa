@@ -346,7 +346,7 @@ body {
             {% set unit_pct = (unit.defect_count / kpis.total_defects * 100)|round(1) if kpis.total_defects > 0 else 0 %}
             <div style="display: flex; align-items: center; gap: 4px; padding: 3px 0;">
                 <span style="font-size: 10px; font-weight: 700; min-width: 28px; flex-shrink: 0;">{{ unit.unit_number }}</span>
-                <span style="font-size: 10px; color: #9A9A9A; min-width: 80px; flex-shrink: 0;">{{ unit.block }} {{ floor_labels.get(unit.floor, 'Floor ' ~ unit.floor|string) }}</span>
+                <span style="font-size: 10px; color: #9A9A9A; min-width: 80px; flex-shrink: 0;">{{ unit.block }} {{ floor_labels.get(unit.floor, 'Floor ' ~ unit.floor|string) }}</span>{% if unit.cycle_number > 1 %}<span style="font-size: 8px; font-weight: 700; color: #3D6B8E; background: rgba(61,107,142,0.1); border-radius: 3px; padding: 0 4px; flex-shrink: 0;">C{{ unit.cycle_number }}</span>{% endif %}
                 <div style="flex: 1; height: 8px; background: #E8E6E1; border-radius: 3px; overflow: hidden;">
                     <div style="height: 8px; width: {{ (unit.defect_count / worst_units[0].defect_count * 100)|round }}%; background: {{ unit_colour }}; border-radius: 2px;"></div>
                 </div>

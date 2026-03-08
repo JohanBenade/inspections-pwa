@@ -3698,8 +3698,9 @@ def _build_batch_report_data(batch_id):
     # 6. Worst units (top 5 from batch)
     ph = ','.join('?' * len(all_cycle_ids))
     worst_units = [dict(r) for r in query_db(
-        "SELECT u.unit_number, u.block, u.floor, COUNT(d.id) as defect_count "
+        "SELECT u.unit_number, u.block, u.floor, COUNT(d.id) as defect_count, ic.cycle_number "
         "FROM defect d JOIN unit u ON d.unit_id = u.id "
+        "JOIN inspection_cycle ic ON d.raised_cycle_id = ic.id "
         "WHERE d.tenant_id = ? AND d.status = 'open' "
         "AND d.unit_id IN (SELECT unit_id FROM batch_unit WHERE batch_id = ? AND removed_at IS NULL AND tenant_id = ?) "
         "AND d.raised_cycle_id IN ({}) "
