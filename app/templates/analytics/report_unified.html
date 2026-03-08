@@ -386,7 +386,7 @@ body {
     </table>
 
     <div class="callout callout-gold">
-        <strong>Median: {{ grid_median }} defects per unit.</strong> Values are coloured relative to the median across all block/floor zones.
+        <strong>Median: {{ project.median_defects }} defects per unit.</strong> Values are coloured relative to the project average across all block/floor zones.
     </div>
     {% else %}
     <div class="callout callout-gold">Density grid requires inspection data from multiple zones.</div>

@@ -3178,12 +3178,7 @@ def _build_unified_report_data():
                 'defect_rate': c['defect_rate'],
             }
 
-    grid_avgs = sorted([c['avg_defects'] for c in zone_cards if c['inspected'] > 0])
-    if grid_avgs:
-        n_g = len(grid_avgs)
-        grid_median = grid_avgs[n_g // 2] if n_g % 2 == 1 else round((grid_avgs[n_g // 2 - 1] + grid_avgs[n_g // 2]) / 2, 1)
-    else:
-        grid_median = 0
+    grid_median = project['avg_defects']
 
     # Area distribution + donut SVG
     area_data_raw = [dict(r) for r in query_db("""
