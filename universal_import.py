@@ -598,7 +598,7 @@ def main():
     if len(sys.argv) < 3:
         print("Usage:")
         print("  python3 universal_import.py <docx_or_json> <cycle_id> [--commit]")
-        print("  python3 universal_import.py --inline <cycle_id> [--commit] << 'DATA'")
+        print("  python3 universal_import.py --inline <cycle_id> [--commit] [--exclusion-list <list_id>] << 'DATA'")
         print("    unit|inspector_id|inspector_name|date")
         print("    AREA|sub_header|defect text")
         print("    ...")
@@ -606,6 +606,11 @@ def main():
         sys.exit(1)
 
     commit = '--commit' in sys.argv
+    EXCLUSION_LIST_ID = 'fca35779'  # default 109-item set
+    if '--exclusion-list' in sys.argv:
+        idx = sys.argv.index('--exclusion-list')
+        EXCLUSION_LIST_ID = sys.argv[idx + 1]
+    print(f"  Exclusion list: {EXCLUSION_LIST_ID}")
     inline_mode = '--inline' in sys.argv
 
     # --- PARSE ---
@@ -822,15 +827,14 @@ def main():
             """, (gen_id(), TENANT, insp_id, t[0]))
         print(f"Created {len(templates)} inspection items")
 
-    # Mark exclusions (copy from other inspections in same cycle)
+    # Mark exclusions (from exclusion list)
     cur.execute("""
-        SELECT DISTINCT ii.item_template_id
-        FROM inspection_item ii
-        JOIN inspection i ON ii.inspection_id = i.id
-        WHERE i.cycle_id = ? AND ii.status = 'skipped' AND i.id != ?
-    """, (cycle_id, insp_id))
+        SELECT item_template_id
+        FROM exclusion_list_item
+        WHERE exclusion_list_id = ?
+    """, (EXCLUSION_LIST_ID,))
     excluded_ids = set(r[0] for r in cur.fetchall())
-    print(f"Exclusions from cycle: {len(excluded_ids)}")
+    print(f"Exclusions from list {EXCLUSION_LIST_ID}: {len(excluded_ids)}")
 
     skipped = 0
     for eid in excluded_ids:
