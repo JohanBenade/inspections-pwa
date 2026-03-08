@@ -222,7 +222,7 @@ body {
 
 {% if not is_pdf %}
 <div class="toolbar">
-    <a href="{{ url_for('analytics.reports') }}" class="btn-back">Back</a>
+    <a href="{{ url_for('analytics.dashboard') }}" class="btn-back">Back</a>
     <button onclick="window.print()" class="btn-print">Print</button>
     <a href="{{ url_for('analytics.unified_report_pdf') }}" class="btn-pdf">Download PDF</a>
 </div>
