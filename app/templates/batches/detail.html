@@ -62,6 +62,7 @@
                 <th class="px-4 py-3 text-left font-medium text-gray-600">Round</th>
                 <th class="px-4 py-3 text-left font-medium text-gray-600">Status</th>
                 <th class="px-4 py-3 text-left font-medium text-gray-600">Inspector</th>
+                <th class="px-4 py-3 text-left font-medium text-gray-600 hidden md:table-cell">Excl. List</th>
                 <th class="px-4 py-3 w-8"></th>
             </tr>
         </thead>
@@ -125,6 +126,22 @@
                         <span class="text-xs text-green-600">{{ u.inspector_name }}</span>
                         {% endif %}
                     </span>
+                </td>
+                <td class="px-4 py-3 hidden md:table-cell" id="excl-assign-{{ u.bu_id }}">
+                    <select class="text-xs border border-gray-200 rounded px-2 py-1.5 w-full max-w-[180px]"
+                            hx-post="{{ url_for('batches.assign_exclusion_list', batch_id=batch.id) }}"
+                            hx-vals='{"bu_id": "{{ u.bu_id }}"}'
+                            hx-target="#excl-status-{{ u.bu_id }}"
+                            hx-swap="innerHTML"
+                            name="exclusion_list_id">
+                        <option value="">-- None --</option>
+                        {% for el in excl_lists %}
+                        <option value="{{ el.id }}" {% if u.exclusion_list_id == el.id %}selected{% endif %}>
+                            {{ el.name[:30] }}{% if el.name|length > 30 %}...{% endif %} ({{ el.item_count }})
+                        </option>
+                        {% endfor %}
+                    </select>
+                    <span id="excl-status-{{ u.bu_id }}" class="text-xs"></span>
                 </td>
                 <td class="px-4 py-2 text-center">
                     {% if batch.status in ('open', 'in_progress') and u.bu_status in ('not_started', 'pending', 'assigned') %}

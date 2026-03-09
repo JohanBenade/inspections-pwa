@@ -257,7 +257,8 @@ def detail(batch_id):
             bu.cycle_id, u.id AS unit_id, u.unit_number, u.block, u.floor,
             ic.cycle_number,
             i.id AS inspection_id, i.status AS inspection_status,
-            COALESCE(insp.name, i.inspector_name) AS inspector_name
+            COALESCE(insp.name, i.inspector_name) AS inspector_name,
+            bu.exclusion_list_id
         FROM batch_unit bu
         JOIN unit u ON bu.unit_id = u.id
         JOIN inspection_cycle ic ON bu.cycle_id = ic.id
@@ -295,11 +296,45 @@ def detail(batch_id):
     # Distinct cycle IDs for exclusion management links
     cycle_ids = list(set(u['cycle_id'] for u in units))
 
+    excl_lists = query_db(
+        "SELECT id, name, item_count FROM exclusion_list WHERE tenant_id = ? AND is_active = 1 ORDER BY created_at DESC",
+        [tenant_id])
+    excl_lists = [dict(r) for r in excl_lists]
+
     return render_template('batches/detail.html',
                            batch=batch, units=units, inspectors=inspectors,
                            floor_labels=FLOOR_LABELS, cycle_ids=cycle_ids,
+                           excl_lists=excl_lists,
                            removed_units=removed_units)
 
+
+
+@batches_bp.route('/<batch_id>/assign-exclusion-list', methods=['POST'])
+@require_team_lead
+def assign_exclusion_list(batch_id):
+    """HTMX: assign exclusion list to a batch_unit and its inspection."""
+    tenant_id = session['tenant_id']
+    bu_id = request.form.get('bu_id')
+    exclusion_list_id = request.form.get('exclusion_list_id') or None
+
+    db = get_db()
+    now = datetime.now(timezone.utc).isoformat()
+
+    db.execute(
+        "UPDATE batch_unit SET exclusion_list_id = ? WHERE id = ? AND tenant_id = ?",
+        [exclusion_list_id, bu_id, tenant_id])
+
+    # Also update inspection if exists
+    bu = db.execute(
+        "SELECT unit_id, cycle_id FROM batch_unit WHERE id = ?", [bu_id]).fetchone()
+    if bu:
+        db.execute("""
+            UPDATE inspection SET exclusion_list_id = ?, updated_at = ?
+            WHERE unit_id = ? AND cycle_id = ? AND tenant_id = ?
+        """, [exclusion_list_id, now, bu['unit_id'], bu['cycle_id'], tenant_id])
+
+    db.commit()
+    return f'<span class="text-xs text-green-600">Saved</span>'
 
 
 @batches_bp.route('/<batch_id>/exclusions')
