@@ -531,7 +531,7 @@ def inspect_area(inspection_id, area_id):
             JOIN inspection_item ii ON it.id = ii.item_template_id
             LEFT JOIN item_template par ON it.parent_item_id = par.id
             WHERE it.category_id = ? AND ii.inspection_id = ?
-            ORDER BY COALESCE(par.item_order, it.item_order), it.item_order
+            ORDER BY COALESCE(par.item_order, it.item_order), (par.item_order IS NOT NULL), it.item_order
         """, [cat['id'], inspection_id])
         
         # Build parent status map
