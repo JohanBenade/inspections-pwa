@@ -49,7 +49,7 @@
 {% set SUBMIT_JS = "var inp=this;var desc=inp.value.trim();if(!desc)return;" ~ BL_JS ~ "var w=inp.closest('.defect-input-wrapper');htmx.ajax('POST',w.dataset.addUrl,{target:w.dataset.target,swap:'innerHTML',values:{description:desc,area_id:w.dataset.areaId}})" %}
 
 {% if not is_skipped %}
-<div class="px-3 py-2.5 {% if is_child %}pl-8{% endif %} {% if parent_ni %}opacity-40{% endif %}">
+<div class="px-3 pr-5 py-2.5 {% if is_child %}pl-8{% endif %} {% if parent_ni %}opacity-40{% endif %}">
     <span class="item-meta" data-status="{{ item.status }}" data-defects="{{ (chips|length) + (currents|length) + (item.prior_defects|default([])|selectattr('status','equalto','open')|list|length) }}" style="display:none"></span>
 
     {# ---- ITEM NAME ---- #}
