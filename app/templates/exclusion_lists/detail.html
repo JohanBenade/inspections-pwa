@@ -45,36 +45,66 @@
     {% endif %}
     {% endwith %}
 
-    <!-- Items by Area > Category -->
-    {% for area_name, categories in areas.items() %}
-    <div class="bg-white rounded-lg shadow-sm border border-gray-200 mb-4">
-        <div class="px-4 py-3 border-b border-gray-100 bg-gray-50 rounded-t-lg">
-            <h2 class="font-semibold text-gray-800 text-sm uppercase tracking-wide">{{ area_name }}</h2>
-        </div>
-        {% for category_name, items in categories.items() %}
-        <div class="border-b border-gray-100 last:border-0">
-            <div class="px-4 py-2 bg-gray-50/50">
-                <h3 class="text-xs font-medium text-gray-500 uppercase tracking-wide">{{ category_name }}</h3>
-            </div>
-            <div class="divide-y divide-gray-50">
+    <!-- Area Tabs + Content -->
+    <div class="bg-white rounded-lg shadow">
+        <!-- Tabs -->
+        <div class="border-b overflow-x-auto">
+            <div class="flex flex-wrap">
+                {% for area_name, categories in areas.items() %}
+                {% set area_excl = namespace(count=0, total=0) %}
+                {% for cat_name, items in categories.items() %}
                 {% for item in items %}
-                <label class="flex items-center gap-3 px-4 py-2.5 hover:bg-orange-50/40 cursor-pointer
-                              {% if item.is_excluded %}bg-orange-50{% endif %}">
-                    <input type="checkbox" {% if item.is_excluded %}checked{% endif %}
-                        class="h-4 w-4 rounded border-gray-300 text-orange-600 cursor-pointer"
-                        hx-post="{{ url_for('exclusion_lists.toggle_item', list_id=excl_list.id) }}"
-                        hx-vals='{"template_id": "{{ item.template_id }}", "action": "{{ 'remove' if item.is_excluded else 'add' }}"}' 
-                        hx-target="closest label"
-                        hx-swap="outerHTML">
-                    <span class="text-sm text-gray-700 flex-1">{{ item.item_description }}</span>
-                    <span class="text-xs text-gray-400 font-mono">{{ item.template_id[:6] }}</span>
-                </label>
+                {% set area_excl.total = area_excl.total + 1 %}
+                {% if item.is_excluded %}{% set area_excl.count = area_excl.count + 1 %}{% endif %}
+                {% endfor %}
+                {% endfor %}
+                <button class="area-tab px-4 py-3 text-sm font-medium whitespace-nowrap border-b-2 flex items-center gap-2
+                       {% if loop.first %}border-orange-500 text-orange-600{% else %}border-transparent text-gray-500 hover:text-gray-700{% endif %}"
+                        onclick="showArea('area-{{ loop.index }}', this)">
+                    <span class="flex flex-col items-start">
+                        <span class="flex items-center gap-2">
+                            {{ area_name }}
+                            {% if area_excl.count > 0 %}
+                            <span class="bg-orange-500 text-white text-xs px-1.5 py-0.5 rounded-full">{{ area_excl.count }}</span>
+                            {% endif %}
+                        </span>
+                        <span class="text-xs {% if area_excl.count > 0 %}text-orange-600 font-semibold{% else %}text-gray-400{% endif %}">
+                            {{ area_excl.count }}/{{ area_excl.total }}
+                        </span>
+                    </span>
+                </button>
                 {% endfor %}
             </div>
         </div>
+
+        <!-- Area Content Panels -->
+        {% for area_name, categories in areas.items() %}
+        <div id="area-{{ loop.index }}" class="area-panel {% if not loop.first %}hidden{% endif %} p-4">
+            {% for category_name, items in categories.items() %}
+            <div class="mb-4 last:mb-0">
+                <div class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2 pb-1 border-b border-gray-100">
+                    {{ category_name }}
+                </div>
+                <div class="divide-y divide-gray-50">
+                    {% for item in items %}
+                    <label class="flex items-center gap-3 py-2 px-2 hover:bg-orange-50/40 cursor-pointer rounded
+                                  {% if item.is_excluded %}bg-orange-50{% endif %}">
+                        <input type="checkbox" {% if item.is_excluded %}checked{% endif %}
+                            class="h-4 w-4 rounded border-gray-300 text-orange-600 cursor-pointer"
+                            hx-post="{{ url_for('exclusion_lists.toggle_item', list_id=excl_list.id) }}"
+                            hx-vals='{"template_id": "{{ item.template_id }}", "action": "{{ 'remove' if item.is_excluded else 'add' }}"}' 
+                            hx-target="closest label"
+                            hx-swap="outerHTML">
+                        <span class="text-sm text-gray-700 flex-1">{{ item.item_description }}</span>
+                        <span class="text-xs text-gray-400 font-mono">{{ item.template_id[:6] }}</span>
+                    </label>
+                    {% endfor %}
+                </div>
+            </div>
+            {% endfor %}
+        </div>
         {% endfor %}
     </div>
-    {% endfor %}
 
 </div>
 
@@ -111,6 +141,17 @@
 </div>
 
 <script>
+function showArea(panelId, btn) {
+    document.querySelectorAll('.area-panel').forEach(p => p.classList.add('hidden'));
+    document.querySelectorAll('.area-tab').forEach(t => {
+        t.classList.remove('border-orange-500', 'text-orange-600');
+        t.classList.add('border-transparent', 'text-gray-500');
+    });
+    document.getElementById(panelId).classList.remove('hidden');
+    btn.classList.add('border-orange-500', 'text-orange-600');
+    btn.classList.remove('border-transparent', 'text-gray-500');
+}
+
 function openClone(listId, listName) {
     document.getElementById('clone-source-name').textContent = 'Cloning: ' + listName;
     document.getElementById('clone-form').action = '/exclusion-lists/' + listId + '/clone';
