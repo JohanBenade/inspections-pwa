@@ -62,8 +62,8 @@ new_ids = []
 for area, desc, order in new_items:
     nid = uuid.uuid4().hex[:8]
     cur.execute('''INSERT INTO item_template
-        (id, tenant_id, category_id, item_description, parent_item_id, depth, item_order, is_active, floor_condition)
-        VALUES (?,?,?,?,?,1,?,1,'all')''',
+        (id, tenant_id, category_id, item_description, parent_item_id, depth, item_order, floor_condition)
+        VALUES (?,?,?,?,?,1,?,'all')''',
         (nid, TENANT, cats[area], desc, parents[area], order))
     new_ids.append((area, desc, nid))
     print(f'Added: {nid} [{area}] {desc}')
