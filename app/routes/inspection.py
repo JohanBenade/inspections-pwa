@@ -529,8 +529,9 @@ def inspect_area(inspection_id, area_id):
                    (SELECT COUNT(*) FROM item_template it_c JOIN inspection_item ii_c ON it_c.id = ii_c.item_template_id WHERE it_c.parent_item_id = it.id AND ii_c.inspection_id = ii.inspection_id AND ii_c.status != 'skipped') as child_count
             FROM item_template it
             JOIN inspection_item ii ON it.id = ii.item_template_id
+            LEFT JOIN item_template par ON it.parent_item_id = par.id
             WHERE it.category_id = ? AND ii.inspection_id = ?
-            ORDER BY it.item_order
+            ORDER BY COALESCE(par.item_order, it.item_order), it.item_order
         """, [cat['id'], inspection_id])
         
         # Build parent status map
