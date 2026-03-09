@@ -85,13 +85,21 @@ def start_inspection(unit_id):
         now = datetime.now(timezone.utc).isoformat()
         user_id = session['user_id']
         user_name = session['user_name']
+        # Get exclusion_list_id from batch_unit if available
+        bu_row = query_db("""
+            SELECT exclusion_list_id FROM batch_unit
+            WHERE unit_id = ? AND cycle_id = ? AND tenant_id = ?
+            LIMIT 1
+        """, [unit_id, cycle_id, tenant_id], one=True)
+        excl_list_id = bu_row['exclusion_list_id'] if bu_row else None
         db.execute("""
             INSERT INTO inspection
             (id, tenant_id, unit_id, cycle_id, inspection_date,
-             inspector_id, inspector_name, status, started_at, created_at, updated_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?, 'in_progress', ?, ?, ?)
+             inspector_id, inspector_name, status, started_at, created_at, updated_at,
+             exclusion_list_id)
+            VALUES (?, ?, ?, ?, ?, ?, ?, 'in_progress', ?, ?, ?, ?)
         """, [inspection_id, tenant_id, unit_id, cycle_id,
-              date.today().isoformat(), user_id, user_name, now, now, now])
+              date.today().isoformat(), user_id, user_name, now, now, now, excl_list_id])
     
     # Check if this is a followup cycle
     if cycle['cycle_number'] > 1:
@@ -111,12 +119,21 @@ def start_inspection(unit_id):
     unit_floor = query_db("SELECT floor FROM unit WHERE id = ?", [unit_id], one=True)
     unit_floor_val = unit_floor['floor'] if unit_floor else 0
     
-    # Get current cycle exclusions
+    # Get current exclusions — prefer exclusion_list_item, fall back to cycle_excluded_item
     current_exclusions = set()
-    excluded_rows = query_db("""
-        SELECT item_template_id FROM cycle_excluded_item
-        WHERE cycle_id = ? AND tenant_id = ?
-    """, [cycle_id, tenant_id])
+    insp_row = query_db(
+        "SELECT exclusion_list_id FROM inspection WHERE id = ?", [inspection_id], one=True)
+    excl_list_id = insp_row['exclusion_list_id'] if insp_row else None
+    if excl_list_id:
+        excluded_rows = query_db("""
+            SELECT item_template_id FROM exclusion_list_item
+            WHERE exclusion_list_id = ?
+        """, [excl_list_id])
+    else:
+        excluded_rows = query_db("""
+            SELECT item_template_id FROM cycle_excluded_item
+            WHERE cycle_id = ? AND tenant_id = ?
+        """, [cycle_id, tenant_id])
     if excluded_rows:
         current_exclusions = set(r['item_template_id'] for r in excluded_rows)
     
