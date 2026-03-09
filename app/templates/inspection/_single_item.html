@@ -57,7 +57,7 @@
     {% if is_parent and has_children %}
     {% if not hide_parent_name %}
     <div class="flex items-center">
-        <div onclick="var ch=document.querySelectorAll('[data-parent-id=&quot;{{ item.template_id }}&quot;]');var cv=this.querySelector('.item-chev');var vis=false;ch.forEach(function(c){if(!c.classList.contains('hidden'))vis=true});ch.forEach(function(c){if(vis)c.classList.add('hidden');else c.classList.remove('hidden')});if(cv){if(vis)cv.classList.remove('rotate-90');else cv.classList.add('rotate-90')}"
+        <div onclick="var ch=document.querySelectorAll('[data-parent-id=&quot;{{ item.template_id }}&quot;]');var cv=this.querySelector('.item-chev');var vis=false;ch.forEach(function(c){if(c.style.display!='none')vis=true});ch.forEach(function(c){if(vis)c.style.display='none';else c.style.display=''});if(cv){if(vis)cv.classList.remove('rotate-90');else cv.classList.add('rotate-90')}"
              class="flex-shrink-0 cursor-pointer flex items-center justify-center" style="width:28px;height:28px;margin-left:-6px">
             <svg class="item-chev w-3.5 h-3.5 text-gray-400 transform rotate-90 transition-transform duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
         </div>
