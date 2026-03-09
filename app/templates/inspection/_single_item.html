@@ -11,7 +11,7 @@
    Blocklist: fuzzy match at 0.7 threshold, toast notification
 #}
 
-{% set is_parent = item.parent_item_id is none and item.child_count > 0 %}
+{% set is_parent = item.child_count > 0 %}
 {% set has_children = item.child_count > 0 %}
 {% set is_child = item.parent_item_id is not none %}
 {% set parent_ni = item.parent_status == 'not_installed' %}
