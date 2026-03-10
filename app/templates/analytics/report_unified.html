@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Project Inspection Report - {{ report_date }}</title>
 <style>
-@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;400;500;600&family=DM+Sans:wght@400;500;600;700&display=swap');
 
 @page {
     size: A4;
@@ -60,12 +60,12 @@ body {
 .logo-area { float: left; }
 .logo-area img { height: 36px; width: auto; }
 .logo-fallback {
-    font-family: 'DM Sans', 'Helvetica Neue', Helvetica, Arial, sans-serif;
+    font-family: 'Cormorant Garamond', Georgia, serif;
     font-size: 22px; font-weight: 300; letter-spacing: 6px;
     text-transform: uppercase; color: #0A0A0A;
 }
 .logo-sub {
-    font-family: 'DM Sans', 'Helvetica Neue', Helvetica, Arial, sans-serif;
+    font-family: 'Cormorant Garamond', Georgia, serif;
     font-size: 12px; font-weight: 300; letter-spacing: 3px;
     color: #6B6B6B; margin-left: 8px;
 }
@@ -78,7 +78,7 @@ body {
     color: #1A1A1A; margin-top: 2px;
 }
 .report-title {
-    font-family: 'DM Sans', 'Helvetica Neue', Helvetica, Arial, sans-serif;
+    font-family: 'Cormorant Garamond', Georgia, serif;
     font-size: 32px; font-weight: 300; color: #0A0A0A;
     letter-spacing: 1px; margin-bottom: 6px;
 }
@@ -95,7 +95,7 @@ body {
     letter-spacing: 3px; color: #C8963E; text-transform: uppercase; margin-right: 10px;
 }
 .section-title {
-    font-family: 'DM Sans', 'Helvetica Neue', Helvetica, Arial, sans-serif;
+    font-family: 'Cormorant Garamond', Georgia, serif;
     font-size: 22px; font-weight: 300; letter-spacing: 0.5px; color: #0A0A0A;
 }
 
@@ -106,7 +106,7 @@ body {
     padding: 12px 14px; vertical-align: top;
 }
 .kpi-value {
-    font-family: 'DM Sans', 'Helvetica Neue', Helvetica, Arial, sans-serif;
+    font-family: 'Cormorant Garamond', Georgia, serif;
     font-size: 28px; font-weight: 300; color: #0A0A0A; line-height: 1;
 }
 .kpi-value-red { color: #C44D3F; }
@@ -184,7 +184,7 @@ body {
 .rect-label { font-size: 10px; font-weight: 600; letter-spacing: 2px; text-transform: uppercase; color: #6B6B6B; margin-bottom: 8px; }
 .rect-stats { display: flex; gap: 24px; }
 .rect-stat-value {
-    font-family: 'DM Sans', 'Helvetica Neue', Helvetica, Arial, sans-serif;
+    font-family: 'Cormorant Garamond', Georgia, serif;
     font-size: 24px; font-weight: 300; line-height: 1;
 }
 .rect-stat-label { font-size: 9px; color: #9A9A9A; margin-top: 2px; }
@@ -328,26 +328,26 @@ body {
         {% set cell = block_floor_grid[blk][flr] %}
         {% if cell.avg > grid_median %}
         <td class="text-center" style="background: rgba(196,77,63,0.10); padding: 10px 8px;">
-            <div style="font-family: 'DM Sans', 'Helvetica Neue', Helvetica, Arial, sans-serif; font-size: 22px; font-weight: 300; color: #C44D3F;">{{ cell.avg }}</div>
+            <div style="font-family: 'Cormorant Garamond', Georgia, serif; font-size: 22px; font-weight: 300; color: #C44D3F;">{{ cell.avg }}</div>
             <div style="font-size: 9px; color: #6B6B6B;">{{ cell.defects }} defects</div>
             <div style="font-size: 9px; color: #9A9A9A;">{{ cell.units }} units &middot; {{ cell.defect_rate }}%</div>
         </td>
         {% elif cell.avg == grid_median %}
         <td class="text-center" style="background: rgba(200,150,62,0.10); padding: 10px 8px;">
-            <div style="font-family: 'DM Sans', 'Helvetica Neue', Helvetica, Arial, sans-serif; font-size: 22px; font-weight: 300; color: #C8963E;">{{ cell.avg }}</div>
+            <div style="font-family: 'Cormorant Garamond', Georgia, serif; font-size: 22px; font-weight: 300; color: #C8963E;">{{ cell.avg }}</div>
             <div style="font-size: 9px; color: #6B6B6B;">{{ cell.defects }} defects</div>
             <div style="font-size: 9px; color: #9A9A9A;">{{ cell.units }} units &middot; {{ cell.defect_rate }}%</div>
         </td>
         {% else %}
         <td class="text-center" style="background: rgba(74,124,89,0.10); padding: 10px 8px;">
-            <div style="font-family: 'DM Sans', 'Helvetica Neue', Helvetica, Arial, sans-serif; font-size: 22px; font-weight: 300; color: #4A7C59;">{{ cell.avg }}</div>
+            <div style="font-family: 'Cormorant Garamond', Georgia, serif; font-size: 22px; font-weight: 300; color: #4A7C59;">{{ cell.avg }}</div>
             <div style="font-size: 9px; color: #6B6B6B;">{{ cell.defects }} defects</div>
             <div style="font-size: 9px; color: #9A9A9A;">{{ cell.units }} units &middot; {{ cell.defect_rate }}%</div>
         </td>
         {% endif %}
         {% else %}
         <td class="text-center" style="background: #F5F3EE; padding: 10px 8px;">
-            <div style="font-family: 'DM Sans', 'Helvetica Neue', Helvetica, Arial, sans-serif; font-size: 22px; font-weight: 300; color: #9A9A9A;">&mdash;</div>
+            <div style="font-family: 'Cormorant Garamond', Georgia, serif; font-size: 22px; font-weight: 300; color: #9A9A9A;">&mdash;</div>
             <div style="font-size: 9px; color: #9A9A9A;">No data</div>
         </td>
         {% endif %}
@@ -454,7 +454,7 @@ body {
             <div style="background: #F5F3EE; border-left: 3px solid {{ area_info.colour }}; padding: 14px 16px;">
                 <div style="font-size: 10px; font-weight: 600; letter-spacing: 2px; text-transform: uppercase; color: #6B6B6B; margin-bottom: 2px;">{{ area_info.area }}</div>
                 <div style="margin-bottom: 10px;">
-                    <span style="font-family: 'DM Sans', 'Helvetica Neue', Helvetica, Arial, sans-serif; font-size: 24px; font-weight: 300; color: #0A0A0A;">{{ area_info.total }}</span>
+                    <span style="font-family: 'Cormorant Garamond', Georgia, serif; font-size: 24px; font-weight: 300; color: #0A0A0A;">{{ area_info.total }}</span>
                     <span style="font-size: 10px; color: #9A9A9A; margin-left: 4px;">of {{ project.open_defects }} defects ({{ area_info.pct }}%)</span>
                 </div>
                 <table style="width: 100%; border-collapse: collapse;">
