@@ -4,16 +4,15 @@
 services:
   - type: web
     name: inspections-pwa
-    runtime: python
-    buildCommand: pip install -r requirements.txt
-    startCommand: bash start.sh
+    env: docker
+    dockerfilePath: ./Dockerfile
     envVars:
       - key: SECRET_KEY
         generateValue: true
       - key: DATABASE_PATH
         value: /opt/render/project/src/data/inspections.db
       - key: PLAYWRIGHT_BROWSERS_PATH
-        value: /opt/render/project/src/data/.playwright
+        value: /ms-playwright
     disk:
       name: inspections-data
       mountPath: /opt/render/project/src/data
