@@ -260,7 +260,7 @@ body {
     </td>
     <td class="kpi-cell" style="width: 25%;">
         <div class="kpi-label">Open Defects</div>
-        <div class="kpi-value kpi-value-red">{{ project.open_defects }}</div>
+        <div class="kpi-value kpi-value-red">{{ "{:,}".format(project.open_defects) }}</div>
         <div class="kpi-sub">across all zones</div>
     </td>
     <td class="kpi-cell" style="width: 25%;">
@@ -456,7 +456,7 @@ body {
                 <div style="font-size: 10px; font-weight: 600; letter-spacing: 2px; text-transform: uppercase; color: #6B6B6B; margin-bottom: 2px;">{{ area_info.area }}</div>
                 <div style="margin-bottom: 10px;">
                     <span style="font-family: 'DM Sans', Helvetica, Arial, sans-serif; font-size: 24px; font-weight: 300; color: #0A0A0A;">{{ area_info.total }}</span>
-                    <span style="font-size: 10px; color: #9A9A9A; margin-left: 4px;">of {{ project.open_defects }} defects ({{ area_info.pct }}%)</span>
+                    <span style="font-size: 10px; color: #9A9A9A; margin-left: 4px;">of {{ "{:,}".format(project.open_defects) }} defects ({{ area_info.pct }}%)</span>
                 </div>
                 <table style="width: 100%; border-collapse: collapse;">
                     {% for d in area_info.defects %}
