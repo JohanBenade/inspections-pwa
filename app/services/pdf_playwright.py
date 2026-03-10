@@ -29,14 +29,13 @@ def _ensure_browser():
             raise RuntimeError("Playwright install failed: {}".format(result.stderr))
         print("Playwright: Chromium installed")
 
+    # Install system deps - ignore non-zero exit (font packages unavailable on this OS)
     print("Playwright: installing system deps...")
-    result = subprocess.run(
+    subprocess.run(
         ['python', '-m', 'playwright', 'install-deps', 'chromium'],
         capture_output=True, text=True
     )
-    if result.returncode != 0:
-        raise RuntimeError("Playwright install-deps failed: {}".format(result.stderr))
-    print("Playwright: system deps ready")
+    print("Playwright: system deps step complete")
 
     _browser_ready = True
 
