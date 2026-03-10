@@ -23,7 +23,7 @@
 body {
     font-family: 'DM Sans', 'Helvetica Neue', Helvetica, Arial, sans-serif;
     color: #1A1A1A;
-    background: #FAFAF8;
+    background: #FFFFFF;
     font-size: 11px;
     line-height: 1.5;
     -webkit-print-color-adjust: exact;
@@ -301,26 +301,7 @@ body {
     </td>
 </tr></table>
 
-<!-- ============ RECTIFICATION PULSE ============ -->
-{% if rectification %}
-<div class="rect-box">
-    <div class="rect-label">Rectification ({{ rectification.r2_units }} units re-inspected)</div>
-    <div class="rect-stats">
-        <div>
-            <div class="rect-stat-value" style="color: #4A7C59;">{{ rectification.rectified }}</div>
-            <div class="rect-stat-label">Defects cleared (total)</div>
-        </div>
-        <div>
-            <div class="rect-stat-value" style="color: #C44D3F;">{{ rectification.new_defects }}</div>
-            <div class="rect-stat-label">New defects found (total)</div>
-        </div>
-        <div>
-            <div class="rect-stat-value" style="color: {% if rectification.net_improvement > 0 %}#4A7C59{% else %}#C44D3F{% endif %};">{{ rectification.net_improvement }}</div>
-            <div class="rect-stat-label">Net improvement (total)</div>
-        </div>
-    </div>
-</div>
-{% endif %}
+
 
 <!-- ============ 01: DEFECT DENSITY GRID ============ -->
 <div class="section">
@@ -509,7 +490,7 @@ body {
 <!-- ============ 05: SYSTEMIC ISSUES ============ -->
 <div class="section">
     <div class="section-header">
-        <span class="section-number">05</span>
+        <span class="section-number">04</span>
         <span class="section-title">Systemic Issues</span>
     </div>
 
@@ -550,7 +531,7 @@ body {
 <!-- ============ 06: DEFECTS BY TRADE ============ -->
 <div class="section">
     <div class="section-header">
-        <span class="section-number">06</span>
+        <span class="section-number">05</span>
         <span class="section-title">Defects by Trade</span>
     </div>
 
