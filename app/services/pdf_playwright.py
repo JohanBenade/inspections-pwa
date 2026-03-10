@@ -12,11 +12,13 @@ os.environ['PLAYWRIGHT_BROWSERS_PATH'] = BROWSERS_PATH
 
 def _ensure_browser():
     """Install Chromium if not present. Runs once on first use."""
-    chrome = os.path.join(BROWSERS_PATH, 'chromium-1117', 'chrome-linux', 'chrome')
-    if not os.path.exists(chrome):
+    import glob
+    pattern = os.path.join(BROWSERS_PATH, 'chromium-*', 'chrome-linux', 'chrome')
+    matches = glob.glob(pattern)
+    if not matches:
         print("Playwright: Chromium not found - installing to persistent disk...")
         result = subprocess.run(
-            ['python', '-m', 'playwright', 'install', 'chromium', '--with-deps'],
+            ['python', '-m', 'playwright', 'install', 'chromium'],
             capture_output=True, text=True
         )
         print("Playwright install stdout:", result.stdout)
