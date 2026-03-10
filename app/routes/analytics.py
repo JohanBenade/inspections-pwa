@@ -189,6 +189,7 @@ def dashboard():
     inspected_raw = query_db("""
         SELECT COUNT(DISTINCT i.unit_id) as inspected
         FROM inspection i
+        JOIN unit_real u ON u.id = i.unit_id
         WHERE i.tenant_id = ? AND i.cycle_id NOT LIKE 'test-%'
         AND i.status IN ('reviewed','approved','certified','pending_followup')
     """, [tenant_id], one=True)
