@@ -6,3 +6,4 @@ pydyf==0.8.0
 openpyxl
 bleach
 requests
+playwright==1.44.0

@@ -153,3 +153,32 @@ def view_defects_html(unit_id):
         signature_path=url_for('static', filename='kevin_signature.png'),
         download_url=url_for('pdf.download_defects_pdf', unit_id=unit_id, cycle=cycle_id)
     )
+
+
+@pdf_bp.route('/test-playwright')
+@require_team_lead
+def test_playwright_pdf():
+    """Phase 1 test: confirm Playwright generates PDF on Render. Remove after Phase 1 sign-off."""
+    from app.services.pdf_playwright import html_to_pdf
+    html = """<!DOCTYPE html>
+<html><head><meta charset="UTF-8">
+<style>
+body { font-family: sans-serif; padding: 40px; }
+h1 { color: #1A1A1A; }
+p { color: #6B6B6B; }
+</style>
+</head>
+<body>
+<h1>Playwright PDF Test</h1>
+<p>If you can read this, Playwright is working correctly on Render.</p>
+<p>Screen == PDF. WeasyPrint migration can proceed.</p>
+</body></html>"""
+    try:
+        pdf_bytes = html_to_pdf(html)
+        return Response(
+            pdf_bytes,
+            mimetype='application/pdf',
+            headers={'Content-Disposition': 'attachment; filename=playwright_test.pdf'}
+        )
+    except Exception as e:
+        return 'Playwright error: {}'.format(str(e)), 500

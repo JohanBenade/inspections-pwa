@@ -14,6 +14,7 @@ services:
         libffi-dev \
         libcairo2 \
         && pip install -r requirements.txt
+        && python -m playwright install chromium --with-deps
     startCommand: gunicorn 'app:create_app()' --bind 0.0.0.0:$PORT
     envVars:
       - key: SECRET_KEY
