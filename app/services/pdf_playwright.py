@@ -5,9 +5,6 @@ Persistent browser instance - launch once per process, reuse for all requests.
 """
 import os
 
-BROWSERS_PATH = '/opt/render/project/src/data/.playwright'
-os.environ['PLAYWRIGHT_BROWSERS_PATH'] = BROWSERS_PATH
-
 _playwright = None
 _browser = None
 
