@@ -1,6 +1,8 @@
 """
 PDF Generator - Playwright (Chromium)
 Replaces WeasyPrint. Screen == PDF. Always.
+System deps installed via render.yaml buildCommand.
+Chromium binary installed to persistent disk on first use.
 """
 import os
 import subprocess
@@ -11,25 +13,16 @@ os.environ['PLAYWRIGHT_BROWSERS_PATH'] = BROWSERS_PATH
 
 _browser_ready = False
 
-# Ubuntu 24.04 package names (t64 suffix for 64-bit transition)
-CHROMIUM_DEPS = [
-    'libnss3', 'libnspr4', 'libdbus-1-3',
-    'libatk1.0-0t64', 'libatk-bridge2.0-0t64',
-    'libcups2t64', 'libdrm2', 'libatspi2.0-0t64',
-    'libxcomposite1', 'libxdamage1', 'libxfixes3',
-    'libxrandr2', 'libgbm1', 'libxkbcommon0', 'libasound2t64'
-]
-
 
 def _ensure_browser():
-    """Install Chromium and system deps if not present. Runs once per process."""
+    """Install Chromium to persistent disk if not present. Runs once per process."""
     global _browser_ready
     if _browser_ready:
         return
 
     pattern = os.path.join(BROWSERS_PATH, 'chromium-*', 'chrome-linux', 'chrome')
     if not glob.glob(pattern):
-        print("Playwright: installing Chromium...")
+        print("Playwright: installing Chromium to persistent disk...")
         result = subprocess.run(
             ['python', '-m', 'playwright', 'install', 'chromium'],
             capture_output=True, text=True
@@ -37,18 +30,6 @@ def _ensure_browser():
         if result.returncode != 0:
             raise RuntimeError("Playwright install failed: {}".format(result.stderr))
         print("Playwright: Chromium installed")
-
-    print("Playwright: updating apt and installing system deps...")
-    subprocess.run(['apt-get', 'update', '-qq'], capture_output=True, text=True)
-    result = subprocess.run(
-        ['apt-get', 'install', '-y'] + CHROMIUM_DEPS,
-        capture_output=True, text=True
-    )
-    print("apt stdout:", result.stdout[-500:] if result.stdout else '')
-    print("apt stderr:", result.stderr[-500:] if result.stderr else '')
-    if result.returncode != 0:
-        raise RuntimeError("apt-get install failed: {}".format(result.stderr))
-    print("Playwright: system deps installed")
 
     _browser_ready = True
 
