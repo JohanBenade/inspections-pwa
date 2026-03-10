@@ -1,31 +1,44 @@
 """
 PDF Generator - Playwright (Chromium)
 Replaces WeasyPrint. Screen == PDF. Always.
-Chromium installs to persistent disk on first use.
 """
 import os
 import subprocess
+import glob
 
 BROWSERS_PATH = '/opt/render/project/src/data/.playwright'
 os.environ['PLAYWRIGHT_BROWSERS_PATH'] = BROWSERS_PATH
 
+_browser_ready = False
+
 
 def _ensure_browser():
-    """Install Chromium if not present. Runs once on first use."""
-    import glob
+    """Install Chromium and system deps if not present. Runs once per process."""
+    global _browser_ready
+    if _browser_ready:
+        return
+
     pattern = os.path.join(BROWSERS_PATH, 'chromium-*', 'chrome-linux', 'chrome')
-    matches = glob.glob(pattern)
-    if not matches:
-        print("Playwright: Chromium not found - installing to persistent disk...")
+    if not glob.glob(pattern):
+        print("Playwright: installing Chromium...")
         result = subprocess.run(
             ['python', '-m', 'playwright', 'install', 'chromium'],
             capture_output=True, text=True
         )
-        print("Playwright install stdout:", result.stdout)
-        print("Playwright install stderr:", result.stderr)
         if result.returncode != 0:
             raise RuntimeError("Playwright install failed: {}".format(result.stderr))
-        print("Playwright: Chromium installed successfully")
+        print("Playwright: Chromium installed")
+
+    print("Playwright: installing system deps...")
+    result = subprocess.run(
+        ['python', '-m', 'playwright', 'install-deps', 'chromium'],
+        capture_output=True, text=True
+    )
+    if result.returncode != 0:
+        raise RuntimeError("Playwright install-deps failed: {}".format(result.stderr))
+    print("Playwright: system deps ready")
+
+    _browser_ready = True
 
 
 def html_to_pdf(html_string):
