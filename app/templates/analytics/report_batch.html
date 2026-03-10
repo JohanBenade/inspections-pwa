@@ -135,7 +135,7 @@ body {
 <div class="toolbar">
     <a href="{{ url_for('analytics.batch_analytics', batch_id=batch_id) }}" class="btn-back">Back</a>
     <button onclick="window.print()" class="btn-print">Print</button>
-    <a href="{{ url_for('analytics.batch_report_pdf', batch_id=batch_id) }}" class="btn-pdf">Download PDF</a>
+    <a href="{{ url_for('analytics.batch_report_pdf', batch_id=batch_id) }}" class="btn-pdf" onclick="this.textContent='Preparing...'; this.style.opacity='0.7'; this.style.pointerEvents='none';">Download PDF</a>
 </div>
 {% endif %}
 

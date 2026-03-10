@@ -25,7 +25,7 @@ def html_to_pdf(html_string):
     browser = _get_browser()
     page = browser.new_page()
     try:
-        page.set_content(html_string, wait_until='networkidle')
+        page.set_content(html_string, wait_until='load')
         pdf_bytes = page.pdf(
             format='A4',
             print_background=True,
