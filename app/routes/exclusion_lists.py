@@ -44,7 +44,7 @@ def detail(list_id):
     rows = db.execute("""
         SELECT at.area_name, at.area_order,
                ct.category_name, ct.category_order,
-               it.id AS template_id, it.item_description, it.item_order,
+               it.id AS template_id, it.item_description, it.item_order, it.depth,
                CASE WHEN eli.id IS NOT NULL THEN 1 ELSE 0 END AS is_excluded
         FROM item_template it
         JOIN category_template ct ON it.category_id = ct.id
@@ -68,6 +68,7 @@ def detail(list_id):
         areas[an][cn].append({
             'template_id': r['template_id'],
             'item_description': r['item_description'],
+            'depth': r['depth'],
             'is_excluded': bool(r['is_excluded'])
         })
 
