@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Project Inspection Report - {{ report_date }}</title>
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;400;500;600&family=DM+Sans:wght@400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap');
 
 @page {
     size: A4;
@@ -23,7 +23,7 @@
 body {
     font-family: 'DM Sans', 'Helvetica Neue', Helvetica, Arial, sans-serif;
     color: #1A1A1A;
-    background: #FFFFFF;
+    background: #FAFAF8;
     font-size: 11px;
     line-height: 1.5;
     -webkit-print-color-adjust: exact;
@@ -301,6 +301,26 @@ body {
     </td>
 </tr></table>
 
+<!-- ============ RECTIFICATION PULSE ============ -->
+{% if rectification %}
+<div class="rect-box">
+    <div class="rect-label">Rectification ({{ rectification.r2_units }} units re-inspected)</div>
+    <div class="rect-stats">
+        <div>
+            <div class="rect-stat-value" style="color: #4A7C59;">{{ rectification.rectified }}</div>
+            <div class="rect-stat-label">Defects cleared (total)</div>
+        </div>
+        <div>
+            <div class="rect-stat-value" style="color: #C44D3F;">{{ rectification.new_defects }}</div>
+            <div class="rect-stat-label">New defects found (total)</div>
+        </div>
+        <div>
+            <div class="rect-stat-value" style="color: {% if rectification.net_improvement > 0 %}#4A7C59{% else %}#C44D3F{% endif %};">{{ rectification.net_improvement }}</div>
+            <div class="rect-stat-label">Net improvement (total)</div>
+        </div>
+    </div>
+</div>
+{% endif %}
 
 <!-- ============ 01: DEFECT DENSITY GRID ============ -->
 <div class="section">
@@ -394,8 +414,8 @@ body {
                 <div style="flex: 1; height: 8px; background: #E8E6E1; border-radius: 3px; overflow: hidden;">
                     <div style="height: 8px; width: {{ (a.defect_count / area_max * 100)|round }}%; background: {% if a.defect_count > area_median %}#C44D3F{% elif a.defect_count == area_median %}#C8963E{% else %}#4A7C59{% endif %}; border-radius: 2px;"></div>
                 </div>
-                <span style="font-size: 9px; color: #9A9A9A; width: 38px; text-align: right;">{{ a.pct }}%</span>
-                <span style="font-size: 10px; font-weight: 700; width: 38px; text-align: right; color: {% if a.defect_count > area_median %}#C44D3F{% elif a.defect_count == area_median %}#C8963E{% else %}#4A7C59{% endif %};">{{ a.defect_count }}</span>
+                <span style="font-size: 9px; color: #9A9A9A; width: 30px; text-align: right;">{{ a.pct }}%</span>
+                <span style="font-size: 10px; font-weight: 700; width: 30px; text-align: right; color: {% if a.defect_count > area_median %}#C44D3F{% elif a.defect_count == area_median %}#C8963E{% else %}#4A7C59{% endif %};">{{ a.defect_count }}</span>
             </div>
             {% endfor %}
             <div style="font-size: 10px; color: #9A9A9A; margin-top: 8px; padding-top: 6px; border-top: 1px solid #E8E6E1;">
@@ -486,10 +506,10 @@ body {
     {% endif %}
 </div>
 
-<!-- ============ 04: SYSTEMIC ISSUES ============ -->
+<!-- ============ 05: SYSTEMIC ISSUES ============ -->
 <div class="section">
     <div class="section-header">
-        <span class="section-number">04</span>
+        <span class="section-number">05</span>
         <span class="section-title">Systemic Issues</span>
     </div>
 
@@ -506,8 +526,8 @@ body {
         <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 4px;">
             <span style="display: inline-block; width: 22px; height: 22px; line-height: 22px; text-align: center; font-size: 10px; font-weight: 700; color: white; background: #C44D3F; border-radius: 50%; flex-shrink: 0;">{{ loop.index }}</span>
             <span style="font-size: 10px; font-weight: 500; color: #1A1A1A; flex: 1;">{{ r.original_comment }}{% if r.cat_breakdown %} <span style="font-size: 9px; color: #9A9A9A; font-weight: 400;">({% for cb in r.cat_breakdown %}{{ cb.cat }} {{ cb.cnt }}{% if not loop.last %} &middot; {% endif %}{% endfor %})</span>{% endif %}</span>
-            <span style="font-size: 10px; font-weight: 700; color: #C44D3F; width: 38px; text-align: right;">{{ r.cnt }}</span>
-            <span style="font-size: 10px; color: #9A9A9A; width: 48px; text-align: right;">{{ r.unit_count }}u</span>
+            <span style="font-size: 10px; font-weight: 700; color: #C44D3F; width: 30px; text-align: right;">{{ r.cnt }}</span>
+            <span style="font-size: 10px; color: #9A9A9A; width: 40px; text-align: right;">{{ r.unit_count }}u</span>
         </div>
         <div style="display: flex; align-items: center; gap: 8px;">
             <div style="width: 22px; flex-shrink: 0;"></div>
@@ -527,10 +547,10 @@ body {
     {% endif %}
 </div>
 
-<!-- ============ 05: DEFECTS BY TRADE ============ -->
+<!-- ============ 06: DEFECTS BY TRADE ============ -->
 <div class="section">
     <div class="section-header">
-        <span class="section-number">05</span>
+        <span class="section-number">06</span>
         <span class="section-title">Defects by Trade</span>
     </div>
 
@@ -546,9 +566,9 @@ body {
         <div style="flex: 1; height: 8px; background: #E8E6E1; border-radius: 3px; overflow: hidden;">
             <div style="height: 8px; width: {{ (c.count / cat_max * 100)|round }}%; background: {% if c.count > cat_median %}#C44D3F{% elif c.count == cat_median %}#C8963E{% else %}#4A7C59{% endif %}; border-radius: 2px;"></div>
         </div>
-        <span style="font-size: 9px; color: #9A9A9A; width: 38px; text-align: right;">{{ cat_pct }}%</span>
-        <span style="font-size: 9px; color: #9A9A9A; width: 55px; text-align: right;">{{ (c.count / project.units_inspected)|round(1) }} /unit</span>
-        <span style="font-size: 10px; font-weight: 700; width: 42px; text-align: right; color: {% if c.count > cat_median %}#C44D3F{% elif c.count == cat_median %}#C8963E{% else %}#4A7C59{% endif %};">{{ c.count }}</span>
+        <span style="font-size: 9px; color: #9A9A9A; width: 30px; text-align: right;">{{ cat_pct }}%</span>
+        <span style="font-size: 9px; color: #9A9A9A; width: 45px; text-align: right;">{{ (c.count / project.units_inspected)|round(1) }} /unit</span>
+        <span style="font-size: 10px; font-weight: 700; width: 35px; text-align: right; color: {% if c.count > cat_median %}#C44D3F{% elif c.count == cat_median %}#C8963E{% else %}#4A7C59{% endif %};">{{ c.count }}</span>
     </div>
     {% endfor %}
 
