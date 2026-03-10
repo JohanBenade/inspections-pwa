@@ -2,6 +2,10 @@
 PDF Generator - Playwright (Chromium)
 Replaces WeasyPrint. Screen == PDF. Always.
 """
+import os
+
+# Set browser path before Playwright initialises
+os.environ.setdefault('PLAYWRIGHT_BROWSERS_PATH', '/opt/render/project/src/.playwright')
 
 
 def html_to_pdf(html_string):
