@@ -25,11 +25,18 @@
                 <div class="text-xs text-gray-500">excluded</div>
             </div>
         </div>
-        <div class="mt-3">
+        <div class="mt-3 flex gap-2">
             <button onclick="openClone('{{ excl_list.id }}', '{{ excl_list.name }}')"
                     class="px-3 py-1.5 text-xs font-medium rounded border border-orange-300 text-orange-700 hover:bg-orange-50">
                 Clone this list
             </button>
+            <button onclick="openRename('{{ excl_list.id }}', '{{ excl_list.name }}', '{{ excl_list.description or '' }}')"
+                    class="px-3 py-1.5 text-xs font-medium rounded border border-gray-300 text-gray-700 hover:bg-gray-50">
+                Rename
+            </button>
+            <a href="javascript:void(0)"
+               onclick="var cats=document.querySelectorAll('.excl-cat-content');var chevs=document.querySelectorAll('.excl-chev');var btn=this;var anyHidden=false;cats.forEach(function(c){if(c.classList.contains('hidden'))anyHidden=true});cats.forEach(function(c){if(anyHidden)c.classList.remove('hidden');else c.classList.add('hidden')});chevs.forEach(function(ch){if(anyHidden)ch.classList.add('rotate-90');else ch.classList.remove('rotate-90')});btn.textContent=anyHidden?'Collapse All':'Expand All';return false"
+               class="ml-auto text-sm text-blue-600 font-medium self-center" style="text-decoration:none">Expand All</a>
         </div>
     </div>
 
@@ -45,67 +52,83 @@
     {% endif %}
     {% endwith %}
 
-    <!-- Area Tabs + Content -->
-    <div class="bg-white rounded-lg shadow">
-        <!-- Tabs -->
-        <div class="border-b overflow-x-auto">
-            <div class="flex flex-wrap">
-                {% for area_name, categories in areas.items() %}
-                {% set area_excl = namespace(count=0, total=0) %}
-                {% for cat_name, items in categories.items() %}
-                {% for item in items %}
-                {% set area_excl.total = area_excl.total + 1 %}
-                {% if item.is_excluded %}{% set area_excl.count = area_excl.count + 1 %}{% endif %}
-                {% endfor %}
-                {% endfor %}
-                <button class="area-tab px-4 py-3 text-sm font-medium whitespace-nowrap border-b-2 flex items-center gap-2
-                       {% if loop.first %}border-orange-500 text-orange-600{% else %}border-transparent text-gray-500 hover:text-gray-700{% endif %}"
-                        onclick="showArea('area-{{ loop.index }}', this)">
-                    <span class="flex flex-col items-start">
-                        <span class="flex items-center gap-2">
-                            {{ area_name }}
-                            {% if area_excl.count > 0 %}
-                            <span class="bg-orange-500 text-white text-xs px-1.5 py-0.5 rounded-full">{{ area_excl.count }}</span>
-                            {% endif %}
-                        </span>
-                        <span class="text-xs {% if area_excl.count > 0 %}text-orange-600 font-semibold{% else %}text-gray-400{% endif %}">
-                            {{ area_excl.count }}/{{ area_excl.total }}
-                        </span>
-                    </span>
-                </button>
-                {% endfor %}
-            </div>
-        </div>
-
-        <!-- Area Content Panels -->
-        {% for area_name, categories in areas.items() %}
-        <div id="area-{{ loop.index }}" class="area-panel {% if not loop.first %}hidden{% endif %} p-4">
+    <!-- Areas + Categories -->
+    {% for area_name, categories in areas.items() %}
+    <div class="mb-4">
+        <div class="text-xs font-bold text-gray-400 uppercase tracking-widest px-1 mb-2">{{ area_name }}</div>
+        <div class="space-y-2">
             {% for category_name, items in categories.items() %}
-            <div class="mb-4 last:mb-0">
-                <div class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2 pb-1 border-b border-gray-100">
-                    {{ category_name }}
+            {% set excl_count = items | selectattr('is_excluded') | list | length %}
+            {% set total_count = items | length %}
+            <div class="border rounded-lg overflow-hidden">
+                <!-- Category Header -->
+                <div class="bg-gray-100 px-4 py-3 flex items-center select-none cursor-pointer"
+                     onclick="var c=this.nextElementSibling;var ch=this.querySelector('.excl-chev');c.classList.toggle('hidden');ch.classList.toggle('rotate-90')">
+                    <svg class="excl-chev w-4 h-4 text-gray-400 transform transition-transform duration-200 flex-shrink-0 mr-2"
+                         fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+                    </svg>
+                    <h3 class="font-semibold text-gray-800 flex-1">
+                        {{ category_name }}
+                        {% if excl_count > 0 %}
+                        <span class="bg-orange-500 text-white text-xs px-1.5 py-0.5 rounded-full font-medium align-middle ml-1">{{ excl_count }}</span>
+                        {% endif %}
+                    </h3>
+                    <span class="text-xs {% if excl_count > 0 %}text-orange-600 font-semibold{% else %}text-gray-400{% endif %} ml-2 flex-shrink-0">
+                        {{ excl_count }}/{{ total_count }}
+                    </span>
                 </div>
-                <div class="divide-y divide-gray-50">
+                <!-- Category Items -->
+                <div class="excl-cat-content hidden divide-y">
                     {% for item in items %}
-                    <label class="flex items-center gap-3 py-2 px-2 hover:bg-orange-50/40 cursor-pointer rounded
-                                  {% if item.is_excluded %}bg-orange-50{% endif %}">
+                    <label class="flex items-center gap-3 px-4 py-2.5 hover:bg-orange-50/40 cursor-pointer {% if item.is_excluded %}bg-orange-50{% endif %}">
                         <input type="checkbox" {% if item.is_excluded %}checked{% endif %}
-                            class="h-4 w-4 rounded border-gray-300 text-orange-600 cursor-pointer"
+                            class="h-4 w-4 rounded border-gray-300 text-orange-600 cursor-pointer flex-shrink-0"
                             hx-post="{{ url_for('exclusion_lists.toggle_item', list_id=excl_list.id) }}"
-                            hx-vals='{"template_id": "{{ item.template_id }}", "action": "{{ 'remove' if item.is_excluded else 'add' }}"}' 
+                            hx-vals='{"template_id": "{{ item.template_id }}", "action": "{{ 'remove' if item.is_excluded else 'add' }}"}'
                             hx-target="closest label"
                             hx-swap="outerHTML">
                         <span class="text-sm text-gray-700 flex-1">{{ item.item_description }}</span>
-                        <span class="text-xs text-gray-400 font-mono">{{ item.template_id[:6] }}</span>
+                        <span class="text-xs text-gray-400 font-mono flex-shrink-0">{{ item.template_id[:6] }}</span>
                     </label>
                     {% endfor %}
                 </div>
             </div>
             {% endfor %}
         </div>
-        {% endfor %}
     </div>
+    {% endfor %}
 
+</div>
+
+<!-- Rename Modal -->
+<div id="rename-modal" class="hidden fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50 px-4">
+    <div class="bg-white rounded-lg shadow-xl w-full max-w-md p-6">
+        <h2 class="text-lg font-bold text-gray-900 mb-4">Rename List</h2>
+        <form method="POST" id="rename-form">
+            <div class="mb-3">
+                <label class="block text-sm font-medium text-gray-700 mb-1">Name</label>
+                <input type="text" name="name" id="rename-name" required
+                       class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400">
+            </div>
+            <div class="mb-4">
+                <label class="block text-sm font-medium text-gray-700 mb-1">Description (optional)</label>
+                <input type="text" name="description" id="rename-desc"
+                       class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400">
+            </div>
+            <div class="flex gap-2 justify-end">
+                <button type="button"
+                        onclick="document.getElementById('rename-modal').classList.add('hidden')"
+                        class="px-4 py-2 text-sm text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50">
+                    Cancel
+                </button>
+                <button type="submit"
+                        class="px-4 py-2 text-sm font-medium bg-orange-500 text-white rounded-lg hover:bg-orange-600">
+                    Save
+                </button>
+            </div>
+        </form>
+    </div>
 </div>
 
 <!-- Clone Modal -->
@@ -117,7 +140,7 @@
             <div class="mb-3">
                 <label class="block text-sm font-medium text-gray-700 mb-1">New Name</label>
                 <input type="text" name="name" required
-                       placeholder="e.g. Standard Full Set — 107 items — v2"
+                       placeholder="e.g. Standard Full Set - 107 items - v2"
                        class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400">
             </div>
             <div class="mb-4">
@@ -141,21 +164,16 @@
 </div>
 
 <script>
-function showArea(panelId, btn) {
-    document.querySelectorAll('.area-panel').forEach(p => p.classList.add('hidden'));
-    document.querySelectorAll('.area-tab').forEach(t => {
-        t.classList.remove('border-orange-500', 'text-orange-600');
-        t.classList.add('border-transparent', 'text-gray-500');
-    });
-    document.getElementById(panelId).classList.remove('hidden');
-    btn.classList.add('border-orange-500', 'text-orange-600');
-    btn.classList.remove('border-transparent', 'text-gray-500');
-}
-
 function openClone(listId, listName) {
     document.getElementById('clone-source-name').textContent = 'Cloning: ' + listName;
     document.getElementById('clone-form').action = '/exclusion-lists/' + listId + '/clone';
     document.getElementById('clone-modal').classList.remove('hidden');
+}
+function openRename(listId, name, desc) {
+    document.getElementById('rename-name').value = name;
+    document.getElementById('rename-desc').value = desc;
+    document.getElementById('rename-form').action = '/exclusion-lists/' + listId + '/rename';
+    document.getElementById('rename-modal').classList.remove('hidden');
 }
 </script>
 {% endblock %}

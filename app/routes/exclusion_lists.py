@@ -148,6 +148,26 @@ def clone(list_id):
     return redirect(url_for('exclusion_lists.detail', list_id=new_id))
 
 
+@exclusion_lists_bp.route('/<list_id>/rename', methods=['POST'])
+@require_manager
+def rename(list_id):
+    """Rename an exclusion list."""
+    name = request.form.get('name', '').strip()
+    description = request.form.get('description', '').strip()
+    if not name:
+        flash('Name is required.', 'error')
+        return redirect(url_for('exclusion_lists.detail', list_id=list_id))
+    db = get_db()
+    now = datetime.now(timezone.utc).isoformat()
+    db.execute(
+        "UPDATE exclusion_list SET name=?, description=?, updated_at=? WHERE id=? AND tenant_id=?",
+        [name, description, now, list_id, TENANT]
+    )
+    db.commit()
+    flash('List renamed.', 'success')
+    return redirect(url_for('exclusion_lists.detail', list_id=list_id))
+
+
 @exclusion_lists_bp.route('/<list_id>/toggle-item', methods=['POST'])
 @require_manager
 def toggle_item(list_id):
