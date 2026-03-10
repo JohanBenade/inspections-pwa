@@ -5,6 +5,82 @@
 <div class="max-w-7xl mx-auto px-4 pt-3">
     <a href="{{ url_for('exclusion_lists.list_all') }}" class="text-sm text-blue-600 hover:text-blue-800">&larr; Back to Exclusion Lists</a>
 </div>
+<!-- Rename Modal -->
+<div id="rename-modal" class="hidden fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50 px-4">
+    <div class="bg-white rounded-lg shadow-xl w-full max-w-md p-6">
+        <h2 class="text-lg font-bold text-gray-900 mb-4">Rename List</h2>
+        <form method="POST" id="rename-form">
+            <div class="mb-3">
+                <label class="block text-sm font-medium text-gray-700 mb-1">Name</label>
+                <input type="text" name="name" id="rename-name" required
+                       class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400">
+            </div>
+            <div class="mb-4">
+                <label class="block text-sm font-medium text-gray-700 mb-1">Description (optional)</label>
+                <input type="text" name="description" id="rename-desc"
+                       class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400">
+            </div>
+            <div class="flex gap-2 justify-end">
+                <button type="button" onclick="document.getElementById('rename-modal').classList.add('hidden')"
+                        class="px-4 py-2 text-sm text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50">Cancel</button>
+                <button type="submit"
+                        class="px-4 py-2 text-sm font-medium bg-orange-500 text-white rounded-lg hover:bg-orange-600">Save</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Clone Modal -->
+<div id="clone-modal" class="hidden fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50 px-4">
+    <div class="bg-white rounded-lg shadow-xl w-full max-w-md p-6">
+        <h2 class="text-lg font-bold text-gray-900 mb-1">Clone List</h2>
+        <p id="clone-source-name" class="text-sm text-gray-500 mb-4"></p>
+        <form method="POST" id="clone-form">
+            <div class="mb-3">
+                <label class="block text-sm font-medium text-gray-700 mb-1">New Name</label>
+                <input type="text" name="name" required
+                       placeholder="e.g. Standard Full Set - 107 items - v2"
+                       class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400">
+            </div>
+            <div class="mb-4">
+                <label class="block text-sm font-medium text-gray-700 mb-1">Description (optional)</label>
+                <input type="text" name="description"
+                       class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400">
+            </div>
+            <div class="flex gap-2 justify-end">
+                <button type="button" onclick="document.getElementById('clone-modal').classList.add('hidden')"
+                        class="px-4 py-2 text-sm text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50">Cancel</button>
+                <button type="submit"
+                        class="px-4 py-2 text-sm font-medium bg-orange-500 text-white rounded-lg hover:bg-orange-600">Clone</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+function showExclArea(panelId, btn) {
+    document.querySelectorAll('.excl-area-panel').forEach(p => p.classList.add('hidden'));
+    document.querySelectorAll('.excl-area-tab').forEach(t => {
+        t.classList.remove('border-orange-500', 'text-orange-600');
+        t.classList.add('border-transparent', 'text-gray-500');
+    });
+    document.getElementById(panelId).classList.remove('hidden');
+    btn.classList.add('border-orange-500', 'text-orange-600');
+    btn.classList.remove('border-transparent', 'text-gray-500');
+}
+function openClone(listId, listName) {
+    document.getElementById('clone-source-name').textContent = 'Cloning: ' + listName;
+    document.getElementById('clone-form').action = '/exclusion-lists/' + listId + '/clone';
+    document.getElementById('clone-modal').classList.remove('hidden');
+}
+function openRename(listId, name, desc) {
+    document.getElementById('rename-name').value = name;
+    document.getElementById('rename-desc').value = desc;
+    document.getElementById('rename-form').action = '/exclusion-lists/' + listId + '/rename';
+    document.getElementById('rename-modal').classList.remove('hidden');
+}
+</script>
+
 {% endblock %}
 
 {% block content %}
@@ -52,141 +128,91 @@
     {% endif %}
     {% endwith %}
 
-    <!-- Areas + Categories -->
-    {% for area_name, categories in areas.items() %}
-    <div class="mb-4">
-        <div class="text-xs font-bold text-gray-400 uppercase tracking-widest px-1 mb-2">{{ area_name }}</div>
-        <div class="space-y-2">
-            {% for category_name, items in categories.items() %}
-            {% set excl_count = items | selectattr('is_excluded') | list | length %}
-            {% set total_count = items | length %}
-            <div class="border rounded-lg overflow-hidden">
-                <!-- Category Header -->
-                <div class="bg-gray-100 px-4 py-3 flex items-center select-none cursor-pointer"
-                     onclick="var c=this.nextElementSibling;var ch=this.querySelector('.excl-chev');c.classList.toggle('hidden');ch.classList.toggle('rotate-90')">
-                    <svg class="excl-chev w-4 h-4 text-gray-400 transform transition-transform duration-200 flex-shrink-0 mr-2"
-                         fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
-                    </svg>
-                    <h3 class="font-semibold text-gray-800 flex-1">
-                        {{ category_name }}
-                        {% if excl_count > 0 %}
-                        <span class="bg-orange-500 text-white text-xs px-1.5 py-0.5 rounded-full font-medium align-middle ml-1">{{ excl_count }}</span>
+    <!-- Area Tabs -->
+    <div class="bg-white rounded-lg shadow mb-2">
+        <div class="border-b overflow-x-auto">
+            <div class="flex">
+                {% for area_name, categories in areas.items() %}
+                {% set area_ns = namespace(excl=0, total=0) %}
+                {% for cat_name, items in categories.items() %}
+                {% for item in items %}
+                    {% set area_ns.total = area_ns.total + 1 %}
+                    {% if item.is_excluded %}{% set area_ns.excl = area_ns.excl + 1 %}{% endif %}
+                {% endfor %}
+                {% endfor %}
+                <button class="excl-area-tab px-4 py-3 text-sm font-medium whitespace-nowrap border-b-2 flex flex-col items-start
+                       {% if loop.first %}border-orange-500 text-orange-600{% else %}border-transparent text-gray-500 hover:text-gray-700{% endif %}"
+                        onclick="showExclArea('excl-area-{{ loop.index }}', this)">
+                    <span class="flex items-center gap-2">
+                        {{ area_name }}
+                        {% if area_ns.excl > 0 %}
+                        <span class="bg-orange-500 text-white text-xs px-1.5 py-0.5 rounded-full">{{ area_ns.excl }}</span>
                         {% endif %}
-                    </h3>
-                    <span class="text-xs {% if excl_count > 0 %}text-orange-600 font-semibold{% else %}text-gray-400{% endif %} ml-2 flex-shrink-0">
-                        {{ excl_count }}/{{ total_count }}
                     </span>
-                </div>
-                <!-- Category Items -->
-                <div class="excl-cat-content hidden divide-y">
-                    {% for item in items %}
-                    {% if not item.parent_item_id %}
-                    <label class="flex items-center gap-3 px-4 py-2.5 hover:bg-orange-50/40 cursor-pointer {% if item.is_excluded %}bg-orange-50{% endif %}">
-                        <input type="checkbox" {% if item.is_excluded %}checked{% endif %}
-                            class="h-4 w-4 rounded border-gray-300 text-orange-600 cursor-pointer flex-shrink-0"
-                            hx-post="{{ url_for('exclusion_lists.toggle_item', list_id=excl_list.id) }}"
-                            hx-vals='{"template_id": "{{ item.template_id }}", "action": "{{ 'remove' if item.is_excluded else 'add' }}"}' 
-                            hx-target="closest label"
-                            hx-swap="outerHTML">
-                        <span class="text-sm font-semibold text-gray-800 flex-1">{{ item.item_description }}</span>
-                        <span class="text-xs text-gray-400 font-mono flex-shrink-0">{{ item.template_id[:6] }}</span>
-                    </label>
-                    {% else %}
-                    <label class="flex items-center gap-3 pl-10 pr-4 py-2.5 hover:bg-orange-50/40 cursor-pointer {% if item.is_excluded %}bg-orange-50{% endif %}">
-                        <input type="checkbox" {% if item.is_excluded %}checked{% endif %}
-                            class="h-4 w-4 rounded border-gray-300 text-orange-600 cursor-pointer flex-shrink-0"
-                            hx-post="{{ url_for('exclusion_lists.toggle_item', list_id=excl_list.id) }}"
-                            hx-vals='{"template_id": "{{ item.template_id }}", "action": "{{ 'remove' if item.is_excluded else 'add' }}"}' 
-                            hx-target="closest label"
-                            hx-swap="outerHTML">
-                        <span class="text-sm text-gray-700 flex-1">{{ item.item_description }}</span>
-                        <span class="text-xs text-gray-400 font-mono flex-shrink-0">{{ item.template_id[:6] }}</span>
-                    </label>
-                    {% endif %}
-                    {% endfor %}
-                </div>
+                    <span class="text-xs {% if area_ns.excl > 0 %}text-orange-600 font-semibold{% else %}text-gray-400{% endif %}">
+                        {{ area_ns.excl }}/{{ area_ns.total }}
+                    </span>
+                </button>
+                {% endfor %}
             </div>
-            {% endfor %}
         </div>
+    </div>
+
+    <!-- Area Panels -->
+    {% for area_name, categories in areas.items() %}
+    <div id="excl-area-{{ loop.index }}" class="excl-area-panel {% if not loop.first %}hidden{% endif %} space-y-2">
+        {% for category_name, items in categories.items() %}
+        {% set excl_count = items | selectattr('is_excluded') | list | length %}
+        {% set total_count = items | length %}
+        <div class="border rounded-lg overflow-hidden bg-white">
+            <!-- Category Header -->
+            <div class="bg-gray-100 px-4 py-3 flex items-center select-none cursor-pointer"
+                 onclick="var c=this.nextElementSibling;var ch=this.querySelector('.excl-chev');c.classList.toggle('hidden');ch.classList.toggle('rotate-90')">
+                <svg class="excl-chev w-4 h-4 text-gray-400 transform transition-transform duration-200 flex-shrink-0 mr-2"
+                     fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+                </svg>
+                <h3 class="font-semibold text-gray-800 flex-1">
+                    {{ category_name }}
+                    {% if excl_count > 0 %}
+                    <span class="bg-orange-500 text-white text-xs px-1.5 py-0.5 rounded-full font-medium align-middle ml-1">{{ excl_count }}</span>
+                    {% endif %}
+                </h3>
+                <span class="text-xs {% if excl_count > 0 %}text-orange-600 font-semibold{% else %}text-gray-400{% endif %} ml-2 flex-shrink-0">
+                    {{ excl_count }}/{{ total_count }}
+                </span>
+            </div>
+            <!-- Category Items -->
+            <div class="excl-cat-content hidden divide-y">
+                {% for item in items %}
+                {% if not item.parent_item_id %}
+                <label class="flex items-center gap-3 px-4 py-2.5 hover:bg-orange-50/40 cursor-pointer {% if item.is_excluded %}bg-orange-50{% endif %}">
+                    <input type="checkbox" {% if item.is_excluded %}checked{% endif %}
+                        class="h-4 w-4 rounded border-gray-300 text-orange-600 cursor-pointer flex-shrink-0"
+                        hx-post="{{ url_for('exclusion_lists.toggle_item', list_id=excl_list.id) }}"
+                        hx-vals='{"template_id": "{{ item.template_id }}", "action": "{{ 'remove' if item.is_excluded else 'add' }}"}' 
+                        hx-target="closest label"
+                        hx-swap="outerHTML">
+                    <span class="text-sm font-semibold text-gray-800 flex-1">{{ item.item_description }}</span>
+                    <span class="text-xs text-gray-400 font-mono flex-shrink-0">{{ item.template_id[:6] }}</span>
+                </label>
+                {% else %}
+                <label class="flex items-center gap-3 pl-10 pr-4 py-2.5 hover:bg-orange-50/40 cursor-pointer {% if item.is_excluded %}bg-orange-50{% endif %}">
+                    <input type="checkbox" {% if item.is_excluded %}checked{% endif %}
+                        class="h-4 w-4 rounded border-gray-300 text-orange-600 cursor-pointer flex-shrink-0"
+                        hx-post="{{ url_for('exclusion_lists.toggle_item', list_id=excl_list.id) }}"
+                        hx-vals='{"template_id": "{{ item.template_id }}", "action": "{{ 'remove' if item.is_excluded else 'add' }}"}' 
+                        hx-target="closest label"
+                        hx-swap="outerHTML">
+                    <span class="text-sm text-gray-700 flex-1">{{ item.item_description }}</span>
+                    <span class="text-xs text-gray-400 font-mono flex-shrink-0">{{ item.template_id[:6] }}</span>
+                </label>
+                {% endif %}
+                {% endfor %}
+            </div>
+        </div>
+        {% endfor %}
     </div>
     {% endfor %}
 
-</div>
-
-<!-- Rename Modal -->
-<div id="rename-modal" class="hidden fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50 px-4">
-    <div class="bg-white rounded-lg shadow-xl w-full max-w-md p-6">
-        <h2 class="text-lg font-bold text-gray-900 mb-4">Rename List</h2>
-        <form method="POST" id="rename-form">
-            <div class="mb-3">
-                <label class="block text-sm font-medium text-gray-700 mb-1">Name</label>
-                <input type="text" name="name" id="rename-name" required
-                       class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400">
-            </div>
-            <div class="mb-4">
-                <label class="block text-sm font-medium text-gray-700 mb-1">Description (optional)</label>
-                <input type="text" name="description" id="rename-desc"
-                       class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400">
-            </div>
-            <div class="flex gap-2 justify-end">
-                <button type="button"
-                        onclick="document.getElementById('rename-modal').classList.add('hidden')"
-                        class="px-4 py-2 text-sm text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50">
-                    Cancel
-                </button>
-                <button type="submit"
-                        class="px-4 py-2 text-sm font-medium bg-orange-500 text-white rounded-lg hover:bg-orange-600">
-                    Save
-                </button>
-            </div>
-        </form>
-    </div>
-</div>
-
-<!-- Clone Modal -->
-<div id="clone-modal" class="hidden fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50 px-4">
-    <div class="bg-white rounded-lg shadow-xl w-full max-w-md p-6">
-        <h2 class="text-lg font-bold text-gray-900 mb-1">Clone List</h2>
-        <p id="clone-source-name" class="text-sm text-gray-500 mb-4"></p>
-        <form method="POST" id="clone-form">
-            <div class="mb-3">
-                <label class="block text-sm font-medium text-gray-700 mb-1">New Name</label>
-                <input type="text" name="name" required
-                       placeholder="e.g. Standard Full Set - 107 items - v2"
-                       class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400">
-            </div>
-            <div class="mb-4">
-                <label class="block text-sm font-medium text-gray-700 mb-1">Description (optional)</label>
-                <input type="text" name="description"
-                       class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400">
-            </div>
-            <div class="flex gap-2 justify-end">
-                <button type="button"
-                        onclick="document.getElementById('clone-modal').classList.add('hidden')"
-                        class="px-4 py-2 text-sm text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50">
-                    Cancel
-                </button>
-                <button type="submit"
-                        class="px-4 py-2 text-sm font-medium bg-orange-500 text-white rounded-lg hover:bg-orange-600">
-                    Clone
-                </button>
-            </div>
-        </form>
-    </div>
-</div>
-
-<script>
-function openClone(listId, listName) {
-    document.getElementById('clone-source-name').textContent = 'Cloning: ' + listName;
-    document.getElementById('clone-form').action = '/exclusion-lists/' + listId + '/clone';
-    document.getElementById('clone-modal').classList.remove('hidden');
-}
-function openRename(listId, name, desc) {
-    document.getElementById('rename-name').value = name;
-    document.getElementById('rename-desc').value = desc;
-    document.getElementById('rename-form').action = '/exclusion-lists/' + listId + '/rename';
-    document.getElementById('rename-modal').classList.remove('hidden');
-}
-</script>
 {% endblock %}
