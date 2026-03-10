@@ -14,13 +14,15 @@ services:
         libffi-dev \
         libcairo2 \
         && pip install -r requirements.txt
-        && python -m playwright install chromium --with-deps
+        && PLAYWRIGHT_BROWSERS_PATH=/opt/render/project/src/.playwright python -m playwright install chromium --with-deps
     startCommand: gunicorn 'app:create_app()' --bind 0.0.0.0:$PORT
     envVars:
       - key: SECRET_KEY
         generateValue: true
       - key: DATABASE_PATH
         value: /opt/render/project/src/data/inspections.db
+      - key: PLAYWRIGHT_BROWSERS_PATH
+        value: /opt/render/project/src/.playwright
     disk:
       name: inspections-data
       mountPath: /opt/render/project/src/data
