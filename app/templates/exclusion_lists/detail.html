@@ -81,16 +81,29 @@
                 <!-- Category Items -->
                 <div class="excl-cat-content hidden divide-y">
                     {% for item in items %}
-                    <label class="flex items-center gap-3 py-2.5 hover:bg-orange-50/40 cursor-pointer {% if item.is_excluded %}bg-orange-50{% endif %} {% if item.depth == 1 %}pl-10 pr-4{% else %}px-4{% endif %}">
+                    {% if not item.parent_item_id %}
+                    <label class="flex items-center gap-3 px-4 py-2.5 hover:bg-orange-50/40 cursor-pointer {% if item.is_excluded %}bg-orange-50{% endif %}">
                         <input type="checkbox" {% if item.is_excluded %}checked{% endif %}
                             class="h-4 w-4 rounded border-gray-300 text-orange-600 cursor-pointer flex-shrink-0"
                             hx-post="{{ url_for('exclusion_lists.toggle_item', list_id=excl_list.id) }}"
-                            hx-vals='{"template_id": "{{ item.template_id }}", "action": "{{ 'remove' if item.is_excluded else 'add' }}"}'
+                            hx-vals='{"template_id": "{{ item.template_id }}", "action": "{{ 'remove' if item.is_excluded else 'add' }}"}' 
+                            hx-target="closest label"
+                            hx-swap="outerHTML">
+                        <span class="text-sm font-semibold text-gray-800 flex-1">{{ item.item_description }}</span>
+                        <span class="text-xs text-gray-400 font-mono flex-shrink-0">{{ item.template_id[:6] }}</span>
+                    </label>
+                    {% else %}
+                    <label class="flex items-center gap-3 pl-10 pr-4 py-2.5 hover:bg-orange-50/40 cursor-pointer {% if item.is_excluded %}bg-orange-50{% endif %}">
+                        <input type="checkbox" {% if item.is_excluded %}checked{% endif %}
+                            class="h-4 w-4 rounded border-gray-300 text-orange-600 cursor-pointer flex-shrink-0"
+                            hx-post="{{ url_for('exclusion_lists.toggle_item', list_id=excl_list.id) }}"
+                            hx-vals='{"template_id": "{{ item.template_id }}", "action": "{{ 'remove' if item.is_excluded else 'add' }}"}' 
                             hx-target="closest label"
                             hx-swap="outerHTML">
                         <span class="text-sm text-gray-700 flex-1">{{ item.item_description }}</span>
                         <span class="text-xs text-gray-400 font-mono flex-shrink-0">{{ item.template_id[:6] }}</span>
                     </label>
+                    {% endif %}
                     {% endfor %}
                 </div>
             </div>

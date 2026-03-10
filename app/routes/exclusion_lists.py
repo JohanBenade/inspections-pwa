@@ -44,7 +44,7 @@ def detail(list_id):
     rows = db.execute("""
         SELECT at.area_name, at.area_order,
                ct.category_name, ct.category_order,
-               it.id AS template_id, it.item_description, it.item_order, it.depth,
+               it.id AS template_id, it.item_description, it.item_order, it.depth, it.parent_item_id,
                CASE WHEN eli.id IS NOT NULL THEN 1 ELSE 0 END AS is_excluded
         FROM item_template it
         JOIN category_template ct ON it.category_id = ct.id
@@ -69,8 +69,30 @@ def detail(list_id):
             'template_id': r['template_id'],
             'item_description': r['item_description'],
             'depth': r['depth'],
+            'parent_item_id': r['parent_item_id'],
             'is_excluded': bool(r['is_excluded'])
         })
+
+    # Tree-sort each category: roots first, children immediately after their parent
+    def tree_sort(items):
+        roots = [i for i in items if not i['parent_item_id']]
+        children = [i for i in items if i['parent_item_id']]
+        result = []
+        for root in roots:
+            result.append(root)
+            for child in children:
+                if child['parent_item_id'] == root['template_id']:
+                    result.append(child)
+        # append any orphans
+        placed = {i['template_id'] for i in result}
+        for i in items:
+            if i['template_id'] not in placed:
+                result.append(i)
+        return result
+
+    for area in areas:
+        for cat in areas[area]:
+            areas[area][cat] = tree_sort(areas[area][cat])
 
     return render_template('exclusion_lists/detail.html',
                            excl_list=dict(excl_list),
