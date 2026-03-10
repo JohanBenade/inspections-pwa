@@ -11,11 +11,13 @@ os.environ['PLAYWRIGHT_BROWSERS_PATH'] = BROWSERS_PATH
 
 _browser_ready = False
 
+# Ubuntu 24.04 package names (t64 suffix for 64-bit transition)
 CHROMIUM_DEPS = [
-    'libnss3', 'libnspr4', 'libdbus-1-3', 'libatk1.0-0',
-    'libatk-bridge2.0-0', 'libcups2', 'libdrm2', 'libatspi2.0-0',
-    'libxcomposite1', 'libxdamage1', 'libxfixes3', 'libxrandr2',
-    'libgbm1', 'libxkbcommon0', 'libasound2'
+    'libnss3', 'libnspr4', 'libdbus-1-3',
+    'libatk1.0-0t64', 'libatk-bridge2.0-0t64',
+    'libcups2t64', 'libdrm2', 'libatspi2.0-0t64',
+    'libxcomposite1', 'libxdamage1', 'libxfixes3',
+    'libxrandr2', 'libgbm1', 'libxkbcommon0', 'libasound2t64'
 ]
 
 
@@ -36,11 +38,14 @@ def _ensure_browser():
             raise RuntimeError("Playwright install failed: {}".format(result.stderr))
         print("Playwright: Chromium installed")
 
-    print("Playwright: installing system deps via apt-get...")
+    print("Playwright: updating apt and installing system deps...")
+    subprocess.run(['apt-get', 'update', '-qq'], capture_output=True, text=True)
     result = subprocess.run(
         ['apt-get', 'install', '-y'] + CHROMIUM_DEPS,
         capture_output=True, text=True
     )
+    print("apt stdout:", result.stdout[-500:] if result.stdout else '')
+    print("apt stderr:", result.stderr[-500:] if result.stderr else '')
     if result.returncode != 0:
         raise RuntimeError("apt-get install failed: {}".format(result.stderr))
     print("Playwright: system deps installed")
