@@ -62,7 +62,7 @@ def dashboard():
     # 1. Unit counts per block+floor
     unit_counts_raw = query_db("""
         SELECT u.block, u.floor, COUNT(DISTINCT u.id) as total_units
-        FROM unit u
+        FROM unit_real u
         WHERE u.tenant_id = ? AND u.unit_number NOT LIKE 'TEST%'
         GROUP BY u.block, u.floor
         ORDER BY u.block, u.floor
@@ -77,7 +77,7 @@ def dashboard():
     defect_counts_raw = query_db("""
         SELECT u.block, u.floor, COUNT(d.id) as open_defects
         FROM defect d
-        JOIN unit u ON d.unit_id = u.id
+        JOIN unit_real u ON d.unit_id = u.id
         WHERE d.tenant_id = ? AND d.status = 'open'
         AND d.raised_cycle_id NOT LIKE 'test-%'
         AND EXISTS (SELECT 1 FROM inspection i2 WHERE i2.unit_id = d.unit_id AND i2.cycle_id = d.raised_cycle_id AND i2.status IN ('reviewed','approved','certified','pending_followup'))
@@ -112,7 +112,7 @@ def dashboard():
     certified_raw = query_db("""
         SELECT u.block, u.floor, COUNT(DISTINCT i.unit_id) as certified
         FROM inspection i
-        JOIN unit u ON i.unit_id = u.id
+        JOIN unit_real u ON i.unit_id = u.id
         WHERE i.tenant_id = ? AND i.status = 'certified'
         AND i.cycle_id NOT LIKE 'test-%'
         GROUP BY u.block, u.floor
@@ -125,7 +125,7 @@ def dashboard():
     inspected_zone_raw = query_db("""
         SELECT u.block, u.floor, COUNT(DISTINCT i.unit_id) as inspected
         FROM inspection i
-        JOIN unit u ON i.unit_id = u.id
+        JOIN unit_real u ON i.unit_id = u.id
         WHERE i.tenant_id = ? AND i.cycle_id NOT LIKE 'test-%'
         AND i.status IN ('reviewed','approved','certified','pending_followup')
         GROUP BY u.block, u.floor
@@ -208,7 +208,7 @@ def dashboard():
     unit_defect_counts_raw = query_db("""
         SELECT COUNT(d.id) as defect_count
         FROM inspection i
-        JOIN unit u ON i.unit_id = u.id
+        JOIN unit_real u ON i.unit_id = u.id
         LEFT JOIN defect d ON d.unit_id = u.id AND d.status = 'open'
             AND d.raised_cycle_id NOT LIKE 'test-%' AND d.tenant_id = u.tenant_id
             AND EXISTS (SELECT 1 FROM inspection i2 WHERE i2.unit_id = d.unit_id AND i2.cycle_id = d.raised_cycle_id AND i2.status IN ('reviewed','approved','certified','pending_followup'))
@@ -365,7 +365,7 @@ def dashboard():
         SELECT u.id as unit_id, u.unit_number, u.block, u.floor,
                COUNT(d.id) as defect_count
         FROM defect d
-        JOIN unit u ON d.unit_id = u.id
+        JOIN unit_real u ON d.unit_id = u.id
         WHERE d.tenant_id = ? AND d.status = 'open'
         AND d.raised_cycle_id NOT LIKE 'test-%'
         AND EXISTS (SELECT 1 FROM inspection i2 WHERE i2.unit_id = d.unit_id AND i2.cycle_id = d.raised_cycle_id AND i2.status IN ('reviewed','approved','certified','pending_followup'))
@@ -429,7 +429,7 @@ def dashboard():
             COUNT(DISTINCT d.unit_id) AS unit_count,
             GROUP_CONCAT(DISTINCT u.unit_number) AS affected_units
         FROM defect d
-        JOIN unit u ON d.unit_id = u.id
+        JOIN unit_real u ON d.unit_id = u.id
         WHERE d.tenant_id = ? AND d.status = 'open'
         AND d.raised_cycle_id NOT LIKE 'test-%'
         AND EXISTS (SELECT 1 FROM inspection i2 WHERE i2.unit_id = d.unit_id AND i2.cycle_id = d.raised_cycle_id AND i2.status IN ('reviewed','approved','certified','pending_followup'))
@@ -487,7 +487,7 @@ def dashboard():
             u.unit_number, u.block, u.floor,
             COUNT(d.id) as defect_count
         FROM inspection i
-        JOIN unit u ON i.unit_id = u.id
+        JOIN unit_real u ON i.unit_id = u.id
         LEFT JOIN defect d ON d.unit_id = u.id AND d.raised_cycle_id = i.cycle_id
             AND d.status = 'open' AND d.tenant_id = u.tenant_id
         WHERE i.tenant_id = ? AND i.status IN ('reviewed','approved','certified','pending_followup')
@@ -609,7 +609,7 @@ def batch_analytics(batch_id):
         FROM (
             SELECT i.unit_id, COUNT(d.id) as defect_count
             FROM inspection i
-            JOIN unit u ON i.unit_id = u.id
+            JOIN unit_real u ON i.unit_id = u.id
             LEFT JOIN defect d ON d.unit_id = i.unit_id
                 AND d.raised_cycle_id = i.cycle_id
                 AND d.status = 'open'
@@ -653,7 +653,7 @@ def batch_analytics(batch_id):
                    COUNT(d.id) as defect_count,
                    i.status as insp_status
             FROM batch_unit bu
-            JOIN unit u ON bu.unit_id = u.id
+            JOIN unit_real u ON bu.unit_id = u.id
             LEFT JOIN defect d ON d.unit_id = u.id
                 AND d.raised_cycle_id = ?
                 AND d.status = 'open'
@@ -892,7 +892,7 @@ def batch_analytics(batch_id):
             "SELECT d.original_comment, "
             "COUNT(d.id) AS cnt, COUNT(DISTINCT d.unit_id) AS unit_count "
             "FROM defect d "
-            "JOIN unit u ON d.unit_id = u.id "
+            "JOIN unit_real u ON d.unit_id = u.id "
             "WHERE d.tenant_id = ? AND d.status = 'open' "
             "AND d.unit_id IN (SELECT unit_id FROM batch_unit WHERE batch_id = ? AND removed_at IS NULL AND tenant_id = ?) "
             "AND EXISTS (SELECT 1 FROM inspection i2 WHERE i2.unit_id = d.unit_id AND i2.cycle_id = d.raised_cycle_id AND i2.status IN ('reviewed','approved','certified','pending_followup')) "
@@ -1004,7 +1004,7 @@ def block_floor_detail(block_slug, floor):
             i.cycle_id, i.inspector_name,
             ic.cycle_number as round_number,
             COUNT(d.id) as defect_count
-        FROM unit u
+        FROM unit_real u
         JOIN inspection i ON i.unit_id = u.id AND i.tenant_id = u.tenant_id
         JOIN inspection_cycle ic ON i.cycle_id = ic.id
         LEFT JOIN defect d ON d.unit_id = u.id AND d.raised_cycle_id = i.cycle_id
@@ -1129,7 +1129,7 @@ def block_floor_detail(block_slug, floor):
             re_units = [dict(r) for r in query_db("""
                 SELECT DISTINCT u.id as unit_id, u.unit_number
                 FROM inspection i
-                JOIN unit u ON i.unit_id = u.id
+                JOIN unit_real u ON i.unit_id = u.id
                 WHERE i.cycle_id IN ({}) AND i.tenant_id = ?
                 ORDER BY u.unit_number
             """.format(ph_latest), latest_cycle_ids + [tenant_id])]
@@ -1197,7 +1197,7 @@ def block_floor_detail(block_slug, floor):
     area_data_raw = [dict(r) for r in query_db("""
         SELECT at2.area_name as area, COUNT(d.id) as defect_count
         FROM defect d
-        JOIN unit u ON d.unit_id = u.id
+        JOIN unit_real u ON d.unit_id = u.id
         JOIN item_template it ON d.item_template_id = it.id
         JOIN category_template ct ON it.category_id = ct.id
         JOIN area_template at2 ON ct.area_id = at2.id
@@ -1222,7 +1222,7 @@ def block_floor_detail(block_slug, floor):
         area_defects = [dict(r) for r in query_db("""
             SELECT d.original_comment as description, COUNT(*) as count
             FROM defect d
-            JOIN unit u ON d.unit_id = u.id
+            JOIN unit_real u ON d.unit_id = u.id
             JOIN item_template it ON d.item_template_id = it.id
             JOIN category_template ct ON it.category_id = ct.id
             JOIN area_template at2 ON ct.area_id = at2.id
@@ -1259,7 +1259,7 @@ def block_floor_detail(block_slug, floor):
     top_defects = [dict(r) for r in query_db("""
         SELECT d.original_comment as description, COUNT(*) as count
         FROM defect d
-        JOIN unit u ON d.unit_id = u.id
+        JOIN unit_real u ON d.unit_id = u.id
         WHERE u.block = ? AND u.floor = ? AND d.tenant_id = ?
         AND d.status = 'open' AND d.raised_cycle_id NOT LIKE 'test-%'
         AND EXISTS (SELECT 1 FROM inspection i2 WHERE i2.unit_id = d.unit_id AND i2.cycle_id = d.raised_cycle_id AND i2.status IN ('reviewed','approved','certified','pending_followup'))
@@ -1317,7 +1317,7 @@ def block_detail(block_slug):
             COUNT(DISTINCT CASE WHEN d.status = 'open' THEN d.id END) as open_defects,
             MAX(ic.cycle_number) as max_round,
             COUNT(DISTINCT CASE WHEN d.status = 'cleared' THEN d.id END) as rectified
-        FROM unit u
+        FROM unit_real u
         LEFT JOIN inspection i ON i.unit_id = u.id AND i.tenant_id = u.tenant_id
         LEFT JOIN inspection_cycle ic ON i.cycle_id = ic.id
         LEFT JOIN defect d ON d.unit_id = u.id AND d.tenant_id = u.tenant_id
@@ -1358,7 +1358,7 @@ def block_detail(block_slug):
         JOIN item_template it ON d.item_template_id = it.id
         JOIN category_template ct ON it.category_id = ct.id
         JOIN area_template at2 ON ct.area_id = at2.id
-        JOIN unit u ON d.unit_id = u.id
+        JOIN unit_real u ON d.unit_id = u.id
         WHERE d.status = 'open' AND d.tenant_id = ? AND u.block = ?
         AND u.unit_number NOT LIKE 'TEST%'
         AND EXISTS (SELECT 1 FROM inspection i2 WHERE i2.unit_id = d.unit_id AND i2.cycle_id = d.raised_cycle_id AND i2.status IN ('reviewed','approved','certified','pending_followup'))
@@ -1377,7 +1377,7 @@ def block_detail(block_slug):
     top_defects = [dict(r) for r in query_db("""
         SELECT d.original_comment as description, COUNT(*) as count
         FROM defect d
-        JOIN unit u ON d.unit_id = u.id
+        JOIN unit_real u ON d.unit_id = u.id
         WHERE d.status = 'open' AND d.tenant_id = ? AND u.block = ?
         AND u.unit_number NOT LIKE 'TEST%'
         AND EXISTS (SELECT 1 FROM inspection i2 WHERE i2.unit_id = d.unit_id AND i2.cycle_id = d.raised_cycle_id AND i2.status IN ('reviewed','approved','certified','pending_followup'))
@@ -1444,7 +1444,7 @@ def explore():
     # Base FROM clause (always the same full join chain)
     from_sql = """
         FROM defect d
-        JOIN unit u ON d.unit_id = u.id
+        JOIN unit_real u ON d.unit_id = u.id
         JOIN item_template it ON d.item_template_id = it.id
         JOIN category_template ct ON it.category_id = ct.id
         JOIN area_template at2 ON ct.area_id = at2.id
@@ -1672,7 +1672,7 @@ def rectification():
     reinspected_units = [dict(r) for r in query_db("""
         SELECT DISTINCT i.unit_id, u.unit_number, u.block, u.floor
         FROM inspection i
-        JOIN unit u ON i.unit_id = u.id
+        JOIN unit_real u ON i.unit_id = u.id
         JOIN inspection_cycle ic ON i.cycle_id = ic.id
         WHERE i.tenant_id = ? AND ic.cycle_number > 1
         AND ic.id NOT LIKE 'test-%'
@@ -1713,7 +1713,7 @@ def rectification():
             u.unit_number, u.block, u.floor,
             at2.area_name, ct.category_name
         FROM defect d
-        JOIN unit u ON d.unit_id = u.id
+        JOIN unit_real u ON d.unit_id = u.id
         JOIN inspection_cycle ic ON d.raised_cycle_id = ic.id
         JOIN item_template it ON d.item_template_id = it.id
         JOIN category_template ct ON it.category_id = ct.id
@@ -1886,7 +1886,7 @@ def rectification():
             u.unit_number,
             CAST(julianday('now') - julianday(d.created_at) AS INTEGER) AS age_days
         FROM defect d
-        JOIN unit u ON d.unit_id = u.id
+        JOIN unit_real u ON d.unit_id = u.id
         JOIN item_template it ON d.item_template_id = it.id
         JOIN category_template ct ON it.category_id = ct.id
         JOIN area_template at2 ON ct.area_id = at2.id
@@ -1998,7 +1998,7 @@ def dashboard_legacy():
     # --- ALL MODE: Project-wide aggregate view ---
     if selected_cycle_id == 'all':
         total_units = query_db(
-            "SELECT COUNT(DISTINCT u.id) FROM unit u JOIN inspection i ON i.unit_id = u.id WHERE i.tenant_id = ? AND i.cycle_id NOT LIKE 'test-%' AND i.status IN ('reviewed','approved','certified','pending_followup')",
+            "SELECT COUNT(DISTINCT u.id) FROM unit_real u JOIN inspection i ON i.unit_id = u.id WHERE i.tenant_id = ? AND i.cycle_id NOT LIKE 'test-%' AND i.status IN ('reviewed','approved','certified','pending_followup')",
             [tenant_id], one=True)[0]
         total_defects = query_db(
             "SELECT COUNT(*) FROM defect WHERE tenant_id = ? AND status = 'open' AND raised_cycle_id NOT LIKE 'test-%'",
@@ -2006,7 +2006,7 @@ def dashboard_legacy():
         avg_defects = round(total_defects / total_units, 1) if total_units > 0 else 0
 
         unit_defect_counts = query_db(
-            "SELECT u.unit_number, COUNT(*) as cnt FROM defect d JOIN unit u ON d.unit_id = u.id "
+            "SELECT u.unit_number, COUNT(*) as cnt FROM defect d JOIN unit_real u ON d.unit_id = u.id "
             "WHERE d.tenant_id = ? AND d.status = 'open' AND d.raised_cycle_id NOT LIKE 'test-%' AND EXISTS (SELECT 1 FROM inspection i2 WHERE i2.unit_id = d.unit_id AND i2.cycle_id = d.raised_cycle_id AND i2.status IN ('reviewed','approved','certified','pending_followup')) GROUP BY d.unit_id ORDER BY cnt DESC",
             [tenant_id])
         worst_unit = unit_defect_counts[0] if unit_defect_counts else None
@@ -2206,7 +2206,7 @@ def dashboard_legacy():
 
         unit_ranking = query_db(
             "SELECT u.unit_number, u.id as unit_id, u.block, i.inspector_name, COUNT(d.id) as cnt "
-            "FROM defect d JOIN unit u ON d.unit_id = u.id "
+            "FROM defect d JOIN unit_real u ON d.unit_id = u.id "
             "JOIN inspection i ON i.unit_id = u.id AND i.cycle_id = d.raised_cycle_id "
             "WHERE d.tenant_id = ? AND d.status = 'open' AND d.raised_cycle_id NOT LIKE 'test-%' "
             "AND i.status IN ('reviewed','approved','certified','pending_followup') "
@@ -2251,7 +2251,7 @@ def dashboard_legacy():
         recurring = query_db(
             "SELECT d.original_comment, COUNT(*) as cnt, ct.category_name, "
             "GROUP_CONCAT(DISTINCT u.unit_number) as affected_units "
-            "FROM defect d JOIN unit u ON d.unit_id = u.id "
+            "FROM defect d JOIN unit_real u ON d.unit_id = u.id "
             "JOIN item_template it ON d.item_template_id = it.id "
             "JOIN category_template ct ON it.category_id = ct.id "
             "WHERE d.tenant_id = ? AND d.status = 'open' AND d.raised_cycle_id NOT LIKE 'test-%' "
@@ -2356,7 +2356,7 @@ def dashboard_legacy():
         unit_summary_raw = query_db(
             "SELECT u.unit_number, u.block, u.floor, i.status as insp_status, "
             "COUNT(d.id) as defect_count "
-            "FROM inspection i JOIN unit u ON i.unit_id = u.id "
+            "FROM inspection i JOIN unit_real u ON i.unit_id = u.id "
             "LEFT JOIN defect d ON d.unit_id = u.id AND d.status = 'open' "
             "AND d.raised_cycle_id = i.cycle_id "
             "WHERE i.tenant_id = ? AND i.cycle_id NOT LIKE 'test-%' "
@@ -2467,7 +2467,7 @@ def dashboard_legacy():
     # --- 1. SUMMARY STATS ---
     total_units = query_db("""
         SELECT COUNT(DISTINCT u.id)
-        FROM unit u
+        FROM unit_real u
         JOIN inspection i ON i.unit_id = u.id
         WHERE i.cycle_id = ? AND i.tenant_id = ?
     """, [selected_cycle_id, tenant_id], one=True)[0]
@@ -2483,7 +2483,7 @@ def dashboard_legacy():
     unit_defect_counts = query_db("""
         SELECT u.unit_number, COUNT(*) as cnt
         FROM defect d
-        JOIN unit u ON d.unit_id = u.id
+        JOIN unit_real u ON d.unit_id = u.id
         WHERE d.raised_cycle_id = ? AND d.tenant_id = ? AND d.status = 'open'
         GROUP BY d.unit_id
         ORDER BY cnt DESC
@@ -2567,7 +2567,7 @@ def dashboard_legacy():
     unit_ranking = query_db("""
         SELECT u.unit_number, u.id as unit_id, i.inspector_name, COUNT(d.id) as cnt
         FROM defect d
-        JOIN unit u ON d.unit_id = u.id
+        JOIN unit_real u ON d.unit_id = u.id
         JOIN inspection i ON i.unit_id = u.id AND i.cycle_id = d.raised_cycle_id
         WHERE d.raised_cycle_id = ? AND d.tenant_id = ? AND d.status = 'open'
         GROUP BY u.unit_number, i.inspector_name
@@ -2578,7 +2578,7 @@ def dashboard_legacy():
     heatmap_raw = query_db("""
         SELECT u.unit_number, at.area_name, COUNT(*) as cnt
         FROM defect d
-        JOIN unit u ON d.unit_id = u.id
+        JOIN unit_real u ON d.unit_id = u.id
         JOIN item_template it ON d.item_template_id = it.id
         JOIN category_template ct ON it.category_id = ct.id
         JOIN area_template at ON ct.area_id = at.id
@@ -2609,7 +2609,7 @@ def dashboard_legacy():
                ct.category_name,
                GROUP_CONCAT(DISTINCT u.unit_number) as affected_units
         FROM defect d
-        JOIN unit u ON d.unit_id = u.id
+        JOIN unit_real u ON d.unit_id = u.id
         JOIN item_template it ON d.item_template_id = it.id
         JOIN category_template ct ON it.category_id = ct.id
         WHERE d.raised_cycle_id = ? AND d.tenant_id = ? AND d.status = 'open'
@@ -2735,7 +2735,7 @@ def dashboard_legacy():
     unit_summary_raw = query_db("""
         SELECT u.unit_number, u.block, u.floor, i.status as insp_status,
                COUNT(d.id) as defect_count
-        FROM inspection i JOIN unit u ON i.unit_id = u.id
+        FROM inspection i JOIN unit_real u ON i.unit_id = u.id
         LEFT JOIN defect d ON d.unit_id = u.id AND d.status = 'open'
             AND d.raised_cycle_id = i.cycle_id
         WHERE i.cycle_id = ? AND i.tenant_id = ?
@@ -2967,7 +2967,7 @@ def _build_unified_report_data():
     # Unit counts per block+floor
     unit_counts_raw = query_db("""
         SELECT u.block, u.floor, COUNT(DISTINCT u.id) as total_units
-        FROM unit u
+        FROM unit_real u
         WHERE u.tenant_id = ? AND u.unit_number NOT LIKE 'TEST%'
         GROUP BY u.block, u.floor
         ORDER BY u.block, u.floor
@@ -2981,7 +2981,7 @@ def _build_unified_report_data():
     defect_counts_raw = query_db("""
         SELECT u.block, u.floor, COUNT(d.id) as open_defects
         FROM defect d
-        JOIN unit u ON d.unit_id = u.id
+        JOIN unit_real u ON d.unit_id = u.id
         WHERE d.tenant_id = ? AND d.status = 'open'
         AND d.raised_cycle_id NOT LIKE 'test-%'
         AND EXISTS (SELECT 1 FROM inspection i2 WHERE i2.unit_id = d.unit_id AND i2.cycle_id = d.raised_cycle_id AND i2.status IN ('reviewed','approved','certified','pending_followup'))
@@ -2995,7 +2995,7 @@ def _build_unified_report_data():
     inspected_zone_raw = query_db("""
         SELECT u.block, u.floor, COUNT(DISTINCT i.unit_id) as inspected
         FROM inspection i
-        JOIN unit u ON i.unit_id = u.id
+        JOIN unit_real u ON i.unit_id = u.id
         WHERE i.tenant_id = ? AND i.cycle_id NOT LIKE 'test-%'
         AND i.status IN ('reviewed','approved','certified','pending_followup')
         GROUP BY u.block, u.floor
@@ -3008,7 +3008,7 @@ def _build_unified_report_data():
     certified_raw = query_db("""
         SELECT u.block, u.floor, COUNT(DISTINCT i.unit_id) as certified
         FROM inspection i
-        JOIN unit u ON i.unit_id = u.id
+        JOIN unit_real u ON i.unit_id = u.id
         WHERE i.tenant_id = ? AND i.status = 'certified'
         AND i.cycle_id NOT LIKE 'test-%'
         GROUP BY u.block, u.floor
@@ -3105,7 +3105,7 @@ def _build_unified_report_data():
     unit_defect_counts_raw = query_db("""
         SELECT COUNT(d.id) as defect_count
         FROM inspection i
-        JOIN unit u ON i.unit_id = u.id
+        JOIN unit_real u ON i.unit_id = u.id
         LEFT JOIN defect d ON d.unit_id = u.id AND d.status = 'open'
             AND d.raised_cycle_id NOT LIKE 'test-%' AND d.tenant_id = u.tenant_id
             AND EXISTS (SELECT 1 FROM inspection i2 WHERE i2.unit_id = d.unit_id AND i2.cycle_id = d.raised_cycle_id AND i2.status IN ('reviewed','approved','certified','pending_followup'))
@@ -3291,7 +3291,7 @@ def _build_unified_report_data():
             COUNT(DISTINCT d.unit_id) AS unit_count,
             GROUP_CONCAT(DISTINCT u.unit_number) AS affected_units
         FROM defect d
-        JOIN unit u ON d.unit_id = u.id
+        JOIN unit_real u ON d.unit_id = u.id
         WHERE d.tenant_id = ? AND d.status = 'open'
         AND d.raised_cycle_id NOT LIKE 'test-%'
         AND EXISTS (SELECT 1 FROM inspection i2 WHERE i2.unit_id = d.unit_id AND i2.cycle_id = d.raised_cycle_id AND i2.status IN ('reviewed','approved','certified','pending_followup'))
@@ -3349,7 +3349,7 @@ def _build_unified_report_data():
         SELECT u.id as unit_id, u.unit_number, u.block, u.floor,
                COUNT(d.id) as defect_count
         FROM defect d
-        JOIN unit u ON d.unit_id = u.id
+        JOIN unit_real u ON d.unit_id = u.id
         WHERE d.tenant_id = ? AND d.status = 'open'
         AND d.raised_cycle_id NOT LIKE 'test-%'
         AND EXISTS (SELECT 1 FROM inspection i2 WHERE i2.unit_id = d.unit_id AND i2.cycle_id = d.raised_cycle_id AND i2.status IN ('reviewed','approved','certified','pending_followup'))
@@ -3369,7 +3369,7 @@ def _build_unified_report_data():
     all_unit_counts_ur = [dict(r)['defect_count'] for r in query_db("""
         SELECT COUNT(d.id) as defect_count
         FROM inspection i
-        JOIN unit u ON i.unit_id = u.id
+        JOIN unit_real u ON i.unit_id = u.id
         LEFT JOIN defect d ON d.unit_id = i.unit_id
             AND d.raised_cycle_id = i.cycle_id
             AND d.status = 'open'
@@ -3548,7 +3548,7 @@ def _build_batch_report_data(batch_id):
         FROM (
             SELECT i.unit_id, COUNT(d.id) as defect_count
             FROM inspection i
-            JOIN unit u ON i.unit_id = u.id
+            JOIN unit_real u ON i.unit_id = u.id
             LEFT JOIN defect d ON d.unit_id = i.unit_id
                 AND d.raised_cycle_id = i.cycle_id
                 AND d.status = 'open'
@@ -3595,7 +3595,7 @@ def _build_batch_report_data(batch_id):
                    COUNT(d.id) as defect_count,
                    i.status as insp_status
             FROM batch_unit bu
-            JOIN unit u ON bu.unit_id = u.id
+            JOIN unit_real u ON bu.unit_id = u.id
             LEFT JOIN defect d ON d.unit_id = u.id
                 AND d.raised_cycle_id = ?
                 AND d.status = 'open'
@@ -3699,7 +3699,7 @@ def _build_batch_report_data(batch_id):
     ph = ','.join('?' * len(all_cycle_ids))
     worst_units = [dict(r) for r in query_db(
         "SELECT u.unit_number, u.block, u.floor, COUNT(d.id) as defect_count, ic.cycle_number "
-        "FROM defect d JOIN unit u ON d.unit_id = u.id "
+        "FROM defect d JOIN unit_real u ON d.unit_id = u.id "
         "JOIN inspection_cycle ic ON d.raised_cycle_id = ic.id "
         "WHERE d.tenant_id = ? AND d.status = 'open' "
         "AND d.unit_id IN (SELECT unit_id FROM batch_unit WHERE batch_id = ? AND removed_at IS NULL AND tenant_id = ?) "
@@ -3788,7 +3788,7 @@ def _build_batch_report_data(batch_id):
     ph = ','.join('?' * len(all_cycle_ids))
     recurring_raw = query_db(
         "SELECT d.original_comment, COUNT(d.id) AS cnt, COUNT(DISTINCT d.unit_id) AS unit_count "
-        "FROM defect d JOIN unit u ON d.unit_id = u.id "
+        "FROM defect d JOIN unit_real u ON d.unit_id = u.id "
         "WHERE d.tenant_id = ? AND d.status = 'open' "
         "AND d.unit_id IN (SELECT unit_id FROM batch_unit WHERE batch_id = ? AND removed_at IS NULL AND tenant_id = ?) "
         "AND EXISTS (SELECT 1 FROM inspection i2 WHERE i2.unit_id = d.unit_id "
@@ -3961,7 +3961,7 @@ def _build_combined_report_data():
             SELECT u.id, u.unit_number, u.block, u.floor, u.status as unit_status,
                    i.id as insp_id, i.status as insp_status, i.inspector_name,
                    i.inspection_date
-            FROM unit u
+            FROM unit_real u
             JOIN inspection i ON i.unit_id = u.id AND i.cycle_id = ?
             WHERE u.tenant_id = ?
             ORDER BY u.unit_number
@@ -3970,7 +3970,7 @@ def _build_combined_report_data():
         unit_defects = [dict(r) for r in query_db("""
             SELECT u.unit_number, u.id as unit_id, u.block, u.floor,
                    COUNT(d.id) as defect_count
-            FROM unit u
+            FROM unit_real u
             JOIN inspection i ON i.unit_id = u.id AND i.cycle_id = ?
             LEFT JOIN defect d ON d.unit_id = u.id AND d.raised_cycle_id = ?
                 AND d.status = 'open'
@@ -4348,7 +4348,7 @@ def _build_combined_report_data():
                GROUP_CONCAT(DISTINCT u.unit_number) as affected_units,
                COUNT(DISTINCT u.id) as unit_count
         FROM defect d
-        JOIN unit u ON d.unit_id = u.id
+        JOIN unit_real u ON d.unit_id = u.id
         JOIN item_template it ON d.item_template_id = it.id
         JOIN category_template ct ON it.category_id = ct.id
         WHERE d.tenant_id = ? AND d.status = 'open'
@@ -4437,7 +4437,7 @@ def _build_report_data(cycle_id):
                i.id as insp_id, i.status as insp_status, i.inspector_name,
                i.inspection_date, i.started_at as insp_started,
                i.submitted_at, i.review_started_at, i.review_submitted_at, i.approved_at
-        FROM unit u
+        FROM unit_real u
         JOIN inspection i ON i.unit_id = u.id AND i.cycle_id = ?
         WHERE u.tenant_id = ?
         AND u.id NOT IN (SELECT unit_id FROM cycle_excluded_unit WHERE cycle_id = ?)
@@ -4451,7 +4451,7 @@ def _build_report_data(cycle_id):
     # --- Defect counts per unit ---
     unit_defects = _to_dicts(query_db("""
         SELECT u.unit_number, u.id as unit_id, COUNT(d.id) as defect_count
-        FROM unit u
+        FROM unit_real u
         JOIN inspection i2 ON i2.unit_id = u.id AND i2.cycle_id = ?
         LEFT JOIN defect d ON d.unit_id = u.id AND d.raised_cycle_id = ? AND d.status = 'open'
         WHERE u.tenant_id = ?
@@ -4676,7 +4676,7 @@ def inspector_detail(inspector_name):
             ic.cycle_number as round_number,
             COUNT(d.id) as defect_count
         FROM inspection i
-        JOIN unit u ON i.unit_id = u.id
+        JOIN unit_real u ON i.unit_id = u.id
         JOIN inspection_cycle ic ON i.cycle_id = ic.id
         LEFT JOIN defect d ON d.unit_id = u.id AND d.raised_cycle_id = i.cycle_id
             AND d.status = 'open' AND d.tenant_id = u.tenant_id
@@ -4698,7 +4698,7 @@ def inspector_detail(inspector_name):
     zone_data = [dict(r) for r in query_db("""
         SELECT u.block, u.floor,
             ROUND(COUNT(d.id) * 1.0 / NULLIF(COUNT(DISTINCT u.id), 0), 1) as avg_defects
-        FROM unit u
+        FROM unit_real u
         LEFT JOIN inspection i ON i.unit_id = u.id AND i.tenant_id = u.tenant_id
             AND i.status IN ('reviewed','approved','certified','pending_followup')
         LEFT JOIN defect d ON d.unit_id = u.id AND d.status = 'open' AND d.tenant_id = u.tenant_id
@@ -4756,7 +4756,7 @@ def _build_audit_data_dict():
                u.id AS unit_id, u.unit_number, u.block, u.floor,
                COUNT(d.id) AS defect_count
         FROM inspection i
-        JOIN unit u ON i.unit_id = u.id
+        JOIN unit_real u ON i.unit_id = u.id
         JOIN inspection_cycle ic ON i.cycle_id = ic.id
         LEFT JOIN defect d ON d.unit_id = u.id AND d.raised_cycle_id = i.cycle_id
             AND d.tenant_id = u.tenant_id
@@ -4964,7 +4964,7 @@ def login_status():
         units = [dict(r) for r in query_db("""
             SELECT u.unit_number, u.block, u.floor
             FROM batch_unit bu
-            JOIN unit u ON bu.unit_id = u.id
+            JOIN unit_real u ON bu.unit_id = u.id
             JOIN inspection_batch ib ON bu.batch_id = ib.id
             WHERE bu.inspector_id = ? AND bu.tenant_id = ?
             AND ib.status IN ('open', 'in_progress')
