@@ -1,51 +1,33 @@
 """
 PDF Generator - Playwright (Chromium)
 Replaces WeasyPrint. Screen == PDF. Always.
-System deps installed via render.yaml buildCommand.
-Chromium binary installed to persistent disk on first use.
+Persistent browser instance - launch once per process, reuse for all requests.
 """
 import os
-import subprocess
-import glob
 
 BROWSERS_PATH = '/opt/render/project/src/data/.playwright'
 os.environ['PLAYWRIGHT_BROWSERS_PATH'] = BROWSERS_PATH
 
-_browser_ready = False
+_playwright = None
+_browser = None
 
 
-def _ensure_browser():
-    """Install Chromium to persistent disk if not present. Runs once per process."""
-    global _browser_ready
-    if _browser_ready:
-        return
-
-    pattern = os.path.join(BROWSERS_PATH, 'chromium-*', 'chrome-linux', 'chrome')
-    if not glob.glob(pattern):
-        print("Playwright: installing Chromium to persistent disk...")
-        result = subprocess.run(
-            ['python', '-m', 'playwright', 'install', 'chromium'],
-            capture_output=True, text=True
-        )
-        if result.returncode != 0:
-            raise RuntimeError("Playwright install failed: {}".format(result.stderr))
-        print("Playwright: Chromium installed")
-
-    _browser_ready = True
+def _get_browser():
+    """Return persistent browser instance, launching if needed."""
+    global _playwright, _browser
+    if _browser is not None:
+        return _browser
+    from playwright.sync_api import sync_playwright
+    _playwright = sync_playwright().start()
+    _browser = _playwright.chromium.launch()
+    return _browser
 
 
 def html_to_pdf(html_string):
     """Convert HTML string to PDF bytes using Playwright/Chromium."""
+    browser = _get_browser()
+    page = browser.new_page()
     try:
-        from playwright.sync_api import sync_playwright
-    except ImportError:
-        raise RuntimeError("Playwright not installed")
-
-    _ensure_browser()
-
-    with sync_playwright() as p:
-        browser = p.chromium.launch()
-        page = browser.new_page()
         page.set_content(html_string, wait_until='networkidle')
         pdf_bytes = page.pdf(
             format='A4',
@@ -57,6 +39,6 @@ def html_to_pdf(html_string):
                 'right': '16mm'
             }
         )
-        browser.close()
-
+    finally:
+        page.close()
     return pdf_bytes

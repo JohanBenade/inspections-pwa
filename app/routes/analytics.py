@@ -3504,14 +3504,14 @@ def batch_report_view(batch_id):
 @analytics_bp.route('/report/batch/<batch_id>/pdf')
 @require_manager
 def batch_report_pdf(batch_id):
-    """Batch inspection report - PDF download via WeasyPrint."""
-    from weasyprint import HTML
+    """Batch inspection report - PDF download via Playwright."""
+    from app.services.pdf_playwright import html_to_pdf
     data = _build_batch_report_data(batch_id)
     if data is None:
         return "Batch not found or no data.", 404
     data['is_pdf'] = True
     html_str = render_template('analytics/report_batch.html', **data)
-    pdf_bytes = HTML(string=html_str, base_url=request.url_root).write_pdf()
+    pdf_bytes = html_to_pdf(html_str)
     response = make_response(pdf_bytes)
     response.headers['Content-Type'] = 'application/pdf'
     fname = 'PPSH_Batch_Report_{}_{}.pdf'.format(
