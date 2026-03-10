@@ -1,11 +1,29 @@
 """
 PDF Generator - Playwright (Chromium)
 Replaces WeasyPrint. Screen == PDF. Always.
+Chromium installs to persistent disk on first use.
 """
 import os
+import subprocess
 
-# Set browser path before Playwright initialises
-os.environ.setdefault('PLAYWRIGHT_BROWSERS_PATH', '/opt/render/project/src/.playwright')
+BROWSERS_PATH = '/opt/render/project/src/data/.playwright'
+os.environ['PLAYWRIGHT_BROWSERS_PATH'] = BROWSERS_PATH
+
+
+def _ensure_browser():
+    """Install Chromium if not present. Runs once on first use."""
+    chrome = os.path.join(BROWSERS_PATH, 'chromium-1117', 'chrome-linux', 'chrome')
+    if not os.path.exists(chrome):
+        print("Playwright: Chromium not found - installing to persistent disk...")
+        result = subprocess.run(
+            ['python', '-m', 'playwright', 'install', 'chromium', '--with-deps'],
+            capture_output=True, text=True
+        )
+        print("Playwright install stdout:", result.stdout)
+        print("Playwright install stderr:", result.stderr)
+        if result.returncode != 0:
+            raise RuntimeError("Playwright install failed: {}".format(result.stderr))
+        print("Playwright: Chromium installed successfully")
 
 
 def html_to_pdf(html_string):
@@ -14,6 +32,8 @@ def html_to_pdf(html_string):
         from playwright.sync_api import sync_playwright
     except ImportError:
         raise RuntimeError("Playwright not installed")
+
+    _ensure_browser()
 
     with sync_playwright() as p:
         browser = p.chromium.launch()

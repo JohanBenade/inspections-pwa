@@ -13,8 +13,7 @@ services:
         libgdk-pixbuf2.0-0 \
         libffi-dev \
         libcairo2 \
-        && pip install -r requirements.txt \
-        && PLAYWRIGHT_BROWSERS_PATH=/opt/render/project/src/.playwright python -m playwright install chromium --with-deps
+        && pip install -r requirements.txt
     startCommand: gunicorn 'app:create_app()' --bind 0.0.0.0:$PORT
     envVars:
       - key: SECRET_KEY
@@ -22,7 +21,7 @@ services:
       - key: DATABASE_PATH
         value: /opt/render/project/src/data/inspections.db
       - key: PLAYWRIGHT_BROWSERS_PATH
-        value: /opt/render/project/src/.playwright
+        value: /opt/render/project/src/data/.playwright
     disk:
       name: inspections-data
       mountPath: /opt/render/project/src/data
