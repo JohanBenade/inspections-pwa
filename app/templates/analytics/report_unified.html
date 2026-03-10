@@ -394,8 +394,8 @@ body {
                 <div style="flex: 1; height: 8px; background: #E8E6E1; border-radius: 3px; overflow: hidden;">
                     <div style="height: 8px; width: {{ (a.defect_count / area_max * 100)|round }}%; background: {% if a.defect_count > area_median %}#C44D3F{% elif a.defect_count == area_median %}#C8963E{% else %}#4A7C59{% endif %}; border-radius: 2px;"></div>
                 </div>
-                <span style="font-size: 9px; color: #9A9A9A; width: 30px; text-align: right;">{{ a.pct }}%</span>
-                <span style="font-size: 10px; font-weight: 700; width: 30px; text-align: right; color: {% if a.defect_count > area_median %}#C44D3F{% elif a.defect_count == area_median %}#C8963E{% else %}#4A7C59{% endif %};">{{ a.defect_count }}</span>
+                <span style="font-size: 9px; color: #9A9A9A; width: 38px; text-align: right;">{{ a.pct }}%</span>
+                <span style="font-size: 10px; font-weight: 700; width: 38px; text-align: right; color: {% if a.defect_count > area_median %}#C44D3F{% elif a.defect_count == area_median %}#C8963E{% else %}#4A7C59{% endif %};">{{ a.defect_count }}</span>
             </div>
             {% endfor %}
             <div style="font-size: 10px; color: #9A9A9A; margin-top: 8px; padding-top: 6px; border-top: 1px solid #E8E6E1;">
@@ -506,8 +506,8 @@ body {
         <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 4px;">
             <span style="display: inline-block; width: 22px; height: 22px; line-height: 22px; text-align: center; font-size: 10px; font-weight: 700; color: white; background: #C44D3F; border-radius: 50%; flex-shrink: 0;">{{ loop.index }}</span>
             <span style="font-size: 10px; font-weight: 500; color: #1A1A1A; flex: 1;">{{ r.original_comment }}{% if r.cat_breakdown %} <span style="font-size: 9px; color: #9A9A9A; font-weight: 400;">({% for cb in r.cat_breakdown %}{{ cb.cat }} {{ cb.cnt }}{% if not loop.last %} &middot; {% endif %}{% endfor %})</span>{% endif %}</span>
-            <span style="font-size: 10px; font-weight: 700; color: #C44D3F; width: 30px; text-align: right;">{{ r.cnt }}</span>
-            <span style="font-size: 10px; color: #9A9A9A; width: 40px; text-align: right;">{{ r.unit_count }}u</span>
+            <span style="font-size: 10px; font-weight: 700; color: #C44D3F; width: 38px; text-align: right;">{{ r.cnt }}</span>
+            <span style="font-size: 10px; color: #9A9A9A; width: 48px; text-align: right;">{{ r.unit_count }}u</span>
         </div>
         <div style="display: flex; align-items: center; gap: 8px;">
             <div style="width: 22px; flex-shrink: 0;"></div>
@@ -546,9 +546,9 @@ body {
         <div style="flex: 1; height: 8px; background: #E8E6E1; border-radius: 3px; overflow: hidden;">
             <div style="height: 8px; width: {{ (c.count / cat_max * 100)|round }}%; background: {% if c.count > cat_median %}#C44D3F{% elif c.count == cat_median %}#C8963E{% else %}#4A7C59{% endif %}; border-radius: 2px;"></div>
         </div>
-        <span style="font-size: 9px; color: #9A9A9A; width: 30px; text-align: right;">{{ cat_pct }}%</span>
-        <span style="font-size: 9px; color: #9A9A9A; width: 45px; text-align: right;">{{ (c.count / project.units_inspected)|round(1) }} /unit</span>
-        <span style="font-size: 10px; font-weight: 700; width: 35px; text-align: right; color: {% if c.count > cat_median %}#C44D3F{% elif c.count == cat_median %}#C8963E{% else %}#4A7C59{% endif %};">{{ c.count }}</span>
+        <span style="font-size: 9px; color: #9A9A9A; width: 38px; text-align: right;">{{ cat_pct }}%</span>
+        <span style="font-size: 9px; color: #9A9A9A; width: 55px; text-align: right;">{{ (c.count / project.units_inspected)|round(1) }} /unit</span>
+        <span style="font-size: 10px; font-weight: 700; width: 42px; text-align: right; color: {% if c.count > cat_median %}#C44D3F{% elif c.count == cat_median %}#C8963E{% else %}#4A7C59{% endif %};">{{ c.count }}</span>
     </div>
     {% endfor %}
 
