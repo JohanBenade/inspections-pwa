@@ -11,6 +11,13 @@ os.environ['PLAYWRIGHT_BROWSERS_PATH'] = BROWSERS_PATH
 
 _browser_ready = False
 
+CHROMIUM_DEPS = [
+    'libnss3', 'libnspr4', 'libdbus-1-3', 'libatk1.0-0',
+    'libatk-bridge2.0-0', 'libcups2', 'libdrm2', 'libatspi2.0-0',
+    'libxcomposite1', 'libxdamage1', 'libxfixes3', 'libxrandr2',
+    'libgbm1', 'libxkbcommon0', 'libasound2'
+]
+
 
 def _ensure_browser():
     """Install Chromium and system deps if not present. Runs once per process."""
@@ -29,13 +36,14 @@ def _ensure_browser():
             raise RuntimeError("Playwright install failed: {}".format(result.stderr))
         print("Playwright: Chromium installed")
 
-    # Install system deps - ignore non-zero exit (font packages unavailable on this OS)
-    print("Playwright: installing system deps...")
-    subprocess.run(
-        ['python', '-m', 'playwright', 'install-deps', 'chromium'],
+    print("Playwright: installing system deps via apt-get...")
+    result = subprocess.run(
+        ['apt-get', 'install', '-y'] + CHROMIUM_DEPS,
         capture_output=True, text=True
     )
-    print("Playwright: system deps step complete")
+    if result.returncode != 0:
+        raise RuntimeError("apt-get install failed: {}".format(result.stderr))
+    print("Playwright: system deps installed")
 
     _browser_ready = True
 
