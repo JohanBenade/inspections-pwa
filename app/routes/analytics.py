@@ -3475,14 +3475,14 @@ def unified_report_view():
 @analytics_bp.route('/report/unified/pdf')
 @require_manager
 def unified_report_pdf():
-    """Unified project report - PDF download via WeasyPrint."""
-    from weasyprint import HTML
+    """Unified project report - PDF download via Playwright."""
+    from app.services.pdf_playwright import html_to_pdf
     data = _build_unified_report_data()
     if data is None:
         return "No inspection data available.", 404
     data['is_pdf'] = True
     html_str = render_template('analytics/report_unified.html', **data)
-    pdf_bytes = HTML(string=html_str, base_url=request.url_root).write_pdf()
+    pdf_bytes = html_to_pdf(html_str)
     response = make_response(pdf_bytes)
     response.headers['Content-Type'] = 'application/pdf'
     response.headers['Content-Disposition'] = 'attachment; filename=PPSH_Project_Report_{}.pdf'.format(
