@@ -553,7 +553,7 @@ def set_batch_milestone(batch_id):
         SELECT bu.id as bu_id, i.id as insp_id
         FROM batch_unit bu
         LEFT JOIN inspection i ON i.unit_id = bu.unit_id AND i.cycle_id = bu.cycle_id
-        WHERE bu.batch_id = ? AND bu.tenant_id = ? AND bu.status != 'removed'
+        WHERE bu.batch_id = ? AND bu.tenant_id = ? AND bu.removed_at IS NULL
     """, [batch_id, tenant_id])
 
     for u in units:
