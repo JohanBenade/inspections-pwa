@@ -1663,10 +1663,8 @@ def explore():
 # RECTIFICATION ANALYTICS
 # ============================================================
 
-@analytics_bp.route('/rectification')
-@require_manager
-def rectification():
-    """Rectification Command Centre - deep analytics on C2+ re-inspection data."""
+def _build_rectification_data():
+    """Build data dict for rectification analytics template."""
     tenant_id = session.get('tenant_id', 'MONOGRAPH')
 
     # 1. Identify re-inspected units (units with inspection in C2+ cycle)
@@ -1681,11 +1679,10 @@ def rectification():
     """, [tenant_id])]
 
     if not reinspected_units:
-        return render_template('analytics/rectification.html',
-                               has_data=False, kpis={}, zones=[], areas=[],
-                               area_max=1, trades=[], trade_max=1,
-                               stubborn=[], new_defects=[], c2_new_count=0,
-                               units=[], turnaround={})
+        return dict(has_data=False, kpis={}, zones=[], areas=[],
+                     area_max=1, trades=[], trade_max=1,
+                     stubborn=[], new_defects=[], c2_new_count=0,
+                     units=[], turnaround={})
 
     reinspected_unit_ids = [u['unit_id'] for u in reinspected_units]
     ph = ','.join(['?'] * len(reinspected_unit_ids))
@@ -1959,16 +1956,39 @@ def rectification():
         u['effective_pct'] = round(u['net'] / u['c1_raised'] * 100, 1) if u['c1_raised'] > 0 else 0
         u['floor_label'] = FLOOR_LABELS.get(u['floor'], 'Floor {}'.format(u['floor']))
 
-    return render_template('analytics/rectification.html',
-                           has_data=True,
-                           kpis=kpis,
-                           zones=zones,
-                           areas=areas, area_max=area_max,
-                           trades=trades, trade_max=trade_max,
-                           stubborn=stubborn,
-                           new_defects=new_defects_grouped, c2_new_count=c2_new_count,
-                           units=units_table,
-                           turnaround=turnaround)
+    return dict(has_data=True,
+                kpis=kpis,
+                zones=zones,
+                areas=areas, area_max=area_max,
+                trades=trades, trade_max=trade_max,
+                stubborn=stubborn,
+                new_defects=new_defects_grouped, c2_new_count=c2_new_count,
+                units=units_table,
+                turnaround=turnaround)
+
+
+@analytics_bp.route('/rectification')
+@require_manager
+def rectification():
+    """Rectification Command Centre."""
+    return render_template('analytics/rectification.html', **_build_rectification_data())
+
+
+@analytics_bp.route('/rectification/pdf')
+@require_manager
+def rectification_pdf():
+    """Download rectification analytics as PDF."""
+    from app.services.pdf_playwright import html_to_pdf
+    import datetime
+    data = _build_rectification_data()
+    data['is_pdf'] = True
+    html_str = render_template('analytics/rectification.html', **data)
+    pdf_bytes = html_to_pdf(html_str)
+    resp = make_response(pdf_bytes)
+    resp.headers['Content-Type'] = 'application/pdf'
+    resp.headers['Content-Disposition'] = 'attachment; filename=Rectification_Analytics_{}.pdf'.format(
+        datetime.datetime.now().strftime('%Y%m%d'))
+    return resp
 
 
 @analytics_bp.route('/legacy')

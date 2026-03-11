@@ -31,7 +31,12 @@
 <div class="font-body" style="max-width: 1280px; margin: 0 auto;">
 
     <div class="mb-6">
-        <a href="{{ url_for('analytics.dashboard') }}" style="font-size: 0.8rem; color: #C8963E; text-decoration: none;">&larr; Dashboard</a>
+        <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+            <a href="{{ url_for('analytics.dashboard') }}" style="font-size: 0.8rem; color: #C8963E; text-decoration: none;">&larr; Dashboard</a>
+            {% if has_data %}
+            <a href="{{ url_for('analytics.rectification_pdf') }}" style="padding: 0.4rem 1rem; font-size: 0.85rem; font-weight: 600; border-radius: 6px; background: #C8963E; color: white; text-decoration: none; white-space: nowrap;" onclick="this.textContent='Preparing...'; this.style.opacity='0.7'; this.style.pointerEvents='none';">Download PDF</a>
+            {% endif %}
+        </div>
         <h1 class="font-display" style="font-size: 2rem; font-weight: 400; letter-spacing: -0.02em; color: #0A0A0A; margin: 0.5rem 0 0 0;">
             Rectification Analytics
         </h1>
