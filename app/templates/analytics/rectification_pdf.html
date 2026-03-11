@@ -111,7 +111,7 @@ body {
 .font-bold { font-weight: 700; }
 
 .stacked-bar { display: flex; height: 12px; border-radius: 3px; overflow: hidden; }
-.stacked-bar > div { min-width: 2px; }
+.stacked-bar > div {}
 .callout { padding: 10px 14px; margin: 12px 0; font-size: 11px; line-height: 1.5; }
 .callout-red { border-left: 3px solid #C44D3F; background: rgba(196,77,63,0.08); }
 .callout-green { border-left: 3px solid #4A7C59; background: rgba(74,124,89,0.08); }
@@ -252,10 +252,11 @@ body {
         <thead>
             <tr>
                 <th style="width:120px;">Area</th>
-                <th>Distribution</th>
-                <th class="text-right" style="color:#4A7C59;">Cleared</th>
+                <th style="width:260px;">Distribution</th>
+                <th class="text-right">Brought Fwd</th>
+                <th class="text-right" style="color:#4A7C59;">Fixed</th>
+                <th class="text-right" style="color:#C8963E;">Raised</th>
                 <th class="text-right" style="color:#C44D3F;">Open</th>
-                <th class="text-right" style="color:#C8963E;">New C2</th>
                 <th class="text-right">Clearance %</th>
             </tr>
         </thead>
@@ -263,18 +264,21 @@ body {
             {% for a in areas %}
             <tr>
                 <td class="font-bold">{{ a.area|title }}</td>
-                <td style="width:200px;">
+                <td style="width:260px;">
                     <div class="stacked-bar">
                         <div style="width:{{ (a.cleared / area_max * 100)|round }}%;background:#4A7C59;"></div>
+                        {% if a.still_open > 0 %}
                         <div style="width:{{ (a.still_open / area_max * 100)|round }}%;background:#C44D3F;"></div>
+                        {% endif %}
                         {% if a.new > 0 %}
                         <div style="width:{{ (a.new / area_max * 100)|round }}%;background:#C8963E;"></div>
                         {% endif %}
                     </div>
                 </td>
+                <td class="text-right font-bold">{{ a.c1_total }}</td>
                 <td class="text-right font-bold" style="color:#4A7C59;">{{ a.cleared }}</td>
-                <td class="text-right font-bold" style="color:#C44D3F;">{{ a.still_open }}</td>
                 <td class="text-right font-bold" style="color:#C8963E;">{{ a.new }}</td>
+                <td class="text-right font-bold" style="color:#C44D3F;">{{ a.still_open }}</td>
                 <td class="text-right">{{ a.clearance_pct }}%</td>
             </tr>
             {% endfor %}
@@ -291,11 +295,12 @@ body {
     <table class="data-table">
         <thead>
             <tr>
-                <th style="width:140px;">Trade / Category</th>
-                <th>Distribution</th>
-                <th class="text-right" style="color:#4A7C59;">Cleared</th>
+                <th style="width:140px;">Trade</th>
+                <th style="width:260px;">Distribution</th>
+                <th class="text-right">Brought Fwd</th>
+                <th class="text-right" style="color:#4A7C59;">Fixed</th>
+                <th class="text-right" style="color:#C8963E;">Raised</th>
                 <th class="text-right" style="color:#C44D3F;">Open</th>
-                <th class="text-right" style="color:#C8963E;">New C2</th>
                 <th class="text-right">Clearance %</th>
             </tr>
         </thead>
@@ -303,18 +308,21 @@ body {
             {% for t in trades %}
             <tr>
                 <td class="font-bold" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:140px;" title="{{ t.trade }}">{{ t.trade }}</td>
-                <td style="width:200px;">
+                <td style="width:260px;">
                     <div class="stacked-bar">
                         <div style="width:{{ (t.cleared / trade_max * 100)|round }}%;background:#4A7C59;"></div>
+                        {% if t.still_open > 0 %}
                         <div style="width:{{ (t.still_open / trade_max * 100)|round }}%;background:#C44D3F;"></div>
+                        {% endif %}
                         {% if t.new > 0 %}
                         <div style="width:{{ (t.new / trade_max * 100)|round }}%;background:#C8963E;"></div>
                         {% endif %}
                     </div>
                 </td>
+                <td class="text-right font-bold">{{ t.c1_total }}</td>
                 <td class="text-right font-bold" style="color:#4A7C59;">{{ t.cleared }}</td>
-                <td class="text-right font-bold" style="color:#C44D3F;">{{ t.still_open }}</td>
                 <td class="text-right font-bold" style="color:#C8963E;">{{ t.new }}</td>
+                <td class="text-right font-bold" style="color:#C44D3F;">{{ t.still_open }}</td>
                 <td class="text-right">{{ t.clearance_pct }}%</td>
             </tr>
             {% endfor %}
@@ -359,8 +367,38 @@ body {
         <span class="section-number">05</span>
         <span class="section-title">New Defects in Re-inspection</span>
     </div>
-    <p style="font-size:10px;color:#6B6B6B;margin-bottom:10px;">Defects found during C2 that did not exist in C1.{% if c2_new_count > 0 %} <strong style="color:#C44D3F;">{{ c2_new_count }} regression{{ 's' if c2_new_count != 1 }} detected.</strong>{% endif %}</p>
+    <p style="font-size:10px;color:#6B6B6B;margin-bottom:12px;">Defects found during re-inspection that did not exist in C1.{% if c2_new_count > 0 %} <strong style="color:#C44D3F;">{{ c2_new_count }} regression{{ 's' if c2_new_count != 1 }} detected.</strong>{% endif %}</p>
     {% if new_defects %}
+    {% set new_area_max = namespace(val=1) %}
+    {% for group in new_defects %}{% if group.count > new_area_max.val %}{% set new_area_max.val = group.count %}{% endif %}{% endfor %}
+    {% set new_trade_max = namespace(val=1) %}
+    {% for t in trades %}{% if t.new > new_trade_max.val %}{% set new_trade_max.val = t.new %}{% endif %}{% endfor %}
+    <div style="display:flex;gap:24px;margin-bottom:16px;">
+        <div style="flex:1;">
+            <div style="font-size:8px;font-weight:700;color:#9A9A9A;letter-spacing:0.06em;margin-bottom:8px;">BY AREA</div>
+            {% for group in new_defects %}
+            <div style="display:flex;align-items:center;margin-bottom:5px;gap:6px;">
+                <div style="width:75px;font-size:9px;color:#1A1A1A;text-align:right;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ group.area|title }}</div>
+                <div style="flex:1;height:9px;background:#F0EDE8;border-radius:2px;overflow:hidden;">
+                    <div style="width:{{ (group.count / new_area_max.val * 100)|round }}%;height:100%;background:#C8963E;border-radius:2px;"></div>
+                </div>
+                <div style="width:18px;font-size:9px;font-weight:700;color:#C8963E;text-align:right;">{{ group.count }}</div>
+            </div>
+            {% endfor %}
+        </div>
+        <div style="flex:1;">
+            <div style="font-size:8px;font-weight:700;color:#9A9A9A;letter-spacing:0.06em;margin-bottom:8px;">BY TRADE</div>
+            {% for t in trades|sort(attribute='new',reverse=True) %}{% if t.new > 0 %}
+            <div style="display:flex;align-items:center;margin-bottom:5px;gap:6px;">
+                <div style="width:75px;font-size:9px;color:#1A1A1A;text-align:right;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ t.trade }}</div>
+                <div style="flex:1;height:9px;background:#F0EDE8;border-radius:2px;overflow:hidden;">
+                    <div style="width:{{ (t.new / new_trade_max.val * 100)|round }}%;height:100%;background:#C8963E;border-radius:2px;"></div>
+                </div>
+                <div style="width:18px;font-size:9px;font-weight:700;color:#C8963E;text-align:right;">{{ t.new }}</div>
+            </div>
+            {% endif %}{% endfor %}
+        </div>
+    </div>
     {% for group in new_defects %}
     <div class="new-row">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
@@ -370,7 +408,7 @@ body {
         {% for item in group.defect_list %}
         <div style="font-size:9px;color:#6B6B6B;padding:2px 0;{% if not loop.last %}border-bottom:1px solid rgba(200,150,62,0.1);{% endif %}">
             <span style="color:#1A1A1A;">{{ item.description }}</span>
-            <span style="color:#9A9A9A;"> &middot; Unit {{ item.unit }} &middot; {{ item.category }}</span>
+            <span style="color:#9A9A9A;"> &middot; {{ item.category }}</span>
         </div>
         {% endfor %}
     </div>
@@ -391,12 +429,12 @@ body {
             <tr>
                 <th>Unit</th>
                 <th>Zone</th>
-                <th class="text-center">C1</th>
-                <th class="text-center" style="color:#4A7C59;">Cleared</th>
+                <th class="text-center">Brought Fwd</th>
+                <th class="text-center" style="color:#4A7C59;">Fixed</th>
+                <th class="text-center" style="color:#C8963E;">Raised</th>
                 <th class="text-center" style="color:#C44D3F;">Open</th>
-                <th class="text-center" style="color:#C8963E;">New C2</th>
                 <th class="text-center">Clearance %</th>
-                <th class="text-center">Effective %</th>
+                <th class="text-center">Net Score</th>
             </tr>
         </thead>
         <tbody>
@@ -406,8 +444,8 @@ body {
                 <td style="color:#6B6B6B;">{{ u.block }} {{ u.floor_label }}</td>
                 <td class="text-center font-bold">{{ u.c1_raised }}</td>
                 <td class="text-center font-bold" style="color:#4A7C59;">{{ u.cleared }}</td>
-                <td class="text-center font-bold" style="color:#C44D3F;">{{ u.still_open }}</td>
                 <td class="text-center font-bold" style="color:{% if u.new_c2 > 0 %}#C8963E{% else %}#9A9A9A{% endif %};">{{ u.new_c2 }}</td>
+                <td class="text-center font-bold" style="color:{% if u.still_open > 0 %}#C44D3F{% else %}#9A9A9A{% endif %};">{{ u.still_open }}</td>
                 <td class="text-center">{{ u.clearance_pct }}%</td>
                 <td class="text-center">
                     <span class="clearance-pill" style="background:{% if u.effective_pct >= 50 %}rgba(74,124,89,0.15);color:#4A7C59;{% elif u.effective_pct >= 20 %}rgba(200,150,62,0.15);color:#C8963E;{% else %}rgba(196,77,63,0.15);color:#C44D3F;{% endif %}">{{ u.effective_pct }}%</span>
