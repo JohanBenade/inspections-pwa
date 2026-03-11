@@ -21,11 +21,11 @@
     .zone-link:hover { background: rgba(200,150,62,0.06); }
     .clearance-pill { display: inline-block; padding: 0.15rem 0.5rem; border-radius: 999px; font-size: 0.7rem; font-weight: 700; }
     .stubborn-row { border-left: 3px solid #C44D3F; background: rgba(196,77,63,0.04); border-radius: 0 6px 6px 0; padding: 0.75rem 1rem; margin-bottom: 0.5rem; }
-    .new-row { border-left: 3px solid #C8963E; background: rgba(200,150,62,0.04); border-radius: 0 6px 6px 0; padding: 0.75rem 1rem; margin-bottom: 0.5rem; }
+    .new-row { border-left: 3px solid #D4730A; background: rgba(212,115,10,0.04); border-radius: 0 6px 6px 0; padding: 0.75rem 1rem; margin-bottom: 0.5rem; }
     .stacked-bar { display: flex; height: 14px; border-radius: 3px; overflow: hidden; }
     .stacked-bar > div { min-width: 2px; }
     .badge-count { display: inline-block; background: #C44D3F; color: white; font-size: 0.65rem; font-weight: 700; padding: 0.1rem 0.4rem; border-radius: 999px; }
-    .badge-new { display: inline-block; background: #C8963E; color: white; font-size: 0.65rem; font-weight: 700; padding: 0.1rem 0.4rem; border-radius: 999px; }
+    .badge-new { display: inline-block; background: #D4730A; color: white; font-size: 0.65rem; font-weight: 700; padding: 0.1rem 0.4rem; border-radius: 999px; }
 </style>
 
 <div class="font-body" style="max-width: 1280px; margin: 0 auto;">
@@ -77,8 +77,8 @@
                 <div class="kpi-label">Rectified</div>
                 <div class="kpi-sub">of {{ kpis.c1_reviewed }} flagged in C1</div>
             </div>
-            <div style="flex: 1; padding: 1rem 1.25rem; border-left: 3px solid {% if kpis.new_in_c2 > 0 %}#C8963E{% else %}#4A7C59{% endif %};">
-                <div class="kpi-value" style="color: {% if kpis.new_in_c2 > 0 %}#C8963E{% else %}#4A7C59{% endif %};">{{ kpis.new_in_c2 }}</div>
+            <div style="flex: 1; padding: 1rem 1.25rem; border-left: 3px solid {% if kpis.new_in_c2 > 0 %}#D4730A{% else %}#4A7C59{% endif %};">
+                <div class="kpi-value" style="color: {% if kpis.new_in_c2 > 0 %}#D4730A{% else %}#4A7C59{% endif %};">{{ kpis.new_in_c2 }}</div>
                 <div class="kpi-label">New Defects</div>
                 <div class="kpi-sub">found in re-inspection</div>
             </div>
@@ -88,7 +88,7 @@
     <div style="display: flex; flex-wrap: wrap; gap: 1.5rem; font-size: 0.7rem; color: #6B6B6B; margin-bottom: 1.5rem;">
         <span><span class="severity-dot" style="background: #4A7C59;"></span> Cleared (fixed)</span>
         <span><span class="severity-dot" style="background: #C44D3F;"></span> Still Open (unfixed)</span>
-        <span><span class="severity-dot" style="background: #C8963E;"></span> New in C2</span>
+        <span><span class="severity-dot" style="background: #D4730A;"></span> New in C2</span>
     </div>
 
     <div class="mb-2"><span class="section-num">01 &mdash; Rectification Scorecard</span></div>
@@ -111,7 +111,7 @@
             <div style="text-align: center; font-size: 0.85rem; font-weight: 600;">{{ z.c1_total }}</div>
             <div style="text-align: center; font-size: 0.85rem; font-weight: 600; color: #4A7C59;">{{ z.cleared }}</div>
             <div style="text-align: center; font-size: 0.85rem; font-weight: 600; color: #C44D3F;">{{ z.still_open }}</div>
-            <div style="text-align: center; font-size: 0.85rem; font-weight: 600; color: #C8963E;">{{ z.new_c2 }}</div>
+            <div style="text-align: center; font-size: 0.85rem; font-weight: 600; color: #D4730A;">{{ z.new_c2 }}</div>
             <div style="text-align: center; font-size: 0.85rem; font-weight: 700; color: {% if z.net > 0 %}#4A7C59{% elif z.net == 0 %}#C8963E{% else %}#C44D3F{% endif %};">{{ '+' if z.net > 0 }}{{ z.net }}</div>
 
         </a>
@@ -133,13 +133,13 @@
                     <div style="width: {{ (a.cleared / area_max * 100)|round }}%; background: #4A7C59;" title="Cleared: {{ a.cleared }}"></div>
                     <div style="width: {{ (a.still_open / area_max * 100)|round }}%; background: #C44D3F;" title="Still Open: {{ a.still_open }}"></div>
                     {% if a.new > 0 %}
-                    <div style="width: {{ (a.new / area_max * 100)|round }}%; background: #C8963E;" title="New in C2: {{ a.new }}"></div>
+                    <div style="width: {{ (a.new / area_max * 100)|round }}%; background: #D4730A;" title="New in C2: {{ a.new }}"></div>
                     {% endif %}
                 </div>
                 {% endif %}
             </div>
             <div style="font-size: 0.7rem; text-align: right; white-space: nowrap;">
-                <span style="color: #4A7C59; font-weight: 600;">{{ a.cleared }} fixed</span>{% if a.still_open > 0 %}<span style="color: #9A9A9A;"> &middot; </span><span style="color: #C44D3F; font-weight: 600;">{{ a.still_open }} open</span>{% endif %}<span style="color: #9A9A9A;"> &middot; </span><span style="color: #C8963E; font-weight: 600;">{{ a.new }} new</span>
+                <span style="color: #4A7C59; font-weight: 600;">{{ a.cleared }} fixed</span>{% if a.still_open > 0 %}<span style="color: #9A9A9A;"> &middot; </span><span style="color: #C44D3F; font-weight: 600;">{{ a.still_open }} open</span>{% endif %}<span style="color: #9A9A9A;"> &middot; </span><span style="color: #D4730A; font-weight: 600;">{{ a.new }} new</span>
             </div>
         </div>
         {% endfor %}
@@ -160,13 +160,13 @@
                     <div style="width: {{ (t.cleared / trade_max * 100)|round }}%; background: #4A7C59;" title="Cleared: {{ t.cleared }}"></div>
                     <div style="width: {{ (t.still_open / trade_max * 100)|round }}%; background: #C44D3F;" title="Still Open: {{ t.still_open }}"></div>
                     {% if t.new > 0 %}
-                    <div style="width: {{ (t.new / trade_max * 100)|round }}%; background: #C8963E;" title="New in C2: {{ t.new }}"></div>
+                    <div style="width: {{ (t.new / trade_max * 100)|round }}%; background: #D4730A;" title="New in C2: {{ t.new }}"></div>
                     {% endif %}
                 </div>
                 {% endif %}
             </div>
             <div style="font-size: 0.7rem; text-align: right; white-space: nowrap;">
-                <span style="color: #4A7C59; font-weight: 600;">{{ t.cleared }} fixed</span>{% if t.still_open > 0 %}<span style="color: #9A9A9A;"> &middot; </span><span style="color: #C44D3F; font-weight: 600;">{{ t.still_open }} open</span>{% endif %}<span style="color: #9A9A9A;"> &middot; </span><span style="color: #C8963E; font-weight: 600;">{{ t.new }} new</span>
+                <span style="color: #4A7C59; font-weight: 600;">{{ t.cleared }} fixed</span>{% if t.still_open > 0 %}<span style="color: #9A9A9A;"> &middot; </span><span style="color: #C44D3F; font-weight: 600;">{{ t.still_open }} open</span>{% endif %}<span style="color: #9A9A9A;"> &middot; </span><span style="color: #D4730A; font-weight: 600;">{{ t.new }} new</span>
             </div>
         </div>
         {% endfor %}
@@ -211,7 +211,7 @@
     </div>
     {% endif %}
 
-    <div style="font-size: 0.75rem; font-weight: 700; color: #C8963E; text-transform: uppercase; letter-spacing: 0.08em; margin-top: 1.5rem; margin-bottom: 0.75rem;">New defects found in C2{% if c2_new_count > 0 %} &mdash; {{ c2_new_count }}{% endif %}</div>
+    <div style="font-size: 0.75rem; font-weight: 700; color: #D4730A; text-transform: uppercase; letter-spacing: 0.08em; margin-top: 1.5rem; margin-bottom: 0.75rem;">New defects found in C2{% if c2_new_count > 0 %} &mdash; {{ c2_new_count }}{% endif %}</div>
 
     {% if new_defects %}
     <div class="mb-6">
@@ -263,7 +263,7 @@
                     <td style="text-align: center; padding: 0.6rem 0.5rem; font-weight: 600;">{{ u.c1_raised }}</td>
                     <td style="text-align: center; padding: 0.6rem 0.5rem; font-weight: 600; color: #4A7C59;">{{ u.cleared }}</td>
                     <td style="text-align: center; padding: 0.6rem 0.5rem; font-weight: 600; color: #C44D3F;">{{ u.still_open }}</td>
-                    <td style="text-align: center; padding: 0.6rem 0.5rem; font-weight: 600; color: {% if u.new_c2 > 0 %}#C8963E{% else %}#9A9A9A{% endif %};">{{ u.new_c2 }}</td>
+                    <td style="text-align: center; padding: 0.6rem 0.5rem; font-weight: 600; color: {% if u.new_c2 > 0 %}#D4730A{% else %}#9A9A9A{% endif %};">{{ u.new_c2 }}</td>
                     <td style="text-align: center; padding: 0.6rem 0.5rem;">
                         <span class="clearance-pill"
                               style="background: {% if u.effective_pct >= 50 %}rgba(74,124,89,0.15); color: #4A7C59;{% elif u.effective_pct >= 20 %}rgba(200,150,62,0.15); color: #C8963E;{% else %}rgba(196,77,63,0.15); color: #C44D3F;{% endif %}">
