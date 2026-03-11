@@ -1,0 +1,460 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Rectification Analytics</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;400;500;600&family=DM+Sans:wght@400;500;600;700&display=swap');
+
+@page {
+    size: A4;
+    margin: 18mm 16mm 20mm 16mm;
+    @bottom-center {
+        content: "Page " counter(page) " of " counter(pages);
+        font-family: "DM Sans", Helvetica, Arial, sans-serif;
+        font-size: 8pt;
+        color: #9A9A9A;
+    }
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+    font-family: "DM Sans", "Helvetica Neue", Helvetica, Arial, sans-serif;
+    color: #1A1A1A;
+    background: #FFFFFF;
+    font-size: 11px;
+    line-height: 1.5;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+}
+
+.page { max-width: 800px; margin: 0 auto; padding: 0; }
+
+.toolbar {
+    position: fixed; top: 16px; right: 16px;
+    display: flex; gap: 8px; z-index: 100;
+}
+.toolbar a, .toolbar button {
+    padding: 8px 16px; font-family: "DM Sans", Helvetica, Arial, sans-serif;
+    font-size: 12px; font-weight: 600; border: none; border-radius: 4px;
+    cursor: pointer; text-decoration: none; display: inline-block;
+}
+.btn-pdf { background: #C8963E; color: white; }
+.btn-pdf:hover { background: #D4A94F; }
+.btn-print { background: #F5F3EE; color: #1A1A1A; border: 1px solid #E8E6E1; }
+.btn-print:hover { background: #E8E6E1; }
+.btn-back { background: #F5F3EE; color: #1A1A1A; border: 1px solid #E8E6E1; }
+@media print { .toolbar { display: none !important; } }
+
+.report-header {
+    padding-bottom: 16px; border-bottom: 3px solid #0A0A0A; margin-bottom: 20px;
+}
+.header-top { margin-bottom: 20px; overflow: hidden; }
+.logo-area { float: left; }
+.logo-area img { height: 36px; width: auto; }
+.logo-fallback {
+    font-family: "DM Sans", Helvetica, Arial, sans-serif;
+    font-size: 22px; font-weight: 300; letter-spacing: 6px; text-transform: uppercase; color: #0A0A0A;
+}
+.logo-sub {
+    font-family: "DM Sans", Helvetica, Arial, sans-serif;
+    font-size: 12px; font-weight: 300; letter-spacing: 3px; color: #6B6B6B; margin-left: 8px;
+}
+.header-meta {
+    float: right; text-align: right; font-size: 10px;
+    letter-spacing: 1.5px; text-transform: uppercase; color: #6B6B6B;
+}
+.header-meta .date {
+    font-size: 11px; letter-spacing: 0; text-transform: none; color: #1A1A1A; margin-top: 2px;
+}
+.report-title {
+    font-family: "DM Sans", Helvetica, Arial, sans-serif;
+    font-size: 32px; font-weight: 300; color: #0A0A0A; letter-spacing: 1px; margin-bottom: 6px;
+}
+.report-subtitle {
+    font-size: 13px; color: #6B6B6B; letter-spacing: 2px; text-transform: uppercase;
+}
+
+.section { margin-bottom: 28px; page-break-inside: avoid; }
+.section-header { margin-bottom: 14px; border-bottom: 1px solid #C8963E; padding-bottom: 8px; }
+.section-number {
+    font-family: "DM Sans", sans-serif; font-size: 11px; font-weight: 600;
+    letter-spacing: 3px; color: #C8963E; text-transform: uppercase; margin-right: 10px;
+}
+.section-title {
+    font-family: "DM Sans", Helvetica, Arial, sans-serif;
+    font-size: 22px; font-weight: 300; letter-spacing: 0.5px; color: #0A0A0A;
+}
+
+.kpi-table { width: 100%; border-collapse: separate; border-spacing: 8px 0; margin-bottom: 12px; }
+.kpi-cell { background: #F5F3EE; padding: 12px 14px; vertical-align: top; }
+.kpi-value {
+    font-family: "DM Sans", Helvetica, Arial, sans-serif;
+    font-size: 28px; font-weight: 300; color: #0A0A0A; line-height: 1;
+}
+.kpi-sub { font-size: 9px; color: #9A9A9A; margin-top: 3px; }
+.kpi-label {
+    font-size: 9px; color: #6B6B6B; text-transform: uppercase; letter-spacing: 1px; margin-top: 4px;
+}
+
+.data-table { width: 100%; border-collapse: collapse; font-size: 10px; }
+.data-table th {
+    padding: 7px 8px; text-align: left; font-weight: 600; font-size: 10px;
+    letter-spacing: 1.2px; text-transform: uppercase; color: #6B6B6B;
+    border-bottom: 2px solid #0A0A0A;
+}
+.data-table td { padding: 6px 8px; border-bottom: 1px solid #F0F0F0; vertical-align: middle; }
+.data-table tbody tr:nth-child(even) td { background: #F5F3EE; }
+.text-right { text-align: right; }
+.text-center { text-align: center; }
+.font-bold { font-weight: 700; }
+
+.stacked-bar { display: flex; height: 12px; border-radius: 3px; overflow: hidden; }
+.stacked-bar > div { min-width: 2px; }
+.callout { padding: 10px 14px; margin: 12px 0; font-size: 11px; line-height: 1.5; }
+.callout-red { border-left: 3px solid #C44D3F; background: rgba(196,77,63,0.08); }
+.callout-green { border-left: 3px solid #4A7C59; background: rgba(74,124,89,0.08); }
+.stubborn-row {
+    border-left: 3px solid #C44D3F; background: rgba(196,77,63,0.04);
+    border-radius: 0 4px 4px 0; padding: 8px 10px; margin-bottom: 4px;
+}
+.new-row {
+    border-left: 3px solid #C8963E; background: rgba(200,150,62,0.04);
+    border-radius: 0 4px 4px 0; padding: 8px 10px; margin-bottom: 4px;
+}
+.clearance-pill {
+    display: inline-block; padding: 2px 6px; border-radius: 999px; font-size: 9px; font-weight: 700;
+}
+</style>
+</head>
+<body>
+
+{% if not is_pdf %}
+<div class="toolbar">
+    <a href="{{ url_for('analytics.rectification') }}" class="btn-back">&larr; Back</a>
+    <button onclick="window.print()" class="btn-print">Print</button>
+    <a href="{{ url_for('analytics.rectification_pdf') }}" class="btn-pdf"
+       onclick="this.textContent='Preparing...'; this.style.opacity='0.7'; this.style.pointerEvents='none';">Download PDF</a>
+</div>
+{% endif %}
+
+<div class="page">
+
+<div class="report-header">
+    <div class="header-top">
+        <div class="logo-area">
+            {% if logo_path %}
+            <img src="{{ logo_path }}" alt="Monograph Architects">
+            {% else %}
+            <span class="logo-fallback">MONOGRAPH</span><span class="logo-sub">architects</span>
+            {% endif %}
+        </div>
+        <div class="header-meta">
+            <div>Power Park Student Housing &mdash; Phase 3</div>
+            <div class="date">{{ report_date }}</div>
+        </div>
+    </div>
+    <div class="report-title">Rectification Analytics</div>
+    <div class="report-subtitle">Re-inspection Performance &middot; Raubex Contractors</div>
+</div>
+
+{% if not has_data %}
+<div style="padding: 3rem; text-align: center; background: #F5F3EE; border-radius: 6px;">
+    <p style="font-size: 1rem; color: #6B6B6B;">No re-inspection data available yet.</p>
+    <p style="font-size: 0.85rem; color: #9A9A9A; margin-top: 0.5rem;">Rectification analytics appear once units have been through a second inspection cycle.</p>
+</div>
+{% else %}
+
+{% set re_pct = (kpis.units_reinspected / kpis.total_inspected * 100)|round|int if kpis.total_inspected > 0 else 0 %}
+
+<!-- KPI STRIP -->
+<div style="margin-bottom: 24px;">
+    <table class="kpi-table">
+        <tr>
+            <td class="kpi-cell" style="border-left: 3px solid {% if kpis.net_improvement > 0 %}#4A7C59{% elif kpis.net_improvement < 0 %}#C44D3F{% else %}#6B6B6B{% endif %};">
+                <div class="kpi-value" style="color: {% if kpis.net_improvement > 0 %}#4A7C59{% elif kpis.net_improvement < 0 %}#C44D3F{% else %}#6B6B6B{% endif %};">{{ '+' if kpis.net_improvement > 0 }}{{ kpis.net_improvement }}</div>
+                <div class="kpi-label">Net Improvement</div>
+                <div class="kpi-sub">{{ kpis.c1_cleared }} cleared &minus; {{ kpis.new_in_c2 }} new</div>
+            </td>
+            <td class="kpi-cell" style="border-left: 3px solid #4A7C59;">
+                <div class="kpi-value" style="color: #4A7C59;">{{ kpis.clearance_rate }}%</div>
+                <div class="kpi-label">Clearance Rate</div>
+                <div class="kpi-sub">{{ kpis.c1_cleared }} of {{ kpis.c1_reviewed }} C1 defects</div>
+            </td>
+            <td class="kpi-cell" style="border-left: 3px solid #C44D3F;">
+                <div class="kpi-value" style="color: #C44D3F;">{{ kpis.c1_still_open }}</div>
+                <div class="kpi-label">Still Open</div>
+                <div class="kpi-sub">C1 defects not yet rectified</div>
+            </td>
+            <td class="kpi-cell" style="border-left: 3px solid {% if kpis.new_in_c2 > 0 %}#C8963E{% else %}#4A7C59{% endif %};">
+                <div class="kpi-value" style="color: {% if kpis.new_in_c2 > 0 %}#C8963E{% else %}#4A7C59{% endif %};">{{ kpis.new_in_c2 }}</div>
+                <div class="kpi-label">New in C2</div>
+                <div class="kpi-sub">regressions found</div>
+            </td>
+            <td class="kpi-cell" style="border-left: 3px solid #3D6B8E;">
+                <div class="kpi-value" style="color: #3D6B8E;">{{ kpis.units_reinspected }}</div>
+                <div class="kpi-label">Re-inspected</div>
+                <div class="kpi-sub">of {{ kpis.total_inspected }} total ({{ re_pct }}%)</div>
+            </td>
+        </tr>
+    </table>
+    <div style="margin-top: 8px; display: flex; gap: 16px; font-size: 9px; color: #6B6B6B;">
+        <span><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#4A7C59;margin-right:4px;vertical-align:middle;"></span>Cleared</span>
+        <span><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#C44D3F;margin-right:4px;vertical-align:middle;"></span>Still Open</span>
+        <span><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#C8963E;margin-right:4px;vertical-align:middle;"></span>New in C2</span>
+    </div>
+</div>
+
+<!-- SECTION 01: SCORECARD BY ZONE -->
+<div class="section">
+    <div class="section-header">
+        <span class="section-number">01</span>
+        <span class="section-title">Rectification Scorecard by Zone</span>
+    </div>
+    <table class="data-table">
+        <thead>
+            <tr>
+                <th>Zone</th>
+                <th class="text-center">C1 Raised</th>
+                <th class="text-center" style="color:#4A7C59;">Cleared</th>
+                <th class="text-center" style="color:#C44D3F;">Still Open</th>
+                <th class="text-center" style="color:#C8963E;">New C2</th>
+                <th class="text-center">Clearance %</th>
+                <th class="text-center">Net Improvement</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for z in zones %}
+            <tr>
+                <td class="font-bold">{{ z.block }} {{ z.floor_label }}</td>
+                <td class="text-center">{{ z.c1_total }}</td>
+                <td class="text-center font-bold" style="color:#4A7C59;">{{ z.cleared }}</td>
+                <td class="text-center font-bold" style="color:#C44D3F;">{{ z.still_open }}</td>
+                <td class="text-center font-bold" style="color:#C8963E;">{{ z.new_c2 }}</td>
+                <td class="text-center">{{ z.clearance_pct }}%</td>
+                <td class="text-center font-bold" style="color:{% if z.net > 0 %}#4A7C59{% elif z.net < 0 %}#C44D3F{% else %}#6B6B6B{% endif %};">{{ '+' if z.net > 0 }}{{ z.net }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<!-- SECTION 02: BY AREA -->
+<div class="section">
+    <div class="section-header">
+        <span class="section-number">02</span>
+        <span class="section-title">Rectification by Area</span>
+    </div>
+    <table class="data-table">
+        <thead>
+            <tr>
+                <th style="width:120px;">Area</th>
+                <th>Distribution</th>
+                <th class="text-right" style="color:#4A7C59;">Cleared</th>
+                <th class="text-right" style="color:#C44D3F;">Open</th>
+                <th class="text-right" style="color:#C8963E;">New C2</th>
+                <th class="text-right">Clearance %</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for a in areas %}
+            <tr>
+                <td class="font-bold">{{ a.area|title }}</td>
+                <td style="width:200px;">
+                    <div class="stacked-bar">
+                        <div style="width:{{ (a.cleared / area_max * 100)|round }}%;background:#4A7C59;"></div>
+                        <div style="width:{{ (a.still_open / area_max * 100)|round }}%;background:#C44D3F;"></div>
+                        {% if a.new > 0 %}
+                        <div style="width:{{ (a.new / area_max * 100)|round }}%;background:#C8963E;"></div>
+                        {% endif %}
+                    </div>
+                </td>
+                <td class="text-right font-bold" style="color:#4A7C59;">{{ a.cleared }}</td>
+                <td class="text-right font-bold" style="color:#C44D3F;">{{ a.still_open }}</td>
+                <td class="text-right font-bold" style="color:#C8963E;">{{ a.new }}</td>
+                <td class="text-right">{{ a.clearance_pct }}%</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<!-- SECTION 03: BY TRADE -->
+<div class="section">
+    <div class="section-header">
+        <span class="section-number">03</span>
+        <span class="section-title">Rectification by Trade</span>
+    </div>
+    <table class="data-table">
+        <thead>
+            <tr>
+                <th style="width:140px;">Trade / Category</th>
+                <th>Distribution</th>
+                <th class="text-right" style="color:#4A7C59;">Cleared</th>
+                <th class="text-right" style="color:#C44D3F;">Open</th>
+                <th class="text-right" style="color:#C8963E;">New C2</th>
+                <th class="text-right">Clearance %</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for t in trades %}
+            <tr>
+                <td class="font-bold" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:140px;" title="{{ t.trade }}">{{ t.trade }}</td>
+                <td style="width:200px;">
+                    <div class="stacked-bar">
+                        <div style="width:{{ (t.cleared / trade_max * 100)|round }}%;background:#4A7C59;"></div>
+                        <div style="width:{{ (t.still_open / trade_max * 100)|round }}%;background:#C44D3F;"></div>
+                        {% if t.new > 0 %}
+                        <div style="width:{{ (t.new / trade_max * 100)|round }}%;background:#C8963E;"></div>
+                        {% endif %}
+                    </div>
+                </td>
+                <td class="text-right font-bold" style="color:#4A7C59;">{{ t.cleared }}</td>
+                <td class="text-right font-bold" style="color:#C44D3F;">{{ t.still_open }}</td>
+                <td class="text-right font-bold" style="color:#C8963E;">{{ t.new }}</td>
+                <td class="text-right">{{ t.clearance_pct }}%</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<!-- SECTION 04: STUBBORN DEFECTS -->
+<div class="section">
+    <div class="section-header">
+        <span class="section-number">04</span>
+        <span class="section-title">Stubborn Defects</span>
+    </div>
+    <p style="font-size:10px;color:#6B6B6B;margin-bottom:10px;">C1 defects that survived re-inspection. Flagged twice, still unfixed.</p>
+    {% if stubborn %}
+    {% for s in stubborn[:20] %}
+    <div class="stubborn-row">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;">
+            <div style="flex:1;">
+                <div style="font-size:10px;font-weight:600;color:#1A1A1A;">{{ s.description }}</div>
+                <div style="font-size:9px;color:#6B6B6B;margin-top:2px;">{{ s.area|title }} &middot; {{ s.category }}</div>
+            </div>
+            <div style="text-align:right;white-space:nowrap;">
+                <span style="background:#C44D3F;color:white;font-size:8px;font-weight:700;padding:1px 5px;border-radius:999px;">{{ s.units|length }} unit{{ 's' if s.units|length != 1 }}</span>
+                <div style="font-size:8px;color:#9A9A9A;margin-top:2px;">{{ s.units|join(', ') }}</div>
+                <div style="font-size:8px;color:#C44D3F;">{{ s.max_age }} days old</div>
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+    {% if stubborn|length > 20 %}
+    <p style="font-size:9px;color:#9A9A9A;text-align:center;margin-top:6px;">Showing 20 of {{ stubborn|length }} stubborn defects</p>
+    {% endif %}
+    {% else %}
+    <div class="callout callout-green">All C1 defects cleared on re-inspection. No stubborn defects found.</div>
+    {% endif %}
+</div>
+
+<!-- SECTION 05: NEW DEFECTS IN C2 -->
+<div class="section">
+    <div class="section-header">
+        <span class="section-number">05</span>
+        <span class="section-title">New Defects in Re-inspection</span>
+    </div>
+    <p style="font-size:10px;color:#6B6B6B;margin-bottom:10px;">Defects found during C2 that did not exist in C1.{% if c2_new_count > 0 %} <strong style="color:#C44D3F;">{{ c2_new_count }} regression{{ 's' if c2_new_count != 1 }} detected.</strong>{% endif %}</p>
+    {% if new_defects %}
+    {% for group in new_defects %}
+    <div class="new-row">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
+            <span style="font-size:10px;font-weight:600;color:#1A1A1A;">{{ group.area|title }}</span>
+            <span style="background:#C8963E;color:white;font-size:8px;font-weight:700;padding:1px 5px;border-radius:999px;">{{ group.count }} new</span>
+        </div>
+        {% for item in group.defect_list %}
+        <div style="font-size:9px;color:#6B6B6B;padding:2px 0;{% if not loop.last %}border-bottom:1px solid rgba(200,150,62,0.1);{% endif %}">
+            <span style="color:#1A1A1A;">{{ item.description }}</span>
+            <span style="color:#9A9A9A;"> &middot; Unit {{ item.unit }} &middot; {{ item.category }}</span>
+        </div>
+        {% endfor %}
+    </div>
+    {% endfor %}
+    {% else %}
+    <div class="callout callout-green">No quality regression detected. No new defects introduced during re-inspection.</div>
+    {% endif %}
+</div>
+
+<!-- SECTION 06: UNIT BREAKDOWN -->
+<div class="section">
+    <div class="section-header">
+        <span class="section-number">06</span>
+        <span class="section-title">Unit Breakdown</span>
+    </div>
+    <table class="data-table">
+        <thead>
+            <tr>
+                <th>Unit</th>
+                <th>Zone</th>
+                <th class="text-center">C1</th>
+                <th class="text-center" style="color:#4A7C59;">Cleared</th>
+                <th class="text-center" style="color:#C44D3F;">Open</th>
+                <th class="text-center" style="color:#C8963E;">New C2</th>
+                <th class="text-center">Clearance %</th>
+                <th class="text-center">Effective %</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for u in units %}
+            <tr>
+                <td class="font-bold">{{ u.unit_number }}</td>
+                <td style="color:#6B6B6B;">{{ u.block }} {{ u.floor_label }}</td>
+                <td class="text-center font-bold">{{ u.c1_raised }}</td>
+                <td class="text-center font-bold" style="color:#4A7C59;">{{ u.cleared }}</td>
+                <td class="text-center font-bold" style="color:#C44D3F;">{{ u.still_open }}</td>
+                <td class="text-center font-bold" style="color:{% if u.new_c2 > 0 %}#C8963E{% else %}#9A9A9A{% endif %};">{{ u.new_c2 }}</td>
+                <td class="text-center">{{ u.clearance_pct }}%</td>
+                <td class="text-center">
+                    <span class="clearance-pill" style="background:{% if u.effective_pct >= 50 %}rgba(74,124,89,0.15);color:#4A7C59;{% elif u.effective_pct >= 20 %}rgba(200,150,62,0.15);color:#C8963E;{% else %}rgba(196,77,63,0.15);color:#C44D3F;{% endif %}">{{ u.effective_pct }}%</span>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<!-- SECTION 07: TURNAROUND TIME -->
+{% if turnaround and turnaround.avg_days %}
+<div class="section">
+    <div class="section-header">
+        <span class="section-number">07</span>
+        <span class="section-title">Turnaround Time</span>
+    </div>
+    <p style="font-size:10px;color:#6B6B6B;margin-bottom:12px;">How long Raubex takes to rectify defects. Measured from defect raised to cleared.</p>
+    <table class="kpi-table">
+        <tr>
+            <td class="kpi-cell" style="border-left:3px solid #1A1A1A;">
+                <div class="kpi-value">{{ turnaround.avg_days }}</div>
+                <div class="kpi-label">Avg Days</div>
+            </td>
+            <td class="kpi-cell" style="border-left:3px solid #4A7C59;">
+                <div class="kpi-value" style="color:#4A7C59;">{{ turnaround.min_days }}</div>
+                <div class="kpi-label">Fastest</div>
+            </td>
+            <td class="kpi-cell" style="border-left:3px solid #C44D3F;">
+                <div class="kpi-value" style="color:#C44D3F;">{{ turnaround.max_days }}</div>
+                <div class="kpi-label">Slowest</div>
+            </td>
+            <td class="kpi-cell" style="border-left:3px solid #6B6B6B;">
+                <div class="kpi-value" style="color:#6B6B6B;">{{ turnaround.sample_size }}</div>
+                <div class="kpi-label">Defects Measured</div>
+            </td>
+        </tr>
+    </table>
+</div>
+{% endif %}
+
+{% endif %}
+
+<!-- FOOTER -->
+<div style="margin-top:32px;padding-top:12px;border-top:1px solid #e5e5e5;display:flex;justify-content:space-between;font-size:9px;color:#9A9A9A;">
+    <span>MONOGRAPH architects &middot; Power Park Student Housing Phase 3</span>
+    <span>Rectification Analytics &middot; {{ report_date }}</span>
+</div>
+
+</div>
+</body>
+</html>

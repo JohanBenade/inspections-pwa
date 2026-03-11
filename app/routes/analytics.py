@@ -1974,15 +1974,34 @@ def rectification():
     return render_template('analytics/rectification.html', **_build_rectification_data())
 
 
+@analytics_bp.route('/rectification/report')
+@require_manager
+def rectification_report():
+    """View rectification analytics as printable report."""
+    import datetime
+    data = _build_rectification_data()
+    data['is_pdf'] = False
+    data['report_date'] = datetime.datetime.now().strftime('%d %B %Y')
+    data['logo_path'] = ''
+    return render_template('analytics/rectification_pdf.html', **data)
+
+
 @analytics_bp.route('/rectification/pdf')
 @require_manager
 def rectification_pdf():
     """Download rectification analytics as PDF."""
     from app.services.pdf_playwright import html_to_pdf
-    import datetime
+    import datetime, base64, os as _os
     data = _build_rectification_data()
     data['is_pdf'] = True
-    html_str = render_template('analytics/rectification.html', **data)
+    data['report_date'] = datetime.datetime.now().strftime('%d %B %Y')
+    logo_path = _os.path.join(current_app.static_folder, 'monograph_logo.jpg')
+    if _os.path.exists(logo_path):
+        with open(logo_path, 'rb') as f:
+            data['logo_path'] = 'data:image/jpeg;base64,{}'.format(base64.b64encode(f.read()).decode())
+    else:
+        data['logo_path'] = ''
+    html_str = render_template('analytics/rectification_pdf.html', **data)
     pdf_bytes = html_to_pdf(html_str)
     resp = make_response(pdf_bytes)
     resp.headers['Content-Type'] = 'application/pdf'
