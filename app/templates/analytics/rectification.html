@@ -88,7 +88,7 @@
     <div style="display: flex; flex-wrap: wrap; gap: 1.5rem; font-size: 0.7rem; color: #6B6B6B; margin-bottom: 1.5rem;">
         <span><span class="severity-dot" style="background: #4A7C59;"></span> Cleared (fixed)</span>
         <span><span class="severity-dot" style="background: #C44D3F;"></span> Still Open (unfixed)</span>
-        <span><span class="severity-dot" style="background: #C8963E;"></span> New in C2 (regression)</span>
+        <span><span class="severity-dot" style="background: #C8963E;"></span> New in C2</span>
     </div>
 
     <div class="mb-2"><span class="section-num">01 &mdash; Rectification Scorecard</span></div>
@@ -172,10 +172,11 @@
         {% endfor %}
     </div>
 
-    <div class="mb-2"><span class="section-num">04 &mdash; Stubborn Defects</span></div>
+    <div class="mb-2"><span class="section-num">04 &mdash; Problem Defects</span></div>
     <div class="divider"></div>
-    <p style="font-size: 0.8rem; color: #6B6B6B; margin-bottom: 1rem;">C1 defects that survived re-inspection. Flagged twice, still unfixed.</p>
+    <p style="font-size: 0.8rem; color: #6B6B6B; margin-bottom: 1rem;">C1 defects that were not cleared on re-inspection, and new defects introduced in C2.</p>
 
+    <div style="font-size: 0.75rem; font-weight: 700; color: #C44D3F; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 0.75rem;">C1 defects not cleared</div>
     {% if stubborn %}
     <div class="mb-6">
         {% for s in stubborn[:15] %}
@@ -192,9 +193,7 @@
                     <div style="font-size: 0.65rem; color: #9A9A9A; margin-top: 0.2rem;">
                         Units: {{ s.units|join(', ') }}
                     </div>
-                    <div style="font-size: 0.65rem; color: #C44D3F; margin-top: 0.1rem;">
-                        {{ s.max_age }} days old
-                    </div>
+
                 </div>
             </div>
         </div>
@@ -212,12 +211,7 @@
     </div>
     {% endif %}
 
-    <div class="mb-2"><span class="section-num">05 &mdash; New Defects in Re-inspection</span></div>
-    <div class="divider"></div>
-    <p style="font-size: 0.8rem; color: #6B6B6B; margin-bottom: 1rem;">
-        Defects found during C2 that did not exist in C1. Quality regression &mdash; fixing one thing, breaking another.
-        {% if c2_new_count > 0 %}<strong style="color: #C44D3F;">{{ c2_new_count }} new defect{{ 's' if c2_new_count != 1 }} found.</strong>{% endif %}
-    </p>
+    <div style="font-size: 0.75rem; font-weight: 700; color: #C8963E; text-transform: uppercase; letter-spacing: 0.08em; margin-top: 1.5rem; margin-bottom: 0.75rem;">New defects found in C2{% if c2_new_count > 0 %} &mdash; {{ c2_new_count }}{% endif %}</div>
 
     {% if new_defects %}
     <div class="mb-6">
@@ -243,7 +237,7 @@
     </div>
     {% endif %}
 
-    <div class="mb-2"><span class="section-num">06 &mdash; Unit Breakdown</span></div>
+    <div class="mb-2"><span class="section-num">05 &mdash; Unit Breakdown</span></div>
     <div class="divider"></div>
     <p style="font-size: 0.8rem; color: #6B6B6B; margin-bottom: 1rem;">Per-unit rectification performance. Click a unit to view its full defect list.</p>
 
@@ -257,8 +251,7 @@
                     <th style="text-align: center; padding: 0.5rem; font-size: 0.65rem; color: #4A7C59; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em;">Cleared</th>
                     <th style="text-align: center; padding: 0.5rem; font-size: 0.65rem; color: #C44D3F; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em;">Open</th>
                     <th style="text-align: center; padding: 0.5rem; font-size: 0.65rem; color: #C8963E; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em;">New C2</th>
-                    <th style="text-align: center; padding: 0.5rem; font-size: 0.65rem; color: #9A9A9A; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em;">Progress</th>
-                    <th style="text-align: center; padding: 0.5rem; font-size: 0.65rem; color: #9A9A9A; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em;">Effective</th>
+                    <th style="text-align: center; padding: 0.5rem; font-size: 0.65rem; color: #9A9A9A; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em;">Clearance</th>
                 </tr>
             </thead>
             <tbody>
@@ -271,14 +264,6 @@
                     <td style="text-align: center; padding: 0.6rem 0.5rem; font-weight: 600; color: #4A7C59;">{{ u.cleared }}</td>
                     <td style="text-align: center; padding: 0.6rem 0.5rem; font-weight: 600; color: #C44D3F;">{{ u.still_open }}</td>
                     <td style="text-align: center; padding: 0.6rem 0.5rem; font-weight: 600; color: {% if u.new_c2 > 0 %}#C8963E{% else %}#9A9A9A{% endif %};">{{ u.new_c2 }}</td>
-                    <td style="padding: 0.6rem 0.5rem; width: 120px;">
-                        {% if u.c1_raised > 0 %}
-                        {% set bar_pct = [u.effective_pct, 0]|max %}
-                        <div style="height: 8px; background: #e5e5e5; border-radius: 4px; overflow: hidden;">
-                            <div style="height: 100%; width: {{ bar_pct }}%; background: {% if u.effective_pct >= 50 %}#4A7C59{% elif u.effective_pct >= 20 %}#C8963E{% else %}#C44D3F{% endif %}; border-radius: 4px;"></div>
-                        </div>
-                        {% endif %}
-                    </td>
                     <td style="text-align: center; padding: 0.6rem 0.5rem;">
                         <span class="clearance-pill"
                               style="background: {% if u.effective_pct >= 50 %}rgba(74,124,89,0.15); color: #4A7C59;{% elif u.effective_pct >= 20 %}rgba(200,150,62,0.15); color: #C8963E;{% else %}rgba(196,77,63,0.15); color: #C44D3F;{% endif %}">
@@ -292,7 +277,7 @@
     </div>
 
     {% if turnaround and turnaround.avg_days %}
-    <div class="mb-2"><span class="section-num">07 &mdash; Turnaround Time</span></div>
+    <div class="mb-2"><span class="section-num">06 &mdash; Turnaround Time</span></div>
     <div class="divider"></div>
     <p style="font-size: 0.8rem; color: #6B6B6B; margin-bottom: 1rem;">How long does Raubex take to fix defects? Measured from defect raised to cleared.</p>
 
