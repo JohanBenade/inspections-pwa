@@ -1990,9 +1990,21 @@ def _build_rectification_data():
         u['effective_pct'] = round(u['net'] / u['c1_raised'] * 100, 1) if u['c1_raised'] > 0 else 0
         u['floor_label'] = FLOOR_LABELS.get(u['floor'], 'Floor {}'.format(u['floor']))
 
+    # Build grid: blocks x floors
+    grid_blocks = sorted(set(z['block'] for z in zones))
+    grid_floors = sorted(set(z['floor'] for z in zones))
+    zone_lookup = {(z['block'], z['floor']): z for z in zones}
+    zone_grid = {
+        'blocks': grid_blocks,
+        'floors': grid_floors,
+        'floor_labels': {f: FLOOR_LABELS.get(f, 'Floor {}'.format(f)) for f in grid_floors},
+        'lookup': zone_lookup,
+    }
+
     return dict(has_data=True,
                 kpis=kpis,
                 zones=zones,
+                zone_grid=zone_grid,
                 areas=areas, area_max=area_max,
                 trades=trades, trade_max=trade_max,
                 stubborn=stubborn,
