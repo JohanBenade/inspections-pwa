@@ -199,7 +199,7 @@
 <div class="toolbar">
     <a href="{{ url_for('analytics.inspector_audit', from_date=from_date, to_date=to_date) }}">Back</a>
     <button onclick="window.print()">Print</button>
-    <a href="{{ url_for('analytics.inspector_audit_pdf', from_date=from_date, to_date=to_date) }}" class="btn-pdf">Download PDF</a>
+    <a href="{{ url_for('analytics.inspector_audit_pdf', from_date=from_date, to_date=to_date) }}" class="btn-pdf" onclick="this.textContent='Preparing...'; this.style.opacity='0.7'; this.style.pointerEvents='none';">Download PDF</a>
 </div>
 
 <div class="content-area">

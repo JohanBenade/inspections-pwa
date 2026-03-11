@@ -8,7 +8,7 @@
         <p style="font-size: 0.82rem; color: #6B6B6B; margin: 0;">Payment verification &middot; inspection dates and unit counts per inspector</p>
         <div class="no-print" style="display: flex; gap: 0.5rem;">
             <button onclick="window.print()" style="padding: 0.4rem 1rem; background: #F5F3EE; color: #1A1A1A; border: 1px solid #E8E6E1; border-radius: 4px; font-size: 0.82rem; font-weight: 600; cursor: pointer;">Print</button>
-            <a href="{{ url_for('analytics.inspector_audit_pdf', from_date=from_date, to_date=to_date) }}" style="padding: 0.4rem 1rem; background: #C8963E; color: white; border: none; border-radius: 4px; font-size: 0.82rem; font-weight: 600; cursor: pointer; text-decoration: none;">Download PDF</a>
+            <a href="{{ url_for('analytics.inspector_audit_pdf', from_date=from_date, to_date=to_date) }}" style="padding: 0.4rem 1rem; background: #C8963E; color: white; border: none; border-radius: 4px; font-size: 0.82rem; font-weight: 600; cursor: pointer; text-decoration: none;" onclick="this.textContent='Preparing...'; this.style.opacity='0.7'; this.style.pointerEvents='none';">Download PDF</a>
         </div>
     </div>
 
