@@ -142,19 +142,21 @@ body {
 <div class="page">
 
 <div class="report-header">
-    <div class="header-top">
+    <div class="header-top clearfix">
         <div class="logo-area">
-            {% if logo_path %}
-            <img src="{{ logo_path }}" alt="Monograph Architects">
+            {% if logo_b64 %}
+            <img src="data:image/jpeg;base64,{{ logo_b64 }}" alt="Monograph Architects">
             {% else %}
-            <span class="logo-fallback">MONOGRAPH</span><span class="logo-sub">architects</span>
+            <span class="logo-fallback">MONOGRAPH</span>
+            <span class="logo-sub">architects</span>
             {% endif %}
         </div>
         <div class="header-meta">
-            <div>Power Park Student Housing &mdash; Phase 3</div>
+            <div>RECTIFICATION ANALYTICS</div>
             <div class="date">{{ report_date }}</div>
         </div>
     </div>
+    <div style="font-family: 'DM Sans', Helvetica, Arial, sans-serif; font-size: 13px; font-weight: 600; letter-spacing: 2px; text-transform: uppercase; color: #6B6B6B; margin-bottom: 4px;">Power Park Student Housing &ndash; Phase 3</div>
     <div class="report-title">Rectification Analytics</div>
     <div class="report-subtitle">Re-inspection Performance &middot; Raubex Contractors</div>
 </div>

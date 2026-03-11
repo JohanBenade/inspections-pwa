@@ -1995,7 +1995,7 @@ def rectification_report():
     data = _build_rectification_data()
     data['is_pdf'] = False
     data['report_date'] = datetime.datetime.now().strftime('%d %B %Y')
-    data['logo_path'] = ''
+    data['logo_b64'] = ''
     return render_template('analytics/rectification_pdf.html', **data)
 
 
@@ -2012,9 +2012,9 @@ def rectification_pdf():
     logo_path = _os.path.join(current_app.static_folder, 'monograph_logo.jpg')
     if _os.path.exists(logo_path):
         with open(logo_path, 'rb') as f:
-            data['logo_path'] = 'data:image/jpeg;base64,{}'.format(base64.b64encode(f.read()).decode())
+            data['logo_b64'] = base64.b64encode(f.read()).decode()
     else:
-        data['logo_path'] = ''
+        data['logo_b64'] = ''
     html_str = render_template('analytics/rectification_pdf.html', **data)
     pdf_bytes = html_to_pdf(html_str)
     resp = make_response(pdf_bytes)
