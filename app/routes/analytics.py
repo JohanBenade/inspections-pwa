@@ -1757,6 +1757,14 @@ def _build_rectification_data():
     total_inspected = query_db("SELECT COUNT(DISTINCT unit_id) AS cnt FROM inspection WHERE tenant_id = ? AND status IN ('reviewed','approved','certified','pending_followup')", [tenant_id], one=True)
     total_inspected_count = dict(total_inspected)['cnt'] if total_inspected else 0
 
+    max_cycle_row = query_db(
+        "SELECT MAX(ic.cycle_number) AS max_cycle FROM inspection i "
+        "JOIN inspection_cycle ic ON i.cycle_id = ic.id "
+        "WHERE i.tenant_id = ? AND i.unit_id IN ({ph}) "
+        "AND ic.id NOT LIKE 'test-%'".format(ph=ph),
+        [tenant_id] + reinspected_unit_ids, one=True)
+    max_cycle_num = int(dict(max_cycle_row)['max_cycle']) if max_cycle_row and dict(max_cycle_row)['max_cycle'] else 2
+
     kpis = {
         'total_inspected': total_inspected_count,
         'clearance_rate': clearance_pct,
@@ -1769,6 +1777,7 @@ def _build_rectification_data():
         'net_pct': net_pct,
         'avg_rect_days': turnaround.get('avg_days') or 0,
         'avg_rect_days_available': bool(turnaround.get('avg_days')),
+        'max_cycle_num': max_cycle_num,
     }
 
     # 6. Scorecard by zone
@@ -1791,6 +1800,17 @@ def _build_rectification_data():
                              'c1_total': 0, 'cleared': 0, 'still_open': 0, 'new_c2': 0}
         zone_map[key]['new_c2'] += 1
 
+    zone_cycle_raw = query_db(
+        "SELECT ic.block, ic.floor, MAX(ic.cycle_number) AS max_cycle "
+        "FROM inspection i "
+        "JOIN inspection_cycle ic ON i.cycle_id = ic.id "
+        "WHERE i.tenant_id = ? AND i.unit_id IN ({ph}) "
+        "AND ic.id NOT LIKE 'test-%' "
+        "AND i.status IN ('reviewed','approved','certified','pending_followup') "
+        "GROUP BY ic.block, ic.floor".format(ph=ph),
+        [tenant_id] + reinspected_unit_ids)
+    zone_cycle_map = {(r['block'], r['floor']): int(r['max_cycle']) for r in zone_cycle_raw}
+
     zones = sorted(zone_map.values(), key=lambda z: (z['block'], z['floor']))
     for z in zones:
         z['clearance_pct'] = round(z['cleared'] / z['c1_total'] * 100, 1) if z['c1_total'] > 0 else 0
@@ -1798,6 +1818,7 @@ def _build_rectification_data():
         z['effective_pct'] = round(z['net'] / z['c1_total'] * 100, 1) if z['c1_total'] > 0 else 0
         z['floor_label'] = FLOOR_LABELS.get(z['floor'], 'Floor {}'.format(z['floor']))
         z['slug'] = _block_to_slug(z['block'])
+        z['cycle_num'] = zone_cycle_map.get((z['block'], z['floor']), 2)
 
     # 7. Rectification by area
     area_c1 = [dict(r) for r in query_db("""
