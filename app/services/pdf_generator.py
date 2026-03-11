@@ -8,15 +8,6 @@ from flask import render_template, current_app
 from app.services.db import query_db
 
 
-def _get_weasyprint():
-    """Lazy import weasyprint."""
-    try:
-        from weasyprint import HTML
-        return HTML
-    except ImportError:
-        return None
-
-
 def plain_text_to_html(text):
     """Convert plain text with line breaks to HTML paragraphs.
     If text already contains HTML tags, return as-is.
@@ -423,32 +414,34 @@ def get_defects_data(tenant_id, unit_id, cycle_id=None):
 
 def generate_defects_pdf(tenant_id, unit_id, cycle_id=None):
     """Generate a defects list PDF for a unit."""
-    HTML = _get_weasyprint()
-    if HTML is None:
-        return None
-    
+    import base64
+    from app.services.pdf_playwright import html_to_pdf
+
     data = get_defects_data(tenant_id, unit_id, cycle_id)
     if not data:
         return None
-    
+
     static_folder = current_app.static_folder
     logo_path = os.path.join(static_folder, 'monograph_logo.jpg')
     signature_path = os.path.join(static_folder, 'kevin_signature.png')
-    
-    logo_url = 'file://{}'.format(logo_path) if os.path.exists(logo_path) else ''
-    signature_url = 'file://{}'.format(signature_path) if os.path.exists(signature_path) else ''
-    
+
+    def to_data_uri(path, mime):
+        if os.path.exists(path):
+            with open(path, 'rb') as f:
+                return 'data:{};base64,{}'.format(mime, base64.b64encode(f.read()).decode())
+        return ''
+
+    logo_url = to_data_uri(logo_path, 'image/jpeg')
+    signature_url = to_data_uri(signature_path, 'image/png')
+
     html_content = render_template(
         'pdf/defects_list.html',
         **data,
         logo_path=logo_url,
         signature_path=signature_url
     )
-    
-    html_doc = HTML(string=html_content, base_url=static_folder)
-    pdf_bytes = html_doc.write_pdf()
 
-    return pdf_bytes
+    return html_to_pdf(html_content)
 
 
 def generate_pdf_filename(unit, cycle=None, inspection_date=None):

@@ -2883,14 +2883,14 @@ def combined_report_view(tenant_id=None):
 @analytics_bp.route('/report/combined/pdf')
 def combined_report_pdf(tenant_id=None):
     """Generate combined bi-weekly report as PDF download."""
-    from weasyprint import HTML
+    from app.services.pdf_playwright import html_to_pdf
     data = _build_combined_report_data()
     if not data:
         flash('Not enough data for combined report', 'error')
         return redirect(url_for('analytics.reports'))
     data['is_pdf'] = True
     html_str = render_template('analytics/report_combined.html', **data)
-    pdf_bytes = HTML(string=html_str, base_url=request.host_url).write_pdf()
+    pdf_bytes = html_to_pdf(html_str)
     resp = make_response(pdf_bytes)
     resp.headers['Content-Type'] = 'application/pdf'
     resp.headers['Content-Disposition'] = 'attachment; filename=Combined_Inspection_Report_{}.pdf'.format(
@@ -2922,7 +2922,7 @@ def report_view(cycle_id):
 @require_manager
 def report_pdf(cycle_id):
     """Bi-weekly report - PDF download via WeasyPrint."""
-    from weasyprint import HTML
+    from app.services.pdf_playwright import html_to_pdf
     from flask import Response, request as req
     from datetime import datetime
 
@@ -2931,7 +2931,7 @@ def report_pdf(cycle_id):
         return "Cycle not found", 404
 
     html_str = render_template('analytics/report.html', is_pdf=True, **data)
-    pdf_bytes = HTML(string=html_str, base_url=req.url_root).write_pdf()
+    pdf_bytes = html_to_pdf(html_str)
 
     cycle = data['cycle']
     block = cycle.get('block') or 'Block'
@@ -4937,9 +4937,9 @@ def inspector_audit_pdf():
     data = _build_audit_data_dict()
     from datetime import datetime as dt
     data['now'] = dt.now().strftime('%Y-%m-%d %H:%M')
-    from weasyprint import HTML
+    from app.services.pdf_playwright import html_to_pdf
     html_str = render_template('analytics/inspector_audit_pdf.html', **data)
-    pdf_bytes = HTML(string=html_str, base_url=request.host_url).write_pdf()
+    pdf_bytes = html_to_pdf(html_str)
     resp = make_response(pdf_bytes)
     resp.headers['Content-Type'] = 'application/pdf'
     period = data.get('period_label', '').replace(' ', '_') or 'all'
