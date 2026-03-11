@@ -2004,6 +2004,7 @@ def rectification_report():
 def rectification_pdf():
     """Download rectification analytics as PDF."""
     from app.services.pdf_playwright import html_to_pdf
+    from flask import current_app
     import datetime, base64, os as _os
     data = _build_rectification_data()
     data['is_pdf'] = True
