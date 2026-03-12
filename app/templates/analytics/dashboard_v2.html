@@ -65,7 +65,7 @@
                 {% endfor %}
             </select>
             <a id="btn-view-report" href="{{ url_for('analytics.unified_report_view') }}" style="padding: 0.4rem 1rem; font-size: 0.85rem; font-weight: 600; border-radius: 6px; background: #F5F3EE; color: #1A1A1A; border: 1px solid #e5e5e5; text-decoration: none; white-space: nowrap;">View Report</a>
-            <a id="btn-download-pdf" href="{{ url_for('analytics.unified_report_pdf') }}" style="padding: 0.4rem 1rem; font-size: 0.85rem; font-weight: 600; border-radius: 6px; background: #C8963E; color: white; text-decoration: none; white-space: nowrap;" onclick="this.textContent='Preparing...'; this.style.opacity='0.7'; this.style.pointerEvents='none';">Download PDF</a>
+            <a id="btn-download-pdf" href="{{ url_for('analytics.unified_report_pdf') }}" style="padding: 0.4rem 1rem; font-size: 0.85rem; font-weight: 600; border-radius: 6px; background: #C8963E; color: white; text-decoration: none; white-space: nowrap;" onclick="var b=this; b.textContent='Preparing...'; b.style.opacity='0.7'; b.style.pointerEvents='none'; setTimeout(function(){ b.textContent='Download PDF'; b.style.opacity='1'; b.style.pointerEvents='auto'; }, 5000);">Download PDF</a>
         </div>
         <script>
         function analyticsSelectChanged(sel) {
