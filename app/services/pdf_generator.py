@@ -372,12 +372,6 @@ def get_defects_data(tenant_id, unit_id, cycle_id=None):
         gn = cycle['general_notes']
         if gn:
             general_notes_html = plain_text_to_html(gn)
-        try:
-            en = cycle['exclusion_notes']
-            if en:
-                exclusion_notes_html = plain_text_to_html(en)
-        except (IndexError, KeyError):
-            pass
     
     return {
         'unit': unit,
