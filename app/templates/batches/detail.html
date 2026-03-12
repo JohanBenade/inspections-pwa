@@ -18,9 +18,10 @@
     </div>
     {%- set s = batch.status -%}
 
-    <a href="{{ url_for('batches.edit_batch', batch_id=batch.id) }}" class="px-3 py-1.5 text-xs font-semibold rounded bg-blue-50 text-blue-600 border border-blue-200 hover:bg-blue-100 mr-2">Edit</a>
-    <a href="{{ url_for('batches.live_monitor', batch_id=batch.id) }}" class="px-3 py-1.5 text-xs font-semibold rounded bg-gray-800 text-amber-400 hover:bg-gray-700 mr-2">Live Monitor</a>
-    <a href="{{ url_for('approvals.defects_tracker', batch_id=batch.id) }}" class="px-3 py-1.5 text-xs font-semibold rounded bg-gray-800 text-emerald-400 hover:bg-gray-700 mr-2">Defects Tracker</a>
+    <div class="flex items-center gap-2">
+    <a href="{{ url_for('batches.edit_batch', batch_id=batch.id) }}" class="px-3 py-1.5 text-xs font-semibold rounded bg-blue-50 text-blue-600 border border-blue-200 hover:bg-blue-100">Edit</a>
+    <a href="{{ url_for('batches.live_monitor', batch_id=batch.id) }}" class="px-3 py-1.5 text-xs font-semibold rounded bg-gray-800 text-amber-400 hover:bg-gray-700">Live Monitor</a>
+    <a href="{{ url_for('approvals.defects_tracker', batch_id=batch.id) }}" class="px-3 py-1.5 text-xs font-semibold rounded bg-gray-800 text-emerald-400 hover:bg-gray-700">Defects Tracker</a>
 
 
 
@@ -41,6 +42,7 @@
     {%- elif s == 'complete' %}
     <span class="px-2.5 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-700">Complete</span>
     {%- endif %}
+    </div>
 </div>
 
 {% if units %}
