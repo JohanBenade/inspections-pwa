@@ -246,7 +246,7 @@ def inspect(inspection_id):
         SELECT 
             COUNT(*) as total,
             SUM(CASE WHEN ii.status NOT IN ('pending', 'skipped') THEN 1 ELSE 0 END) as completed,
-            SUM(CASE WHEN ii.status = 'skipped' AND it.floor_condition = 'all' THEN 1 ELSE 0 END) as skipped,
+            SUM(CASE WHEN ii.status = 'skipped' THEN 1 ELSE 0 END) as skipped,
             SUM(CASE WHEN ii.status = 'ok' AND ii.marked_at IS NULL THEN 1 ELSE 0 END) as carried_ok
         FROM inspection_item ii
         JOIN item_template it ON ii.item_template_id = it.id
@@ -1567,7 +1567,7 @@ def get_progress(inspection_id):
         SELECT 
             COUNT(*) as total,
             SUM(CASE WHEN ii.status NOT IN ('pending', 'skipped') THEN 1 ELSE 0 END) as completed,
-            SUM(CASE WHEN ii.status = 'skipped' AND it.floor_condition = 'all' THEN 1 ELSE 0 END) as skipped,
+            SUM(CASE WHEN ii.status = 'skipped' THEN 1 ELSE 0 END) as skipped,
             SUM(CASE WHEN ii.status = 'ok' AND ii.marked_at IS NULL THEN 1 ELSE 0 END) as carried_ok
         FROM inspection_item ii
         JOIN item_template it ON ii.item_template_id = it.id
