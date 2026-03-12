@@ -8,11 +8,22 @@
 {% endblock %}
 
 {% block content %}
-<h1 class="text-2xl font-bold text-gray-800 mb-6">Edit Batch</h1>
-
 <link href="https://cdn.quilljs.com/1.3.7/quill.snow.css" rel="stylesheet">
 
 <form method="POST" id="edit-form" class="space-y-6 max-w-2xl">
+    <div class="flex items-center justify-between mb-2">
+        <h1 class="text-2xl font-bold text-gray-800">Edit Batch</h1>
+        <div class="flex items-center gap-3">
+            <button type="submit"
+                    class="px-4 py-2 text-sm font-semibold rounded-lg bg-blue-600 text-white hover:bg-blue-700">
+                Save Changes
+            </button>
+            <a href="{{ url_for('batches.detail', batch_id=batch.id) }}"
+               class="px-4 py-2 text-sm font-semibold rounded-lg bg-gray-100 text-gray-600 hover:bg-gray-200">
+                Cancel
+            </a>
+        </div>
+    </div>
     <div>
         <label for="name" class="block text-sm font-medium text-gray-700 mb-1">Batch Name</label>
         <input type="text" id="name" name="name" value="{{ batch.name }}"
@@ -32,31 +43,13 @@
         <input type="hidden" id="notes-hidden" name="notes">
     </div>
 
-    <div class="flex items-center gap-3 pt-2">
-        <button type="submit"
-                class="px-4 py-2 text-sm font-semibold rounded-lg bg-blue-600 text-white hover:bg-blue-700">
-            Save Changes
-        </button>
-        <a href="{{ url_for('batches.detail', batch_id=batch.id) }}"
-           class="px-4 py-2 text-sm font-semibold rounded-lg bg-gray-100 text-gray-600 hover:bg-gray-200">
-            Cancel
-        </a>
+    <div>
+        <label class="block text-sm font-medium text-gray-700 mb-1">Exclusion Notes</label>
+        <div id="exclusion_notes_editor" class="bg-white rounded-lg" style="min-height:120px;">{{ (batch.exclusion_notes or '')|safe }}</div>
+        <input type="hidden" id="exclusion-notes-hidden" name="exclusion_notes">
     </div>
-</form>
 
-<div class="max-w-2xl mt-6">
-    <div class="flex items-center justify-between mb-1">
-        <label class="block text-sm font-medium text-gray-700">Exclusion Notes</label>
-        <button type="button" id="save-excl-notes-btn"
-                onclick="saveExclNotes()"
-                class="hidden px-3 py-1 text-xs font-semibold rounded bg-amber-500 text-white hover:bg-amber-600">
-            Save
-        </button>
-        <span id="excl-notes-status" class="text-xs text-green-600 hidden">Saved</span>
-    </div>
-    <input type="hidden" id="exclusion_notes_input">
-    <div id="exclusion_notes_editor"></div>
-</div>
+</form>
 
 <!-- Batch Timeline -->
 {% if milestones %}
@@ -112,6 +105,8 @@ var notesQuill = new Quill('#notes-editor', {
 document.getElementById('edit-form').addEventListener('submit', function() {
     var notesHtml = notesQuill.root.innerHTML;
     document.getElementById('notes-hidden').value = (notesHtml === '<p><br></p>') ? '' : notesHtml;
+    var exclHtml = exclQuill.root.innerHTML;
+    document.getElementById('exclusion-notes-hidden').value = (exclHtml === '<p><br></p>') ? '' : exclHtml;
 });
 
 var exclQuill = new Quill('#exclusion_notes_editor', {
@@ -119,27 +114,6 @@ var exclQuill = new Quill('#exclusion_notes_editor', {
     modules: { toolbar: toolbarOpts },
     placeholder: 'Optional exclusion notes...'
 });
-
-var existingExcl = {{ (batch.exclusion_notes or '') | tojson }};
-if (existingExcl) { exclQuill.root.innerHTML = existingExcl; }
-
-exclQuill.on('text-change', function() {
-    document.getElementById('save-excl-notes-btn').classList.remove('hidden');
-    document.getElementById('excl-notes-status').classList.add('hidden');
-});
-
-function saveExclNotes() {
-    var html = exclQuill.root.innerHTML;
-    var val = (html === '<p><br></p>') ? '' : html;
-    fetch('{{ url_for("batches.save_exclusion_notes", batch_id=batch.id) }}', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        body: 'exclusion_notes=' + encodeURIComponent(val)
-    }).then(function() {
-        document.getElementById('save-excl-notes-btn').classList.add('hidden');
-        document.getElementById('excl-notes-status').classList.remove('hidden');
-    });
-}
 </script>
 
 <style>

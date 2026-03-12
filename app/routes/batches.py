@@ -558,6 +558,8 @@ def edit_batch(batch_id):
         received_date = request.form.get('received_date', '').strip() or None
         notes_raw = request.form.get('notes', '').strip()
         notes = bleach.clean(notes_raw, tags=ALLOWED_TAGS, strip=True) if notes_raw else None
+        excl_notes_raw = request.form.get('exclusion_notes', '').strip()
+        excl_notes = bleach.clean(excl_notes_raw, tags=ALLOWED_TAGS, strip=True) if excl_notes_raw else None
 
         if not name:
             flash('Batch name is required.', 'error')
@@ -565,8 +567,8 @@ def edit_batch(batch_id):
 
         now = datetime.now(timezone.utc).isoformat()
         get_db().execute(
-            'UPDATE inspection_batch SET name = ?, received_date = ?, notes = ?, updated_at = ? WHERE id = ? AND tenant_id = ?',
-            [name, received_date, notes, now, batch_id, tenant_id])
+            'UPDATE inspection_batch SET name = ?, received_date = ?, notes = ?, exclusion_notes = ?, updated_at = ? WHERE id = ? AND tenant_id = ?',
+            [name, received_date, notes, excl_notes, now, batch_id, tenant_id])
         get_db().commit()
         flash('Batch updated.', 'success')
         return redirect(url_for('batches.detail', batch_id=batch_id))
