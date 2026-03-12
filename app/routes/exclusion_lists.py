@@ -4,7 +4,7 @@ Access: Manager + Admin only.
 """
 from datetime import datetime, timezone
 from flask import Blueprint, render_template, session, redirect, url_for, request, flash
-from app.auth import require_manager
+from app.auth import require_manager, require_team_lead
 from app.utils import generate_id
 from app.services.db import get_db, query_db
 
@@ -14,7 +14,7 @@ TENANT = 'MONOGRAPH'
 
 
 @exclusion_lists_bp.route('/')
-@require_manager
+@require_team_lead
 def list_all():
     """All exclusion lists."""
     lists = query_db("""
@@ -29,7 +29,7 @@ def list_all():
 
 
 @exclusion_lists_bp.route('/<list_id>')
-@require_manager
+@require_team_lead
 def detail(list_id):
     """View and edit items in an exclusion list."""
     db = get_db()
@@ -100,7 +100,7 @@ def detail(list_id):
 
 
 @exclusion_lists_bp.route('/create', methods=['POST'])
-@require_manager
+@require_team_lead
 def create():
     """Create a new empty exclusion list."""
     name = request.form.get('name', '').strip()
@@ -123,7 +123,7 @@ def create():
 
 
 @exclusion_lists_bp.route('/<list_id>/clone', methods=['POST'])
-@require_manager
+@require_team_lead
 def clone(list_id):
     """Clone an existing list with a new name."""
     name = request.form.get('name', '').strip()
@@ -172,7 +172,7 @@ def clone(list_id):
 
 
 @exclusion_lists_bp.route('/<list_id>/rename', methods=['POST'])
-@require_manager
+@require_team_lead
 def rename(list_id):
     """Rename an exclusion list."""
     name = request.form.get('name', '').strip()
@@ -192,7 +192,7 @@ def rename(list_id):
 
 
 @exclusion_lists_bp.route('/<list_id>/toggle-item', methods=['POST'])
-@require_manager
+@require_team_lead
 def toggle_item(list_id):
     """HTMX: add or remove an item from the list."""
     template_id = request.form.get('template_id')
