@@ -44,6 +44,20 @@
     </div>
 </form>
 
+<div class="max-w-2xl mt-6">
+    <div class="flex items-center justify-between mb-1">
+        <label class="block text-sm font-medium text-gray-700">Exclusion Notes</label>
+        <button type="button" id="save-excl-notes-btn"
+                onclick="saveExclNotes()"
+                class="hidden px-3 py-1 text-xs font-semibold rounded bg-amber-500 text-white hover:bg-amber-600">
+            Save
+        </button>
+        <span id="excl-notes-status" class="text-xs text-green-600 hidden">Saved</span>
+    </div>
+    <input type="hidden" id="exclusion_notes_input">
+    <div id="exclusion_notes_editor"></div>
+</div>
+
 <!-- Batch Timeline -->
 {% if milestones %}
 <div class="mt-8 max-w-2xl">
@@ -99,6 +113,33 @@ document.getElementById('edit-form').addEventListener('submit', function() {
     var notesHtml = notesQuill.root.innerHTML;
     document.getElementById('notes-hidden').value = (notesHtml === '<p><br></p>') ? '' : notesHtml;
 });
+
+var exclQuill = new Quill('#exclusion_notes_editor', {
+    theme: 'snow',
+    modules: { toolbar: toolbarOpts },
+    placeholder: 'Optional exclusion notes...'
+});
+
+var existingExcl = {{ (batch.exclusion_notes or '') | tojson }};
+if (existingExcl) { exclQuill.root.innerHTML = existingExcl; }
+
+exclQuill.on('text-change', function() {
+    document.getElementById('save-excl-notes-btn').classList.remove('hidden');
+    document.getElementById('excl-notes-status').classList.add('hidden');
+});
+
+function saveExclNotes() {
+    var html = exclQuill.root.innerHTML;
+    var val = (html === '<p><br></p>') ? '' : html;
+    fetch('{{ url_for("batches.save_exclusion_notes", batch_id=batch.id) }}', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: 'exclusion_notes=' + encodeURIComponent(val)
+    }).then(function() {
+        document.getElementById('save-excl-notes-btn').classList.add('hidden');
+        document.getElementById('excl-notes-status').classList.remove('hidden');
+    });
+}
 </script>
 
 <style>
