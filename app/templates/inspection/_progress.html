@@ -5,7 +5,7 @@
     <span class="text-gray-500">
         {{ progress.completed }}/{{ progress.active }} items
         {% if progress.skipped %}
-        <span class="text-orange-500">({{ progress.skipped }} not applicable)</span>
+        <span class="text-orange-500">({{ progress.excl_count }} excluded)</span>
         {% endif %}
     </span>
 </div>

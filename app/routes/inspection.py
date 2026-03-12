@@ -247,6 +247,7 @@ def inspect(inspection_id):
             COUNT(*) as total,
             SUM(CASE WHEN ii.status NOT IN ('pending', 'skipped') THEN 1 ELSE 0 END) as completed,
             SUM(CASE WHEN ii.status = 'skipped' THEN 1 ELSE 0 END) as skipped,
+            SUM(CASE WHEN ii.status = 'skipped' AND it.floor_condition = 'all' THEN 1 ELSE 0 END) as excl_count,
             SUM(CASE WHEN ii.status = 'ok' AND ii.marked_at IS NULL THEN 1 ELSE 0 END) as carried_ok
         FROM inspection_item ii
         JOIN item_template it ON ii.item_template_id = it.id
@@ -272,6 +273,7 @@ def inspect(inspection_id):
         'completed': (progress_raw['completed'] or 0) - carried_ok,
         'defects': (defect_count['defects'] or 0) + (chip_count['chips'] or 0),
         'skipped': progress_raw['skipped'] or 0,
+        'excl_count': progress_raw['excl_count'] or 0,
         'carried_ok': carried_ok,
         'is_followup': is_followup,
     }
