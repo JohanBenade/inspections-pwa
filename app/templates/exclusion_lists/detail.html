@@ -186,26 +186,26 @@ function openRename(listId, name, desc) {
             <div class="excl-cat-content hidden divide-y">
                 {% for item in items %}
                 {% if not item.parent_item_id %}
-                <label class="flex items-center gap-3 px-4 py-2.5 hover:bg-orange-50/40 cursor-pointer {% if item.is_excluded %}bg-orange-50{% endif %}">
+                <label class="flex items-center gap-3 px-4 py-2.5 hover:bg-orange-50/40 cursor-pointer {% if item.is_excluded %}bg-amber-100{% endif %}">
                     <input type="checkbox" {% if item.is_excluded %}checked{% endif %}
                         class="h-4 w-4 rounded border-gray-300 text-orange-600 cursor-pointer flex-shrink-0"
                         hx-post="{{ url_for('exclusion_lists.toggle_item', list_id=excl_list.id) }}"
                         hx-vals='{"template_id": "{{ item.template_id }}", "action": "{{ 'remove' if item.is_excluded else 'add' }}"}' 
                         hx-target="closest label"
                         hx-swap="outerHTML">
-                    <span class="text-sm font-semibold text-gray-800 flex-1">{{ item.item_description }}</span>
-                    <span class="text-xs text-gray-400 font-mono flex-shrink-0">{{ item.template_id[:6] }}</span>
+                    <span class="text-sm font-semibold flex-1 {% if item.is_excluded %}line-through text-gray-400{% else %}text-gray-800{% endif %}">{{ item.item_description }}</span>
+                    {% if item.is_excluded %}<span class="text-xs font-medium bg-amber-200 text-amber-800 px-1.5 py-0.5 rounded flex-shrink-0">excluded</span>{% else %}<span class="text-xs text-gray-400 font-mono flex-shrink-0">{{ item.template_id[:6] }}</span>{% endif %}
                 </label>
                 {% else %}
-                <label class="flex items-center gap-3 pl-10 pr-4 py-2.5 hover:bg-orange-50/40 cursor-pointer {% if item.is_excluded %}bg-orange-50{% endif %}">
+                <label class="flex items-center gap-3 pl-10 pr-4 py-2.5 hover:bg-orange-50/40 cursor-pointer {% if item.is_excluded %}bg-amber-100{% endif %}">
                     <input type="checkbox" {% if item.is_excluded %}checked{% endif %}
                         class="h-4 w-4 rounded border-gray-300 text-orange-600 cursor-pointer flex-shrink-0"
                         hx-post="{{ url_for('exclusion_lists.toggle_item', list_id=excl_list.id) }}"
                         hx-vals='{"template_id": "{{ item.template_id }}", "action": "{{ 'remove' if item.is_excluded else 'add' }}"}' 
                         hx-target="closest label"
                         hx-swap="outerHTML">
-                    <span class="text-sm text-gray-700 flex-1">{{ item.item_description }}</span>
-                    <span class="text-xs text-gray-400 font-mono flex-shrink-0">{{ item.template_id[:6] }}</span>
+                    <span class="text-sm flex-1 {% if item.is_excluded %}line-through text-gray-400{% else %}text-gray-700{% endif %}">{{ item.item_description }}</span>
+                    {% if item.is_excluded %}<span class="text-xs font-medium bg-amber-200 text-amber-800 px-1.5 py-0.5 rounded flex-shrink-0">excluded</span>{% else %}<span class="text-xs text-gray-400 font-mono flex-shrink-0">{{ item.template_id[:6] }}</span>{% endif %}
                 </label>
                 {% endif %}
                 {% endfor %}
