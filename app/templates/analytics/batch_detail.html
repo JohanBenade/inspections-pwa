@@ -146,6 +146,7 @@
             <div class="kpi-value text-gray-900">{{ kpis.median_defects }}</div>
             <div class="kpi-label">Median defects/unit</div>
             <div class="kpi-sub">Midpoint of {{ kpis.inspected }} units ranked by defect count</div>
+            <div class="kpi-sub" style="margin-top: 3px; font-style: italic;">Median used here to reduce distortion from outlier units.</div>
         </div>
         <div class="kpi-card">
             <div class="kpi-value text-gray-900">{{ kpis.min_defects }}&ndash;{{ kpis.max_defects }}</div>
@@ -208,11 +209,11 @@
             {% endfor %}
             <div style="font-size: 0.7rem; color: #9A9A9A; margin-top: 0.5rem; padding-top: 0.4rem; border-top: 1px solid #f0f0f0;">
                 <div style="margin-bottom: 0.25rem;">
-                    <span style="font-size: 0.7rem; color: #9A9A9A;">Relative to median across all areas &mdash;</span>&ensp;<span class="legend-item"><span class="legend-dot" style="background: #4A7C59;"></span> Below median</span>&ensp;
-                    <span class="legend-item"><span class="legend-dot" style="background: #C8963E;"></span> At median</span>&ensp;
-                    <span class="legend-item"><span class="legend-dot" style="background: #C44D3F;"></span> Above median</span>&ensp;
+                    <span style="font-size: 0.7rem; color: #9A9A9A;">Relative to average across all areas &mdash;</span>&ensp;<span class="legend-item"><span class="legend-dot" style="background: #4A7C59;"></span> Below average</span>&ensp;
+                    <span class="legend-item"><span class="legend-dot" style="background: #C8963E;"></span> At average</span>&ensp;
+                    <span class="legend-item"><span class="legend-dot" style="background: #C44D3F;"></span> Above average</span>&ensp;
                     <span style="color: #BABABA;">&middot;</span>&ensp;
-                    median: {{ area_median|round|int }}
+                    average: {{ area_median|round|int }}
                 </div>
             </div>
             {% if area_data %}
@@ -364,11 +365,11 @@
         </div>
         {% endfor %}
         <div style="font-size: 0.7rem; color: #9A9A9A; margin-top: 0.5rem; padding-top: 0.4rem; border-top: 1px solid #f0f0f0;">
-            <span style="font-size: 0.7rem; color: #9A9A9A;">Relative to median across all trades &mdash;</span>&ensp;<span class="legend-item"><span class="legend-dot" style="background: #4A7C59;"></span> Below median</span>&ensp;
-            <span class="legend-item"><span class="legend-dot" style="background: #C8963E;"></span> At median</span>&ensp;
-            <span class="legend-item"><span class="legend-dot" style="background: #C44D3F;"></span> Above median</span>&ensp;
+            <span style="font-size: 0.7rem; color: #9A9A9A;">Relative to average across all trades &mdash;</span>&ensp;<span class="legend-item"><span class="legend-dot" style="background: #4A7C59;"></span> Below average</span>&ensp;
+            <span class="legend-item"><span class="legend-dot" style="background: #C8963E;"></span> At average</span>&ensp;
+            <span class="legend-item"><span class="legend-dot" style="background: #C44D3F;"></span> Above average</span>&ensp;
             <span style="color: #BABABA;">&middot;</span>&ensp;
-            median: {{ cat_median|round|int }}
+            average: {{ cat_median|round|int }}
         </div>
     </div>
     {% endif %}

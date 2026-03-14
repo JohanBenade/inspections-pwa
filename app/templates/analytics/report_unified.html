@@ -291,6 +291,7 @@ body {
         <div class="kpi-label">Median Defects / Unit</div>
         <div class="kpi-value">{{ project.median_defects }}</div>
         <div class="kpi-sub">Midpoint of {{ project.units_inspected }} units ranked by defect count</div>
+        <div class="kpi-sub" style="margin-top: 2px; font-style: italic;">Median used here to reduce distortion from outlier units.</div>
     </td>
     <td class="kpi-cell" style="width: 25%;">
         <div class="kpi-label">Defect Rate</div>
@@ -406,7 +407,7 @@ body {
                 <span class="legend-swatch" style="background: rgba(74,124,89,0.25); width: 8px; height: 8px;"></span><span class="legend-text">&lt;{{ area_median|round|int }}</span>&ensp;
                 <span class="legend-swatch" style="background: rgba(200,150,62,0.25); width: 8px; height: 8px;"></span><span class="legend-text">{{ area_median|round|int }}</span>&ensp;
                 <span class="legend-swatch" style="background: rgba(196,77,63,0.25); width: 8px; height: 8px;"></span><span class="legend-text">&gt;{{ area_median|round|int }}</span>&ensp;
-                median: {{ area_median|round|int }}
+                average: {{ area_median|round|int }}
             </div>
         </div>
 
@@ -559,7 +560,7 @@ body {
         <span class="legend-swatch" style="background: rgba(200,150,62,0.25); width: 8px; height: 8px;"></span><span class="legend-text">{{ cat_median|round|int }}</span>&ensp;
         <span class="legend-swatch" style="background: rgba(196,77,63,0.25); width: 8px; height: 8px;"></span><span class="legend-text">&gt;{{ cat_median|round|int }}</span>&ensp;
         <span style="color: #BABABA;">&middot;</span>&ensp;
-        median: {{ cat_median|round|int }}
+        average: {{ cat_median|round|int }}
     </div>
 </div>
 
