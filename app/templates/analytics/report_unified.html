@@ -259,15 +259,17 @@ body {
         <div class="progress-track"><div class="progress-fill" style="width: {{ project.pct_complete }}%;"></div></div>
         <div class="kpi-sub">{{ project.pct_complete }}% of project</div>
     </td>
+    {% if forecast %}
+    <td class="kpi-cell" style="width: 25%; border-left: 3px solid #4A7C59;">
+        <div class="kpi-label">Est. C1 Complete</div>
+        <div class="kpi-value" style="color: #4A7C59;">{{ forecast.est_date }}</div>
+        <div class="kpi-sub">{{ forecast.remaining }} remaining &middot; {{ forecast.rate_week }} units/week</div>
+    </td>
+    {% endif %}
     <td class="kpi-cell" style="width: 25%;">
         <div class="kpi-label">Open Defects</div>
         <div class="kpi-value kpi-value-red">{{ "{:,}".format(project.open_defects) }}</div>
         <div class="kpi-sub">across all zones</div>
-    </td>
-    <td class="kpi-cell" style="width: 25%;">
-        <div class="kpi-label">Avg Defects / Unit</div>
-        <div class="kpi-value">{{ project.avg_defects }}</div>
-        <div class="kpi-sub">median: {{ project.median_defects }} &middot; range: {{ project.min_defects }}-{{ project.max_defects }}</div>
     </td>
     <td class="kpi-cell" style="width: 25%;">
         <div class="kpi-label">Certified</div>

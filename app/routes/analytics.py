@@ -3448,11 +3448,44 @@ def _build_unified_report_data():
     except Exception:
         pass
 
+    # Completion forecast
+    from datetime import date, timedelta
+    _fc_raw = query_db("""
+        SELECT MIN(inspection_date) as first_date,
+               MAX(inspection_date) as last_date,
+               COUNT(DISTINCT i.unit_id) as done
+        FROM inspection i
+        JOIN unit_real u ON u.id = i.unit_id
+        WHERE i.tenant_id = ? AND i.cycle_id NOT LIKE 'test-%'
+        AND i.status IN ('reviewed','approved','pending_followup','certified')
+        AND i.inspection_date IS NOT NULL
+        AND u.unit_number NOT LIKE 'TEST%'
+        AND EXISTS (SELECT 1 FROM inspection_cycle _ic WHERE _ic.id = i.cycle_id AND _ic.cycle_number = 1)
+    """, [tenant_id], one=True)
+    forecast = None
+    if _fc_raw and _fc_raw['first_date'] and _fc_raw['last_date'] and _fc_raw['done']:
+        _first = date.fromisoformat(_fc_raw['first_date'])
+        _last = date.fromisoformat(_fc_raw['last_date'])
+        _done = _fc_raw['done']
+        _elapsed = (_last - _first).days or 1
+        _rate = _done / _elapsed
+        _remaining = PROJECT_TOTAL_UNITS - _done
+        _days_left = round(_remaining / _rate) if _rate > 0 else None
+        _est = _last + timedelta(days=_days_left) if _days_left else None
+        forecast = {
+            'est_date': _est.strftime('%-d %b %Y') if _est else 'N/A',
+            'rate': round(_rate, 1),
+            'rate_week': round(_rate * 7, 1),
+            'remaining': _remaining,
+            'done': _done,
+        }
+
     floor_map = {0: 'Ground', 1: '1st Floor', 2: '2nd Floor', 3: '3rd Floor'}
     report_date = __import__('datetime').datetime.utcnow().strftime('%d %B %Y')
 
     return {
         'project': project,
+        'forecast': forecast,
         'rectification': rectification,
         'zone_cards': active_zones,
         'zone_median': zone_median,
