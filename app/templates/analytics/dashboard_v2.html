@@ -326,8 +326,12 @@
                     <span style="font-size: 0.8rem; color: #1A1A1A;">{{ d.description }}</span>
                     <span style="margin-left: auto; font-size: 0.8rem; font-weight: 700; color: #1A1A1A;">{{ d.count }}</span>
                 </div>
-                <div style="height: 8px; background: #f0ede8; border-radius: 3px; overflow: hidden;">
-                    <div style="width: {{ d.bar_pct }}%; height: 100%; background: {{ area.colour }}; border-radius: 4px;"></div>
+                <div style="display: flex; align-items: center; gap: 0.5rem;">
+                    <div style="width: 20px; flex-shrink: 0;"></div>
+                    <div style="flex: 1; height: 8px; background: #f0ede8; border-radius: 3px; overflow: hidden;">
+                        <div style="width: {{ d.bar_pct }}%; height: 100%; background: {{ area.colour }};"></div>
+                    </div>
+                    <div style="width: 30px; flex-shrink: 0;"></div>
                 </div>
             </div>
             {% endfor %}
@@ -349,7 +353,7 @@
     <!-- ============================================================ -->
 
     {% if recurring %}
-    <div class="mb-2"><span class="section-num">05 &mdash; Systemic Issues</span></div>
+    <div class="mb-2"><span class="section-num">04 &mdash; Systemic Issues</span></div>
     <div class="divider"></div>
 
     <div class="hotspot-panel mb-6">
@@ -369,8 +373,12 @@
                 <span style="font-size: 0.8rem; font-weight: 700; color: #C44D3F; flex-shrink: 0;">{{ r.cnt }}</span>
                 <span style="font-size: 0.7rem; color: #9A9A9A; width: 40px; text-align: right; flex-shrink: 0;">{{ r.unit_count }}u</span>
             </div>
-            <div style="height: 8px; background: #f0f0f0; border-radius: 3px;">
-                <div style="height: 100%; width: {{ (r.cnt / rec_max * 100)|round }}%; background: #C44D3F; border-radius: 3px;"></div>
+            <div style="display: flex; align-items: center; gap: 0.4rem;">
+                <div style="width: 20px; flex-shrink: 0;"></div>
+                <div style="flex: 1; height: 8px; background: #f0f0f0; border-radius: 3px; overflow: hidden;">
+                    <div style="height: 100%; width: {{ (r.cnt / rec_max * 100)|round }}%; background: #C44D3F; border-radius: 3px;"></div>
+                </div>
+                <div style="width: 74px; flex-shrink: 0;"></div>
             </div>
         </a>
         {% endfor %}
@@ -385,7 +393,7 @@
     <!-- ============================================================ -->
 
     {% if category_data %}
-    <div class="mb-2"><span class="section-num">06 &mdash; Defects by Trade</span></div>
+    <div class="mb-2"><span class="section-num">05 &mdash; Defects by Trade</span></div>
     <div class="divider"></div>
 
     <div class="hotspot-panel mb-6">
@@ -420,7 +428,7 @@
     <!-- LAYER 3: BLOCKS                                              -->
     <!-- ============================================================ -->
 
-    <div class="mb-2"><span class="section-num">07 &mdash; Blocks</span></div>
+    <div class="mb-2"><span class="section-num">06 &mdash; Blocks</span></div>
     <div class="divider"></div>
 
     <!-- Build block groups -->
@@ -512,7 +520,7 @@
     <!-- LAYER 4: INSPECTOR ANALYTICS                                 -->
     <!-- ============================================================ -->
     {% if inspector_cards %}
-    <div class="mb-2"><span class="section-num">08 &mdash; Inspector Performance</span></div>
+    <div class="mb-2"><span class="section-num">07 &mdash; Inspector Performance</span></div>
     <div class="divider"></div>
     <p style="color: #9A9A9A; font-size: 0.8rem; margin-bottom: 1rem;">Zone-adjusted scores compare each inspector against the average for the specific zones they worked. Internal use only.</p>
 
