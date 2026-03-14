@@ -262,7 +262,7 @@ body {
     {% if forecast %}
     <td class="kpi-cell" style="width: 25%; border-left: 3px solid #4A7C59;">
         <div class="kpi-label">Est. C1 Complete</div>
-        <div class="kpi-value" style="color: #4A7C59;">{{ forecast.est_date }}</div>
+        <div class="kpi-value">{{ forecast.est_date }}</div>
         <div class="kpi-sub">{{ forecast.remaining }} remaining &middot; {{ forecast.rate_week }} units/week</div>
     </td>
     {% endif %}
