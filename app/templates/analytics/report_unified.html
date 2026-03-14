@@ -467,8 +467,8 @@ body {
                         </td>
                         <td style="padding: 4px 8px; vertical-align: top;">
                             <div style="font-size: 10px; color: #1A1A1A; margin-bottom: 3px;">{{ d.description }}</div>
-                            <div style="height: 8px; background: #E8E6E1; border-radius: 3px; overflow: hidden; padding-right: 8px;">
-                                <div style="height: 8px; border-radius: 3px; width: {{ d.bar_pct }}%; background: {{ area_info.colour }};"></div>
+                            <div style="height: 8px; background: #E8E6E1; border-radius: 3px; padding-right: 8px;">
+                                <div style="height: 8px; border-radius: 3px; width: {{ d.bar_pct }}%; max-width: 100%; background: {{ area_info.colour }};"></div>
                             </div>
                         </td>
                         <td style="width: 40px; text-align: right; vertical-align: top; padding: 4px 0 4px 8px;">
@@ -513,8 +513,8 @@ body {
         </div>
         <div style="display: flex; align-items: center; gap: 8px;">
             <div style="width: 22px; flex-shrink: 0;"></div>
-            <div style="flex: 1; height: 8px; background: #E8E6E1; border-radius: 3px; overflow: hidden; padding-right: 12px;">
-                <div style="height: 8px; width: {{ (r.cnt / rec_max * 100)|round }}%; background: #C44D3F; border-radius: 3px;"></div>
+            <div style="flex: 1; height: 8px; background: #E8E6E1; border-radius: 3px; padding-right: 12px;">
+                <div style="height: 8px; width: {{ (r.cnt / rec_max * 100)|round }}%; max-width: 100%; background: #C44D3F; border-radius: 3px;"></div>
             </div>
             <div style="width: 78px;"></div>
         </div>
