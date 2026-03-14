@@ -119,23 +119,23 @@
     <div class="mb-2"><span class="section-num">Quality (inspected units only)</span></div>
     <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
         <div class="kpi-card">
-            <div class="kpi-value text-gray-900">{{ project.avg_defects_inspected }}</div>
             <div class="kpi-label">Average defects/unit</div>
-            <div class="kpi-sub">{{ '{:,}'.format(project.open_defects) }} defects / {{ project.units_inspected }} units</div>
+            <div class="kpi-value text-gray-900">{{ project.avg_defects_inspected }}</div>
+            <div class="kpi-sub">{{ project.units_inspected }} units inspected</div>
         </div>
         <div class="kpi-card">
-            <div class="kpi-value text-gray-900">{{ project.median_defects }}</div>
             <div class="kpi-label">Median defects/unit</div>
+            <div class="kpi-value text-gray-900">{{ project.median_defects }}</div>
             <div class="kpi-sub">Midpoint of {{ project.units_inspected }} units ranked by defect count</div>
         </div>
         <div class="kpi-card">
-            <div class="kpi-value gold-accent">{{ project.defect_rate_inspected }}%</div>
             <div class="kpi-label">Defect rate</div>
+            <div class="kpi-value gold-accent">{{ project.defect_rate_inspected }}%</div>
             <div class="kpi-sub">{{ '{:,}'.format(project.items_inspected) }} items inspected</div>
         </div>
         <div class="kpi-card">
-            <div class="kpi-value text-gray-900">{{ project.max_defects }}</div>
             <div class="kpi-label">Worst unit</div>
+            <div class="kpi-value text-gray-900">{% if worst_units %}{{ worst_units[0].defect_count }}{% else %}{{ project.max_defects }}{% endif %}</div>
             <div class="kpi-sub">range: {{ project.min_defects }} &ndash; {{ project.max_defects }} across {{ project.units_inspected }} units</div>
         </div>
     </div>
