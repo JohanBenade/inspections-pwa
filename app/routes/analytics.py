@@ -3457,7 +3457,7 @@ def _build_unified_report_data():
         FROM inspection i
         JOIN unit_real u ON u.id = i.unit_id
         WHERE i.tenant_id = ? AND i.cycle_id NOT LIKE 'test-%'
-        AND i.status IN ('reviewed','approved','pending_followup','certified')
+        AND i.status IN ('submitted','reviewed','approved','pending_followup','certified')
         AND i.inspection_date IS NOT NULL
         AND u.unit_number NOT LIKE 'TEST%'
         AND EXISTS (SELECT 1 FROM inspection_cycle _ic WHERE _ic.id = i.cycle_id AND _ic.cycle_number = 1)
