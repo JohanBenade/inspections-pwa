@@ -86,7 +86,7 @@
     <!-- ============================================================ -->
 
     <div class="mb-2"><span class="section-num">Progress</span></div>
-    <div class="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-4">
+    <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
         <div class="kpi-card">
             <div class="kpi-value text-gray-900">{{ project.units_inspected }} <span style="font-size: 1rem; font-weight: 400; color: #9A9A9A;">/ {{ project.project_total }}</span></div>
             <div class="kpi-label">Units inspected</div>
@@ -107,6 +107,13 @@
             <div class="kpi-label">Units certified</div>
             <div class="kpi-sub">{{ project.project_total - project.units_inspected }} awaiting first inspection</div>
         </div>
+        {% if forecast %}
+        <div class="kpi-card" style="border-left-color: #4A7C59;">
+            <div class="kpi-value gold-accent">{{ forecast.est_date }}</div>
+            <div class="kpi-label">Est. C1 complete</div>
+            <div class="kpi-sub">{{ forecast.remaining }} remaining &middot; {{ forecast.rate }} units/day</div>
+        </div>
+        {% endif %}
     </div>
 
     <div class="mb-2"><span class="section-num">Quality (inspected units only)</span></div>

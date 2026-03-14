@@ -205,6 +205,38 @@ def dashboard():
     project['items_inspected'] = items_inspected
     project['project_total'] = PROJECT_TOTAL_UNITS
 
+    # 7c. Completion forecast
+    from datetime import date, timedelta
+    forecast_raw = query_db("""
+        SELECT MIN(inspection_date) as first_date,
+               MAX(inspection_date) as last_date,
+               COUNT(DISTINCT i.unit_id) as done
+        FROM inspection i
+        JOIN unit_real u ON u.id = i.unit_id
+        WHERE i.tenant_id = ? AND i.cycle_id NOT LIKE 'test-%'
+        AND i.status IN ('submitted','reviewed','approved','pending_followup','certified')
+        AND i.inspection_date IS NOT NULL
+        AND u.unit_number NOT LIKE 'TEST%'
+        AND EXISTS (SELECT 1 FROM inspection_cycle _ic WHERE _ic.id = i.cycle_id AND _ic.cycle_number = 1)
+    """, [tenant_id], one=True)
+    forecast = None
+    if forecast_raw and forecast_raw['first_date'] and forecast_raw['last_date'] and forecast_raw['done']:
+        first = date.fromisoformat(forecast_raw['first_date'])
+        last = date.fromisoformat(forecast_raw['last_date'])
+        done = forecast_raw['done']
+        elapsed = (last - first).days or 1
+        rate = done / elapsed
+        remaining = PROJECT_TOTAL_UNITS - done
+        days_left = round(remaining / rate) if rate > 0 else None
+        est_date = last + timedelta(days=days_left) if days_left else None
+        forecast = {
+            'est_date': est_date.strftime('%-d %b %Y') if est_date else 'N/A',
+            'rate': round(rate, 1),
+            'remaining': remaining,
+            'done': done,
+        }
+    project['forecast'] = forecast
+
     # Set heatmap benchmark to project average
     grid_median = project['avg_defects_inspected']
 
@@ -595,7 +627,8 @@ def dashboard():
                            q3=q3,
                            grid_median=grid_median,
                            inspector_cards=inspector_cards,
-                           all_batches=all_batches)
+                           all_batches=all_batches,
+                           forecast=project.get('forecast'))
 
 
 @analytics_bp.route('/batch/<batch_id>')
