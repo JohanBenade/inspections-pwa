@@ -232,6 +232,7 @@ def dashboard():
         forecast = {
             'est_date': est_date.strftime('%-d %b %Y') if est_date else 'N/A',
             'rate': round(rate, 1),
+            'rate_week': round(rate * 7, 1),
             'remaining': remaining,
             'done': done,
         }

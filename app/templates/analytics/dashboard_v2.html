@@ -97,6 +97,13 @@
                 <div class="kpi-sub">{{ project.pct_complete }}% of project</div>
             </div>
         </div>
+        {% if forecast %}
+        <div class="kpi-card" style="border-left: 5px solid #4A7C59; background: #F2F7F3;">
+            <div class="kpi-value" style="color: #4A7C59;">{{ forecast.est_date }}</div>
+            <div class="kpi-label">Est. C1 complete</div>
+            <div class="kpi-sub">{{ forecast.remaining }} remaining &middot; {{ forecast.rate_week }} units/week</div>
+        </div>
+        {% endif %}
         <div class="kpi-card">
             <div class="kpi-value {% if project.open_defects > 0 %}text-red-600{% else %}text-emerald-600{% endif %}">{{ '{:,}'.format(project.open_defects) }}</div>
             <div class="kpi-label">Open defects</div>
@@ -107,13 +114,6 @@
             <div class="kpi-label">Units certified</div>
             <div class="kpi-sub">{{ project.project_total - project.units_inspected }} awaiting first inspection</div>
         </div>
-        {% if forecast %}
-        <div class="kpi-card" style="border-left-color: #4A7C59;">
-            <div class="kpi-value gold-accent">{{ forecast.est_date }}</div>
-            <div class="kpi-label">Est. C1 complete</div>
-            <div class="kpi-sub">{{ forecast.remaining }} remaining &middot; {{ forecast.rate }} units/day</div>
-        </div>
-        {% endif %}
     </div>
 
     <div class="mb-2"><span class="section-num">Quality (inspected units only)</span></div>
