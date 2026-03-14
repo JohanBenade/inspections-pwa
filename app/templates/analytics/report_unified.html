@@ -471,7 +471,7 @@ body {
                                 <div style="height: 8px; border-radius: 3px; width: {{ d.bar_pct }}%; background: {{ area_info.colour }};"></div>
                             </div>
                         </td>
-                        <td style="width: 40px; text-align: right; vertical-align: top; padding: 4px 0;">
+                        <td style="width: 40px; text-align: right; vertical-align: top; padding: 4px 0 4px 8px;">
                             <div style="font-size: 10px; font-weight: 600; color: #0A0A0A;">{{ d.count }}</div>
                         </td>
                     </tr>
@@ -516,7 +516,7 @@ body {
             <div style="flex: 1; height: 8px; background: #E8E6E1; border-radius: 3px; overflow: hidden;">
                 <div style="height: 8px; width: {{ (r.cnt / rec_max * 100)|round }}%; background: #C44D3F; border-radius: 3px;"></div>
             </div>
-            <div style="width: 72px;"></div>
+            <div style="width: 78px;"></div>
         </div>
     </div>
     {% endfor %}
