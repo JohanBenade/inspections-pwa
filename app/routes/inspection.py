@@ -106,8 +106,7 @@ def start_inspection(unit_id):
         # Get the previous cycle's inspection to carry forward items
         prev_inspection = query_db("""
             SELECT i.id FROM inspection i
-            JOIN inspection_cycle ic ON i.cycle_id = ic.id
-            WHERE i.unit_id = ? AND ic.cycle_number = ?
+            WHERE i.unit_id = ? AND i.cycle_number = ?
             AND i.tenant_id = ?
         """, [unit_id, cycle['cycle_number'] - 1, tenant_id], one=True)
     
@@ -212,10 +211,9 @@ def inspect(inspection_id):
     
     inspection = query_db("""
         SELECT i.*, u.unit_type, u.unit_number, u.block, u.floor,
-               ic.cycle_number, ic.general_notes as cycle_notes
+               
         FROM inspection i
         JOIN unit u ON i.unit_id = u.id
-        JOIN inspection_cycle ic ON i.cycle_id = ic.id
         WHERE i.id = ? AND i.tenant_id = ?
     """, [inspection_id, tenant_id], one=True)
     
@@ -287,15 +285,9 @@ def inspect(inspection_id):
             FROM inspection_item ii
             JOIN defect d ON d.item_template_id = ii.item_template_id
                 AND d.unit_id = ?
-                AND d.raised_cycle_id = (
-                    SELECT ic2.id FROM inspection_cycle ic2
-                    WHERE ic2.block = (SELECT block FROM inspection_cycle WHERE id = ?)
-                    AND ic2.floor = (SELECT floor FROM inspection_cycle WHERE id = ?)
-                    AND ic2.cycle_number = (SELECT cycle_number - 1 FROM inspection_cycle WHERE id = ?)
-                    AND ic2.tenant_id = 'MONOGRAPH'
-                )
+                AND d.raised_cycle_number = ? - 1
             WHERE ii.inspection_id = ?
-        """, [inspection['unit_id'], inspection['cycle_id'], inspection['cycle_id'], inspection['cycle_id'], inspection_id], one=True)
+        """, [inspection['unit_id'], inspection['cycle_number'], inspection_id], one=True)
         progress['followup_total'] = followup_raw['total_to_review'] or 0
         progress['followup_actioned'] = followup_raw['actioned'] or 0
     
@@ -309,12 +301,11 @@ def inspect(inspection_id):
         
         all_open_defects = query_db("""
             SELECT d.*, it.item_description, ct.category_name, at.area_name,
-                   ic.cycle_number as raised_cycle, d.item_template_id
+                   d.raised_cycle_number as raised_cycle, d.item_template_id
             FROM defect d
             JOIN item_template it ON d.item_template_id = it.id
             JOIN category_template ct ON it.category_id = ct.id
             JOIN area_template at ON ct.area_id = at.id
-            JOIN inspection_cycle ic ON d.raised_cycle_id = ic.id
             WHERE d.unit_id = ? AND d.status = 'open'
             ORDER BY at.area_order, ct.category_order, it.item_order
         """, [inspection['unit_id']])
@@ -405,10 +396,9 @@ def inspect_area(inspection_id, area_id):
     filter_mode = request.args.get('filter', 'all')
     
     inspection = query_db("""
-        SELECT i.*, u.unit_type, u.unit_number, ic.cycle_number, ic.id as cycle_id
+        SELECT i.*, u.unit_type, u.unit_number
         FROM inspection i
         JOIN unit u ON i.unit_id = u.id
-        JOIN inspection_cycle ic ON i.cycle_id = ic.id
         WHERE i.id = ? AND i.tenant_id = ?
     """, [inspection_id, tenant_id], one=True)
     
@@ -435,11 +425,10 @@ def inspect_area(inspection_id, area_id):
     if is_followup:
         prior_defects_raw = query_db("""
             SELECT d.id as defect_id, d.item_template_id, d.original_comment,
-                   d.status as defect_status, d.defect_type, ic.cycle_number as raised_cycle
+                   d.status as defect_status, d.defect_type, d.raised_cycle_number as raised_cycle
             FROM defect d
-            JOIN inspection_cycle ic ON d.raised_cycle_id = ic.id
             WHERE d.unit_id = ? AND d.raised_cycle_id != ?
-            ORDER BY ic.cycle_number, d.created_at
+            ORDER BY d.raised_cycle_number, d.created_at
         """, [inspection['unit_id'], inspection['cycle_id']])
         for d in (prior_defects_raw or []):
             tid = d['item_template_id']
@@ -721,11 +710,10 @@ def _build_item_for_render(inspection_id, item_id, tenant_id, unit_id=None, cycl
     if unit_id and cycle_number and cycle_number > 1 and cycle_id:
         prior_raw = query_db("""
             SELECT d.id as defect_id, d.original_comment, d.status as defect_status,
-                   d.defect_type, ic.cycle_number as raised_cycle
+                   d.defect_type, d.raised_cycle_number as raised_cycle
             FROM defect d
-            JOIN inspection_cycle ic ON d.raised_cycle_id = ic.id
             WHERE d.unit_id = ? AND d.item_template_id = ? AND d.raised_cycle_id != ?
-            ORDER BY ic.cycle_number, d.created_at
+            ORDER BY d.raised_cycle_number, d.created_at
         """, [unit_id, item_raw['template_id'], cycle_id])
         for d in (prior_raw or []):
             prior_defects_list.append({
@@ -792,11 +780,9 @@ def _render_single_item(inspection_id, item_id, tenant_id, area_id, swap_oob=Fal
     For OOB children, manually wraps content in <div id="item-{id}" hx-swap-oob="innerHTML">.
     """
     inspection = query_db("""
-        SELECT i.*, u.unit_type, u.unit_number, u.id as unit_id,
-               ic.cycle_number, ic.id as cycle_id
+        SELECT i.*, u.unit_type, u.unit_number, u.id as unit_id
         FROM inspection i
         JOIN unit u ON i.unit_id = u.id
-        JOIN inspection_cycle ic ON i.cycle_id = ic.id
         WHERE i.id = ? AND i.tenant_id = ?
     """, [inspection_id, tenant_id], one=True)
 
@@ -920,19 +906,15 @@ def update_item(inspection_id, item_id):
         # Auto-clear prior NI defects when NI item marked as Installed
         clear_ni = request.form.get('clear_ni_defects')
         if clear_ni and status == 'ok':
-            cycle = query_db(
-                "SELECT * FROM inspection_cycle WHERE id = (SELECT cycle_id FROM inspection WHERE id = ?)",
-                [inspection_id], one=True
-            )
-            if cycle:
+            if inspection.get('cycle_id') and inspection.get('cycle_number'):
                 db.execute("""
                     UPDATE defect SET status = 'cleared', cleared_cycle_id = ?,
                            cleared_cycle_number = ?,
                            cleared_at = ?, clearance_note = 'rectified', updated_at = ?
                     WHERE unit_id = ? AND item_template_id = ? AND status = 'open'
                     AND defect_type = 'not_installed' AND raised_cycle_id != ?
-                """, [cycle['id'], cycle['cycle_number'], now, now, inspection['unit_id'],
-                      item['item_template_id'], cycle['id']])
+                """, [inspection['cycle_id'], inspection['cycle_number'], now, now, inspection['unit_id'],
+                      item['item_template_id'], inspection['cycle_id']])
         
         # Clear children inspection defects when parent cascades to not_installed
         if template and template['parent_item_id'] is None and status == 'not_installed':
@@ -1013,9 +995,8 @@ def add_defect(inspection_id, item_id):
                 return '', 204
 
     inspection = query_db("""
-        SELECT i.*, ic.cycle_number, ic.id as cycle_id
+        SELECT i.*
         FROM inspection i
-        JOIN inspection_cycle ic ON i.cycle_id = ic.id
         WHERE i.id = ? AND i.tenant_id = ?
     """, [inspection_id, tenant_id], one=True)
     if not inspection:
@@ -1118,9 +1099,8 @@ def clear_prior_defect(inspection_id, defect_id):
     area_id = request.form.get('area_id')
 
     inspection = query_db("""
-        SELECT i.*, ic.cycle_number, ic.id as cycle_id
+        SELECT i.*
         FROM inspection i
-        JOIN inspection_cycle ic ON i.cycle_id = ic.id
         WHERE i.id = ? AND i.tenant_id = ?
     """, [inspection_id, tenant_id], one=True)
     if not inspection:
@@ -1172,9 +1152,8 @@ def reopen_prior_defect(inspection_id, defect_id):
     area_id = request.form.get('area_id')
 
     inspection = query_db("""
-        SELECT i.*, ic.cycle_number, ic.id as cycle_id
+        SELECT i.*
         FROM inspection i
-        JOIN inspection_cycle ic ON i.cycle_id = ic.id
         WHERE i.id = ? AND i.tenant_id = ?
     """, [inspection_id, tenant_id], one=True)
     if not inspection:
@@ -1226,9 +1205,8 @@ def confirm_defects_remain(inspection_id, item_id):
     area_id = request.form.get('area_id')
 
     inspection = query_db("""
-        SELECT i.*, ic.cycle_number, ic.id as cycle_id
+        SELECT i.*
         FROM inspection i
-        JOIN inspection_cycle ic ON i.cycle_id = ic.id
         WHERE i.id = ? AND i.tenant_id = ?
     """, [inspection_id, tenant_id], one=True)
     if not inspection:
@@ -1268,9 +1246,8 @@ def delete_current_defect(inspection_id, defect_id):
     area_id = request.args.get('area_id')
 
     inspection = query_db("""
-        SELECT i.*, ic.cycle_number, ic.id as cycle_id
+        SELECT i.*
         FROM inspection i
-        JOIN inspection_cycle ic ON i.cycle_id = ic.id
         WHERE i.id = ? AND i.tenant_id = ?
     """, [inspection_id, tenant_id], one=True)
     if not inspection:
@@ -1362,9 +1339,8 @@ def update_category_comment(inspection_id, category_id):
     area_id = request.form.get('area_id')
     
     inspection = query_db("""
-        SELECT i.*, ic.cycle_number
+        SELECT i.*
         FROM inspection i
-        JOIN inspection_cycle ic ON i.cycle_id = ic.id
         WHERE i.id = ? AND i.tenant_id = ?
     """, [inspection_id, tenant_id], one=True)
     
@@ -1414,9 +1390,8 @@ def submit_inspection(inspection_id):
     db = get_db()
     
     inspection = query_db("""
-        SELECT i.*, ic.cycle_number
+        SELECT i.*
         FROM inspection i
-        JOIN inspection_cycle ic ON i.cycle_id = ic.id
         WHERE i.id = ? AND i.tenant_id = ?
     """, [inspection_id, tenant_id], one=True)
     
@@ -1558,9 +1533,8 @@ def submit_inspection(inspection_id):
 @require_auth
 def get_progress(inspection_id):
     inspection = query_db("""
-        SELECT i.status, i.unit_id, ic.cycle_number, ic.id as cycle_id
+        SELECT i.status, i.unit_id
         FROM inspection i
-        JOIN inspection_cycle ic ON i.cycle_id = ic.id
         WHERE i.id = ?
     """, [inspection_id], one=True)
     
@@ -1608,15 +1582,9 @@ def get_progress(inspection_id):
             FROM inspection_item ii
             JOIN defect d ON d.item_template_id = ii.item_template_id
                 AND d.unit_id = ?
-                AND d.raised_cycle_id = (
-                    SELECT ic2.id FROM inspection_cycle ic2
-                    WHERE ic2.block = (SELECT block FROM inspection_cycle WHERE id = ?)
-                    AND ic2.floor = (SELECT floor FROM inspection_cycle WHERE id = ?)
-                    AND ic2.cycle_number = (SELECT cycle_number - 1 FROM inspection_cycle WHERE id = ?)
-                    AND ic2.tenant_id = 'MONOGRAPH'
-                )
+                AND d.raised_cycle_number = ? - 1
             WHERE ii.inspection_id = ?
-        """, [inspection['unit_id'], inspection['cycle_id'], inspection['cycle_id'], inspection['cycle_id'], inspection_id], one=True)
+        """, [inspection['unit_id'], inspection['cycle_number'], inspection_id], one=True)
         progress['followup_total'] = followup_raw['total_to_review'] or 0
         progress['followup_actioned'] = followup_raw['actioned'] or 0
     
@@ -1630,9 +1598,8 @@ def get_open_defects(inspection_id):
     tenant_id = session['tenant_id']
     
     inspection = query_db("""
-        SELECT i.*, ic.cycle_number
+        SELECT i.*
         FROM inspection i
-        JOIN inspection_cycle ic ON i.cycle_id = ic.id
         WHERE i.id = ? AND i.tenant_id = ?
     """, [inspection_id, tenant_id], one=True)
     
@@ -1651,12 +1618,11 @@ def get_open_defects(inspection_id):
         
         all_open_defects = query_db("""
             SELECT d.*, it.item_description, ct.category_name, at.area_name,
-                   ic.cycle_number as raised_cycle, d.item_template_id
+                   d.raised_cycle_number as raised_cycle, d.item_template_id
             FROM defect d
             JOIN item_template it ON d.item_template_id = it.id
             JOIN category_template ct ON it.category_id = ct.id
             JOIN area_template at ON ct.area_id = at.id
-            JOIN inspection_cycle ic ON d.raised_cycle_id = ic.id
             WHERE d.unit_id = ? AND d.status = 'open'
             ORDER BY at.area_order, ct.category_order, it.item_order
         """, [inspection['unit_id']])
