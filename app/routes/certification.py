@@ -921,7 +921,7 @@ def my_inspections():
         SELECT i.id AS inspection_id, i.status AS inspection_status,
                i.inspection_date, i.started_at, i.submitted_at,
                u.id AS unit_id, u.unit_number, u.block, u.floor,
-               ic.cycle_number, ic.id AS cycle_id,
+               i.cycle_number, i.cycle_id,
                (SELECT COUNT(*) FROM inspection_item ii
                 WHERE ii.inspection_id = i.id
                 AND ii.status != 'skipped') AS total_items,
