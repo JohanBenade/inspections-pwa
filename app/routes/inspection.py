@@ -1532,7 +1532,7 @@ def submit_inspection(inspection_id):
 @require_auth
 def get_progress(inspection_id):
     inspection = query_db("""
-        SELECT i.status, i.unit_id
+        SELECT i.status, i.unit_id, i.cycle_number
         FROM inspection i
         WHERE i.id = ?
     """, [inspection_id], one=True)

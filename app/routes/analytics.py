@@ -670,7 +670,7 @@ def batch_analytics(batch_id):
 
     # 3. Zones in this batch
     zones_raw = [dict(r) for r in query_db("""
-        SELECT u.block, u.floor, ic.id as cycle_id, d.raised_cycle_number,
+        SELECT ic.block, ic.floor, ic.id as cycle_id, ic.cycle_number,
                COUNT(DISTINCT bu.unit_id) as zone_units
         FROM batch_unit bu
         JOIN inspection_cycle ic ON bu.cycle_id = ic.id
@@ -3604,7 +3604,7 @@ def _build_batch_report_data(batch_id):
 
     # 3. Zones in this batch
     zones_raw = [dict(r) for r in query_db("""
-        SELECT u.block, u.floor, ic.id as cycle_id, d.raised_cycle_number,
+        SELECT ic.block, ic.floor, ic.id as cycle_id, ic.cycle_number,
                COUNT(DISTINCT bu.unit_id) as zone_units
         FROM batch_unit bu
         JOIN inspection_cycle ic ON bu.cycle_id = ic.id
