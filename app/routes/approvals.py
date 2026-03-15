@@ -28,58 +28,7 @@ approvals_bp = Blueprint('approvals', __name__, url_prefix='/approvals')
 # HELPERS
 # ============================================================
 
-def _get_cycle_pipeline(tenant_id):
-    """Build pipeline data for all non-test cycles."""
-    cycles = [dict(r) for r in query_db("""
-        SELECT ic.*,
-            (SELECT COUNT(DISTINCT i.id)
-             FROM inspection i WHERE i.cycle_id = ic.id) AS total_inspections,
-            (SELECT COUNT(DISTINCT i.id)
-             FROM inspection i WHERE i.cycle_id = ic.id AND i.status = 'submitted') AS submitted_count,
-            (SELECT COUNT(DISTINCT i.id)
-             FROM inspection i WHERE i.cycle_id = ic.id AND i.status IN ('reviewed','pending_followup')) AS reviewed_count,
-            (SELECT COUNT(DISTINCT i.id)
-             FROM inspection i WHERE i.cycle_id = ic.id
-             AND i.status IN ('pending_followup', 'certified', 'closed')) AS signed_off_count,
-            (SELECT COUNT(*) FROM defect d
-             WHERE d.raised_cycle_id = ic.id AND d.status = 'open'
-             AND d.tenant_id = ic.tenant_id) AS defect_count,
-            (SELECT MIN(i.submitted_at) FROM inspection i
-             WHERE i.cycle_id = ic.id AND i.submitted_at IS NOT NULL) AS first_submitted_at,
-            (SELECT MAX(i.updated_at) FROM inspection i
-             WHERE i.cycle_id = ic.id AND i.status IN ('reviewed', 'pending_followup', 'certified', 'closed')) AS last_reviewed_at
-        FROM inspection_cycle ic
-        WHERE ic.tenant_id = ? AND ic.id NOT LIKE 'test-%'
-        ORDER BY ic.created_at DESC
-    """, [tenant_id])]
-
-    for c in cycles:
-        total = c['total_inspections']
-        c['has_inspections'] = total > 0
-        # Pipeline stage
-        if c['approved_at'] or c['pdfs_pushed_at']:
-            c['stage'] = 'signed_off'
-            c['stage_label'] = 'Signed Off'
-        elif c['reviewed_count'] == total and total > 0:
-            c['stage'] = 'reviewed'
-            c['stage_label'] = 'Reviewed'
-        elif c['reviewed_count'] > 0:
-            c['stage'] = 'reviewing'
-            c['stage_label'] = 'Reviewing'
-        elif c['submitted_count'] > 0:
-            c['stage'] = 'inspected'
-            c['stage_label'] = 'Inspected'
-        else:
-            c['stage'] = 'received'
-            c['stage_label'] = 'Received'
-
-        # Count descriptions needing attention
-        if total > 0:
-            c['needs_attention'] = _count_needs_attention(tenant_id, c['id'])
-        else:
-            c['needs_attention'] = 0
-
-    return cycles
+# _get_cycle_pipeline removed (dead code - never called)
 
 
 def _count_needs_attention(tenant_id, cycle_id):
@@ -158,14 +107,17 @@ def _get_batch_pipeline(tenant_id):
 
         # Get zones (distinct cycles) in this batch
         zones_raw = query_db("""
-            SELECT ic.id as cycle_id, ic.block, ic.floor, ic.cycle_number,
-                   ic.approved_at, ic.pdfs_pushed_at,
+            SELECT bu.cycle_id,
+                   u.block, u.floor,
+                   MAX(i.cycle_number) AS cycle_number,
                    COUNT(DISTINCT bu.unit_id) as batch_unit_count
             FROM batch_unit bu
-            JOIN inspection_cycle ic ON bu.cycle_id = ic.id
+            JOIN unit u ON bu.unit_id = u.id
+            LEFT JOIN inspection i ON i.unit_id = bu.unit_id
+                AND i.cycle_id = bu.cycle_id AND i.tenant_id = bu.tenant_id
             WHERE bu.batch_id = ? AND bu.tenant_id = ? AND bu.removed_at IS NULL
-            GROUP BY ic.id
-            ORDER BY ic.block, ic.floor, ic.cycle_number
+            GROUP BY bu.cycle_id, u.block, u.floor
+            ORDER BY u.block, u.floor, cycle_number
         """, [batch['id'], tenant_id])
 
         zones = []
@@ -315,36 +267,47 @@ def _get_batch_pipeline(tenant_id):
 
 def _build_review_data(tenant_id, cycle_id):
     """Build complete review data for a cycle."""
-    cycle = query_db(
-        "SELECT * FROM inspection_cycle WHERE id = ? AND tenant_id = ?",
-        [cycle_id, tenant_id], one=True)
-    if not cycle:
-        return None
-    cycle = dict(cycle)
-
     # All inspections in this cycle
     inspections = [dict(r) for r in query_db("""
         SELECT i.id, i.unit_id, i.status, i.inspector_name,
-               u.unit_number, u.block, u.floor
+               u.unit_number, u.block, u.floor, i.cycle_number
         FROM inspection i
         JOIN unit u ON i.unit_id = u.id
         WHERE i.cycle_id = ? AND i.tenant_id = ?
         ORDER BY u.unit_number
     """, [cycle_id, tenant_id])]
 
-    # Compute unit range for display
-    unit_numbers = sorted([insp['unit_number'] for insp in inspections])
-    cycle['unit_start'] = unit_numbers[0] if unit_numbers else ''
-    cycle['unit_end'] = unit_numbers[-1] if unit_numbers else ''
-
-    # Compute unit range for display
-    unit_numbers = sorted([insp['unit_number'] for insp in inspections])
-    cycle['unit_start'] = unit_numbers[0] if unit_numbers else ''
-    cycle['unit_end'] = unit_numbers[-1] if unit_numbers else ''
-
     if not inspections:
-        return {'cycle': cycle, 'units': [], 'stats': {
-            'total': 0, 'reviewed': 0, 'defects': 0, 'to_fix': 0}}
+        return None
+
+    # Build cycle dict from inspection + batch data
+    first = inspections[0]
+    cycle = {
+        'id': cycle_id,
+        'block': first['block'],
+        'floor': first['floor'],
+        'cycle_number': first['cycle_number'],
+        'approved_at': None,
+        'approved_by': None,
+        'pdfs_pushed_at': None,
+    }
+
+    # Get approval status from parent batch
+    batch_row = query_db("""
+        SELECT ib.approved_at, ib.pushed_at
+        FROM batch_unit bu
+        JOIN inspection_batch ib ON bu.batch_id = ib.id
+        WHERE bu.cycle_id = ? AND bu.tenant_id = ? AND bu.removed_at IS NULL
+        LIMIT 1
+    """, [cycle_id, tenant_id], one=True)
+    if batch_row:
+        cycle['approved_at'] = batch_row['approved_at']
+        cycle['pdfs_pushed_at'] = batch_row['pushed_at']
+
+    # Compute unit range for display
+    unit_numbers = sorted([insp['unit_number'] for insp in inspections])
+    cycle['unit_start'] = unit_numbers[0] if unit_numbers else ''
+    cycle['unit_end'] = unit_numbers[-1] if unit_numbers else 
 
     # All open defects for this cycle with template chain
     defects = [dict(r) for r in query_db("""
@@ -723,21 +686,18 @@ def _update_batch_reviewed_milestone(db, tenant_id, cycle_id, now):
             AND bu.cycle_id = i.cycle_id AND i.tenant_id = bu.tenant_id
         WHERE bu.batch_id = ? AND bu.tenant_id = ? AND bu.removed_at IS NULL
     """, [batch_id, tenant_id], one=True)
-    sign_counts = query_db("""
-        SELECT COUNT(DISTINCT bu.cycle_id) as total_cycles,
-               COUNT(DISTINCT CASE WHEN ic.approved_at IS NOT NULL THEN bu.cycle_id END) as approved_cycles,
-               MAX(ic.approved_at) as max_approved
-        FROM batch_unit bu
-        JOIN inspection_cycle ic ON bu.cycle_id = ic.id
-        WHERE bu.batch_id = ? AND bu.tenant_id = ? AND bu.removed_at IS NULL
+    # Batch sign-off status is managed by batch_sign_off route
+    # Check if batch is already approved and update status accordingly
+    batch_check = query_db("""
+        SELECT approved_at FROM inspection_batch
+        WHERE id = ? AND tenant_id = ?
     """, [batch_id, tenant_id], one=True)
-    all_signed = sign_counts and sign_counts['total_cycles'] > 0 and sign_counts['approved_cycles'] == sign_counts['total_cycles']
-    if all_signed:
+    if batch_check and batch_check['approved_at']:
         db.execute("""
             UPDATE inspection_batch SET signed_off_at = COALESCE(signed_off_at, ?),
                 closed_at = COALESCE(closed_at, ?), status = 'signed_off', updated_at = ?
             WHERE id = ? AND tenant_id = ?
-        """, [sign_counts['max_approved'], sign_counts['max_approved'], sign_counts['max_approved'], batch_id, tenant_id])
+        """, [batch_check['approved_at'], batch_check['approved_at'], batch_check['approved_at'], batch_id, tenant_id])
     if counts and counts['total'] > 0 and counts['reviewed_cnt'] == counts['total']:
         db.execute("""
             UPDATE inspection_batch SET reviewed_at = ?, status = 'reviewed', updated_at = ?
@@ -843,136 +803,7 @@ def bulk_reviewed(cycle_id):
     return redirect(url_for('approvals.review', cycle_id=cycle_id))
 
 
-@approvals_bp.route('/<cycle_id>/sign-off', methods=['POST'])
-@require_manager
-def sign_off(cycle_id):
-    """Bulk sign off all reviewed units in a cycle."""
-    tenant_id = session['tenant_id']
-    db = get_db()
-    now = datetime.now(timezone.utc).isoformat()
-
-    cycle = query_db(
-        "SELECT * FROM inspection_cycle WHERE id = ? AND tenant_id = ?",
-        [cycle_id, tenant_id], one=True)
-
-    if not cycle:
-        abort(404)
-
-    if cycle['approved_at']:
-        flash('This cycle has already been signed off.', 'error')
-        return redirect(url_for('approvals.review', cycle_id=cycle_id))
-
-    # Move all reviewed inspections to pending_followup
-    db.execute("""
-        UPDATE inspection SET status = 'pending_followup', updated_at = ?
-        WHERE cycle_id = ? AND tenant_id = ? AND status = 'reviewed'
-    """, [now, cycle_id, tenant_id])
-    updated = db.execute("SELECT changes()").fetchone()[0]
-
-    # Set cycle approval
-    db.execute("""
-        UPDATE inspection_cycle SET approved_at = ?, approved_by = ?
-        WHERE id = ?
-    """, [now, session['user_name'], cycle_id])
-
-    log_audit(db, tenant_id, 'cycle', cycle_id, 'approved',
-              new_value='signed_off',
-              user_id=session['user_id'], user_name=session['user_name'])
-
-    db.commit()
-
-    block = cycle['block'] or 'Cycle'
-    flash('Signed off {} - {} units approved for Raubex.'.format(
-        block, updated), 'success')
-    if request.form.get('from_page') == 'pipeline':
-        return redirect(url_for('approvals.pipeline'))
-    return redirect(url_for('approvals.review', cycle_id=cycle_id))
-
-
-@approvals_bp.route('/<cycle_id>/push-pdfs', methods=['POST'])
-@require_manager
-def push_pdfs(cycle_id):
-    """Generate all PDFs for cycle and return as ZIP download."""
-    from app.services.pdf_generator import generate_defects_pdf, generate_pdf_filename
-
-    tenant_id = session['tenant_id']
-    db = get_db()
-    now = datetime.now(timezone.utc).isoformat()
-
-    cycle = query_db(
-        "SELECT * FROM inspection_cycle WHERE id = ? AND tenant_id = ?",
-        [cycle_id, tenant_id], one=True)
-
-    if not cycle:
-        abort(404)
-
-    if not cycle['approved_at']:
-        flash('Cycle must be signed off before downloading PDFs.', 'error')
-        return redirect(url_for('approvals.review', cycle_id=cycle_id))
-
-    # No block on re-download -- Kevin can download ZIP multiple times
-
-    units = [dict(r) for r in query_db("""
-        SELECT u.id, u.unit_number, u.block, u.floor,
-               i.inspection_date, i.id AS inspection_id
-        FROM inspection i
-        JOIN unit u ON i.unit_id = u.id
-        WHERE i.cycle_id = ? AND i.tenant_id = ?
-        ORDER BY u.unit_number
-    """, [cycle_id, tenant_id])]
-
-    if not units:
-        flash('No units found in this cycle.', 'error')
-        return redirect(url_for('approvals.review', cycle_id=cycle_id))
-
-    zip_buffer = io.BytesIO()
-    success_count = 0
-    fail_count = 0
-
-    with zipfile.ZipFile(zip_buffer, 'w', zipfile.ZIP_DEFLATED) as zf:
-        for unit in units:
-            try:
-                pdf_bytes = generate_defects_pdf(tenant_id, unit['id'], cycle_id)
-                if not pdf_bytes:
-                    fail_count += 1
-                    continue
-                filename = generate_pdf_filename(
-                    unit, dict(cycle),
-                    inspection_date=unit.get('inspection_date'))
-                zf.writestr(filename, pdf_bytes)
-                success_count += 1
-            except Exception:
-                fail_count += 1
-
-    if success_count == 0:
-        flash('PDF generation failed for all units.', 'error')
-        return redirect(url_for('approvals.review', cycle_id=cycle_id))
-
-    # Mark cycle as downloaded
-    db.execute("""
-        UPDATE inspection_cycle
-        SET pdfs_pushed_at = ?, pdfs_push_status = ?
-        WHERE id = ?
-    """, [now, 'complete' if fail_count == 0 else 'partial', cycle_id])
-
-    log_audit(db, tenant_id, 'cycle', cycle_id, 'pdfs_downloaded',
-              new_value='{}/{} PDFs downloaded'.format(
-                  success_count, success_count + fail_count),
-              user_id=session['user_id'], user_name=session['user_name'])
-
-    db.commit()
-
-    zip_buffer.seek(0)
-    block_label = (cycle['block'] or 'Cycle').replace(' ', '_')
-    zip_filename = 'Defect_Reports_{}_{}.zip'.format(
-        block_label, cycle_id[:8])
-
-    return send_file(
-        zip_buffer,
-        mimetype='application/zip',
-        as_attachment=True,
-        download_name=zip_filename
-    )
+# cycle-level sign_off and push_pdfs removed — approval and PDF push now batch-level only
 
 
 # ============================================================
@@ -1041,40 +872,49 @@ def _render_defect_row(defect_id, cycle_id, tenant_id, is_clean=True):
 @approvals_bp.route('/batch/<batch_id>/sign-off', methods=['POST'])
 @require_manager
 def batch_sign_off(batch_id):
-    """Sign off all reviewed cycles in a batch."""
+    """Sign off all reviewed units in a batch."""
     tenant_id = session['tenant_id']
     db = get_db()
     now = datetime.now(timezone.utc).isoformat()
-    cycles = query_db("""
-        SELECT DISTINCT bu.cycle_id, ic.approved_at
-        FROM batch_unit bu
-        JOIN inspection_cycle ic ON bu.cycle_id = ic.id
-        WHERE bu.batch_id = ? AND bu.tenant_id = ? AND bu.status != 'removed'
-    """, [batch_id, tenant_id])
-    signed = 0
-    for cycle in cycles:
-        if cycle['approved_at']:
-            continue
-        db.execute("""
-            UPDATE inspection SET status = 'pending_followup', updated_at = ?
-            WHERE cycle_id = ? AND tenant_id = ? AND status = 'reviewed'
-        """, [now, cycle['cycle_id'], tenant_id])
-        db.execute("""
-            UPDATE inspection_cycle SET approved_at = ?, approved_by = ?
-            WHERE id = ?
-        """, [now, session['user_name'], cycle['cycle_id']])
-        log_audit(db, tenant_id, 'cycle', cycle['cycle_id'], 'approved',
-                  new_value='signed_off',
-                  user_id=session['user_id'], user_name=session['user_name'])
-        signed += 1
+
+    batch = query_db(
+        'SELECT * FROM inspection_batch WHERE id = ? AND tenant_id = ?',
+        [batch_id, tenant_id], one=True)
+    if not batch:
+        from flask import jsonify
+        return jsonify({'ok': False, 'error': 'Batch not found'}), 404
+
+    if batch['approved_at']:
+        from flask import jsonify
+        return jsonify({'ok': False, 'error': 'Batch already signed off'}), 400
+
+    # Move all reviewed inspections in this batch to pending_followup
     db.execute("""
-        UPDATE inspection_batch SET signed_off_at = ?, closed_at = ?,
-            status = 'complete', updated_at = ?
+        UPDATE inspection SET status = 'pending_followup', updated_at = ?
+        WHERE id IN (
+            SELECT i.id FROM inspection i
+            JOIN batch_unit bu ON bu.unit_id = i.unit_id
+                AND bu.cycle_id = i.cycle_id AND bu.tenant_id = i.tenant_id
+            WHERE bu.batch_id = ? AND bu.removed_at IS NULL
+            AND i.status = 'reviewed' AND i.tenant_id = ?
+        )
+    """, [now, batch_id, tenant_id])
+    updated = db.execute("SELECT changes()").fetchone()[0]
+
+    # Mark batch as approved and complete
+    db.execute("""
+        UPDATE inspection_batch SET approved_at = ?, signed_off_at = ?,
+            closed_at = ?, status = 'complete', updated_at = ?
         WHERE id = ? AND tenant_id = ?
-    """, [now, now, now, batch_id, tenant_id])
+    """, [now, now, now, now, batch_id, tenant_id])
+
+    log_audit(db, tenant_id, 'batch', batch_id, 'approved',
+              new_value='signed_off',
+              user_id=session['user_id'], user_name=session['user_name'])
+
     db.commit()
     from flask import jsonify
-    return jsonify({'ok': True, 'signed': signed})
+    return jsonify({'ok': True, 'signed': updated})
 
 
 @approvals_bp.route('/batch/<batch_id>/push-pdfs', methods=['POST'])
@@ -1094,12 +934,12 @@ def batch_push_pdfs(batch_id):
     units = [dict(r) for r in query_db("""
         SELECT u.id, u.unit_number, u.block, u.floor,
                i.inspection_date, i.id AS inspection_id,
-               bu.cycle_id, ic.cycle_number, ic.approved_at
+               bu.cycle_id, i.cycle_number
         FROM batch_unit bu
         JOIN unit u ON bu.unit_id = u.id
-        JOIN inspection_cycle ic ON bu.cycle_id = ic.id
         LEFT JOIN inspection i ON i.unit_id = u.id AND i.cycle_id = bu.cycle_id
-        WHERE bu.batch_id = ? AND bu.tenant_id = ? AND bu.status != 'removed'
+            AND i.tenant_id = bu.tenant_id
+        WHERE bu.batch_id = ? AND bu.tenant_id = ? AND bu.removed_at IS NULL
         AND i.id IS NOT NULL
         ORDER BY u.block, u.floor, u.unit_number
     """, [batch_id, tenant_id]) or []]
@@ -1112,10 +952,8 @@ def batch_push_pdfs(batch_id):
     zip_buffer = io.BytesIO()
     success_count = 0
     fail_count = 0
-    cycle_ids = set()
     with zipfile.ZipFile(zip_buffer, 'w', zipfile.ZIP_DEFLATED) as zf:
         for unit in units:
-            cycle_ids.add(unit['cycle_id'])
             try:
                 pdf_bytes = generate_defects_pdf(tenant_id, unit['id'], unit['cycle_id'])
                 if not pdf_bytes:
@@ -1134,14 +972,14 @@ def batch_push_pdfs(batch_id):
     if success_count == 0:
         from flask import jsonify
         return jsonify({'ok': False, 'error': 'PDF generation failed'}), 500
-    for cycle_id in cycle_ids:
-        db.execute("""
-            UPDATE inspection_cycle SET pdfs_pushed_at = ?, pdfs_push_status = ?
-            WHERE id = ?
-        """, [now, 'complete' if fail_count == 0 else 'partial', cycle_id])
-        log_audit(db, tenant_id, 'cycle', cycle_id, 'pdfs_downloaded',
-                  new_value='{}/{} PDFs'.format(success_count, success_count + fail_count),
-                  user_id=session['user_id'], user_name=session['user_name'])
+    # Mark batch as pushed (no limit on re-push)
+    db.execute("""
+        UPDATE inspection_batch SET pushed_at = ?, updated_at = ?
+        WHERE id = ? AND tenant_id = ?
+    """, [now, now, batch_id, tenant_id])
+    log_audit(db, tenant_id, 'batch', batch_id, 'pdfs_downloaded',
+              new_value='{}/{} PDFs'.format(success_count, success_count + fail_count),
+              user_id=session['user_id'], user_name=session['user_name'])
     db.commit()
     zip_buffer.seek(0)
     batch_name = (batch['name'] or batch_id).replace(' ', '_')
@@ -1184,7 +1022,7 @@ def cleanup():
                parent.item_description AS parent_description,
                ct.category_name, ct.id AS category_id,
                at.area_name, at.area_order, ct.category_order, it.item_order,
-               ic.cycle_number, ic.block AS cycle_block, ic.floor AS cycle_floor,
+               d.raised_cycle_number AS cycle_number, u.block AS cycle_block, u.floor AS cycle_floor,
                ib.name AS batch_name, ib.id AS batch_id
         FROM defect d
         JOIN unit u ON d.unit_id = u.id
@@ -1196,7 +1034,6 @@ def cleanup():
         JOIN item_template it ON d.item_template_id = it.id
         JOIN category_template ct ON it.category_id = ct.id
         JOIN area_template at ON ct.area_id = at.id
-        JOIN inspection_cycle ic ON d.raised_cycle_id = ic.id
         LEFT JOIN item_template parent ON it.parent_item_id = parent.id
         LEFT JOIN batch_unit bu_link ON bu_link.unit_id = d.unit_id
             AND bu_link.cycle_id = d.raised_cycle_id AND bu_link.status != 'removed'
@@ -1214,7 +1051,7 @@ def cleanup():
                parent.item_description AS parent_description,
                ct.category_name, ct.id AS category_id,
                at.area_name, at.area_order, ct.category_order, it.item_order,
-               ic.cycle_number, ic.block AS cycle_block, ic.floor AS cycle_floor,
+               i.cycle_number, u.block AS cycle_block, u.floor AS cycle_floor,
                ib.name AS batch_name, ib.id AS batch_id
         FROM inspection_defect idef
         JOIN inspection i ON idef.inspection_id = i.id
@@ -1222,7 +1059,6 @@ def cleanup():
         JOIN item_template it ON idef.item_template_id = it.id
         JOIN category_template ct ON it.category_id = ct.id
         JOIN area_template at ON ct.area_id = at.id
-        JOIN inspection_cycle ic ON i.cycle_id = ic.id
         LEFT JOIN item_template parent ON it.parent_item_id = parent.id
         LEFT JOIN batch_unit bu_link ON bu_link.unit_id = i.unit_id
             AND bu_link.cycle_id = i.cycle_id AND bu_link.status != 'removed'

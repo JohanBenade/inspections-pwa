@@ -137,16 +137,15 @@
 <div class="mb-4 bg-white rounded-xl border border-gray-200 p-5">
 
     {% if cycle.approved_at %}
-    <!-- State C+D: Signed off — read only -->
+    <!-- Batch signed off — read only -->
     <div>
-        <p class="text-sm font-medium text-gray-700">Signed off{% if cycle.approved_by %} by {{ cycle.approved_by }}{% endif %}</p>
-        {% if cycle.approved_at %}<p class="text-xs text-gray-400">{{ cycle.approved_at|to_sast }}</p>{% endif %}
+        <p class="text-sm font-medium text-gray-700">Batch signed off</p>
+        <p class="text-xs text-gray-400">{{ cycle.approved_at|to_sast }}</p>
     </div>
 
     {% elif stats.reviewed == stats.total and stats.total > 0 %}
-    <!-- State B: All reviewed, sign off -->
+    <!-- All reviewed — sign off happens at batch level -->
     <div class="space-y-3">
-        <!-- Progress bar -->
         <div class="flex items-center gap-2">
             <svg class="w-5 h-5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
@@ -156,15 +155,7 @@
         <div class="w-full h-2 bg-gray-100 rounded-full">
             <div class="h-2 bg-green-500 rounded-full" style="width: 100%"></div>
         </div>
-
-        <form method="POST" action="{{ url_for('approvals.sign_off', cycle_id=cycle.id) }}"
-              onsubmit="return confirm('Sign off {{ cycle.block or 'this cycle' }}? This will approve all {{ stats.total }} inspections for Raubex.');">
-            <button type="submit"
-                    class="w-full py-3 bg-green-600 text-white font-medium rounded-lg hover:bg-green-700 transition-colors">
-                Sign Off &mdash; {{ cycle.block or 'Cycle' }}{% if cycle.floor is not none %} {% if cycle.floor == 0 %}Ground Floor{% elif cycle.floor == 1 %}1st Floor{% elif cycle.floor == 2 %}2nd Floor{% elif cycle.floor == 3 %}3rd Floor{% else %}Floor {{ cycle.floor }}{% endif %}{% endif %}
-            </button>
-        </form>
-        <p class="text-xs text-gray-400 text-center">This will approve all {{ stats.total }} inspections for Raubex.</p>
+        <p class="text-xs text-gray-400 text-center">Sign off and PDF download available on the batch page.</p>
     </div>
 
     {% else %}
