@@ -3957,7 +3957,7 @@ def inspector_detail(inspector_name):
     units = [dict(r) for r in query_db("""
         SELECT i.inspector_name, u.id as unit_id, u.unit_number, u.block, u.floor,
             i.id as inspection_id, i.cycle_id, i.status as insp_status,
-            d.raised_cycle_number as round_number,
+            i.cycle_number as round_number,
             COUNT(d.id) as defect_count
         FROM inspection i
         JOIN unit_real u ON i.unit_id = u.id
