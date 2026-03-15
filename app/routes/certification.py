@@ -334,9 +334,8 @@ def view_unit(unit_id):
     else:
         inspection = query_db("""
             SELECT i.id FROM inspection i
-            JOIN inspection_cycle ic ON i.cycle_id = ic.id
             WHERE i.unit_id = ?
-            ORDER BY ic.cycle_number DESC LIMIT 1
+            ORDER BY i.cycle_number DESC LIMIT 1
         """, [unit_id], one=True)
     
     back_from = request.args.get('from', '')
@@ -357,9 +356,8 @@ def start_review(unit_id):
     
     inspection = query_db("""
         SELECT i.* FROM inspection i
-        JOIN inspection_cycle ic ON i.cycle_id = ic.id
         WHERE i.unit_id = ? AND i.tenant_id = ?
-        ORDER BY ic.cycle_number DESC LIMIT 1
+        ORDER BY i.cycle_number DESC LIMIT 1
     """, [unit_id, tenant_id], one=True)
     
     if not inspection:
@@ -398,9 +396,8 @@ def review_unit(unit_id):
     
     inspection = query_db("""
         SELECT i.* FROM inspection i
-        JOIN inspection_cycle ic ON i.cycle_id = ic.id
         WHERE i.unit_id = ? AND i.tenant_id = ?
-        ORDER BY ic.cycle_number DESC LIMIT 1
+        ORDER BY i.cycle_number DESC LIMIT 1
     """, [unit_id, tenant_id], one=True)
     
     if not inspection:
@@ -446,9 +443,8 @@ def mark_reviewed(unit_id):
 
     inspection = query_db("""
         SELECT i.* FROM inspection i
-        JOIN inspection_cycle ic ON i.cycle_id = ic.id
         WHERE i.unit_id = ? AND i.tenant_id = ?
-        ORDER BY ic.cycle_number DESC LIMIT 1
+        ORDER BY i.cycle_number DESC LIMIT 1
     """, [unit_id, tenant_id], one=True)
 
     if not inspection:
@@ -482,9 +478,8 @@ def approve_unit(unit_id):
     
     inspection = query_db("""
         SELECT i.* FROM inspection i
-        JOIN inspection_cycle ic ON i.cycle_id = ic.id
         WHERE i.unit_id = ? AND i.tenant_id = ?
-        ORDER BY ic.cycle_number DESC LIMIT 1
+        ORDER BY i.cycle_number DESC LIMIT 1
     """, [unit_id, tenant_id], one=True)
     
     if not inspection:
@@ -543,8 +538,7 @@ def certify_unit(unit_id):
     
     inspection = query_db("""
         SELECT i.id FROM inspection i
-        JOIN inspection_cycle ic ON i.cycle_id = ic.id
-        WHERE i.unit_id = ? ORDER BY ic.cycle_number DESC LIMIT 1
+        WHERE i.unit_id = ? ORDER BY i.cycle_number DESC LIMIT 1
     """, [unit_id], one=True)
     
     if inspection:
@@ -598,8 +592,7 @@ def close_with_defects(unit_id):
     
     inspection = query_db("""
         SELECT i.id FROM inspection i
-        JOIN inspection_cycle ic ON i.cycle_id = ic.id
-        WHERE i.unit_id = ? ORDER BY ic.cycle_number DESC LIMIT 1
+        WHERE i.unit_id = ? ORDER BY i.cycle_number DESC LIMIT 1
     """, [unit_id], one=True)
     
     if inspection:
@@ -637,9 +630,8 @@ def approve_and_close(unit_id):
 
     inspection = query_db("""
         SELECT i.* FROM inspection i
-        JOIN inspection_cycle ic ON i.cycle_id = ic.id
         WHERE i.unit_id = ? AND i.tenant_id = ?
-        ORDER BY ic.cycle_number DESC LIMIT 1
+        ORDER BY i.cycle_number DESC LIMIT 1
     """, [unit_id, tenant_id], one=True)
 
     if not inspection:
@@ -712,8 +704,7 @@ def reopen_unit(unit_id):
     
     inspection = query_db("""
         SELECT i.id FROM inspection i
-        JOIN inspection_cycle ic ON i.cycle_id = ic.id
-        WHERE i.unit_id = ? ORDER BY ic.cycle_number DESC LIMIT 1
+        WHERE i.unit_id = ? ORDER BY i.cycle_number DESC LIMIT 1
     """, [unit_id], one=True)
     
     if inspection:
