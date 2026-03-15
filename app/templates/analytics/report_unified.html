@@ -327,7 +327,7 @@ body {
     <tbody>
     {% for blk in grid_blocks %}
     <tr>
-        <td style="font-weight: 600; color: #1A1A1A;">{{ blk }}</td>
+        <td style="font-weight: 600; color: #1A1A1A; background: white;">{{ blk }}</td>
         {% for flr in grid_floors %}
         {% if block_floor_grid.get(blk, {}).get(flr) %}
         {% set cell = block_floor_grid[blk][flr] %}
