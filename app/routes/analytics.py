@@ -81,7 +81,7 @@ def dashboard():
         WHERE d.tenant_id = ? AND d.status = 'open'
         AND d.raised_cycle_id NOT LIKE 'test-%'
         AND EXISTS (SELECT 1 FROM inspection i2 WHERE i2.unit_id = d.unit_id AND i2.cycle_id = d.raised_cycle_id AND i2.status IN ('reviewed','approved','certified','pending_followup'))
-        AND EXISTS (SELECT 1 FROM inspection_cycle _ic WHERE _ic.id = d.raised_cycle_id AND _ic.cycle_number = 1)
+        AND d.raised_cycle_number = 1
         GROUP BY u.block, u.floor
     """, [tenant_id])
     defect_map = {}
@@ -129,7 +129,7 @@ def dashboard():
         JOIN unit_real u ON i.unit_id = u.id
         WHERE i.tenant_id = ? AND i.cycle_id NOT LIKE 'test-%'
         AND i.status IN ('reviewed','approved','certified','pending_followup')
-        AND EXISTS (SELECT 1 FROM inspection_cycle _ic WHERE _ic.id = i.cycle_id AND _ic.cycle_number = 1)
+        AND i.cycle_number = 1
         GROUP BY u.block, u.floor
     """, [tenant_id])
     inspected_zone_map = {}
@@ -194,7 +194,7 @@ def dashboard():
         JOIN unit_real u ON u.id = i.unit_id
         WHERE i.tenant_id = ? AND i.cycle_id NOT LIKE 'test-%'
         AND i.status IN ('reviewed','approved','certified','pending_followup')
-        AND EXISTS (SELECT 1 FROM inspection_cycle _ic WHERE _ic.id = i.cycle_id AND _ic.cycle_number = 1)
+        AND i.cycle_number = 1
     """, [tenant_id], one=True)
     units_inspected = inspected_raw['inspected'] if inspected_raw else 0
     items_inspected = ITEMS_PER_UNIT * units_inspected
@@ -217,7 +217,7 @@ def dashboard():
         AND i.status IN ('submitted','reviewed','approved','pending_followup','certified')
         AND i.inspection_date IS NOT NULL
         AND u.unit_number NOT LIKE 'TEST%'
-        AND EXISTS (SELECT 1 FROM inspection_cycle _ic WHERE _ic.id = i.cycle_id AND _ic.cycle_number = 1)
+        AND i.cycle_number = 1
     """, [tenant_id], one=True)
     forecast = None
     if forecast_raw and forecast_raw['first_date'] and forecast_raw['last_date'] and forecast_raw['done']:
@@ -249,10 +249,10 @@ def dashboard():
         LEFT JOIN defect d ON d.unit_id = u.id AND d.status = 'open'
             AND d.raised_cycle_id NOT LIKE 'test-%' AND d.tenant_id = u.tenant_id
             AND EXISTS (SELECT 1 FROM inspection i2 WHERE i2.unit_id = d.unit_id AND i2.cycle_id = d.raised_cycle_id AND i2.status IN ('reviewed','approved','certified','pending_followup'))
-            AND EXISTS (SELECT 1 FROM inspection_cycle _ic WHERE _ic.id = d.raised_cycle_id AND _ic.cycle_number = 1)
+            AND d.raised_cycle_number = 1
         WHERE i.tenant_id = ? AND i.cycle_id NOT LIKE 'test-%'
         AND i.status IN ('reviewed','approved','certified','pending_followup')
-        AND EXISTS (SELECT 1 FROM inspection_cycle _ic2 WHERE _ic2.id = i.cycle_id AND _ic2.cycle_number = 1)
+        AND i.cycle_number = 1
         AND u.unit_number NOT LIKE 'TEST%'
         GROUP BY u.id
         ORDER BY defect_count
@@ -338,7 +338,7 @@ def dashboard():
         WHERE d.tenant_id = ? AND d.status = 'open'
         AND d.raised_cycle_id NOT LIKE 'test-%'
         AND EXISTS (SELECT 1 FROM inspection i2 WHERE i2.unit_id = d.unit_id AND i2.cycle_id = d.raised_cycle_id AND i2.status IN ('reviewed','approved','certified','pending_followup'))
-        AND EXISTS (SELECT 1 FROM inspection_cycle _ic WHERE _ic.id = d.raised_cycle_id AND _ic.cycle_number = 1)
+        AND d.raised_cycle_number = 1
         GROUP BY at2.area_name
         ORDER BY defect_count DESC
     """, [tenant_id])]
@@ -370,7 +370,7 @@ def dashboard():
             WHERE d.tenant_id = ? AND d.status = 'open'
             AND d.raised_cycle_id NOT LIKE 'test-%'
             AND EXISTS (SELECT 1 FROM inspection i2 WHERE i2.unit_id = d.unit_id AND i2.cycle_id = d.raised_cycle_id AND i2.status IN ('reviewed','approved','certified','pending_followup'))
-            AND EXISTS (SELECT 1 FROM inspection_cycle _ic WHERE _ic.id = d.raised_cycle_id AND _ic.cycle_number = 1)
+            AND d.raised_cycle_number = 1
             AND at2.area_name = ?
             GROUP BY d.original_comment
             ORDER BY count DESC
@@ -410,7 +410,7 @@ def dashboard():
         WHERE d.tenant_id = ? AND d.status = 'open'
         AND d.raised_cycle_id NOT LIKE 'test-%'
         AND EXISTS (SELECT 1 FROM inspection i2 WHERE i2.unit_id = d.unit_id AND i2.cycle_id = d.raised_cycle_id AND i2.status IN ('reviewed','approved','certified','pending_followup'))
-        AND EXISTS (SELECT 1 FROM inspection_cycle _ic WHERE _ic.id = d.raised_cycle_id AND _ic.cycle_number = 1)
+        AND d.raised_cycle_number = 1
         GROUP BY u.id, u.unit_number, u.block, u.floor
         ORDER BY defect_count DESC
         LIMIT 5
@@ -432,7 +432,7 @@ def dashboard():
         WHERE tenant_id = ? AND status = 'open'
         AND raised_cycle_id NOT LIKE 'test-%'
         AND EXISTS (SELECT 1 FROM inspection i2 WHERE i2.unit_id = defect.unit_id AND i2.cycle_id = defect.raised_cycle_id AND i2.status IN ('reviewed','approved','certified','pending_followup'))
-        AND EXISTS (SELECT 1 FROM inspection_cycle _ic WHERE _ic.id = defect.raised_cycle_id AND _ic.cycle_number = 1)
+        AND defect.raised_cycle_number = 1
         GROUP BY original_comment
         ORDER BY cnt DESC
         LIMIT 10
@@ -454,7 +454,7 @@ def dashboard():
         WHERE d.tenant_id = ? AND d.status = 'open'
         AND d.raised_cycle_id NOT LIKE 'test-%'
         AND EXISTS (SELECT 1 FROM inspection i2 WHERE i2.unit_id = d.unit_id AND i2.cycle_id = d.raised_cycle_id AND i2.status IN ('reviewed','approved','certified','pending_followup'))
-        AND EXISTS (SELECT 1 FROM inspection_cycle _ic WHERE _ic.id = d.raised_cycle_id AND _ic.cycle_number = 1)
+        AND d.raised_cycle_number = 1
         GROUP BY ct.category_name
         ORDER BY count DESC
     """, [tenant_id])
@@ -477,7 +477,7 @@ def dashboard():
         WHERE d.tenant_id = ? AND d.status = 'open'
         AND d.raised_cycle_id NOT LIKE 'test-%'
         AND EXISTS (SELECT 1 FROM inspection i2 WHERE i2.unit_id = d.unit_id AND i2.cycle_id = d.raised_cycle_id AND i2.status IN ('reviewed','approved','certified','pending_followup'))
-        AND EXISTS (SELECT 1 FROM inspection_cycle _ic WHERE _ic.id = d.raised_cycle_id AND _ic.cycle_number = 1)
+        AND d.raised_cycle_number = 1
         GROUP BY d.original_comment
         HAVING unit_count >= 3
         ORDER BY cnt DESC
@@ -497,7 +497,7 @@ def dashboard():
             AND d.raised_cycle_id NOT LIKE 'test-%'
             AND d.original_comment IN ({})
             AND EXISTS (SELECT 1 FROM inspection i2 WHERE i2.unit_id = d.unit_id AND i2.cycle_id = d.raised_cycle_id AND i2.status IN ('reviewed','approved','certified','pending_followup'))
-            AND EXISTS (SELECT 1 FROM inspection_cycle _ic WHERE _ic.id = d.raised_cycle_id AND _ic.cycle_number = 1)
+            AND d.raised_cycle_number = 1
             GROUP BY d.original_comment, ct.category_name
             ORDER BY d.original_comment, cat_cnt DESC
         """.format(placeholders), [tenant_id] + top_comments)
@@ -534,10 +534,9 @@ def dashboard():
             COUNT(d.id) as defect_count
         FROM inspection i
         JOIN unit_real u ON i.unit_id = u.id
-        JOIN inspection_cycle _ic ON _ic.id = i.cycle_id AND _ic.cycle_number = 1
         LEFT JOIN defect d ON d.unit_id = u.id AND d.raised_cycle_id = i.cycle_id
             AND d.status = 'open' AND d.tenant_id = u.tenant_id
-        WHERE i.tenant_id = ? AND i.status IN ('reviewed','approved','certified','pending_followup')
+        WHERE i.tenant_id = ? AND i.cycle_number = 1 AND i.status IN ('reviewed','approved','certified','pending_followup')
             AND i.inspector_name IS NOT NULL
             AND u.unit_number NOT LIKE 'TEST%'
         GROUP BY i.inspector_name, u.unit_number, u.block, u.floor
@@ -3460,7 +3459,7 @@ def _build_unified_report_data():
         AND i.status IN ('submitted','reviewed','approved','pending_followup','certified')
         AND i.inspection_date IS NOT NULL
         AND u.unit_number NOT LIKE 'TEST%'
-        AND EXISTS (SELECT 1 FROM inspection_cycle _ic WHERE _ic.id = i.cycle_id AND _ic.cycle_number = 1)
+        AND i.cycle_number = 1
     """, [tenant_id], one=True)
     forecast = None
     if _fc_raw and _fc_raw['first_date'] and _fc_raw['last_date'] and _fc_raw['done']:
