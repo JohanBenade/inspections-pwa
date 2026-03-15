@@ -307,7 +307,7 @@ def _build_review_data(tenant_id, cycle_id):
     # Compute unit range for display
     unit_numbers = sorted([insp['unit_number'] for insp in inspections])
     cycle['unit_start'] = unit_numbers[0] if unit_numbers else ''
-    cycle['unit_end'] = unit_numbers[-1] if unit_numbers else 
+    cycle['unit_end'] = unit_numbers[-1] if unit_numbers else ''
 
     # All open defects for this cycle with template chain
     defects = [dict(r) for r in query_db("""
