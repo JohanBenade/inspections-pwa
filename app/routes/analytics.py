@@ -90,14 +90,14 @@ def dashboard():
 
     # 3. Round breakdown per block+floor
     rounds_raw = query_db("""
-        SELECT ic.block, ic.floor, ic.cycle_number as round_number,
+        SELECT u.block, u.floor, i.cycle_number as round_number,
             COUNT(DISTINCT i.unit_id) as units_inspected
         FROM inspection i
-        JOIN inspection_cycle ic ON i.cycle_id = ic.id
+        JOIN unit_real u ON i.unit_id = u.id
         WHERE i.tenant_id = ? AND i.cycle_id NOT LIKE 'test-%'
         AND i.status IN ('reviewed','approved','certified','pending_followup')
-        GROUP BY ic.block, ic.floor, ic.cycle_number
-        ORDER BY ic.block, ic.floor, ic.cycle_number
+        GROUP BY u.block, u.floor, i.cycle_number
+        ORDER BY u.block, u.floor, i.cycle_number
     """, [tenant_id])
     rounds_map = {}
     for r in rounds_raw:
@@ -288,25 +288,22 @@ def dashboard():
         SELECT
             COUNT(*) as total_reviewed
         FROM defect d
-        JOIN inspection_cycle ic ON d.raised_cycle_id = ic.id
-        WHERE d.tenant_id = ? AND ic.id NOT LIKE 'test-%'
+        WHERE d.tenant_id = ? AND d.raised_cycle_id NOT LIKE 'test-%'
         AND d.status = 'cleared'
     """, [tenant_id], one=True)
 
     r2_units_raw = query_db("""
         SELECT COUNT(DISTINCT i.unit_id) as r2_units
         FROM inspection i
-        JOIN inspection_cycle ic ON i.cycle_id = ic.id
-        WHERE i.tenant_id = ? AND ic.cycle_number > 1
-        AND ic.id NOT LIKE 'test-%' AND i.status IN ('reviewed','approved','certified','pending_followup')
+        WHERE i.tenant_id = ? AND i.cycle_number > 1
+        AND i.cycle_id NOT LIKE 'test-%' AND i.status IN ('reviewed','approved','certified','pending_followup')
     """, [tenant_id], one=True)
 
     r2_new_raw = query_db("""
         SELECT COUNT(*) as new_defects
         FROM defect d
-        JOIN inspection_cycle ic ON d.raised_cycle_id = ic.id
-        WHERE d.tenant_id = ? AND ic.cycle_number > 1
-        AND ic.id NOT LIKE 'test-%' AND d.status = 'open'
+        WHERE d.tenant_id = ? AND d.raised_cycle_number > 1
+        AND d.raised_cycle_id NOT LIKE 'test-%' AND d.status = 'open'
     """, [tenant_id], one=True)
 
     rectification = None
@@ -673,7 +670,7 @@ def batch_analytics(batch_id):
 
     # 3. Zones in this batch
     zones_raw = [dict(r) for r in query_db("""
-        SELECT ic.block, ic.floor, ic.id as cycle_id, ic.cycle_number,
+        SELECT u.block, u.floor, ic.id as cycle_id, d.raised_cycle_number,
                COUNT(DISTINCT bu.unit_id) as zone_units
         FROM batch_unit bu
         JOIN inspection_cycle ic ON bu.cycle_id = ic.id
@@ -1049,17 +1046,16 @@ def block_floor_detail(block_slug, floor):
         SELECT u.id as unit_id, u.unit_number,
             i.id as inspection_id, i.status as insp_status,
             i.cycle_id, i.inspector_name,
-            ic.cycle_number as round_number,
+            i.cycle_number as round_number,
             COUNT(d.id) as defect_count
         FROM unit_real u
         JOIN inspection i ON i.unit_id = u.id AND i.tenant_id = u.tenant_id
-        JOIN inspection_cycle ic ON i.cycle_id = ic.id
         LEFT JOIN defect d ON d.unit_id = u.id AND d.raised_cycle_id = i.cycle_id
             AND d.status = 'open' AND d.tenant_id = u.tenant_id
         WHERE u.block = ? AND u.floor = ? AND u.tenant_id = ?
         AND i.cycle_id NOT LIKE 'test-%'
         GROUP BY u.id, i.cycle_id
-        ORDER BY u.unit_number, ic.cycle_number
+        ORDER BY u.unit_number, i.cycle_number
     """, [block, floor, tenant_id])]
 
     # Keep only the latest round per unit for the table
@@ -1139,7 +1135,7 @@ def block_floor_detail(block_slug, floor):
     rounds = []
     if max_round > 1:
         rounds_raw = [dict(r) for r in query_db("""
-            SELECT ic.cycle_number as round_number,
+            SELECT i.cycle_number as round_number,
                 COUNT(DISTINCT d.id) as total_defects,
                 COUNT(DISTINCT i.unit_id) as units_inspected,
                 COUNT(DISTINCT CASE WHEN d.status = 'open' THEN d.id END) as still_open,
@@ -1362,11 +1358,10 @@ def block_detail(block_slug):
         SELECT u.floor,
             COUNT(DISTINCT u.id) as total_units,
             COUNT(DISTINCT CASE WHEN d.status = 'open' THEN d.id END) as open_defects,
-            MAX(ic.cycle_number) as max_round,
+            MAX(i.cycle_number) as max_round,
             COUNT(DISTINCT CASE WHEN d.status = 'cleared' THEN d.id END) as rectified
         FROM unit_real u
         LEFT JOIN inspection i ON i.unit_id = u.id AND i.tenant_id = u.tenant_id
-        LEFT JOIN inspection_cycle ic ON i.cycle_id = ic.id
         LEFT JOIN defect d ON d.unit_id = u.id AND d.tenant_id = u.tenant_id
         WHERE u.block = ? AND u.tenant_id = ?
         AND u.unit_number NOT LIKE 'TEST%'
@@ -1483,7 +1478,7 @@ def explore():
         where_parts.append("ct.category_name = ?")
         params.append(f_category)
     if f_round:
-        where_parts.append("ic.cycle_number = ?")
+        where_parts.append("d.raised_cycle_number = ?")
         params.append(f_round)
 
     where_sql = " AND ".join(where_parts)
@@ -1495,7 +1490,6 @@ def explore():
         JOIN item_template it ON d.item_template_id = it.id
         JOIN category_template ct ON it.category_id = ct.id
         JOIN area_template at2 ON ct.area_id = at2.id
-        LEFT JOIN inspection_cycle ic ON d.raised_cycle_id = ic.id
     """
 
     # Summary for current scope
@@ -1718,9 +1712,8 @@ def _build_rectification_data():
         SELECT DISTINCT i.unit_id, u.unit_number, u.block, u.floor
         FROM inspection i
         JOIN unit_real u ON i.unit_id = u.id
-        JOIN inspection_cycle ic ON i.cycle_id = ic.id
-        WHERE i.tenant_id = ? AND ic.cycle_number > 1
-        AND ic.id NOT LIKE 'test-%'
+        WHERE i.tenant_id = ? AND i.cycle_number > 1
+        AND i.cycle_id NOT LIKE 'test-%'
         AND i.status IN ('reviewed','approved','certified','pending_followup')
     """, [tenant_id])]
 
@@ -1738,12 +1731,11 @@ def _build_rectification_data():
         SELECT d.id, d.unit_id, d.item_template_id, d.status,
             d.original_comment, d.created_at, d.cleared_at,
             d.raised_cycle_id, d.cleared_cycle_id,
-            ic.block, ic.floor
+            u.block, u.floor
         FROM defect d
-        JOIN inspection_cycle ic ON d.raised_cycle_id = ic.id
-        WHERE d.tenant_id = ? AND ic.cycle_number = 1
+        WHERE d.tenant_id = ? AND d.raised_cycle_number = 1
         AND d.unit_id IN ({ph})
-        AND ic.id NOT LIKE 'test-%'
+        AND d.raised_cycle_id NOT LIKE 'test-%'
     """.format(ph=ph), [tenant_id] + reinspected_unit_ids)]
 
     c1_total = len(c1_defects)
@@ -1758,13 +1750,12 @@ def _build_rectification_data():
             at2.area_name, ct.category_name
         FROM defect d
         JOIN unit_real u ON d.unit_id = u.id
-        JOIN inspection_cycle ic ON d.raised_cycle_id = ic.id
         JOIN item_template it ON d.item_template_id = it.id
         JOIN category_template ct ON it.category_id = ct.id
         JOIN area_template at2 ON ct.area_id = at2.id
-        WHERE d.tenant_id = ? AND ic.cycle_number > 1
+        WHERE d.tenant_id = ? AND d.raised_cycle_number > 1
         AND d.unit_id IN ({ph})
-        AND ic.id NOT LIKE 'test-%'
+        AND d.raised_cycle_id NOT LIKE 'test-%'
     """.format(ph=ph), [tenant_id] + reinspected_unit_ids)]
 
     c2_new_count = len(c2_new_defects)
@@ -1791,10 +1782,9 @@ def _build_rectification_data():
     total_inspected_count = dict(total_inspected)['cnt'] if total_inspected else 0
 
     max_cycle_row = query_db(
-        "SELECT MAX(ic.cycle_number) AS max_cycle FROM inspection i "
-        "JOIN inspection_cycle ic ON i.cycle_id = ic.id "
+        "SELECT MAX(d.raised_cycle_number) AS max_cycle FROM inspection i "
         "WHERE i.tenant_id = ? AND i.unit_id IN ({ph}) "
-        "AND ic.id NOT LIKE 'test-%'".format(ph=ph),
+        "AND i.cycle_id NOT LIKE 'test-%'".format(ph=ph),
         [tenant_id] + reinspected_unit_ids, one=True)
     max_cycle_num = int(dict(max_cycle_row)['max_cycle']) if max_cycle_row and dict(max_cycle_row)['max_cycle'] else 2
 
@@ -1834,13 +1824,12 @@ def _build_rectification_data():
         zone_map[key]['new_c2'] += 1
 
     zone_cycle_raw = query_db(
-        "SELECT ic.block, ic.floor, MAX(ic.cycle_number) AS max_cycle "
+        "SELECT u.block, u.floor, MAX(i.cycle_number) AS max_cycle "
         "FROM inspection i "
-        "JOIN inspection_cycle ic ON i.cycle_id = ic.id "
         "WHERE i.tenant_id = ? AND i.unit_id IN ({ph}) "
-        "AND ic.id NOT LIKE 'test-%' "
+        "AND i.cycle_id NOT LIKE 'test-%' "
         "AND i.status IN ('reviewed','approved','certified','pending_followup') "
-        "GROUP BY ic.block, ic.floor".format(ph=ph),
+        "GROUP BY u.block, u.floor".format(ph=ph),
         [tenant_id] + reinspected_unit_ids)
     zone_cycle_map = {(r['block'], r['floor']): int(r['max_cycle']) for r in zone_cycle_raw}
 
@@ -1862,10 +1851,9 @@ def _build_rectification_data():
         JOIN item_template it ON d.item_template_id = it.id
         JOIN category_template ct ON it.category_id = ct.id
         JOIN area_template at2 ON ct.area_id = at2.id
-        JOIN inspection_cycle ic ON d.raised_cycle_id = ic.id
-        WHERE d.tenant_id = ? AND ic.cycle_number = 1
+        WHERE d.tenant_id = ? AND d.raised_cycle_number = 1
         AND d.unit_id IN ({ph})
-        AND ic.id NOT LIKE 'test-%'
+        AND d.raised_cycle_id NOT LIKE 'test-%'
         GROUP BY at2.area_name
         ORDER BY (SUM(CASE WHEN d.status = 'cleared' THEN 1 ELSE 0 END)
                  + SUM(CASE WHEN d.status = 'open' THEN 1 ELSE 0 END)) DESC
@@ -1877,10 +1865,9 @@ def _build_rectification_data():
         JOIN item_template it ON d.item_template_id = it.id
         JOIN category_template ct ON it.category_id = ct.id
         JOIN area_template at2 ON ct.area_id = at2.id
-        JOIN inspection_cycle ic ON d.raised_cycle_id = ic.id
-        WHERE d.tenant_id = ? AND ic.cycle_number > 1
+        WHERE d.tenant_id = ? AND d.raised_cycle_number > 1
         AND d.unit_id IN ({ph})
-        AND ic.id NOT LIKE 'test-%'
+        AND d.raised_cycle_id NOT LIKE 'test-%'
         GROUP BY at2.area_name
     """.format(ph=ph), [tenant_id] + reinspected_unit_ids)]
     area_new_map = {r['area']: r['new_count'] for r in area_new}
@@ -1908,10 +1895,9 @@ def _build_rectification_data():
         FROM defect d
         JOIN item_template it ON d.item_template_id = it.id
         JOIN category_template ct ON it.category_id = ct.id
-        JOIN inspection_cycle ic ON d.raised_cycle_id = ic.id
-        WHERE d.tenant_id = ? AND ic.cycle_number = 1
+        WHERE d.tenant_id = ? AND d.raised_cycle_number = 1
         AND d.unit_id IN ({ph})
-        AND ic.id NOT LIKE 'test-%'
+        AND d.raised_cycle_id NOT LIKE 'test-%'
         GROUP BY ct.category_name
         ORDER BY (SUM(CASE WHEN d.status = 'cleared' THEN 1 ELSE 0 END)
                  + SUM(CASE WHEN d.status = 'open' THEN 1 ELSE 0 END)) DESC
@@ -1922,10 +1908,9 @@ def _build_rectification_data():
         FROM defect d
         JOIN item_template it ON d.item_template_id = it.id
         JOIN category_template ct ON it.category_id = ct.id
-        JOIN inspection_cycle ic ON d.raised_cycle_id = ic.id
-        WHERE d.tenant_id = ? AND ic.cycle_number > 1
+        WHERE d.tenant_id = ? AND d.raised_cycle_number > 1
         AND d.unit_id IN ({ph})
-        AND ic.id NOT LIKE 'test-%'
+        AND d.raised_cycle_id NOT LIKE 'test-%'
         GROUP BY ct.category_name
     """.format(ph=ph), [tenant_id] + reinspected_unit_ids)]
     trade_new_map = {r['trade']: r['new_count'] for r in trade_new}
@@ -1955,11 +1940,10 @@ def _build_rectification_data():
         JOIN item_template it ON d.item_template_id = it.id
         JOIN category_template ct ON it.category_id = ct.id
         JOIN area_template at2 ON ct.area_id = at2.id
-        JOIN inspection_cycle ic ON d.raised_cycle_id = ic.id
         WHERE d.tenant_id = ? AND d.status = 'open'
-        AND ic.cycle_number = 1
+        AND d.raised_cycle_number = 1
         AND d.unit_id IN ({ph})
-        AND ic.id NOT LIKE 'test-%'
+        AND d.raised_cycle_id NOT LIKE 'test-%'
         ORDER BY age_days DESC
     """.format(ph=ph), [tenant_id] + reinspected_unit_ids)]
 
@@ -2189,8 +2173,7 @@ def dashboard_legacy():
             "JOIN item_template it ON d.item_template_id = it.id "
             "JOIN category_template ct ON it.category_id = ct.id "
             "JOIN area_template at2 ON ct.area_id = at2.id "
-            "JOIN inspection_cycle ic ON d.raised_cycle_id = ic.id "
-            "WHERE d.tenant_id = ? AND d.status = 'open' AND ic.id NOT LIKE 'test-%' "
+            "WHERE d.tenant_id = ? AND d.status = 'open' AND d.raised_cycle_id NOT LIKE 'test-%' "
             "AND EXISTS (SELECT 1 FROM inspection i2 WHERE i2.unit_id = d.unit_id AND i2.cycle_id = d.raised_cycle_id AND i2.status IN ('reviewed','approved','certified','pending_followup')) "
             "GROUP BY at2.area_name, batch_label ORDER BY at2.area_name",
             [tenant_id])
@@ -2219,8 +2202,7 @@ def dashboard_legacy():
         defect_by_batch_raw = query_db(
             "SELECT d.original_comment, " + BATCH_LABEL_SQL + " as batch_label, COUNT(*) as cnt "
             "FROM defect d "
-            "JOIN inspection_cycle ic ON d.raised_cycle_id = ic.id "
-            "WHERE d.tenant_id = ? AND d.status = 'open' AND ic.id NOT LIKE 'test-%' "
+            "WHERE d.tenant_id = ? AND d.status = 'open' AND d.raised_cycle_id NOT LIKE 'test-%' "
             "AND EXISTS (SELECT 1 FROM inspection i2 WHERE i2.unit_id = d.unit_id AND i2.cycle_id = d.raised_cycle_id AND i2.status IN ('reviewed','approved','certified','pending_followup')) "
             "GROUP BY d.original_comment, batch_label ORDER BY cnt DESC",
             [tenant_id])
@@ -2243,8 +2225,7 @@ def dashboard_legacy():
             "FROM defect d "
             "JOIN item_template it ON d.item_template_id = it.id "
             "JOIN category_template ct ON it.category_id = ct.id "
-            "JOIN inspection_cycle ic ON d.raised_cycle_id = ic.id "
-            "WHERE d.tenant_id = ? AND d.status = 'open' AND ic.id NOT LIKE 'test-%' "
+            "WHERE d.tenant_id = ? AND d.status = 'open' AND d.raised_cycle_id NOT LIKE 'test-%' "
             "AND EXISTS (SELECT 1 FROM inspection i2 WHERE i2.unit_id = d.unit_id AND i2.cycle_id = d.raised_cycle_id AND i2.status IN ('reviewed','approved','certified','pending_followup')) "
             "GROUP BY ct.category_name, batch_label ORDER BY cnt DESC",
             [tenant_id])
@@ -2503,8 +2484,7 @@ def dashboard_legacy():
             "JOIN item_template it ON d.item_template_id = it.id "
             "JOIN category_template ct ON it.category_id = ct.id "
             "JOIN area_template at2 ON ct.area_id = at2.id "
-            "JOIN inspection_cycle ic ON d.raised_cycle_id = ic.id "
-            "WHERE d.tenant_id = ? AND d.status = 'open' AND ic.id NOT LIKE 'test-%' "
+            "WHERE d.tenant_id = ? AND d.status = 'open' AND d.raised_cycle_id NOT LIKE 'test-%' "
             "AND EXISTS (SELECT 1 FROM inspection i2 WHERE i2.unit_id = d.unit_id AND i2.cycle_id = d.raised_cycle_id AND i2.status IN ('reviewed','approved','certified','pending_followup')) "
             "GROUP BY at2.area_name, d.original_comment, batch_label "
             "ORDER BY at2.area_name, cnt DESC",
@@ -3046,14 +3026,14 @@ def _build_unified_report_data():
 
     # Round breakdown per block+floor
     rounds_raw = query_db("""
-        SELECT ic.block, ic.floor, ic.cycle_number as round_number,
+        SELECT u.block, u.floor, i.cycle_number as round_number,
             COUNT(DISTINCT i.unit_id) as units_inspected
         FROM inspection i
-        JOIN inspection_cycle ic ON i.cycle_id = ic.id
+        JOIN unit_real u ON i.unit_id = u.id
         WHERE i.tenant_id = ? AND i.cycle_id NOT LIKE 'test-%'
         AND i.status IN ('reviewed','approved','certified','pending_followup')
-        GROUP BY ic.block, ic.floor, ic.cycle_number
-        ORDER BY ic.block, ic.floor, ic.cycle_number
+        GROUP BY u.block, u.floor, i.cycle_number
+        ORDER BY u.block, u.floor, i.cycle_number
     """, [tenant_id])
     rounds_map = {}
     for r in rounds_raw:
@@ -3159,9 +3139,8 @@ def _build_unified_report_data():
     r2_units_raw = query_db("""
         SELECT COUNT(DISTINCT i.unit_id) as r2_units
         FROM inspection i
-        JOIN inspection_cycle ic ON i.cycle_id = ic.id
-        WHERE i.tenant_id = ? AND ic.cycle_number > 1
-        AND ic.id NOT LIKE 'test-%' AND i.status IN ('reviewed','approved','certified','pending_followup')
+        WHERE i.tenant_id = ? AND i.cycle_number > 1
+        AND i.cycle_id NOT LIKE 'test-%' AND i.status IN ('reviewed','approved','certified','pending_followup')
     """, [tenant_id], one=True)
 
     rectification = None
@@ -3169,17 +3148,15 @@ def _build_unified_report_data():
     if r2_units > 0:
         rect_cleared = query_db("""
             SELECT COUNT(*) as total FROM defect d
-            JOIN inspection_cycle ic ON d.raised_cycle_id = ic.id
-            WHERE d.tenant_id = ? AND ic.id NOT LIKE 'test-%'
+            WHERE d.tenant_id = ? AND d.raised_cycle_id NOT LIKE 'test-%'
             AND d.status = 'cleared'
         """, [tenant_id], one=True)
         total_cleared = rect_cleared['total'] or 0 if rect_cleared else 0
 
         r2_new_raw = query_db("""
             SELECT COUNT(*) as new_defects FROM defect d
-            JOIN inspection_cycle ic ON d.raised_cycle_id = ic.id
-            WHERE d.tenant_id = ? AND ic.cycle_number > 1
-            AND ic.id NOT LIKE 'test-%' AND d.status = 'open'
+            WHERE d.tenant_id = ? AND d.raised_cycle_number > 1
+            AND d.raised_cycle_id NOT LIKE 'test-%' AND d.status = 'open'
         """, [tenant_id], one=True)
         r2_new = r2_new_raw['new_defects'] or 0 if r2_new_raw else 0
 
@@ -3627,7 +3604,7 @@ def _build_batch_report_data(batch_id):
 
     # 3. Zones in this batch
     zones_raw = [dict(r) for r in query_db("""
-        SELECT ic.block, ic.floor, ic.id as cycle_id, ic.cycle_number,
+        SELECT u.block, u.floor, ic.id as cycle_id, d.raised_cycle_number,
                COUNT(DISTINCT bu.unit_id) as zone_units
         FROM batch_unit bu
         JOIN inspection_cycle ic ON bu.cycle_id = ic.id
@@ -3759,9 +3736,8 @@ def _build_batch_report_data(batch_id):
     # 6. Worst units (top 5 from batch)
     ph = ','.join('?' * len(all_cycle_ids))
     worst_units = [dict(r) for r in query_db(
-        "SELECT u.unit_number, u.block, u.floor, COUNT(d.id) as defect_count, ic.cycle_number "
+        "SELECT u.unit_number, u.block, u.floor, COUNT(d.id) as defect_count, d.raised_cycle_number "
         "FROM defect d JOIN unit_real u ON d.unit_id = u.id "
-        "JOIN inspection_cycle ic ON d.raised_cycle_id = ic.id "
         "WHERE d.tenant_id = ? AND d.status = 'open' "
         "AND d.unit_id IN (SELECT unit_id FROM batch_unit WHERE batch_id = ? AND removed_at IS NULL AND tenant_id = ?) "
         "AND d.raised_cycle_id IN ({}) "
@@ -3981,11 +3957,10 @@ def inspector_detail(inspector_name):
     units = [dict(r) for r in query_db("""
         SELECT i.inspector_name, u.id as unit_id, u.unit_number, u.block, u.floor,
             i.id as inspection_id, i.cycle_id, i.status as insp_status,
-            ic.cycle_number as round_number,
+            d.raised_cycle_number as round_number,
             COUNT(d.id) as defect_count
         FROM inspection i
         JOIN unit_real u ON i.unit_id = u.id
-        JOIN inspection_cycle ic ON i.cycle_id = ic.id
         LEFT JOIN defect d ON d.unit_id = u.id AND d.raised_cycle_id = i.cycle_id
             AND d.status = 'open' AND d.tenant_id = u.tenant_id
         WHERE i.tenant_id = ? AND i.inspector_name = ?
@@ -4060,12 +4035,11 @@ def _build_audit_data_dict():
     # Get all inspections with unit and defect data
     rows = [dict(r) for r in query_db("""
         SELECT i.inspector_name, i.inspection_date, i.started_at, i.submitted_at,
-               i.status AS insp_status, i.id AS inspection_id, ic.cycle_number,
+               i.status AS insp_status, i.id AS inspection_id, i.cycle_number,
                u.id AS unit_id, u.unit_number, u.block, u.floor,
                COUNT(d.id) AS defect_count
         FROM inspection i
         JOIN unit_real u ON i.unit_id = u.id
-        JOIN inspection_cycle ic ON i.cycle_id = ic.id
         LEFT JOIN defect d ON d.unit_id = u.id AND d.raised_cycle_id = i.cycle_id
             AND d.tenant_id = u.tenant_id
         WHERE i.tenant_id = ? AND i.status IN ('reviewed','approved','certified','pending_followup')
