@@ -31,7 +31,7 @@ def register():
                it.item_description, ct.category_name, at.area_name,
                i.inspection_date, i.inspector_name,
                p.project_name, ph.phase_name,
-               ic.cycle_number as raised_cycle,
+               d.raised_cycle_number as raised_cycle,
                parent.item_description as parent_description,
                dh.comment as defect_comment
         FROM defect d
@@ -41,7 +41,6 @@ def register():
         JOIN item_template it ON d.item_template_id = it.id
         JOIN category_template ct ON it.category_id = ct.id
         JOIN area_template at ON ct.area_id = at.id
-        JOIN inspection_cycle ic ON d.raised_cycle_id = ic.id
         LEFT JOIN inspection i ON d.unit_id = i.unit_id AND d.raised_cycle_id = i.cycle_id
         LEFT JOIN item_template parent ON it.parent_item_id = parent.id
         LEFT JOIN (
@@ -202,14 +201,13 @@ def phase_register(phase_id):
                it.item_description, ct.category_name, at.area_name,
                i.inspection_date, i.inspector_name,
                parent.item_description as parent_description,
-               ic.cycle_number as raised_cycle,
+               d.raised_cycle_number as raised_cycle,
                dh.comment as defect_comment
         FROM defect d
         JOIN unit u ON d.unit_id = u.id
         JOIN item_template it ON d.item_template_id = it.id
         JOIN category_template ct ON it.category_id = ct.id
         JOIN area_template at ON ct.area_id = at.id
-        JOIN inspection_cycle ic ON d.raised_cycle_id = ic.id
         LEFT JOIN inspection i ON d.unit_id = i.unit_id AND d.raised_cycle_id = i.cycle_id
         LEFT JOIN item_template parent ON it.parent_item_id = parent.id
         LEFT JOIN (

@@ -23,24 +23,18 @@ def download_defects_pdf(unit_id):
     if not unit:
         abort(404)
     
-    # Get latest cycle for this unit (optional - can be passed as query param)
+    # Get cycle from inspection record
     from flask import request
     cycle_id = request.args.get('cycle')
     
-    cycle = None
     if cycle_id:
-        cycle = query_db("SELECT * FROM inspection_cycle WHERE id = ?", [cycle_id], one=True)
+        insp = query_db("SELECT * FROM inspection WHERE unit_id = ? AND cycle_id = ? AND tenant_id = ?",
+                        [unit_id, cycle_id, tenant_id], one=True)
     else:
-        # Get most recent inspection cycle for this unit
-        latest = query_db("""
-            SELECT ic.* FROM inspection i
-            JOIN inspection_cycle ic ON i.cycle_id = ic.id
-            WHERE i.unit_id = ?
-            ORDER BY ic.cycle_number DESC LIMIT 1
-        """, [unit_id], one=True)
-        if latest:
-            cycle = latest
-            cycle_id = latest['id']
+        insp = query_db("SELECT * FROM inspection WHERE unit_id = ? AND tenant_id = ? ORDER BY cycle_number DESC LIMIT 1",
+                        [unit_id, tenant_id], one=True)
+        if insp:
+            cycle_id = insp['cycle_id']
     
     # Generate PDF
     pdf_bytes = generate_defects_pdf(tenant_id, unit_id, cycle_id)
@@ -49,9 +43,8 @@ def download_defects_pdf(unit_id):
         abort(500, "Failed to generate PDF")
     
     # Generate filename
-    insp = query_db("SELECT inspection_date FROM inspection WHERE unit_id = ? AND cycle_id = ?", [unit_id, cycle_id], one=True)
     insp_date = insp['inspection_date'] if insp else None
-    filename = generate_pdf_filename(unit, cycle, inspection_date=insp_date)
+    filename = generate_pdf_filename(unit, insp, inspection_date=insp_date)
     
     return Response(
         pdf_bytes,
@@ -80,16 +73,14 @@ def preview_defects_pdf(unit_id):
     from flask import request
     cycle_id = request.args.get('cycle')
     
-    cycle = None
     if not cycle_id:
-        latest = query_db("""
-            SELECT ic.* FROM inspection i
-            JOIN inspection_cycle ic ON i.cycle_id = ic.id
-            WHERE i.unit_id = ?
-            ORDER BY ic.cycle_number DESC LIMIT 1
-        """, [unit_id], one=True)
-        if latest:
-            cycle_id = latest['id']
+        insp = query_db("SELECT * FROM inspection WHERE unit_id = ? AND tenant_id = ? ORDER BY cycle_number DESC LIMIT 1",
+                        [unit_id, tenant_id], one=True)
+        if insp:
+            cycle_id = insp['cycle_id']
+    else:
+        insp = query_db("SELECT * FROM inspection WHERE unit_id = ? AND cycle_id = ? AND tenant_id = ?",
+                        [unit_id, cycle_id, tenant_id], one=True)
     
     # Generate PDF
     pdf_bytes = generate_defects_pdf(tenant_id, unit_id, cycle_id)
@@ -98,12 +89,8 @@ def preview_defects_pdf(unit_id):
         abort(500, "Failed to generate PDF")
     
     # Build filename
-    cycle_obj = None
-    if cycle_id:
-        cycle_obj = query_db("SELECT cycle_number FROM inspection_cycle WHERE id = ?", [cycle_id], one=True)
-    insp = query_db("SELECT inspection_date FROM inspection WHERE unit_id = ? AND cycle_id = ?", [unit_id, cycle_id], one=True)
     insp_date = insp['inspection_date'] if insp else None
-    filename = generate_pdf_filename(unit, cycle_obj, inspection_date=insp_date)
+    filename = generate_pdf_filename(unit, insp, inspection_date=insp_date)
 
     return Response(
         pdf_bytes,
@@ -132,14 +119,11 @@ def view_defects_html(unit_id):
     cycle_id = req.args.get('cycle')
     if not cycle_id:
         latest = query_db(
-            "SELECT ic.* FROM inspection i"
-            " JOIN inspection_cycle ic ON i.cycle_id = ic.id"
-            " WHERE i.unit_id = ?"
-            " ORDER BY ic.cycle_number DESC LIMIT 1",
-            [unit_id], one=True
+            "SELECT * FROM inspection WHERE unit_id = ? AND tenant_id = ? ORDER BY cycle_number DESC LIMIT 1",
+            [unit_id, tenant_id], one=True
         )
         if latest:
-            cycle_id = latest['id']
+            cycle_id = latest['cycle_id']
 
     data = get_defects_data(tenant_id, unit_id, cycle_id)
     if not data:
