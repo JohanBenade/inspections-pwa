@@ -142,16 +142,13 @@ def dashboard():
                 i.submitted_at,
                 i.manager_reviewed_at,
                 (SELECT COUNT(*) FROM defect d 
-                 JOIN inspection_cycle ic_r ON d.raised_cycle_id = ic_r.id
-                 LEFT JOIN inspection_cycle ic_c ON d.cleared_cycle_id = ic_c.id
                  WHERE d.unit_id = u.id 
-                 AND ic_r.cycle_number <= ?
-                 AND (d.cleared_cycle_id IS NULL OR ic_c.cycle_number > ?)
+                 AND d.raised_cycle_number <= ?
+                 AND (d.cleared_cycle_id IS NULL OR d.cleared_cycle_number > ?)
                 ) AS open_defects,
                 (SELECT COUNT(*) FROM defect d 
-                 JOIN inspection_cycle ic_c ON d.cleared_cycle_id = ic_c.id
                  WHERE d.unit_id = u.id 
-                 AND ic_c.cycle_number = ?
+                 AND d.cleared_cycle_number = ?
                 ) AS cleared_defects,
                 (SELECT COUNT(*) FROM inspection_item ii 
                  WHERE ii.inspection_id = i.id
@@ -214,11 +211,10 @@ def dashboard():
                     i.inspection_date,
                     i.submitted_at,
                     i.manager_reviewed_at,
-                    ic.cycle_number,
-                    ic.id AS cycle_id,
-                    ROW_NUMBER() OVER (PARTITION BY i.unit_id ORDER BY ic.cycle_number DESC) as rn
+                    i.cycle_number,
+                    i.cycle_id,
+                    ROW_NUMBER() OVER (PARTITION BY i.unit_id ORDER BY i.cycle_number DESC) as rn
                 FROM inspection i
-                JOIN inspection_cycle ic ON i.cycle_id = ic.id
             ) latest ON latest.unit_id = u.id AND latest.rn = 1
             WHERE u.tenant_id = ?
             AND u.id NOT IN (
@@ -841,15 +837,14 @@ def my_reviews():
         SELECT i.id AS inspection_id, i.status AS inspection_status,
                i.submitted_at, i.inspector_name,
                u.id AS unit_id, u.unit_number, u.block, u.floor,
-               ic.cycle_number, ic.id AS cycle_id,
+               i.cycle_number, i.cycle_id,
                ib.id AS batch_id, ib.name AS batch_name, ib.received_date,
                (SELECT COUNT(*) FROM defect d
-                WHERE d.unit_id = u.id AND d.raised_cycle_id = ic.id
+                WHERE d.unit_id = u.id AND d.raised_cycle_id = i.cycle_id
                 AND d.status = 'open' AND d.tenant_id = i.tenant_id) AS defect_count
         FROM inspection i
         JOIN unit u ON i.unit_id = u.id
-        JOIN inspection_cycle ic ON i.cycle_id = ic.id
-        LEFT JOIN batch_unit bu ON bu.unit_id = u.id AND bu.cycle_id = ic.id AND bu.status != 'removed'
+        LEFT JOIN batch_unit bu ON bu.unit_id = u.id AND bu.cycle_id = i.cycle_id AND bu.status != 'removed'
         LEFT JOIN inspection_batch ib ON bu.batch_id = ib.id
         WHERE i.tenant_id = ? AND i.status = 'submitted'
         ORDER BY ib.received_date DESC, u.block, u.floor, u.unit_number
@@ -858,11 +853,10 @@ def my_reviews():
     # Also get reviewed counts per cycle for progress
     reviewed_counts = {}
     for r in query_db("""
-        SELECT ic.id AS cycle_id, COUNT(*) AS cnt
+        SELECT i.cycle_id, COUNT(*) AS cnt
         FROM inspection i
-        JOIN inspection_cycle ic ON i.cycle_id = ic.id
         WHERE i.tenant_id = ? AND i.status = 'reviewed'
-        GROUP BY ic.id
+        GROUP BY i.cycle_id
     """, [tenant_id]):
         reviewed_counts[r['cycle_id']] = r['cnt']
 
@@ -937,18 +931,15 @@ def my_inspections():
                (SELECT COUNT(*) FROM inspection_defect idef
                 WHERE idef.inspection_id = i.id) AS defect_count,
                (SELECT COUNT(*) FROM defect d2
-                JOIN inspection_cycle ic2 ON d2.raised_cycle_id = ic2.id
                 WHERE d2.unit_id = u.id AND d2.status = 'open'
-                AND ic2.cycle_number < ic.cycle_number
+                AND d2.raised_cycle_number < i.cycle_number
                 AND d2.tenant_id = i.tenant_id) AS prior_open_defects,
                (SELECT COUNT(*) FROM defect d3
-                JOIN inspection_cycle ic3 ON d3.raised_cycle_id = ic3.id
                 WHERE d3.unit_id = u.id
-                AND ic3.cycle_number < ic.cycle_number
+                AND d3.raised_cycle_number < i.cycle_number
                 AND d3.tenant_id = i.tenant_id) AS prior_defects_total
         FROM inspection i
         JOIN unit u ON i.unit_id = u.id
-        JOIN inspection_cycle ic ON i.cycle_id = ic.id
         WHERE i.inspector_id = ? AND i.tenant_id = ?
         AND i.status IN ('not_started', 'in_progress')
         ORDER BY
