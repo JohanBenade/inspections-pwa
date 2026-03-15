@@ -94,11 +94,11 @@ def start_inspection(unit_id):
         excl_list_id = bu_row['exclusion_list_id'] if bu_row else None
         db.execute("""
             INSERT INTO inspection
-            (id, tenant_id, unit_id, cycle_id, inspection_date,
+            (id, tenant_id, unit_id, cycle_id, cycle_number, inspection_date,
              inspector_id, inspector_name, status, started_at, created_at, updated_at,
              exclusion_list_id)
-            VALUES (?, ?, ?, ?, ?, ?, ?, 'in_progress', ?, ?, ?, ?)
-        """, [inspection_id, tenant_id, unit_id, cycle_id,
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'in_progress', ?, ?, ?, ?)
+        """, [inspection_id, tenant_id, unit_id, cycle_id, cycle['cycle_number'],
               date.today().isoformat(), user_id, user_name, now, now, now, excl_list_id])
     
     # Check if this is a followup cycle
@@ -927,10 +927,11 @@ def update_item(inspection_id, item_id):
             if cycle:
                 db.execute("""
                     UPDATE defect SET status = 'cleared', cleared_cycle_id = ?,
+                           cleared_cycle_number = ?,
                            cleared_at = ?, clearance_note = 'rectified', updated_at = ?
                     WHERE unit_id = ? AND item_template_id = ? AND status = 'open'
                     AND defect_type = 'not_installed' AND raised_cycle_id != ?
-                """, [cycle['id'], now, now, inspection['unit_id'],
+                """, [cycle['id'], cycle['cycle_number'], now, now, inspection['unit_id'],
                       item['item_template_id'], cycle['id']])
         
         # Clear children inspection defects when parent cascades to not_installed
@@ -1057,10 +1058,10 @@ def add_defect(inspection_id, item_id):
         defect_id = generate_id()
         db.execute("""
             INSERT INTO defect (id, tenant_id, unit_id, item_template_id, raised_cycle_id,
-                defect_type, status, original_comment, created_at, updated_at)
-            VALUES (?, ?, ?, ?, ?, 'not_to_standard', 'open', ?, ?, ?)
+                raised_cycle_number, defect_type, status, original_comment, created_at, updated_at)
+            VALUES (?, ?, ?, ?, ?, ?, 'not_to_standard', 'open', ?, ?, ?)
         """, [defect_id, tenant_id, inspection['unit_id'], item['item_template_id'],
-              inspection['cycle_id'], description, now, now])
+              inspection['cycle_id'], inspection['cycle_number'], description, now, now])
         if item['status'] not in ('not_to_standard', 'not_installed'):
             db.execute("UPDATE inspection_item SET status = 'not_to_standard', marked_at = ? WHERE id = ?", [now, item_id])
     else:
@@ -1136,9 +1137,9 @@ def clear_prior_defect(inspection_id, defect_id):
 
     # Clear the defect
     db.execute("""
-        UPDATE defect SET status = 'cleared', cleared_cycle_id = ?, cleared_at = ?, updated_at = ?
+        UPDATE defect SET status = 'cleared', cleared_cycle_id = ?, cleared_cycle_number = ?, cleared_at = ?, updated_at = ?
         WHERE id = ?
-    """, [inspection['cycle_id'], now, now, defect_id])
+    """, [inspection['cycle_id'], inspection['cycle_number'], now, now, defect_id])
 
     # Find the inspection_item for this defect's template
     insp_item = query_db("""
@@ -1190,7 +1191,7 @@ def reopen_prior_defect(inspection_id, defect_id):
 
     # Reopen the defect
     db.execute("""
-        UPDATE defect SET status = 'open', cleared_cycle_id = NULL, cleared_at = NULL, updated_at = ?
+        UPDATE defect SET status = 'open', cleared_cycle_id = NULL, cleared_cycle_number = NULL, cleared_at = NULL, updated_at = ?
         WHERE id = ?
     """, [now, defect_id])
 
@@ -1500,13 +1501,13 @@ def submit_inspection(inspection_id):
             desc_raw = idef['description']
             if idx == 0 and existing:
                 if existing['status'] == 'cleared':
-                    db.execute("UPDATE defect SET status = 'open', cleared_cycle_id = NULL, cleared_at = NULL, updated_at = CURRENT_TIMESTAMP WHERE id = ?", [existing['id']])
+                    db.execute("UPDATE defect SET status = 'open', cleared_cycle_id = NULL, cleared_cycle_number = NULL, cleared_at = NULL, updated_at = CURRENT_TIMESTAMP WHERE id = ?", [existing['id']])
                 history_id = generate_id()
                 db.execute("INSERT INTO defect_history (id, tenant_id, defect_id, cycle_id, comment, status) VALUES (?, ?, ?, ?, ?, 'open')", [history_id, tenant_id, existing['id'], inspection['cycle_id'], desc_raw or 'Not rectified'])
             else:
                 defect_id = generate_id()
                 washed_comment = wash_description(db, tenant_id, item['template_id'], desc_raw)
-                db.execute("INSERT INTO defect (id, tenant_id, unit_id, item_template_id, raised_cycle_id, defect_type, status, original_comment, raw_comment) VALUES (?, ?, ?, ?, ?, ?, 'open', ?, ?)", [defect_id, tenant_id, inspection['unit_id'], item['template_id'], inspection['cycle_id'], item['status'], washed_comment, desc_raw])
+                db.execute("INSERT INTO defect (id, tenant_id, unit_id, item_template_id, raised_cycle_id, raised_cycle_number, defect_type, status, original_comment, raw_comment) VALUES (?, ?, ?, ?, ?, ?, ?, 'open', ?, ?)", [defect_id, tenant_id, inspection['unit_id'], item['template_id'], inspection['cycle_id'], inspection['cycle_number'], item['status'], washed_comment, desc_raw])
                 history_id = generate_id()
                 db.execute("INSERT INTO defect_history (id, tenant_id, defect_id, cycle_id, comment, status) VALUES (?, ?, ?, ?, ?, 'open')", [history_id, tenant_id, defect_id, inspection['cycle_id'], washed_comment])
     
@@ -1519,7 +1520,7 @@ def submit_inspection(inspection_id):
     for item in ok_items:
         open_defects = query_db("SELECT * FROM defect WHERE unit_id = ? AND item_template_id = ? AND status = 'open'", [inspection['unit_id'], item['item_template_id']])
         for defect in (open_defects or []):
-            db.execute("UPDATE defect SET status = 'cleared', cleared_cycle_id = ?, cleared_at = CURRENT_TIMESTAMP WHERE id = ?", [inspection['cycle_id'], defect['id']])
+            db.execute("UPDATE defect SET status = 'cleared', cleared_cycle_id = ?, cleared_cycle_number = ?, cleared_at = CURRENT_TIMESTAMP WHERE id = ?", [inspection['cycle_id'], inspection['cycle_number'], defect['id']])
             history_id = generate_id()
             db.execute("INSERT INTO defect_history (id, tenant_id, defect_id, cycle_id, comment, status) VALUES (?, ?, ?, ?, ?, 'cleared')", [history_id, tenant_id, defect['id'], inspection['cycle_id'], 'Rectified'])
     db.execute("DELETE FROM inspection_defect WHERE inspection_id = ? AND tenant_id = ?", [inspection_id, tenant_id])
