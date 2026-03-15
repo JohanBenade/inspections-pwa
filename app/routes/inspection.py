@@ -210,8 +210,7 @@ def inspect(inspection_id):
     tenant_id = session['tenant_id']
     
     inspection = query_db("""
-        SELECT i.*, u.unit_type, u.unit_number, u.block, u.floor,
-               
+        SELECT i.*, u.unit_type, u.unit_number, u.block, u.floor
         FROM inspection i
         JOIN unit u ON i.unit_id = u.id
         WHERE i.id = ? AND i.tenant_id = ?
