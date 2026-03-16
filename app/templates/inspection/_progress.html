@@ -4,7 +4,9 @@
     <span class="font-medium text-gray-700">Progress</span>
     <span class="text-gray-500">
         {{ progress.completed }}/{{ progress.active }} items
-
+        {% if progress.excl_count > 0 %}
+        <span class="text-gray-400 text-xs">({{ progress.excl_count }} excluded)</span>
+        {% endif %}
     </span>
 </div>
 {% set pct = ((progress.completed / progress.active) * 100)|round|int if progress.active > 0 else 0 %}

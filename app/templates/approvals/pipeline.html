@@ -77,7 +77,7 @@
                 <div>
                     <div class="flex items-center gap-2">
                         <span class="font-medium text-gray-800 text-sm">{{ z.block }} &middot; {{ z.floor_label }}</span>
-                        {% if z.cycle_number > 1 %}
+                        {% if z.cycle_number and z.cycle_number > 1 %}
                         <span class="text-xs px-1.5 py-0.5 rounded bg-amber-100 text-amber-700 font-medium">C{{ z.cycle_number }}</span>
                         {% endif %}
                     </div>
