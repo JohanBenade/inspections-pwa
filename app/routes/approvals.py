@@ -109,7 +109,7 @@ def _get_batch_pipeline(tenant_id):
         zones_raw = query_db("""
             SELECT bu.cycle_id,
                    u.block, u.floor,
-                   MAX(i.cycle_number) AS cycle_number,
+                   COALESCE(MAX(i.cycle_number), (SELECT cycle_number FROM inspection_cycle WHERE id = bu.cycle_id)) AS cycle_number,
                    COUNT(DISTINCT bu.unit_id) as batch_unit_count
             FROM batch_unit bu
             JOIN unit u ON bu.unit_id = u.id
