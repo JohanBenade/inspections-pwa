@@ -533,7 +533,7 @@
                     <td style="padding: 0.4rem 0.5rem; font-weight: 600; font-size: 0.8rem; color: #1A1A1A; white-space: nowrap;">{{ a.area|title }}</td>
                     <td style="padding: 0.3rem 0.2rem;">
                         <div style="height: 22px;">
-                            <div style="display: inline-flex; align-items: center; justify-content: flex-end; height: 100%; width: 100%; min-width: 28px; background: rgba(180,178,169,0.18); border-radius: 3px; padding-right: 6px; font-weight: 700; font-size: 0.75rem; color: #6B6B6B;">{{ a.c1_total }}</div>
+                            <div style="display: inline-flex; align-items: center; justify-content: flex-end; height: 100%; width: {{ (a.c1_total / area_max_bf * 100)|round }}%; min-width: 28px; background: rgba(180,178,169,0.18); border-radius: 3px; padding-right: 6px; font-weight: 700; font-size: 0.75rem; color: #6B6B6B;">{{ a.c1_total }}</div>
                         </div>
                     </td>
                     <td style="padding: 0.3rem 0.2rem;">
@@ -602,7 +602,7 @@
                     <td style="padding: 0.4rem 0.5rem; font-weight: 600; font-size: 0.8rem; color: #1A1A1A; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="{{ t.trade }}">{{ t.trade }}</td>
                     <td style="padding: 0.3rem 0.2rem;">
                         <div style="height: 22px;">
-                            <div style="display: inline-flex; align-items: center; justify-content: flex-end; height: 100%; width: 100%; min-width: 28px; background: rgba(180,178,169,0.18); border-radius: 3px; padding-right: 6px; font-weight: 700; font-size: 0.75rem; color: #6B6B6B;">{{ t.c1_total }}</div>
+                            <div style="display: inline-flex; align-items: center; justify-content: flex-end; height: 100%; width: {{ (t.c1_total / trade_max_bf * 100)|round }}%; min-width: 28px; background: rgba(180,178,169,0.18); border-radius: 3px; padding-right: 6px; font-weight: 700; font-size: 0.75rem; color: #6B6B6B;">{{ t.c1_total }}</div>
                         </div>
                     </td>
                     <td style="padding: 0.3rem 0.2rem;">
