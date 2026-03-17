@@ -661,7 +661,7 @@
     <div class="divider"></div>
     <p style="font-size: 0.8rem; color: #6B6B6B; margin-bottom: 1rem;">Defects that survived re-inspection, and new defects introduced during rectification. Across {{ kpis.units_reinspected }} re-inspected units.</p>
 
-    <div style="font-size: 0.7rem; font-weight: 700; color: #C44D3F; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 0.75rem;">Not rectified{% if stubborn %} &mdash; {{ stubborn|length }}{% endif %}</div>
+    <div style="font-size: 0.7rem; font-weight: 700; color: #C44D3F; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 0.75rem;">Not rectified</div>
     {% if stubborn %}
     <div class="rect-panel mb-4">
         {% for s in stubborn[:15] %}
@@ -669,10 +669,9 @@
             <div style="flex: 1; min-width: 0;">
                 <div style="font-size: 0.82rem; font-weight: 600; color: #1A1A1A;">{{ s.description }}</div>
                 <div style="font-size: 0.68rem; color: #6B6B6B; margin-top: 0.15rem;">{{ s.area|title }} &middot; {{ s.category }}</div>
-                <div style="font-size: 0.65rem; color: #9A9A9A; margin-top: 0.15rem;">Units: {{ s.units|join(', ') }}</div>
             </div>
             <div style="flex-shrink: 0;">
-                <span style="display: inline-block; padding: 0.15rem 0.6rem; border-radius: 10px; font-size: 0.68rem; font-weight: 700; background: rgba(196,77,63,0.12); color: #C44D3F;">{{ s.units|length }} unit{{ 's' if s.units|length != 1 }}</span>
+                <span style="display: inline-block; padding: 0.15rem 0.6rem; border-radius: 10px; font-size: 0.68rem; font-weight: 700; background: rgba(196,77,63,0.12); color: #C44D3F;">{{ s.units|join(', ') }}</span>
             </div>
         </div>
         {% endfor %}
@@ -687,7 +686,7 @@
     </div>
     {% endif %}
 
-    <div style="font-size: 0.7rem; font-weight: 700; color: #D4730A; text-transform: uppercase; letter-spacing: 0.08em; margin-top: 1.25rem; margin-bottom: 0.75rem;">New (regression){% if c2_new_count > 0 %} &mdash; {{ c2_new_count }}{% endif %}</div>
+    <div style="font-size: 0.7rem; font-weight: 700; color: #D4730A; text-transform: uppercase; letter-spacing: 0.08em; margin-top: 1.25rem; margin-bottom: 0.75rem;">New (regression)</div>
     {% if new_defects %}
     <div class="rect-panel mb-6">
         {% for group in new_defects %}
@@ -696,10 +695,9 @@
             <div style="flex: 1; min-width: 0;">
                 <div style="font-size: 0.82rem; font-weight: 600; color: #1A1A1A;">{{ item.description }}</div>
                 <div style="font-size: 0.68rem; color: #6B6B6B; margin-top: 0.15rem;">{{ group.area|title }} &middot; {{ item.category }}</div>
-                <div style="font-size: 0.65rem; color: #9A9A9A; margin-top: 0.15rem;">Unit: {{ item.unit }}</div>
             </div>
             <div style="flex-shrink: 0;">
-                <span style="display: inline-block; padding: 0.15rem 0.6rem; border-radius: 10px; font-size: 0.68rem; font-weight: 700; background: rgba(212,115,10,0.12); color: #D4730A;">Unit {{ item.unit }}</span>
+                <span style="display: inline-block; padding: 0.15rem 0.6rem; border-radius: 10px; font-size: 0.68rem; font-weight: 700; background: rgba(212,115,10,0.12); color: #D4730A;">{{ item.unit }}</span>
             </div>
         </div>
         {% endfor %}
