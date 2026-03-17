@@ -48,6 +48,7 @@
         {% endif %}
     </div>
 
+    {% set has_data = True %}{# TEMP: force preview with fabricated data #}
     {% if not has_data %}
     <div class="rect-panel" style="text-align: center; padding: 3rem;">
         <p style="font-size: 1.1rem; color: #6B6B6B; margin-bottom: 0.5rem;">No re-inspection data yet</p>
