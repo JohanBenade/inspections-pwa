@@ -428,6 +428,26 @@
     })();
     </script>
 
+    {# TEMP: fabricated zone grid data for preview #}
+    {% set _zg_floors = [0, 1, 2] %}
+    {% set _zg_blocks = ['Block 5', 'Block 6', 'Block 7'] %}
+    {% set _zg_floor_labels = {0: 'Ground', 1: '1st Floor', 2: '2nd Floor'} %}
+    {% set _zg_median = 65.2 %}
+    {% set zone_median_clearance = _zg_median %}
+    {% set zone_grid = {'blocks': _zg_blocks, 'floors': _zg_floors, 'floor_labels': _zg_floor_labels, 'lookup': {
+        'Block 5': {
+            0: {'clearance_pct': 72.4, 'cleared': 89, 'new_c2': 7, 'remaining': 41},
+            1: {'clearance_pct': 58.1, 'cleared': 54, 'new_c2': 12, 'remaining': 51}
+        },
+        'Block 6': {
+            0: {'clearance_pct': 65.2, 'cleared': 71, 'new_c2': 4, 'remaining': 38},
+            1: {'clearance_pct': 81.3, 'cleared': 96, 'new_c2': 2, 'remaining': 24}
+        },
+        'Block 7': {
+            0: {'clearance_pct': 48.7, 'cleared': 37, 'new_c2': 15, 'remaining': 44}
+        }
+    }} %}
+
     <div class="mb-2"><span class="section-num">01 &mdash; Rectification by Zone</span></div>
     <div class="divider"></div>
     <p style="font-size: 0.8rem; color: #6B6B6B; margin-bottom: 1rem;">Clearance rate by block + floor. Click a zone to drill down.</p>
