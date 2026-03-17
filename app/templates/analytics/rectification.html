@@ -533,18 +533,18 @@
                     <td style="padding: 0.4rem 0.5rem; font-weight: 600; font-size: 0.8rem; color: #1A1A1A; white-space: nowrap;">{{ a.area|title }}</td>
                     <td style="padding: 0.3rem 0.2rem;">
                         <div style="height: 22px;">
-                            <div style="display: inline-flex; align-items: center; justify-content: flex-end; height: 100%; width: 100%; min-width: 28px; background: rgba(180,178,169,0.18); border-radius: 3px; padding-right: 6px; font-weight: 700; font-size: 0.75rem; color: #6B6B6B;">{{ a.c1_total }}</div>
+                            <div style="display: inline-flex; align-items: center; justify-content: flex-end; height: 100%; width: {{ (a.c1_total / area_max_bf * 100)|round }}%; min-width: 28px; background: rgba(180,178,169,0.18); border-radius: 3px; padding-right: 6px; font-weight: 700; font-size: 0.75rem; color: #6B6B6B;">{{ a.c1_total }}</div>
                         </div>
                     </td>
                     <td style="padding: 0.3rem 0.2rem;">
                         <div style="height: 22px;">
-                            <div style="display: inline-flex; align-items: center; justify-content: flex-end; height: 100%; width: {{ (a.cleared / a.c1_total * 100)|round }}%; min-width: 28px; background: rgba(74,124,89,0.18); border-radius: 3px; padding-right: 6px; font-weight: 700; font-size: 0.75rem; color: #4A7C59;">{{ a.cleared }}</div>
+                            <div style="display: inline-flex; align-items: center; justify-content: flex-end; height: 100%; width: {{ (a.cleared / area_max_rect * 100)|round }}%; min-width: 28px; background: rgba(74,124,89,0.18); border-radius: 3px; padding-right: 6px; font-weight: 700; font-size: 0.75rem; color: #4A7C59;">{{ a.cleared }}</div>
                         </div>
                     </td>
                     <td style="padding: 0.3rem 0.2rem;">
                         <div style="height: 22px;">
                             {% if a.new > 0 %}
-                            <div style="display: inline-flex; align-items: center; justify-content: flex-end; height: 100%; width: {{ (a.new / a.c1_total * 100)|round }}%; min-width: 28px; background: rgba(212,115,10,0.18); border-radius: 3px; padding-right: 6px; font-weight: 700; font-size: 0.75rem; color: #D4730A;">{{ a.new }}</div>
+                            <div style="display: inline-flex; align-items: center; justify-content: flex-end; height: 100%; width: {{ (a.new / area_max_new * 100)|round }}%; min-width: 28px; background: rgba(212,115,10,0.18); border-radius: 3px; padding-right: 6px; font-weight: 700; font-size: 0.75rem; color: #D4730A;">{{ a.new }}</div>
                             {% else %}
                             <div style="display: flex; align-items: center; justify-content: flex-end; height: 100%; padding-right: 6px; font-weight: 700; font-size: 0.75rem; color: #CCCCCC;">&mdash;</div>
                             {% endif %}
@@ -552,7 +552,7 @@
                     </td>
                     <td style="padding: 0.3rem 0.2rem;">
                         <div style="height: 22px;">
-                            <div style="display: inline-flex; align-items: center; justify-content: flex-end; height: 100%; width: {{ (a_open / a.c1_total * 100)|round }}%; min-width: 28px; background: {% if a_open < a.c1_total %}rgba(74,124,89,0.18){% elif a_open > a.c1_total %}rgba(196,77,63,0.18){% else %}rgba(200,150,62,0.18){% endif %}; border-radius: 3px; padding-right: 6px; font-weight: 700; font-size: 0.75rem; color: {% if a_open < a.c1_total %}#4A7C59{% elif a_open > a.c1_total %}#C44D3F{% else %}#C8963E{% endif %};">{{ a_open }}</div>
+                            <div style="display: inline-flex; align-items: center; justify-content: flex-end; height: 100%; width: {{ (a_open / area_max_open * 100)|round }}%; min-width: 28px; background: {% if a_open < a.c1_total %}rgba(74,124,89,0.18){% elif a_open > a.c1_total %}rgba(196,77,63,0.18){% else %}rgba(200,150,62,0.18){% endif %}; border-radius: 3px; padding-right: 6px; font-weight: 700; font-size: 0.75rem; color: {% if a_open < a.c1_total %}#4A7C59{% elif a_open > a.c1_total %}#C44D3F{% else %}#C8963E{% endif %};">{{ a_open }}</div>
                         </div>
                     </td>
                 </tr>
@@ -602,18 +602,18 @@
                     <td style="padding: 0.4rem 0.5rem; font-weight: 600; font-size: 0.8rem; color: #1A1A1A; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="{{ t.trade }}">{{ t.trade }}</td>
                     <td style="padding: 0.3rem 0.2rem;">
                         <div style="height: 22px;">
-                            <div style="display: inline-flex; align-items: center; justify-content: flex-end; height: 100%; width: 100%; min-width: 28px; background: rgba(180,178,169,0.18); border-radius: 3px; padding-right: 6px; font-weight: 700; font-size: 0.75rem; color: #6B6B6B;">{{ t.c1_total }}</div>
+                            <div style="display: inline-flex; align-items: center; justify-content: flex-end; height: 100%; width: {{ (t.c1_total / trade_max_bf * 100)|round }}%; min-width: 28px; background: rgba(180,178,169,0.18); border-radius: 3px; padding-right: 6px; font-weight: 700; font-size: 0.75rem; color: #6B6B6B;">{{ t.c1_total }}</div>
                         </div>
                     </td>
                     <td style="padding: 0.3rem 0.2rem;">
                         <div style="height: 22px;">
-                            <div style="display: inline-flex; align-items: center; justify-content: flex-end; height: 100%; width: {{ (t.cleared / t.c1_total * 100)|round }}%; min-width: 28px; background: rgba(74,124,89,0.18); border-radius: 3px; padding-right: 6px; font-weight: 700; font-size: 0.75rem; color: #4A7C59;">{{ t.cleared }}</div>
+                            <div style="display: inline-flex; align-items: center; justify-content: flex-end; height: 100%; width: {{ (t.cleared / trade_max_rect * 100)|round }}%; min-width: 28px; background: rgba(74,124,89,0.18); border-radius: 3px; padding-right: 6px; font-weight: 700; font-size: 0.75rem; color: #4A7C59;">{{ t.cleared }}</div>
                         </div>
                     </td>
                     <td style="padding: 0.3rem 0.2rem;">
                         <div style="height: 22px;">
                             {% if t.new > 0 %}
-                            <div style="display: inline-flex; align-items: center; justify-content: flex-end; height: 100%; width: {{ (t.new / t.c1_total * 100)|round }}%; min-width: 28px; background: rgba(212,115,10,0.18); border-radius: 3px; padding-right: 6px; font-weight: 700; font-size: 0.75rem; color: #D4730A;">{{ t.new }}</div>
+                            <div style="display: inline-flex; align-items: center; justify-content: flex-end; height: 100%; width: {{ (t.new / trade_max_new * 100)|round }}%; min-width: 28px; background: rgba(212,115,10,0.18); border-radius: 3px; padding-right: 6px; font-weight: 700; font-size: 0.75rem; color: #D4730A;">{{ t.new }}</div>
                             {% else %}
                             <div style="display: flex; align-items: center; justify-content: flex-end; height: 100%; padding-right: 6px; font-weight: 700; font-size: 0.75rem; color: #CCCCCC;">&mdash;</div>
                             {% endif %}
@@ -621,7 +621,7 @@
                     </td>
                     <td style="padding: 0.3rem 0.2rem;">
                         <div style="height: 22px;">
-                            <div style="display: inline-flex; align-items: center; justify-content: flex-end; height: 100%; width: {{ (t_open / t.c1_total * 100)|round }}%; min-width: 28px; background: {% if t_open < t.c1_total %}rgba(74,124,89,0.18){% elif t_open > t.c1_total %}rgba(196,77,63,0.18){% else %}rgba(200,150,62,0.18){% endif %}; border-radius: 3px; padding-right: 6px; font-weight: 700; font-size: 0.75rem; color: {% if t_open < t.c1_total %}#4A7C59{% elif t_open > t.c1_total %}#C44D3F{% else %}#C8963E{% endif %};">{{ t_open }}</div>
+                            <div style="display: inline-flex; align-items: center; justify-content: flex-end; height: 100%; width: {{ (t_open / trade_max_open * 100)|round }}%; min-width: 28px; background: {% if t_open < t.c1_total %}rgba(74,124,89,0.18){% elif t_open > t.c1_total %}rgba(196,77,63,0.18){% else %}rgba(200,150,62,0.18){% endif %}; border-radius: 3px; padding-right: 6px; font-weight: 700; font-size: 0.75rem; color: {% if t_open < t.c1_total %}#4A7C59{% elif t_open > t.c1_total %}#C44D3F{% else %}#C8963E{% endif %};">{{ t_open }}</div>
                         </div>
                     </td>
                 </tr>
