@@ -661,7 +661,7 @@
     <div class="divider"></div>
     <p style="font-size: 0.8rem; color: #6B6B6B; margin-bottom: 1rem;">Defects that survived re-inspection, and new defects introduced during rectification. Across {{ kpis.units_reinspected }} re-inspected units.</p>
 
-    <div style="font-size: 0.7rem; font-weight: 700; color: #C44D3F; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 0.75rem;">Not rectified{% if stubborn %} &mdash; {{ stubborn|sum(attribute='units')|length if stubborn[0].units is defined else '' }}{% endif %}</div>
+    <div style="font-size: 0.7rem; font-weight: 700; color: #C44D3F; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 0.75rem;">Not rectified{% if stubborn %} &mdash; {{ stubborn|length }} defect types{% endif %}</div>
     {% if stubborn %}
     <div class="rect-panel mb-4">
         {% for s in stubborn[:15] %}
