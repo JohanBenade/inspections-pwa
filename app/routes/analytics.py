@@ -1841,6 +1841,15 @@ def _build_rectification_data():
         z['floor_label'] = FLOOR_LABELS.get(z['floor'], 'Floor {}'.format(z['floor']))
         z['slug'] = _block_to_slug(z['block'])
         z['cycle_num'] = zone_cycle_map.get((z['block'], z['floor']), 2)
+        z['remaining'] = z['still_open'] + z['new_c2']
+
+    # Median clearance rate for zone grid traffic-light
+    _clearance_vals = sorted(z['clearance_pct'] for z in zones if z['c1_total'] > 0)
+    if _clearance_vals:
+        _mid = len(_clearance_vals) // 2
+        zone_median_clearance = _clearance_vals[_mid] if len(_clearance_vals) % 2 else round((_clearance_vals[_mid - 1] + _clearance_vals[_mid]) / 2, 1)
+    else:
+        zone_median_clearance = 0
 
     # 7. Rectification by area
     area_c1 = [dict(r) for r in query_db("""
@@ -2010,7 +2019,9 @@ def _build_rectification_data():
     # Build grid: blocks x floors
     grid_blocks = sorted(set(z['block'] for z in zones))
     grid_floors = sorted(set(z['floor'] for z in zones))
-    zone_lookup = {(z['block'], z['floor']): z for z in zones}
+    zone_lookup = {}
+    for z in zones:
+        zone_lookup.setdefault(z['block'], {})[z['floor']] = z
     zone_grid = {
         'blocks': grid_blocks,
         'floors': grid_floors,
@@ -2022,6 +2033,7 @@ def _build_rectification_data():
                 kpis=kpis,
                 zones=zones,
                 zone_grid=zone_grid,
+                zone_median_clearance=zone_median_clearance,
                 areas=areas, area_max=area_max,
                 trades=trades, trade_max=trade_max,
                 stubborn=stubborn,

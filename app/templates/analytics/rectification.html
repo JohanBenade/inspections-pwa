@@ -428,31 +428,55 @@
     })();
     </script>
 
-    <div class="mb-2"><span class="section-num">01 &mdash; Rectification Scorecard</span></div>
+    <div class="mb-2"><span class="section-num">01 &mdash; Rectification by Zone</span></div>
     <div class="divider"></div>
-    <p style="font-size: 0.8rem; color: #6B6B6B; margin-bottom: 1rem;">Performance by block + floor zone. <strong>Net Improvement</strong> = fixed minus new defects (the real improvement). Click a zone to drill down.</p>
+    <p style="font-size: 0.8rem; color: #6B6B6B; margin-bottom: 1rem;">Clearance rate by block + floor. Click a zone to drill down.</p>
 
     <div class="rect-panel mb-6">
-        <div style="display: grid; grid-template-columns: 2fr 1fr 1fr 1fr 1fr 1fr; gap: 0.5rem; padding: 0.5rem 0.75rem; font-size: 0.65rem; color: #9A9A9A; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; border-bottom: 1px solid #e5e5e5;">
-            <div>Zone</div>
-            <div style="text-align: center;">C1 Raised</div>
-            <div style="text-align: center;">Cleared</div>
-            <div style="text-align: center;">Open</div>
-            <div style="text-align: center;">New C2</div>
-            <div style="text-align: center;">Net Improvement</div>
+        <div style="overflow-x: auto;">
+            <table style="width: 100%; border-collapse: collapse; font-size: 0.85rem;">
+                <thead>
+                    <tr>
+                        <th style="text-align: left; padding: 0.5rem; color: #9A9A9A; font-weight: 600; font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.08em; width: 120px;">Block</th>
+                        {% for flr in zone_grid.floors %}
+                        <th style="text-align: center; padding: 0.5rem; color: #1A1A1A; font-weight: 600;">{{ zone_grid.floor_labels[flr] }}</th>
+                        {% endfor %}
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for blk in zone_grid.blocks %}
+                    {% set blk_slug = blk|lower|replace(' ', '-') %}
+                    <tr style="border-top: 1px solid #e5e5e5;">
+                        <td style="padding: 0.75rem 0.5rem; font-weight: 600; color: #1A1A1A;">{{ blk }}</td>
+                        {% for flr in zone_grid.floors %}
+                        {% if zone_grid.lookup.get(blk, {}).get(flr) %}
+                        {% set cell = zone_grid.lookup[blk][flr] %}
+                        <td style="text-align: center; padding: 0;">
+                            <a href="{{ url_for('analytics.block_floor_detail', block_slug=blk_slug, floor=flr) }}" style="display: block; padding: 0.75rem 0.5rem; text-decoration: none; color: inherit; background: {% if cell.clearance_pct > zone_median_clearance %}rgba(74,124,89,0.10){% elif cell.clearance_pct == zone_median_clearance %}rgba(200,150,62,0.10){% else %}rgba(196,77,63,0.10){% endif %};">
+                                <div style="font-size: 1.25rem; font-weight: 700; color: {% if cell.clearance_pct > zone_median_clearance %}#4A7C59{% elif cell.clearance_pct == zone_median_clearance %}#C8963E{% else %}#C44D3F{% endif %};">{{ cell.clearance_pct }}%</div>
+                                <div style="font-size: 0.7rem; color: #6B6B6B;">{{ cell.cleared }} rectified &middot; {{ cell.new_c2 }} new</div>
+                                <div style="font-size: 0.65rem; color: #9A9A9A;">{{ cell.remaining }} remaining</div>
+                            </a>
+                        </td>
+                        {% else %}
+                        <td style="text-align: center; padding: 0.75rem 0.5rem; background: #FAFAF8;">
+                            <div style="font-size: 1.25rem; font-weight: 700; color: #e5e5e5;">&mdash;</div>
+                            <div style="font-size: 0.7rem; color: #d0d0d0;">No data</div>
+                        </td>
+                        {% endif %}
+                        {% endfor %}
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
         </div>
-        {% for z in zones %}
-        <a href="{{ url_for('analytics.block_floor_detail', block_slug=z.slug, floor=z.floor) }}" class="zone-link"
-           style="display: grid; grid-template-columns: 2fr 1fr 1fr 1fr 1fr 1fr; gap: 0.5rem; padding: 0.65rem 0.75rem; align-items: center; border-bottom: 1px solid #f0f0f0;">
-            <div style="font-weight: 600; font-size: 0.85rem;">{{ z.block }} {{ z.floor_label }}</div>
-            <div style="text-align: center; font-size: 0.85rem; font-weight: 600;">{{ z.c1_total }}</div>
-            <div style="text-align: center; font-size: 0.85rem; font-weight: 600; color: #4A7C59;">{{ z.cleared }}</div>
-            <div style="text-align: center; font-size: 0.85rem; font-weight: 600; color: #C44D3F;">{{ z.still_open }}</div>
-            <div style="text-align: center; font-size: 0.85rem; font-weight: 600; color: #D4730A;">{{ z.new_c2 }}</div>
-            <div style="text-align: center; font-size: 0.85rem; font-weight: 700; color: {% if z.net > 0 %}#4A7C59{% elif z.net == 0 %}#C8963E{% else %}#C44D3F{% endif %};">{{ '+' if z.net > 0 }}{{ z.net }}</div>
-
-        </a>
-        {% endfor %}
+        <div style="font-size: 0.7rem; color: #9A9A9A; margin-top: 0.5rem; padding-top: 0.4rem; border-top: 1px solid #f0f0f0;">
+            <span class="legend-item"><span class="legend-dot" style="background: rgba(74,124,89,0.25);"></span> Above median</span>&ensp;
+            <span class="legend-item"><span class="legend-dot" style="background: rgba(200,150,62,0.25);"></span> At median</span>&ensp;
+            <span class="legend-item"><span class="legend-dot" style="background: rgba(196,77,63,0.25);"></span> Below median</span>&ensp;
+            <span style="color: #BABABA;">&middot;</span>&ensp;
+            <span>median clearance: {{ zone_median_clearance }}%</span>
+        </div>
     </div>
 
     <div class="mb-2"><span class="section-num">02 &mdash; Rectification by Area</span></div>
