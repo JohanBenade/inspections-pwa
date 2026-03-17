@@ -661,20 +661,18 @@
     <div class="divider"></div>
     <p style="font-size: 0.8rem; color: #6B6B6B; margin-bottom: 1rem;">Defects that survived re-inspection, and new defects introduced during rectification. Across {{ kpis.units_reinspected }} re-inspected units.</p>
 
-    <div style="font-size: 0.7rem; font-weight: 700; color: #C44D3F; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 0.75rem;">Not rectified{% if stubborn %} &mdash; {{ stubborn|length }} defect types{% endif %}</div>
+    <div style="font-size: 0.7rem; font-weight: 700; color: #C44D3F; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 0.75rem;">Not rectified{% if stubborn %} &mdash; {{ stubborn|length }}{% endif %}</div>
     {% if stubborn %}
     <div class="rect-panel mb-4">
         {% for s in stubborn[:15] %}
-        <div style="padding: 0.5rem 0.75rem; {% if not loop.last %}border-bottom: 1px solid #f0f0f0;{% endif %}">
-            <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 0.5rem;">
-                <div style="flex: 1; min-width: 200px;">
-                    <div style="font-size: 0.82rem; font-weight: 600; color: #1A1A1A;">{{ s.description }}</div>
-                    <div style="font-size: 0.68rem; color: #6B6B6B; margin-top: 0.15rem;">{{ s.area|title }} &middot; {{ s.category }}</div>
-                </div>
-                <div style="text-align: right;">
-                    <span class="badge-count">{{ s.units|length }} unit{{ 's' if s.units|length != 1 }}</span>
-                    <div style="font-size: 0.62rem; color: #9A9A9A; margin-top: 0.15rem;">{{ s.units|join(', ') }}</div>
-                </div>
+        <div style="display: flex; justify-content: space-between; align-items: flex-start; padding: 0.5rem 0.75rem; gap: 1rem; {% if not loop.last %}border-bottom: 1px solid #f0f0f0;{% endif %}">
+            <div style="flex: 1; min-width: 0;">
+                <div style="font-size: 0.82rem; font-weight: 600; color: #1A1A1A;">{{ s.description }}</div>
+                <div style="font-size: 0.68rem; color: #6B6B6B; margin-top: 0.15rem;">{{ s.area|title }} &middot; {{ s.category }}</div>
+                <div style="font-size: 0.65rem; color: #9A9A9A; margin-top: 0.15rem;">Units: {{ s.units|join(', ') }}</div>
+            </div>
+            <div style="flex-shrink: 0;">
+                <span style="display: inline-block; padding: 0.15rem 0.6rem; border-radius: 10px; font-size: 0.68rem; font-weight: 700; background: rgba(196,77,63,0.12); color: #C44D3F;">{{ s.units|length }} unit{{ 's' if s.units|length != 1 }}</span>
             </div>
         </div>
         {% endfor %}
@@ -693,18 +691,18 @@
     {% if new_defects %}
     <div class="rect-panel mb-6">
         {% for group in new_defects %}
-        <div style="padding: 0.5rem 0.75rem; {% if not loop.last %}border-bottom: 1px solid #f0f0f0;{% endif %}">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.35rem;">
-                <span style="font-size: 0.82rem; font-weight: 600; color: #1A1A1A;">{{ group.area|title }}</span>
-                <span class="badge-new">{{ group.count }} new</span>
+        {% for item in group.defect_list %}
+        <div style="display: flex; justify-content: space-between; align-items: flex-start; padding: 0.5rem 0.75rem; gap: 1rem; border-bottom: 1px solid #f0f0f0;">
+            <div style="flex: 1; min-width: 0;">
+                <div style="font-size: 0.82rem; font-weight: 600; color: #1A1A1A;">{{ item.description }}</div>
+                <div style="font-size: 0.68rem; color: #6B6B6B; margin-top: 0.15rem;">{{ group.area|title }} &middot; {{ item.category }}</div>
+                <div style="font-size: 0.65rem; color: #9A9A9A; margin-top: 0.15rem;">Unit: {{ item.unit }}</div>
             </div>
-            {% for item in group.defect_list %}
-            <div style="font-size: 0.75rem; color: #6B6B6B; padding: 0.12rem 0; {% if not loop.last %}border-bottom: 1px solid rgba(200,150,62,0.08);{% endif %}">
-                <span style="color: #1A1A1A;">{{ item.description }}</span>
-                <span style="color: #9A9A9A;">&middot; Unit {{ item.unit }} &middot; {{ item.category }}</span>
+            <div style="flex-shrink: 0;">
+                <span style="display: inline-block; padding: 0.15rem 0.6rem; border-radius: 10px; font-size: 0.68rem; font-weight: 700; background: rgba(212,115,10,0.12); color: #D4730A;">Unit {{ item.unit }}</span>
             </div>
-            {% endfor %}
         </div>
+        {% endfor %}
         {% endfor %}
     </div>
     {% else %}
