@@ -48,7 +48,9 @@
         {% endif %}
     </div>
 
-    {% set has_data = True %}{# TEMP: force preview with fabricated data #}
+    {# TEMP: force preview with fabricated data #}
+    {% set has_data = True %}
+    {% set kpis = {'total_inspected': 48, 'units_reinspected': 16, 'c1_reviewed': 396, 'c1_cleared': 277, 'c1_still_open': 119, 'new_in_c2': 23, 'net_improvement': 254, 'net_pct': 64.1, 'clearance_rate': 69.9, 'avg_rect_days': 8.2, 'avg_rect_days_available': True, 'max_cycle_num': 2} %}
     {% if not has_data %}
     <div class="rect-panel" style="text-align: center; padding: 3rem;">
         <p style="font-size: 1.1rem; color: #6B6B6B; margin-bottom: 0.5rem;">No re-inspection data yet</p>
