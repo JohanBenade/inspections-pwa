@@ -506,43 +506,69 @@
         {'area': 'lounge', 'cleared': 43, 'still_open': 18, 'new': 5, 'c1_total': 61},
         {'area': 'bedroom', 'cleared': 35, 'still_open': 26, 'new': 4, 'c1_total': 61}
     ] %}
-    {% set area_median = 69.2 %}
+    {% set area_max_bf = 146 %}
+    {% set area_max_rect = 112 %}
+    {% set area_max_new = 8 %}
+    {% set area_max_open = 45 %}
 
     <div class="mb-2"><span class="section-num">02 &mdash; Rectification by Area</span></div>
     <div class="divider"></div>
-    <p style="font-size: 0.8rem; color: #6B6B6B; margin-bottom: 1rem;">Which areas are clearing their backlog? Compare clearance rates against the project median.</p>
+    <p style="font-size: 0.8rem; color: #6B6B6B; margin-bottom: 1rem;">The rectification ledger by area. B/Fwd &minus; Rectified + New = Open.</p>
 
-    <div class="rect-panel mb-6">
-        {% for a in areas %}
-        {% set a_pct = (a.cleared / a.c1_total * 100)|round(1) if a.c1_total > 0 else 0 %}
-        {% set a_exposure = a.c1_total + a.new %}
-        {% set a_remaining = a.still_open + a.new %}
-        <div style="display: flex; align-items: center; gap: 0.75rem; padding: 0.65rem 0; {% if not loop.last %}border-bottom: 1px solid #f0f0f0;{% endif %}">
-            <div style="width: 90px; font-size: 0.82rem; font-weight: 600; color: #1A1A1A; flex-shrink: 0;">{{ a.area|title }}</div>
-            <div style="flex: 1; min-width: 0;">
-                <div style="height: 26px; display: flex; border-radius: 4px; overflow: hidden;">
-                    <div style="width: {{ (a.cleared / a_exposure * 100)|round }}%; background: #4A7C59; min-width: {% if a.cleared > 0 %}2px{% else %}0{% endif %};"></div>
-                    <div style="width: {{ (a.still_open / a_exposure * 100)|round }}%; background: #E0DED8;"></div>
-                    {% if a.new > 0 %}
-                    <div style="width: {{ (a.new / a_exposure * 100)|round }}%; background: #D4730A;"></div>
-                    {% endif %}
-                </div>
-            </div>
-            <div style="width: 110px; text-align: right; flex-shrink: 0;">
-                <div style="font-size: 1.1rem; font-weight: 700; color: {% if a_pct > area_median %}#4A7C59{% elif a_pct == area_median %}#C8963E{% else %}#C44D3F{% endif %};">{{ a_pct }}%</div>
-                <div style="font-size: 0.65rem; color: #6B6B6B;">{{ a.cleared }} rectified &middot; {{ a_remaining }} remaining</div>
-                {% if a.new > 0 %}
-                <div style="font-size: 0.62rem; color: #D4730A; font-weight: 600;">{{ a.new }} new &#9650;</div>
-                {% endif %}
-            </div>
-        </div>
-        {% endfor %}
-        <div style="font-size: 0.7rem; color: #9A9A9A; margin-top: 0.5rem; padding-top: 0.4rem; border-top: 1px solid #f0f0f0; display: flex; flex-wrap: wrap; gap: 0.75rem; align-items: center;">
-            <span><span style="display: inline-block; width: 10px; height: 10px; border-radius: 2px; background: #4A7C59; vertical-align: middle; margin-right: 3px;"></span> Rectified</span>
-            <span><span style="display: inline-block; width: 10px; height: 10px; border-radius: 2px; background: #E0DED8; vertical-align: middle; margin-right: 3px;"></span> Not yet rectified</span>
-            <span><span style="display: inline-block; width: 10px; height: 10px; border-radius: 2px; background: #D4730A; vertical-align: middle; margin-right: 3px;"></span> New (regression)</span>
-            <span style="color: #BABABA;">&middot;</span>
-            <span>median clearance: {{ area_median }}%</span>
+    <div class="rect-panel mb-6" style="overflow-x: auto;">
+        <table style="width: 100%; border-collapse: collapse; font-size: 0.82rem;">
+            <thead>
+                <tr>
+                    <th style="text-align: left; padding: 0.5rem; font-size: 0.65rem; color: #9A9A9A; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; width: 100px;">Area</th>
+                    <th style="text-align: center; padding: 0.5rem; font-size: 0.65rem; color: #6B6B6B; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em;">B/Fwd</th>
+                    <th style="text-align: center; padding: 0.5rem; font-size: 0.65rem; color: #4A7C59; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em;">Rectified</th>
+                    <th style="text-align: center; padding: 0.5rem; font-size: 0.65rem; color: #D4730A; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em;">New</th>
+                    <th style="text-align: center; padding: 0.5rem; font-size: 0.65rem; color: #C44D3F; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em;">Open</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for a in areas %}
+                {% set a_open = a.still_open + a.new %}
+                {% set a_winning = a.cleared > a_open %}
+                <tr style="border-top: 1px solid #f0f0f0;">
+                    <td style="padding: 0.6rem 0.5rem; font-weight: 600; color: #1A1A1A; white-space: nowrap;">
+                        <span style="display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: {% if a_winning %}#4A7C59{% else %}#C44D3F{% endif %}; margin-right: 5px; vertical-align: middle;"></span>{{ a.area|title }}
+                    </td>
+                    <td style="padding: 0.4rem 0.25rem;">
+                        <div style="position: relative; height: 28px; border-radius: 3px; overflow: hidden;">
+                            <div style="position: absolute; top: 0; left: 0; height: 100%; width: {{ (a.c1_total / area_max_bf * 100)|round }}%; background: rgba(180,178,169,0.18); border-radius: 3px;"></div>
+                            <div style="position: relative; height: 100%; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 0.85rem; color: #6B6B6B;">{{ a.c1_total }}</div>
+                        </div>
+                    </td>
+                    <td style="padding: 0.4rem 0.25rem;">
+                        <div style="position: relative; height: 28px; border-radius: 3px; overflow: hidden;">
+                            <div style="position: absolute; top: 0; left: 0; height: 100%; width: {{ (a.cleared / area_max_rect * 100)|round }}%; background: rgba(74,124,89,0.18); border-radius: 3px;"></div>
+                            <div style="position: relative; height: 100%; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 0.85rem; color: #4A7C59;">{{ a.cleared }}</div>
+                        </div>
+                    </td>
+                    <td style="padding: 0.4rem 0.25rem;">
+                        <div style="position: relative; height: 28px; border-radius: 3px; overflow: hidden;">
+                            {% if a.new > 0 %}
+                            <div style="position: absolute; top: 0; left: 0; height: 100%; width: {{ (a.new / area_max_new * 100)|round }}%; background: rgba(212,115,10,0.18); border-radius: 3px;"></div>
+                            {% endif %}
+                            <div style="position: relative; height: 100%; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 0.85rem; color: {% if a.new > 0 %}#D4730A{% else %}#CCCCCC{% endif %};">{% if a.new > 0 %}{{ a.new }}{% else %}&mdash;{% endif %}</div>
+                        </div>
+                    </td>
+                    <td style="padding: 0.4rem 0.25rem;">
+                        <div style="position: relative; height: 28px; border-radius: 3px; overflow: hidden;">
+                            <div style="position: absolute; top: 0; left: 0; height: 100%; width: {{ (a_open / area_max_open * 100)|round }}%; background: rgba(196,77,63,0.18); border-radius: 3px;"></div>
+                            <div style="position: relative; height: 100%; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 0.85rem; color: #C44D3F;">{{ a_open }}</div>
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        <div style="font-size: 0.68rem; color: #9A9A9A; margin-top: 0.5rem; padding-top: 0.4rem; border-top: 1px solid #f0f0f0;">
+            <span style="display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: #4A7C59; vertical-align: middle; margin-right: 2px;"></span> Winning (rectified &gt; open)&ensp;
+            <span style="display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: #C44D3F; vertical-align: middle; margin-right: 2px;"></span> Behind&ensp;
+            <span style="color: #BABABA;">&middot;</span>&ensp;
+            Bar fill proportional to column max
         </div>
     </div>
 
@@ -555,43 +581,69 @@
         {'trade': 'Electrical', 'cleared': 18, 'still_open': 11, 'new': 2, 'c1_total': 29},
         {'trade': 'Ironmongery', 'cleared': 12, 'still_open': 7, 'new': 2, 'c1_total': 19}
     ] %}
-    {% set trade_median = 65.8 %}
+    {% set trade_max_bf = 127 %}
+    {% set trade_max_rect = 98 %}
+    {% set trade_max_new = 7 %}
+    {% set trade_max_open = 36 %}
 
     <div class="mb-2"><span class="section-num">03 &mdash; Rectification by Trade</span></div>
     <div class="divider"></div>
-    <p style="font-size: 0.8rem; color: #6B6B6B; margin-bottom: 1rem;">Which trades are delivering? Accountability by subcontractor.</p>
+    <p style="font-size: 0.8rem; color: #6B6B6B; margin-bottom: 1rem;">The rectification ledger by trade. Accountability per subcontractor.</p>
 
-    <div class="rect-panel mb-6">
-        {% for t in trades %}
-        {% set t_pct = (t.cleared / t.c1_total * 100)|round(1) if t.c1_total > 0 else 0 %}
-        {% set t_exposure = t.c1_total + t.new %}
-        {% set t_remaining = t.still_open + t.new %}
-        <div style="display: flex; align-items: center; gap: 0.75rem; padding: 0.65rem 0; {% if not loop.last %}border-bottom: 1px solid #f0f0f0;{% endif %}">
-            <div style="width: 100px; font-size: 0.82rem; font-weight: 600; color: #1A1A1A; flex-shrink: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="{{ t.trade }}">{{ t.trade }}</div>
-            <div style="flex: 1; min-width: 0;">
-                <div style="height: 26px; display: flex; border-radius: 4px; overflow: hidden;">
-                    <div style="width: {{ (t.cleared / t_exposure * 100)|round }}%; background: #4A7C59; min-width: {% if t.cleared > 0 %}2px{% else %}0{% endif %};"></div>
-                    <div style="width: {{ (t.still_open / t_exposure * 100)|round }}%; background: #E0DED8;"></div>
-                    {% if t.new > 0 %}
-                    <div style="width: {{ (t.new / t_exposure * 100)|round }}%; background: #D4730A;"></div>
-                    {% endif %}
-                </div>
-            </div>
-            <div style="width: 110px; text-align: right; flex-shrink: 0;">
-                <div style="font-size: 1.1rem; font-weight: 700; color: {% if t_pct > trade_median %}#4A7C59{% elif t_pct == trade_median %}#C8963E{% else %}#C44D3F{% endif %};">{{ t_pct }}%</div>
-                <div style="font-size: 0.65rem; color: #6B6B6B;">{{ t.cleared }} rectified &middot; {{ t_remaining }} remaining</div>
-                {% if t.new > 0 %}
-                <div style="font-size: 0.62rem; color: #D4730A; font-weight: 600;">{{ t.new }} new &#9650;</div>
-                {% endif %}
-            </div>
-        </div>
-        {% endfor %}
-        <div style="font-size: 0.7rem; color: #9A9A9A; margin-top: 0.5rem; padding-top: 0.4rem; border-top: 1px solid #f0f0f0; display: flex; flex-wrap: wrap; gap: 0.75rem; align-items: center;">
-            <span><span style="display: inline-block; width: 10px; height: 10px; border-radius: 2px; background: #4A7C59; vertical-align: middle; margin-right: 3px;"></span> Rectified</span>
-            <span><span style="display: inline-block; width: 10px; height: 10px; border-radius: 2px; background: #E0DED8; vertical-align: middle; margin-right: 3px;"></span> Not yet rectified</span>
-            <span><span style="display: inline-block; width: 10px; height: 10px; border-radius: 2px; background: #D4730A; vertical-align: middle; margin-right: 3px;"></span> New (regression)</span>
-            <span style="color: #BABABA;">&middot;</span>
-            <span>median clearance: {{ trade_median }}%</span>
+    <div class="rect-panel mb-6" style="overflow-x: auto;">
+        <table style="width: 100%; border-collapse: collapse; font-size: 0.82rem;">
+            <thead>
+                <tr>
+                    <th style="text-align: left; padding: 0.5rem; font-size: 0.65rem; color: #9A9A9A; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; width: 110px;">Trade</th>
+                    <th style="text-align: center; padding: 0.5rem; font-size: 0.65rem; color: #6B6B6B; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em;">B/Fwd</th>
+                    <th style="text-align: center; padding: 0.5rem; font-size: 0.65rem; color: #4A7C59; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em;">Rectified</th>
+                    <th style="text-align: center; padding: 0.5rem; font-size: 0.65rem; color: #D4730A; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em;">New</th>
+                    <th style="text-align: center; padding: 0.5rem; font-size: 0.65rem; color: #C44D3F; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em;">Open</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for t in trades %}
+                {% set t_open = t.still_open + t.new %}
+                {% set t_winning = t.cleared > t_open %}
+                <tr style="border-top: 1px solid #f0f0f0;">
+                    <td style="padding: 0.6rem 0.5rem; font-weight: 600; color: #1A1A1A; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="{{ t.trade }}">
+                        <span style="display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: {% if t_winning %}#4A7C59{% else %}#C44D3F{% endif %}; margin-right: 5px; vertical-align: middle;"></span>{{ t.trade }}
+                    </td>
+                    <td style="padding: 0.4rem 0.25rem;">
+                        <div style="position: relative; height: 28px; border-radius: 3px; overflow: hidden;">
+                            <div style="position: absolute; top: 0; left: 0; height: 100%; width: {{ (t.c1_total / trade_max_bf * 100)|round }}%; background: rgba(180,178,169,0.18); border-radius: 3px;"></div>
+                            <div style="position: relative; height: 100%; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 0.85rem; color: #6B6B6B;">{{ t.c1_total }}</div>
+                        </div>
+                    </td>
+                    <td style="padding: 0.4rem 0.25rem;">
+                        <div style="position: relative; height: 28px; border-radius: 3px; overflow: hidden;">
+                            <div style="position: absolute; top: 0; left: 0; height: 100%; width: {{ (t.cleared / trade_max_rect * 100)|round }}%; background: rgba(74,124,89,0.18); border-radius: 3px;"></div>
+                            <div style="position: relative; height: 100%; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 0.85rem; color: #4A7C59;">{{ t.cleared }}</div>
+                        </div>
+                    </td>
+                    <td style="padding: 0.4rem 0.25rem;">
+                        <div style="position: relative; height: 28px; border-radius: 3px; overflow: hidden;">
+                            {% if t.new > 0 %}
+                            <div style="position: absolute; top: 0; left: 0; height: 100%; width: {{ (t.new / trade_max_new * 100)|round }}%; background: rgba(212,115,10,0.18); border-radius: 3px;"></div>
+                            {% endif %}
+                            <div style="position: relative; height: 100%; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 0.85rem; color: {% if t.new > 0 %}#D4730A{% else %}#CCCCCC{% endif %};">{% if t.new > 0 %}{{ t.new }}{% else %}&mdash;{% endif %}</div>
+                        </div>
+                    </td>
+                    <td style="padding: 0.4rem 0.25rem;">
+                        <div style="position: relative; height: 28px; border-radius: 3px; overflow: hidden;">
+                            <div style="position: absolute; top: 0; left: 0; height: 100%; width: {{ (t_open / trade_max_open * 100)|round }}%; background: rgba(196,77,63,0.18); border-radius: 3px;"></div>
+                            <div style="position: relative; height: 100%; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 0.85rem; color: #C44D3F;">{{ t_open }}</div>
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        <div style="font-size: 0.68rem; color: #9A9A9A; margin-top: 0.5rem; padding-top: 0.4rem; border-top: 1px solid #f0f0f0;">
+            <span style="display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: #4A7C59; vertical-align: middle; margin-right: 2px;"></span> Winning (rectified &gt; open)&ensp;
+            <span style="display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: #C44D3F; vertical-align: middle; margin-right: 2px;"></span> Behind&ensp;
+            <span style="color: #BABABA;">&middot;</span>&ensp;
+            Bar fill proportional to column max
         </div>
     </div>
 
