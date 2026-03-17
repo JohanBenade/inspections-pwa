@@ -741,13 +741,12 @@
                     <th style="text-align: center; padding: 0.45rem 0.5rem; font-size: 0.6rem; color: #4A7C59; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em;">&minus; Rect</th>
                     <th style="text-align: center; padding: 0.45rem 0.5rem; font-size: 0.6rem; color: #D4730A; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em;">+ New</th>
                     <th style="text-align: center; padding: 0.45rem 0.5rem; font-size: 0.6rem; color: #C44D3F; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em;">= Open</th>
-                    <th style="text-align: center; padding: 0.45rem 0.5rem; font-size: 0.6rem; color: #9A9A9A; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em;">Rate</th>
                 </tr>
             </thead>
             <tbody>
                 {% for u in units %}
                 {% set u_open = u.still_open + u.new_c2 %}
-                {% set u_pct = ((u.cleared / u.c1_raised * 100)|round|int) if u.c1_raised > 0 else 0 %}
+
                 <tr style="border-bottom: 1px solid #f0f0f0; cursor: pointer;"
                     onclick="window.location='/certification/unit/{{ u.unit_id }}?from=rectification'">
                     <td style="padding: 0.5rem; font-weight: 700; color: #1A1A1A;">{{ u.unit_number }}</td>
@@ -757,9 +756,7 @@
                     <td style="text-align: center; padding: 0.5rem; font-weight: 600; color: #4A7C59;">{{ u.cleared }}</td>
                     <td style="text-align: center; padding: 0.5rem; font-weight: 600; color: {% if u.new_c2 > 0 %}#D4730A{% else %}#CCCCCC{% endif %};">{% if u.new_c2 > 0 %}{{ u.new_c2 }}{% else %}&mdash;{% endif %}</td>
                     <td style="text-align: center; padding: 0.5rem; font-weight: 700; color: {% if u_open < u.c1_raised %}#4A7C59{% elif u_open > u.c1_raised %}#C44D3F{% else %}#C8963E{% endif %};">{{ u_open }}</td>
-                    <td style="text-align: center; padding: 0.5rem;">
-                        <span style="display: inline-block; padding: 0.15rem 0.5rem; border-radius: 10px; font-size: 0.72rem; font-weight: 700; background: {% if u_pct >= 70 %}rgba(74,124,89,0.12); color: #4A7C59;{% elif u_pct >= 40 %}rgba(200,150,62,0.12); color: #C8963E;{% else %}rgba(196,77,63,0.12); color: #C44D3F;{% endif %}">{{ u_pct }}%</span>
-                    </td>
+
                 </tr>
                 {% endfor %}
             </tbody>
