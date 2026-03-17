@@ -499,6 +499,15 @@
         </div>
     </div>
 
+    {# TEMP: fabricated areas data for preview #}
+    {% set areas = [
+        {'area': 'kitchen', 'cleared': 112, 'still_open': 34, 'new': 8, 'clearance_pct': 72.7, 'net': 104, 'effective_pct': 67.5, 'c1_total': 154, 'colour': '#C8963E'},
+        {'area': 'bathroom', 'cleared': 87, 'still_open': 41, 'new': 6, 'clearance_pct': 67.9, 'net': 81, 'effective_pct': 63.3, 'c1_total': 128, 'colour': '#3D6B8E'},
+        {'area': 'lounge', 'cleared': 43, 'still_open': 18, 'new': 5, 'clearance_pct': 70.5, 'net': 38, 'effective_pct': 62.3, 'c1_total': 61, 'colour': '#6B6B6B'},
+        {'area': 'bedroom', 'cleared': 35, 'still_open': 26, 'new': 4, 'clearance_pct': 57.4, 'net': 31, 'effective_pct': 50.8, 'c1_total': 61, 'colour': '#9A9A9A'}
+    ] %}
+    {% set area_max = 162 %}
+
     <div class="mb-2"><span class="section-num">02 &mdash; Rectification by Area</span></div>
     <div class="divider"></div>
     <p style="font-size: 0.8rem; color: #6B6B6B; margin-bottom: 1rem;">Which areas are being fixed vs creating new problems? Numbers match bar colours: <span style="color:#4A7C59;font-weight:600;">green</span> = fixed, <span style="color:#C8963E;font-weight:600;">gold</span> = new defects found.</p>
@@ -526,6 +535,17 @@
         {% endfor %}
     </div>
 
+    {# TEMP: fabricated trades data for preview #}
+    {% set trades = [
+        {'trade': 'Painting', 'cleared': 98, 'still_open': 29, 'new': 7, 'clearance_pct': 77.2, 'net': 91, 'c1_total': 127},
+        {'trade': 'Plumbing', 'cleared': 64, 'still_open': 31, 'new': 5, 'clearance_pct': 67.4, 'net': 59, 'c1_total': 95},
+        {'trade': 'Tiling', 'cleared': 51, 'still_open': 22, 'new': 4, 'clearance_pct': 69.9, 'net': 47, 'c1_total': 73},
+        {'trade': 'Carpentry', 'cleared': 34, 'still_open': 19, 'new': 3, 'clearance_pct': 64.2, 'net': 31, 'c1_total': 53},
+        {'trade': 'Electrical', 'cleared': 18, 'still_open': 11, 'new': 2, 'clearance_pct': 62.1, 'net': 16, 'c1_total': 29},
+        {'trade': 'Ironmongery', 'cleared': 12, 'still_open': 7, 'new': 2, 'clearance_pct': 63.2, 'net': 10, 'c1_total': 19}
+    ] %}
+    {% set trade_max = 134 %}
+
     <div class="mb-2"><span class="section-num">03 &mdash; Rectification by Trade</span></div>
     <div class="divider"></div>
     <p style="font-size: 0.8rem; color: #6B6B6B; margin-bottom: 1rem;">Subcontractor accountability. Numbers match bar colours: <span style="color:#4A7C59;font-weight:600;">green</span> = fixed, <span style="color:#C8963E;font-weight:600;">gold</span> = new defects found.</p>
@@ -552,6 +572,27 @@
         </div>
         {% endfor %}
     </div>
+
+    {# TEMP: fabricated stubborn + new defects for preview #}
+    {% set stubborn = [
+        {'description': 'Paint peeling on ceiling', 'area': 'kitchen', 'category': 'Painting', 'units': ['027', '031', '033', '035', '038']},
+        {'description': 'Grout cracking around basin', 'area': 'bathroom', 'category': 'Tiling', 'units': ['028', '034', '036']},
+        {'description': 'Door not closing properly', 'area': 'kitchen', 'category': 'Carpentry', 'units': ['032', '037', '039']},
+        {'description': 'Hot water tap leaking', 'area': 'bathroom', 'category': 'Plumbing', 'units': ['029', '040']},
+        {'description': 'Light fitting loose', 'area': 'lounge', 'category': 'Electrical', 'units': ['031', '035']}
+    ] %}
+    {% set new_defects = [
+        {'area': 'kitchen', 'count': 3, 'defect_list': [
+            {'description': 'New scratch on countertop', 'unit': '027', 'category': 'Carpentry'},
+            {'description': 'Silicone peeling at sink', 'unit': '033', 'category': 'Plumbing'},
+            {'description': 'Cabinet door misaligned', 'unit': '038', 'category': 'Carpentry'}
+        ]},
+        {'area': 'bathroom', 'count': 2, 'defect_list': [
+            {'description': 'Tile chip near shower', 'unit': '034', 'category': 'Tiling'},
+            {'description': 'Mirror not level', 'unit': '036', 'category': 'Carpentry'}
+        ]}
+    ] %}
+    {% set c2_new_count = 5 %}
 
     <div class="mb-2"><span class="section-num">04 &mdash; Problem Defects</span></div>
     <div class="divider"></div>
@@ -618,6 +659,22 @@
     </div>
     {% endif %}
 
+    {# TEMP: fabricated unit breakdown for preview #}
+    {% set units = [
+        {'unit_id': 'u027', 'unit_number': '027', 'block': 'Block 5', 'floor_label': 'Ground', 'c1_raised': 32, 'cleared': 24, 'still_open': 8, 'new_c2': 1, 'effective_pct': 71.9},
+        {'unit_id': 'u028', 'unit_number': '028', 'block': 'Block 5', 'floor_label': 'Ground', 'c1_raised': 47, 'cleared': 29, 'still_open': 18, 'new_c2': 2, 'effective_pct': 57.4},
+        {'unit_id': 'u031', 'unit_number': '031', 'block': 'Block 5', 'floor_label': 'Ground', 'c1_raised': 28, 'cleared': 22, 'still_open': 6, 'new_c2': 0, 'effective_pct': 78.6},
+        {'unit_id': 'u032', 'unit_number': '032', 'block': 'Block 5', 'floor_label': 'Ground', 'c1_raised': 19, 'cleared': 15, 'still_open': 4, 'new_c2': 1, 'effective_pct': 73.7},
+        {'unit_id': 'u033', 'unit_number': '033', 'block': 'Block 5', 'floor_label': 'Ground', 'c1_raised': 25, 'cleared': 18, 'still_open': 7, 'new_c2': 2, 'effective_pct': 64.0},
+        {'unit_id': 'u034', 'unit_number': '034', 'block': 'Block 6', 'floor_label': 'Ground', 'c1_raised': 22, 'cleared': 19, 'still_open': 3, 'new_c2': 1, 'effective_pct': 81.8},
+        {'unit_id': 'u035', 'unit_number': '035', 'block': 'Block 6', 'floor_label': 'Ground', 'c1_raised': 30, 'cleared': 17, 'still_open': 13, 'new_c2': 0, 'effective_pct': 56.7},
+        {'unit_id': 'u036', 'unit_number': '036', 'block': 'Block 6', 'floor_label': 'Ground', 'c1_raised': 18, 'cleared': 14, 'still_open': 4, 'new_c2': 1, 'effective_pct': 72.2},
+        {'unit_id': 'u037', 'unit_number': '037', 'block': 'Block 6', 'floor_label': '1st Floor', 'c1_raised': 26, 'cleared': 23, 'still_open': 3, 'new_c2': 0, 'effective_pct': 88.5},
+        {'unit_id': 'u038', 'unit_number': '038', 'block': 'Block 6', 'floor_label': '1st Floor', 'c1_raised': 11, 'cleared': 9, 'still_open': 2, 'new_c2': 1, 'effective_pct': 72.7},
+        {'unit_id': 'u039', 'unit_number': '039', 'block': 'Block 7', 'floor_label': 'Ground', 'c1_raised': 33, 'cleared': 20, 'still_open': 13, 'new_c2': 3, 'effective_pct': 51.5},
+        {'unit_id': 'u040', 'unit_number': '040', 'block': 'Block 7', 'floor_label': 'Ground', 'c1_raised': 21, 'cleared': 11, 'still_open': 10, 'new_c2': 2, 'effective_pct': 42.9}
+    ] %}
+
     <div class="mb-2"><span class="section-num">05 &mdash; Unit Breakdown</span></div>
     <div class="divider"></div>
     <p style="font-size: 0.8rem; color: #6B6B6B; margin-bottom: 1rem;">Per-unit rectification performance. Click a unit to view its full defect list.</p>
@@ -656,6 +713,9 @@
             </tbody>
         </table>
     </div>
+
+    {# TEMP: fabricated turnaround for preview #}
+    {% set turnaround = {'avg_days': 8.2, 'min_days': 3.1, 'max_days': 18.7, 'sample_size': 277} %}
 
     {% if turnaround and turnaround.avg_days %}
     <div class="mb-2"><span class="section-num">06 &mdash; Turnaround Time</span></div>
