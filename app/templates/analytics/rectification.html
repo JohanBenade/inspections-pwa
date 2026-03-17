@@ -655,58 +655,51 @@
         ]}
     ] %}
     {% set c2_new_count = 5 %}
+    {% set kpis = {'units_reinspected': 16} %}
 
-    <div class="mb-2"><span class="section-num">04 &mdash; Problem Defects</span></div>
+    <div class="mb-2"><span class="section-num">04 &mdash; Stubborn &amp; Regression Defects</span></div>
     <div class="divider"></div>
-    <p style="font-size: 0.8rem; color: #6B6B6B; margin-bottom: 1rem;">C1 defects that were not cleared on re-inspection, and new defects introduced in C2.</p>
+    <p style="font-size: 0.8rem; color: #6B6B6B; margin-bottom: 1rem;">Defects that survived re-inspection, and new defects introduced during rectification. Across {{ kpis.units_reinspected }} re-inspected units.</p>
 
-    <div style="font-size: 0.75rem; font-weight: 700; color: #C44D3F; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 0.75rem;">C1 defects not cleared</div>
+    <div style="font-size: 0.7rem; font-weight: 700; color: #C44D3F; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 0.75rem;">Not rectified{% if stubborn %} &mdash; {{ stubborn|sum(attribute='units')|length if stubborn[0].units is defined else '' }}{% endif %}</div>
     {% if stubborn %}
-    <div class="mb-6">
+    <div class="rect-panel mb-4">
         {% for s in stubborn[:15] %}
-        <div class="stubborn-row">
+        <div style="padding: 0.5rem 0.75rem; {% if not loop.last %}border-bottom: 1px solid #f0f0f0;{% endif %}">
             <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 0.5rem;">
                 <div style="flex: 1; min-width: 200px;">
-                    <div style="font-size: 0.85rem; font-weight: 600; color: #1A1A1A;">{{ s.description }}</div>
-                    <div style="font-size: 0.7rem; color: #6B6B6B; margin-top: 0.2rem;">
-                        {{ s.area|title }} &middot; {{ s.category }}
-                    </div>
+                    <div style="font-size: 0.82rem; font-weight: 600; color: #1A1A1A;">{{ s.description }}</div>
+                    <div style="font-size: 0.68rem; color: #6B6B6B; margin-top: 0.15rem;">{{ s.area|title }} &middot; {{ s.category }}</div>
                 </div>
                 <div style="text-align: right;">
                     <span class="badge-count">{{ s.units|length }} unit{{ 's' if s.units|length != 1 }}</span>
-                    <div style="font-size: 0.65rem; color: #9A9A9A; margin-top: 0.2rem;">
-                        Units: {{ s.units|join(', ') }}
-                    </div>
-
+                    <div style="font-size: 0.62rem; color: #9A9A9A; margin-top: 0.15rem;">{{ s.units|join(', ') }}</div>
                 </div>
             </div>
         </div>
         {% endfor %}
         {% if stubborn|length > 15 %}
-        <p style="font-size: 0.75rem; color: #9A9A9A; text-align: center; margin-top: 0.5rem;">
-            Showing 15 of {{ stubborn|length }} stubborn defects
-        </p>
+        <p style="font-size: 0.7rem; color: #9A9A9A; text-align: center; padding: 0.5rem;">Showing 15 of {{ stubborn|length }}</p>
         {% endif %}
     </div>
     {% else %}
-    <div class="rect-panel mb-6" style="text-align: center; padding: 2rem; border-left: 3px solid #4A7C59;">
-        <p style="font-size: 0.9rem; color: #4A7C59; font-weight: 600;">All C1 defects cleared on re-inspection</p>
-        <p style="font-size: 0.8rem; color: #6B6B6B;">No stubborn defects found. Raubex cleared everything flagged.</p>
+    <div class="rect-panel mb-4" style="text-align: center; padding: 1.5rem; border-left: 3px solid #4A7C59;">
+        <p style="font-size: 0.85rem; color: #4A7C59; font-weight: 600;">All defects rectified</p>
+        <p style="font-size: 0.75rem; color: #6B6B6B;">Every brought-forward defect was cleared on re-inspection.</p>
     </div>
     {% endif %}
 
-    <div style="font-size: 0.75rem; font-weight: 700; color: #D4730A; text-transform: uppercase; letter-spacing: 0.08em; margin-top: 1.5rem; margin-bottom: 0.75rem;">New defects found in C2{% if c2_new_count > 0 %} &mdash; {{ c2_new_count }}{% endif %}</div>
-
+    <div style="font-size: 0.7rem; font-weight: 700; color: #D4730A; text-transform: uppercase; letter-spacing: 0.08em; margin-top: 1.25rem; margin-bottom: 0.75rem;">New (regression){% if c2_new_count > 0 %} &mdash; {{ c2_new_count }}{% endif %}</div>
     {% if new_defects %}
-    <div class="mb-6">
+    <div class="rect-panel mb-6">
         {% for group in new_defects %}
-        <div class="new-row">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.4rem;">
-                <span style="font-size: 0.85rem; font-weight: 600; color: #1A1A1A;">{{ group.area|title }}</span>
+        <div style="padding: 0.5rem 0.75rem; {% if not loop.last %}border-bottom: 1px solid #f0f0f0;{% endif %}">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.35rem;">
+                <span style="font-size: 0.82rem; font-weight: 600; color: #1A1A1A;">{{ group.area|title }}</span>
                 <span class="badge-new">{{ group.count }} new</span>
             </div>
             {% for item in group.defect_list %}
-            <div style="font-size: 0.78rem; color: #6B6B6B; padding: 0.15rem 0; {% if not loop.last %}border-bottom: 1px solid rgba(200,150,62,0.1);{% endif %}">
+            <div style="font-size: 0.75rem; color: #6B6B6B; padding: 0.12rem 0; {% if not loop.last %}border-bottom: 1px solid rgba(200,150,62,0.08);{% endif %}">
                 <span style="color: #1A1A1A;">{{ item.description }}</span>
                 <span style="color: #9A9A9A;">&middot; Unit {{ item.unit }} &middot; {{ item.category }}</span>
             </div>
@@ -715,60 +708,61 @@
         {% endfor %}
     </div>
     {% else %}
-    <div class="rect-panel mb-6" style="text-align: center; padding: 2rem; border-left: 3px solid #4A7C59;">
-        <p style="font-size: 0.9rem; color: #4A7C59; font-weight: 600;">No quality regression detected</p>
-        <p style="font-size: 0.8rem; color: #6B6B6B;">No new defects were introduced during re-inspection.</p>
+    <div class="rect-panel mb-6" style="text-align: center; padding: 1.5rem; border-left: 3px solid #4A7C59;">
+        <p style="font-size: 0.85rem; color: #4A7C59; font-weight: 600;">No regression detected</p>
+        <p style="font-size: 0.75rem; color: #6B6B6B;">No new defects were introduced during re-inspection.</p>
     </div>
     {% endif %}
 
-    {# TEMP: fabricated unit breakdown for preview #}
+    {# TEMP: fabricated unit ledger for preview #}
     {% set units = [
-        {'unit_id': 'u027', 'unit_number': '027', 'block': 'Block 5', 'floor_label': 'Ground', 'c1_raised': 32, 'cleared': 24, 'still_open': 8, 'new_c2': 1, 'effective_pct': 71.9},
-        {'unit_id': 'u028', 'unit_number': '028', 'block': 'Block 5', 'floor_label': 'Ground', 'c1_raised': 47, 'cleared': 29, 'still_open': 18, 'new_c2': 2, 'effective_pct': 57.4},
-        {'unit_id': 'u031', 'unit_number': '031', 'block': 'Block 5', 'floor_label': 'Ground', 'c1_raised': 28, 'cleared': 22, 'still_open': 6, 'new_c2': 0, 'effective_pct': 78.6},
-        {'unit_id': 'u032', 'unit_number': '032', 'block': 'Block 5', 'floor_label': 'Ground', 'c1_raised': 19, 'cleared': 15, 'still_open': 4, 'new_c2': 1, 'effective_pct': 73.7},
-        {'unit_id': 'u033', 'unit_number': '033', 'block': 'Block 5', 'floor_label': 'Ground', 'c1_raised': 25, 'cleared': 18, 'still_open': 7, 'new_c2': 2, 'effective_pct': 64.0},
-        {'unit_id': 'u034', 'unit_number': '034', 'block': 'Block 6', 'floor_label': 'Ground', 'c1_raised': 22, 'cleared': 19, 'still_open': 3, 'new_c2': 1, 'effective_pct': 81.8},
-        {'unit_id': 'u035', 'unit_number': '035', 'block': 'Block 6', 'floor_label': 'Ground', 'c1_raised': 30, 'cleared': 17, 'still_open': 13, 'new_c2': 0, 'effective_pct': 56.7},
-        {'unit_id': 'u036', 'unit_number': '036', 'block': 'Block 6', 'floor_label': 'Ground', 'c1_raised': 18, 'cleared': 14, 'still_open': 4, 'new_c2': 1, 'effective_pct': 72.2},
-        {'unit_id': 'u037', 'unit_number': '037', 'block': 'Block 6', 'floor_label': '1st Floor', 'c1_raised': 26, 'cleared': 23, 'still_open': 3, 'new_c2': 0, 'effective_pct': 88.5},
-        {'unit_id': 'u038', 'unit_number': '038', 'block': 'Block 6', 'floor_label': '1st Floor', 'c1_raised': 11, 'cleared': 9, 'still_open': 2, 'new_c2': 1, 'effective_pct': 72.7},
-        {'unit_id': 'u039', 'unit_number': '039', 'block': 'Block 7', 'floor_label': 'Ground', 'c1_raised': 33, 'cleared': 20, 'still_open': 13, 'new_c2': 3, 'effective_pct': 51.5},
-        {'unit_id': 'u040', 'unit_number': '040', 'block': 'Block 7', 'floor_label': 'Ground', 'c1_raised': 21, 'cleared': 11, 'still_open': 10, 'new_c2': 2, 'effective_pct': 42.9}
+        {'unit_id': 'u028', 'unit_number': '028', 'block': 'Block 5', 'floor_label': 'Ground', 'cycle_num': 2, 'c1_raised': 47, 'cleared': 29, 'still_open': 18, 'new_c2': 2},
+        {'unit_id': 'u039', 'unit_number': '039', 'block': 'Block 7', 'floor_label': 'Ground', 'cycle_num': 2, 'c1_raised': 33, 'cleared': 20, 'still_open': 13, 'new_c2': 3},
+        {'unit_id': 'u040', 'unit_number': '040', 'block': 'Block 7', 'floor_label': 'Ground', 'cycle_num': 2, 'c1_raised': 21, 'cleared': 11, 'still_open': 10, 'new_c2': 2},
+        {'unit_id': 'u035', 'unit_number': '035', 'block': 'Block 6', 'floor_label': 'Ground', 'cycle_num': 2, 'c1_raised': 30, 'cleared': 17, 'still_open': 13, 'new_c2': 0},
+        {'unit_id': 'u033', 'unit_number': '033', 'block': 'Block 5', 'floor_label': 'Ground', 'cycle_num': 2, 'c1_raised': 25, 'cleared': 18, 'still_open': 7, 'new_c2': 2},
+        {'unit_id': 'u027', 'unit_number': '027', 'block': 'Block 5', 'floor_label': 'Ground', 'cycle_num': 3, 'c1_raised': 32, 'cleared': 24, 'still_open': 8, 'new_c2': 1},
+        {'unit_id': 'u032', 'unit_number': '032', 'block': 'Block 5', 'floor_label': 'Ground', 'cycle_num': 2, 'c1_raised': 19, 'cleared': 15, 'still_open': 4, 'new_c2': 1},
+        {'unit_id': 'u036', 'unit_number': '036', 'block': 'Block 6', 'floor_label': 'Ground', 'cycle_num': 2, 'c1_raised': 18, 'cleared': 14, 'still_open': 4, 'new_c2': 1},
+        {'unit_id': 'u034', 'unit_number': '034', 'block': 'Block 6', 'floor_label': 'Ground', 'cycle_num': 2, 'c1_raised': 22, 'cleared': 19, 'still_open': 3, 'new_c2': 1},
+        {'unit_id': 'u037', 'unit_number': '037', 'block': 'Block 6', 'floor_label': '1st Floor', 'cycle_num': 2, 'c1_raised': 26, 'cleared': 23, 'still_open': 3, 'new_c2': 0},
+        {'unit_id': 'u038', 'unit_number': '038', 'block': 'Block 6', 'floor_label': '1st Floor', 'cycle_num': 2, 'c1_raised': 11, 'cleared': 9, 'still_open': 2, 'new_c2': 1},
+        {'unit_id': 'u031', 'unit_number': '031', 'block': 'Block 5', 'floor_label': 'Ground', 'cycle_num': 2, 'c1_raised': 28, 'cleared': 22, 'still_open': 6, 'new_c2': 0}
     ] %}
 
-    <div class="mb-2"><span class="section-num">05 &mdash; Unit Breakdown</span></div>
+    <div class="mb-2"><span class="section-num">05 &mdash; Unit Ledger</span></div>
     <div class="divider"></div>
-    <p style="font-size: 0.8rem; color: #6B6B6B; margin-bottom: 1rem;">Per-unit rectification performance. Click a unit to view its full defect list.</p>
+    <p style="font-size: 0.8rem; color: #6B6B6B; margin-bottom: 1rem;">Per-unit rectification ledger. Sorted by open defects (worst first). Click a unit to drill down.</p>
 
     <div class="rect-panel mb-6" style="overflow-x: auto;">
-        <table style="width: 100%; border-collapse: collapse; font-size: 0.8rem;">
+        <table style="width: 100%; border-collapse: collapse; font-size: 0.78rem;">
             <thead>
                 <tr style="border-bottom: 2px solid #e5e5e5;">
-                    <th style="text-align: left; padding: 0.5rem; font-size: 0.65rem; color: #9A9A9A; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em;">Unit</th>
-                    <th style="text-align: left; padding: 0.5rem; font-size: 0.65rem; color: #9A9A9A; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em;">Zone</th>
-                    <th style="text-align: center; padding: 0.5rem; font-size: 0.65rem; color: #9A9A9A; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em;">C1</th>
-                    <th style="text-align: center; padding: 0.5rem; font-size: 0.65rem; color: #4A7C59; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em;">Cleared</th>
-                    <th style="text-align: center; padding: 0.5rem; font-size: 0.65rem; color: #C44D3F; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em;">Open</th>
-                    <th style="text-align: center; padding: 0.5rem; font-size: 0.65rem; color: #C8963E; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em;">New C2</th>
-                    <th style="text-align: center; padding: 0.5rem; font-size: 0.65rem; color: #9A9A9A; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em;">Clearance</th>
+                    <th style="text-align: left; padding: 0.45rem 0.5rem; font-size: 0.6rem; color: #9A9A9A; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em;">Unit</th>
+                    <th style="text-align: left; padding: 0.45rem 0.5rem; font-size: 0.6rem; color: #9A9A9A; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em;">Zone</th>
+                    <th style="text-align: center; padding: 0.45rem 0.5rem; font-size: 0.6rem; color: #9A9A9A; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em;">Cycle</th>
+                    <th style="text-align: center; padding: 0.45rem 0.5rem; font-size: 0.6rem; color: #6B6B6B; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em;">B/Fwd</th>
+                    <th style="text-align: center; padding: 0.45rem 0.5rem; font-size: 0.6rem; color: #4A7C59; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em;">&minus; Rect</th>
+                    <th style="text-align: center; padding: 0.45rem 0.5rem; font-size: 0.6rem; color: #D4730A; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em;">+ New</th>
+                    <th style="text-align: center; padding: 0.45rem 0.5rem; font-size: 0.6rem; color: #C44D3F; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em;">= Open</th>
+                    <th style="text-align: center; padding: 0.45rem 0.5rem; font-size: 0.6rem; color: #9A9A9A; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em;">Rate</th>
                 </tr>
             </thead>
             <tbody>
                 {% for u in units %}
+                {% set u_open = u.still_open + u.new_c2 %}
+                {% set u_pct = ((u.cleared / u.c1_raised * 100)|round|int) if u.c1_raised > 0 else 0 %}
                 <tr style="border-bottom: 1px solid #f0f0f0; cursor: pointer;"
                     onclick="window.location='/certification/unit/{{ u.unit_id }}?from=rectification'">
-                    <td style="padding: 0.6rem 0.5rem; font-weight: 700;">{{ u.unit_number }}</td>
-                    <td style="padding: 0.6rem 0.5rem; color: #6B6B6B;">{{ u.block }} {{ u.floor_label }}</td>
-                    <td style="text-align: center; padding: 0.6rem 0.5rem; font-weight: 600;">{{ u.c1_raised }}</td>
-                    <td style="text-align: center; padding: 0.6rem 0.5rem; font-weight: 600; color: #4A7C59;">{{ u.cleared }}</td>
-                    <td style="text-align: center; padding: 0.6rem 0.5rem; font-weight: 600; color: #C44D3F;">{{ u.still_open }}</td>
-                    <td style="text-align: center; padding: 0.6rem 0.5rem; font-weight: 600; color: {% if u.new_c2 > 0 %}#D4730A{% else %}#9A9A9A{% endif %};">{{ u.new_c2 }}</td>
-                    <td style="text-align: center; padding: 0.6rem 0.5rem;">
-                        <span class="clearance-pill"
-                              style="background: {% if u.effective_pct >= 50 %}rgba(74,124,89,0.15); color: #4A7C59;{% elif u.effective_pct >= 20 %}rgba(200,150,62,0.15); color: #C8963E;{% else %}rgba(196,77,63,0.15); color: #C44D3F;{% endif %}">
-                            {{ u.effective_pct }}%
-                        </span>
+                    <td style="padding: 0.5rem; font-weight: 700; color: #1A1A1A;">{{ u.unit_number }}</td>
+                    <td style="padding: 0.5rem; color: #6B6B6B; font-size: 0.72rem;">{{ u.block }} {{ u.floor_label }}</td>
+                    <td style="text-align: center; padding: 0.5rem; font-size: 0.7rem; color: #9A9A9A;">C{{ u.cycle_num }}</td>
+                    <td style="text-align: center; padding: 0.5rem; font-weight: 600; color: #6B6B6B;">{{ u.c1_raised }}</td>
+                    <td style="text-align: center; padding: 0.5rem; font-weight: 600; color: #4A7C59;">{{ u.cleared }}</td>
+                    <td style="text-align: center; padding: 0.5rem; font-weight: 600; color: {% if u.new_c2 > 0 %}#D4730A{% else %}#CCCCCC{% endif %};">{% if u.new_c2 > 0 %}{{ u.new_c2 }}{% else %}&mdash;{% endif %}</td>
+                    <td style="text-align: center; padding: 0.5rem; font-weight: 700; color: {% if u_open < u.c1_raised %}#4A7C59{% elif u_open > u.c1_raised %}#C44D3F{% else %}#C8963E{% endif %};">{{ u_open }}</td>
+                    <td style="text-align: center; padding: 0.5rem;">
+                        <span style="display: inline-block; padding: 0.15rem 0.5rem; border-radius: 10px; font-size: 0.72rem; font-weight: 700; background: {% if u_pct >= 70 %}rgba(74,124,89,0.12); color: #4A7C59;{% elif u_pct >= 40 %}rgba(200,150,62,0.12); color: #C8963E;{% else %}rgba(196,77,63,0.12); color: #C44D3F;{% endif %}">{{ u_pct }}%</span>
                     </td>
                 </tr>
                 {% endfor %}
