@@ -159,7 +159,7 @@ body {
     white-space: nowrap;
 }
 .movement-table td {
-    padding: 8px 10px; border-bottom: 1px solid #F0EEEA;
+    padding: 5px 10px; border-bottom: 1px solid #F0EEEA;
     vertical-align: top;
 }
 .movement-empty {
@@ -470,7 +470,7 @@ body {
     <!-- ============ PAGE 3: WHERE'S THE PROBLEM ============ -->
 
     <!-- SECTION 07: ZONE GRID -->
-    <div class="section">
+    <div class="section" style="margin-bottom: 18px;">
         <div class="section-header">
             <span class="section-number">07</span>
             <span class="section-title">Defects by Zone</span>
@@ -489,10 +489,10 @@ body {
             <tbody>
                 {% for block in zone_grid.blocks %}
                 <tr>
-                    <td style="padding: 8px 10px; border-bottom: 1px solid #F0EEEA; font-weight: 600;">{{ block }}</td>
+                    <td style="padding: 5px 10px; border-bottom: 1px solid #F0EEEA; font-weight: 600;">{{ block }}</td>
                     {% for fl in zone_grid.floors %}
                     {% set val = zone_grid.data.get((block, fl), None) %}
-                    <td style="text-align: center; padding: 8px 10px; border-bottom: 1px solid #F0EEEA;
+                    <td style="text-align: center; padding: 5px 10px; border-bottom: 1px solid #F0EEEA;
                         {% if val is not none %}
                             {% if val > zone_grid.median * 1.5 %}background: #FCEAE8; color: #C44D3F; font-weight: 700;
                             {% elif val > zone_grid.median %}background: #FFF4E5; color: #8A6420; font-weight: 600;
@@ -515,7 +515,7 @@ body {
     </div>
 
     <!-- SECTION 08: AREA BREAKDOWN -->
-    <div class="section">
+    <div class="section" style="margin-bottom: 18px;">
         <div class="section-header">
             <span class="section-number">08</span>
             <span class="section-title">Defects by Area</span>
@@ -534,10 +534,10 @@ body {
             <tbody>
                 {% for a in areas %}
                 <tr>
-                    <td style="padding: 8px 10px; border-bottom: 1px solid #F0EEEA; font-weight: 600;">{{ a.name }}</td>
-                    <td style="text-align: right; padding: 8px 10px; border-bottom: 1px solid #F0EEEA;">{{ '{:,}'.format(a.count) }}</td>
-                    <td style="text-align: right; padding: 8px 10px; border-bottom: 1px solid #F0EEEA; color: #6B6B6B;">{{ a.pct }}%</td>
-                    <td style="padding: 8px 10px; border-bottom: 1px solid #F0EEEA;">
+                    <td style="padding: 5px 10px; border-bottom: 1px solid #F0EEEA; font-weight: 600;">{{ a.name }}</td>
+                    <td style="text-align: right; padding: 5px 10px; border-bottom: 1px solid #F0EEEA;">{{ '{:,}'.format(a.count) }}</td>
+                    <td style="text-align: right; padding: 5px 10px; border-bottom: 1px solid #F0EEEA; color: #6B6B6B;">{{ a.pct }}%</td>
+                    <td style="padding: 5px 10px; border-bottom: 1px solid #F0EEEA;">
                         <div style="background: #F0EEEA; border-radius: 2px; height: 14px; width: 100%;">
                             <div style="background: #C8963E; border-radius: 2px; height: 14px; width: {{ (a.pct / areas[0].pct * 100)|round(1) }}%;"></div>
                         </div>
@@ -550,7 +550,7 @@ body {
     </div>
 
     <!-- SECTION 09: TRADE BREAKDOWN -->
-    <div class="section">
+    <div class="section" style="margin-bottom: 18px;">
         <div class="section-header">
             <span class="section-number">09</span>
             <span class="section-title">Defects by Trade</span>
@@ -569,10 +569,10 @@ body {
             <tbody>
                 {% for t in trades %}
                 <tr>
-                    <td style="padding: 8px 10px; border-bottom: 1px solid #F0EEEA; font-weight: 600;">{{ t.name }}</td>
-                    <td style="text-align: right; padding: 8px 10px; border-bottom: 1px solid #F0EEEA;">{{ '{:,}'.format(t.count) }}</td>
-                    <td style="text-align: right; padding: 8px 10px; border-bottom: 1px solid #F0EEEA; color: #6B6B6B;">{{ t.pct }}%</td>
-                    <td style="padding: 8px 10px; border-bottom: 1px solid #F0EEEA;">
+                    <td style="padding: 5px 10px; border-bottom: 1px solid #F0EEEA; font-weight: 600;">{{ t.name }}</td>
+                    <td style="text-align: right; padding: 5px 10px; border-bottom: 1px solid #F0EEEA;">{{ '{:,}'.format(t.count) }}</td>
+                    <td style="text-align: right; padding: 5px 10px; border-bottom: 1px solid #F0EEEA; color: #6B6B6B;">{{ t.pct }}%</td>
+                    <td style="padding: 5px 10px; border-bottom: 1px solid #F0EEEA;">
                         <div style="background: #F0EEEA; border-radius: 2px; height: 14px; width: 100%;">
                             <div style="background: #6B8EC4; border-radius: 2px; height: 14px; width: {{ (t.pct / trades[0].pct * 100)|round(1) }}%;"></div>
                         </div>
