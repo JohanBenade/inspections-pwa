@@ -1,0 +1,350 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Project Pipeline Report</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;400;500;600&family=DM+Sans:wght@400;500;600;700&display=swap');
+
+@page {
+    size: A4;
+    margin: 18mm 16mm 22mm 16mm;
+    @bottom-left {
+        content: "Confidential \2014 Monograph Architects";
+        font-family: "DM Sans", Helvetica, Arial, sans-serif;
+        font-size: 8pt;
+        color: #9A9A9A;
+    }
+    @bottom-center {
+        content: "Power Park Student Housing \2013 Phase 3";
+        font-family: "DM Sans", Helvetica, Arial, sans-serif;
+        font-size: 8pt;
+        color: #9A9A9A;
+    }
+    @bottom-right {
+        content: "Page " counter(page) " of " counter(pages);
+        font-family: "DM Sans", Helvetica, Arial, sans-serif;
+        font-size: 8pt;
+        color: #9A9A9A;
+    }
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+    font-family: "DM Sans", "Helvetica Neue", Helvetica, Arial, sans-serif;
+    color: #1A1A1A;
+    background: #FFFFFF;
+    font-size: 11px;
+    line-height: 1.5;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+}
+
+.page { max-width: 800px; margin: 0 auto; padding: 0; }
+
+/* Toolbar - screen only */
+.toolbar {
+    position: fixed; top: 16px; right: 16px;
+    display: flex; gap: 8px; z-index: 100;
+}
+.toolbar a, .toolbar button {
+    padding: 8px 16px; font-family: "DM Sans", Helvetica, Arial, sans-serif;
+    font-size: 12px; font-weight: 600; border: none; border-radius: 4px;
+    cursor: pointer; text-decoration: none; display: inline-block;
+}
+.btn-pdf { background: #C8963E; color: white; }
+.btn-pdf:hover { background: #D4A94F; }
+.btn-print { background: #F5F3EE; color: #1A1A1A; border: 1px solid #E8E6E1; }
+.btn-print:hover { background: #E8E6E1; }
+.btn-back { background: #F5F3EE; color: #1A1A1A; border: 1px solid #E8E6E1; }
+@media print { .toolbar { display: none !important; } }
+
+/* Header */
+.report-header {
+    padding-bottom: 16px; border-bottom: 3px solid #0A0A0A; margin-bottom: 20px;
+}
+.header-top { margin-bottom: 20px; overflow: hidden; }
+.logo-area { float: left; }
+.logo-area img { height: 36px; width: auto; }
+.logo-fallback {
+    font-family: "DM Sans", Helvetica, Arial, sans-serif;
+    font-size: 22px; font-weight: 300; letter-spacing: 6px; text-transform: uppercase; color: #0A0A0A;
+}
+.logo-sub {
+    font-family: "DM Sans", Helvetica, Arial, sans-serif;
+    font-size: 12px; font-weight: 300; letter-spacing: 3px; color: #6B6B6B; margin-left: 8px;
+}
+.header-meta {
+    float: right; text-align: right; font-size: 10px;
+    letter-spacing: 1.5px; text-transform: uppercase; color: #6B6B6B;
+}
+.header-meta .date {
+    font-size: 12px; font-weight: 600; color: #1A1A1A;
+    letter-spacing: 1px; margin-bottom: 2px;
+}
+.report-title {
+    font-family: "Cormorant Garamond", Georgia, serif;
+    font-size: 28px; font-weight: 300; color: #0A0A0A;
+    letter-spacing: 0.5px; margin-bottom: 4px;
+}
+.report-subtitle {
+    font-size: 11px; color: #6B6B6B; letter-spacing: 1px;
+}
+
+/* Sections */
+.section { margin-bottom: 28px; }
+.section-header { margin-bottom: 14px; border-bottom: 1px solid #C8963E; padding-bottom: 8px; }
+.section-number {
+    font-family: "DM Sans", Helvetica, Arial, sans-serif;
+    font-size: 10px; font-weight: 700; color: #C8963E;
+    letter-spacing: 2px; text-transform: uppercase;
+}
+.section-title {
+    font-family: "DM Sans", Helvetica, Arial, sans-serif;
+    font-size: 14px; font-weight: 600; color: #1A1A1A;
+    margin-left: 8px;
+}
+
+/* Pipeline bar */
+.pipeline-bar {
+    display: flex; height: 40px; border-radius: 4px; overflow: hidden;
+    margin-bottom: 8px; border: 1px solid #E8E6E1;
+}
+.pipeline-seg {
+    display: flex; align-items: center; justify-content: center;
+    font-size: 13px; font-weight: 700; color: #FFFFFF;
+    min-width: 30px; position: relative;
+}
+.pipeline-seg.empty { min-width: 0; padding: 0; }
+.seg-not-requested { background: #BFBDB8; color: #1A1A1A; }
+.seg-awaiting { background: #6B8EC4; }
+.seg-defects { background: #C8963E; }
+.seg-verification { background: #8B6BAE; }
+.seg-certified { background: #4A7C59; }
+
+.pipeline-legend {
+    display: flex; flex-wrap: wrap; gap: 16px; margin-top: 10px; margin-bottom: 6px;
+}
+.legend-item { display: flex; align-items: center; gap: 6px; font-size: 10px; color: #6B6B6B; }
+.legend-dot { width: 10px; height: 10px; border-radius: 2px; flex-shrink: 0; }
+.legend-count { font-weight: 700; color: #1A1A1A; font-size: 12px; }
+
+/* Metric cards */
+.metric-row {
+    display: flex; gap: 12px; margin-bottom: 24px;
+}
+.metric-card {
+    flex: 1; padding: 14px 16px; border: 1px solid #E8E6E1; border-radius: 6px;
+    background: #FAFAF8;
+}
+.metric-value {
+    font-family: "Cormorant Garamond", Georgia, serif;
+    font-size: 28px; font-weight: 600; color: #0A0A0A;
+    line-height: 1.1; margin-bottom: 4px;
+}
+.metric-label {
+    font-size: 9px; font-weight: 600; color: #9A9A9A;
+    letter-spacing: 1.5px; text-transform: uppercase;
+}
+
+/* Movement table */
+.movement-table {
+    width: 100%; border-collapse: collapse; font-size: 11px;
+}
+.movement-table th {
+    text-align: left; font-size: 9px; font-weight: 600; color: #9A9A9A;
+    letter-spacing: 1.2px; text-transform: uppercase;
+    padding: 6px 10px; border-bottom: 2px solid #E8E6E1;
+    white-space: nowrap;
+}
+.movement-table td {
+    padding: 8px 10px; border-bottom: 1px solid #F0EEEA;
+    vertical-align: top;
+}
+.movement-empty {
+    text-align: center; color: #9A9A9A; font-style: italic;
+    padding: 20px 10px;
+}
+
+/* Stage badge */
+.stage-badge {
+    display: inline-block; padding: 2px 8px; border-radius: 3px;
+    font-size: 9px; font-weight: 600; letter-spacing: 0.5px;
+}
+.stage-not-requested { background: #EEEDEA; color: #6B6B6B; }
+.stage-awaiting { background: #DDE6F2; color: #3A5F8A; }
+.stage-defects { background: #F5EBDA; color: #8A6420; }
+.stage-verification { background: #E8DFF2; color: #5A3D7A; }
+.stage-certified { background: #DDE8DF; color: #2D5A3A; }
+
+/* Trend placeholder */
+.trend-placeholder {
+    border: 1px dashed #E8E6E1; border-radius: 6px;
+    padding: 30px; text-align: center; color: #9A9A9A;
+    font-size: 11px; font-style: italic;
+}
+</style>
+</head>
+<body>
+
+{% if not is_pdf %}
+<div class="toolbar">
+    <a href="{{ url_for('analytics.pipeline_report_pdf') }}" class="btn-pdf"
+       onclick="this.textContent='Preparing...'; this.style.opacity='0.6'; this.style.pointerEvents='none';">
+        Download PDF
+    </a>
+    <button class="btn-print" onclick="window.print()">Print</button>
+    <a href="{{ url_for('analytics.dashboard_v2') }}" class="btn-back">Back</a>
+</div>
+{% endif %}
+
+<div class="page">
+
+    <!-- HEADER -->
+    <div class="report-header">
+        <div class="header-top">
+            <div class="logo-area">
+                {% if logo_b64 %}
+                <img src="data:image/jpeg;base64,{{ logo_b64 }}" alt="Monograph Architects">
+                {% else %}
+                <span class="logo-fallback">MONOGRAPH</span>
+                <span class="logo-sub">architects</span>
+                {% endif %}
+            </div>
+            <div class="header-meta">
+                <div class="date">{{ report_date }}</div>
+                <div>REMEDIATION PIPELINE</div>
+            </div>
+        </div>
+        <div class="report-title">Project Pipeline Report</div>
+        <div class="report-subtitle">Power Park Student Housing &mdash; Phase 3 &mdash; {{ total_units }} Units</div>
+    </div>
+
+    <!-- SECTION 01: PIPELINE -->
+    <div class="section">
+        <div class="section-header">
+            <span class="section-number">01</span>
+            <span class="section-title">Project Pipeline</span>
+        </div>
+
+        <!-- Stacked bar -->
+        <div class="pipeline-bar">
+            {% if pipeline.not_requested > 0 %}
+            <div class="pipeline-seg seg-not-requested" style="flex: {{ pipeline.not_requested }};">{{ pipeline.not_requested }}</div>
+            {% endif %}
+            {% if pipeline.awaiting > 0 %}
+            <div class="pipeline-seg seg-awaiting" style="flex: {{ pipeline.awaiting }};">{{ pipeline.awaiting }}</div>
+            {% endif %}
+            {% if pipeline.defects_raised > 0 %}
+            <div class="pipeline-seg seg-defects" style="flex: {{ pipeline.defects_raised }};">{{ pipeline.defects_raised }}</div>
+            {% endif %}
+            {% if pipeline.verification > 0 %}
+            <div class="pipeline-seg seg-verification" style="flex: {{ pipeline.verification }};">{{ pipeline.verification }}</div>
+            {% endif %}
+            {% if pipeline.certified > 0 %}
+            <div class="pipeline-seg seg-certified" style="flex: {{ pipeline.certified }};">{{ pipeline.certified }}</div>
+            {% endif %}
+        </div>
+
+        <!-- Legend -->
+        <div class="pipeline-legend">
+            <div class="legend-item">
+                <div class="legend-dot" style="background: #BFBDB8;"></div>
+                Not Requested <span class="legend-count">{{ pipeline.not_requested }}</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-dot" style="background: #6B8EC4;"></div>
+                Awaiting Inspection <span class="legend-count">{{ pipeline.awaiting }}</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-dot" style="background: #C8963E;"></div>
+                Defects Raised <span class="legend-count">{{ pipeline.defects_raised }}</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-dot" style="background: #8B6BAE;"></div>
+                Under Verification <span class="legend-count">{{ pipeline.verification }}</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-dot" style="background: #4A7C59;"></div>
+                Certified <span class="legend-count">{{ pipeline.certified }}</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- SECTION 02: CYCLE EFFICIENCY -->
+    <div class="section">
+        <div class="section-header">
+            <span class="section-number">02</span>
+            <span class="section-title">Cycle Efficiency</span>
+        </div>
+
+        <div class="metric-row">
+            <div class="metric-card">
+                <div class="metric-value">{{ metrics.certified }} <span style="font-size: 16px; color: #9A9A9A;">/ {{ total_units }}</span></div>
+                <div class="metric-label">Units Certified</div>
+            </div>
+            <div class="metric-card">
+                <div class="metric-value">{{ metrics.avg_cycles if metrics.avg_cycles is not none else '&mdash;' }}</div>
+                <div class="metric-label">Avg Cycles to Cert</div>
+            </div>
+            <div class="metric-card">
+                <div class="metric-value">{{ metrics.avg_clearance if metrics.avg_clearance is not none else '&mdash;' }}</div>
+                <div class="metric-label">Avg Clearance Rate</div>
+            </div>
+            <div class="metric-card">
+                <div class="metric-value">{{ metrics.first_time_fix if metrics.first_time_fix is not none else '&mdash;' }}</div>
+                <div class="metric-label">First-Time Fix Rate</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- SECTION 03: MOVEMENT THIS WEEK -->
+    <div class="section">
+        <div class="section-header">
+            <span class="section-number">03</span>
+            <span class="section-title">Movement This Week</span>
+        </div>
+
+        {% if movements %}
+        <table class="movement-table">
+            <thead>
+                <tr>
+                    <th style="width: 220px;">Units</th>
+                    <th style="width: 150px;">From</th>
+                    <th style="width: 30px;"></th>
+                    <th style="width: 150px;">To</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for m in movements %}
+                <tr>
+                    <td>{{ m.units }}</td>
+                    <td><span class="stage-badge stage-{{ m.from_class }}">{{ m.from_label }}</span></td>
+                    <td style="text-align: center; color: #9A9A9A;">&rarr;</td>
+                    <td><span class="stage-badge stage-{{ m.to_class }}">{{ m.to_label }}</span></td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <div class="movement-empty">No stage changes this week</div>
+        {% endif %}
+    </div>
+
+    <!-- SECTION 04: CERTIFICATION TREND -->
+    <div class="section">
+        <div class="section-header">
+            <span class="section-number">04</span>
+            <span class="section-title">Certification Trend</span>
+        </div>
+
+        <div class="trend-placeholder">
+            Certification trend line will appear when the first unit is certified
+        </div>
+    </div>
+
+</div>
+
+</body>
+</html>

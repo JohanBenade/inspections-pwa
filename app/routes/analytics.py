@@ -4274,3 +4274,146 @@ def login_status():
         inspectors=inspectors,
         logged_in=logged_in,
         total=len(inspectors))
+
+
+# ============================================================
+# PIPELINE REPORT (Project Overview - unified remediation pipeline)
+# ============================================================
+
+def _build_pipeline_report_data():
+    """Build data for the Pipeline Report (Page 1: Project Pipeline)."""
+    tenant_id = session.get('tenant_id', 'MONOGRAPH')
+
+    # All real units
+    all_units = query_db("""
+        SELECT id, unit_number, block, floor, certified_at
+        FROM unit WHERE tenant_id = ? AND unit_number NOT LIKE 'TEST%'
+    """, [tenant_id])
+    total_units = len(all_units)
+
+    # Units in active batches (non-removed)
+    in_batch_rows = query_db("""
+        SELECT DISTINCT bu.unit_id
+        FROM batch_unit bu
+        JOIN unit u ON bu.unit_id = u.id
+        WHERE bu.tenant_id = ? AND u.unit_number NOT LIKE 'TEST%'
+        AND bu.removed_at IS NULL
+    """, [tenant_id])
+    in_batch_ids = set(r['unit_id'] for r in in_batch_rows)
+
+    # Completed inspections: max cycle per unit
+    # "completed" = submitted or later in the workflow
+    completed_rows = query_db("""
+        SELECT i.unit_id, MAX(i.cycle_number) as max_cycle
+        FROM inspection i
+        JOIN unit u ON i.unit_id = u.id
+        WHERE i.tenant_id = ? AND u.unit_number NOT LIKE 'TEST%'
+        AND i.status IN ('submitted', 'reviewed', 'approved', 'pending_followup')
+        GROUP BY i.unit_id
+    """, [tenant_id])
+    unit_max_completed = {r['unit_id']: r['max_cycle'] for r in completed_rows}
+
+    # Any C2+ inspection (any status = under verification)
+    c2_rows = query_db("""
+        SELECT DISTINCT i.unit_id
+        FROM inspection i
+        JOIN unit u ON i.unit_id = u.id
+        WHERE i.tenant_id = ? AND u.unit_number NOT LIKE 'TEST%'
+        AND i.cycle_number >= 2
+    """, [tenant_id])
+    c2_plus_ids = set(r['unit_id'] for r in c2_rows)
+
+    # Open defects per unit
+    open_rows = query_db("""
+        SELECT d.unit_id, COUNT(*) as cnt
+        FROM defect d
+        JOIN unit u ON d.unit_id = u.id
+        WHERE d.tenant_id = ? AND u.unit_number NOT LIKE 'TEST%'
+        AND d.status = 'open'
+        GROUP BY d.unit_id
+    """, [tenant_id])
+    unit_open = {r['unit_id']: r['cnt'] for r in open_rows}
+
+    # Classify each unit into pipeline stage
+    pipeline = {
+        'not_requested': 0,
+        'awaiting': 0,
+        'defects_raised': 0,
+        'verification': 0,
+        'certified': 0,
+    }
+
+    for u in all_units:
+        uid = u['id']
+        if u['certified_at']:
+            pipeline['certified'] += 1
+        elif uid in c2_plus_ids:
+            pipeline['verification'] += 1
+        elif uid in unit_max_completed:
+            # Has completed C1 inspection
+            pipeline['defects_raised'] += 1
+        elif uid in in_batch_ids:
+            pipeline['awaiting'] += 1
+        else:
+            pipeline['not_requested'] += 1
+
+    # Cycle efficiency metrics (all None until C2+ data exists)
+    metrics = {
+        'certified': pipeline['certified'],
+        'avg_cycles': None,
+        'avg_clearance': None,
+        'first_time_fix': None,
+    }
+
+    # Movement this week: empty list for now (no stage transitions yet)
+    movements = []
+
+    return {
+        'pipeline': pipeline,
+        'metrics': metrics,
+        'movements': movements,
+        'total_units': total_units,
+    }
+
+
+@analytics_bp.route('/pipeline')
+@require_manager
+def pipeline_report_view():
+    """Pipeline Report - HTML preview."""
+    import datetime, base64, os as _os
+    from flask import current_app
+    data = _build_pipeline_report_data()
+    data['is_pdf'] = False
+    data['report_date'] = datetime.datetime.now().strftime('%d %B %Y')
+    logo_path = _os.path.join(current_app.static_folder, 'monograph_logo.jpg')
+    if _os.path.exists(logo_path):
+        with open(logo_path, 'rb') as f:
+            data['logo_b64'] = base64.b64encode(f.read()).decode()
+    else:
+        data['logo_b64'] = ''
+    return render_template('analytics/pipeline_report.html', **data)
+
+
+@analytics_bp.route('/pipeline/pdf')
+@require_manager
+def pipeline_report_pdf():
+    """Pipeline Report - PDF download."""
+    from app.services.pdf_playwright import html_to_pdf
+    import datetime, base64, os as _os
+    from flask import current_app
+    data = _build_pipeline_report_data()
+    data['is_pdf'] = True
+    data['report_date'] = datetime.datetime.now().strftime('%d %B %Y')
+    logo_path = _os.path.join(current_app.static_folder, 'monograph_logo.jpg')
+    if _os.path.exists(logo_path):
+        with open(logo_path, 'rb') as f:
+            data['logo_b64'] = base64.b64encode(f.read()).decode()
+    else:
+        data['logo_b64'] = ''
+    html_str = render_template('analytics/pipeline_report.html', **data)
+    pdf_bytes = html_to_pdf(html_str)
+    resp = make_response(pdf_bytes)
+    resp.headers['Content-Type'] = 'application/pdf'
+    resp.headers['Content-Disposition'] = 'attachment; filename=Pipeline_Report_{}.pdf'.format(
+        datetime.datetime.now().strftime('%Y%m%d'))
+    return resp
