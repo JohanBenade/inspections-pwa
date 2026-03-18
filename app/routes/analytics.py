@@ -4368,7 +4368,34 @@ def _build_pipeline_report_data():
     # Movement this week: empty list for now (no stage transitions yet)
     movements = []
 
-    # --- PAGE 2: DEFECT POOL ---
+    # --- ACTIVE BATCHES CALLOUT ---
+    active_batches_rows = query_db("""
+        SELECT ib.name,
+               COUNT(bu.id) as total_units,
+               SUM(CASE WHEN EXISTS (
+                   SELECT 1 FROM inspection i2
+                   WHERE i2.unit_id = bu.unit_id AND i2.tenant_id = bu.tenant_id
+                   AND i2.status IN ('submitted','reviewed','approved','pending_followup')
+               ) THEN 0 ELSE 1 END) as c1_units
+        FROM inspection_batch ib
+        JOIN batch_unit bu ON bu.batch_id = ib.id AND bu.removed_at IS NULL
+        WHERE ib.tenant_id = ? AND ib.status NOT IN ('complete', 'signed_off')
+        GROUP BY ib.id
+        ORDER BY ib.created_at DESC
+    """, [tenant_id])
+
+    active_batches = []
+    for r in active_batches_rows:
+        c1 = r['c1_units']
+        c2_plus = r['total_units'] - c1
+        active_batches.append({
+            'name': r['name'],
+            'total': r['total_units'],
+            'c1': c1,
+            'c2_plus': c2_plus,
+        })
+
+        # --- PAGE 2: DEFECT POOL ---
     from datetime import datetime as _dt, timedelta as _td
 
     # Find all Tuesdays from first defect to today
@@ -4586,6 +4613,7 @@ def _build_pipeline_report_data():
         'floor_labels': floor_labels,
         'areas': areas,
         'trades': trades,
+        'active_batches': active_batches,
         'stuck_units': stuck_units,
         'stuck_headline': stuck_headline,
     }

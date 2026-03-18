@@ -270,6 +270,15 @@ body {
                 Certified <span class="legend-count">{{ pipeline.certified }}</span>
             </div>
         </div>
+
+        {% if active_batches %}
+        <div style="margin-top: 14px; padding: 10px 14px; background: #F8F7F5; border: 1px solid #E8E6E1; border-radius: 6px; font-size: 11px;">
+            <span style="font-weight: 600; color: #1A1A1A;">Active batch{{ 'es' if active_batches|length > 1 else '' }}:</span>
+            {% for b in active_batches %}
+            <span style="color: #6B6B6B; margin-left: 6px;">{{ b.name }} &mdash; {{ b.total }} units ({{ b.c1 }} C1{% if b.c2_plus > 0 %}, {{ b.c2_plus }} C2+{% endif %})</span>{% if not loop.last %};{% endif %}
+            {% endfor %}
+        </div>
+        {% endif %}
     </div>
 
     <!-- SECTION 02: CYCLE EFFICIENCY -->
