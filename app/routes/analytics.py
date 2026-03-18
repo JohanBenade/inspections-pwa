@@ -4334,54 +4334,13 @@ def _build_pipeline_report_data():
     """, [tenant_id])
     unit_open = {r['unit_id']: r['cnt'] for r in open_rows}
 
-    # Units in active (non-complete) batches
-    active_batch_unit_rows = query_db("""
-        SELECT DISTINCT bu.unit_id
-        FROM batch_unit bu
-        JOIN inspection_batch ib ON bu.batch_id = ib.id
-        JOIN unit u ON bu.unit_id = u.id
-        WHERE bu.tenant_id = ? AND u.unit_number NOT LIKE 'TEST%'
-        AND bu.removed_at IS NULL
-        AND ib.status NOT IN ('complete', 'signed_off')
-    """, [tenant_id])
-    in_active_batch_ids = set(r['unit_id'] for r in active_batch_unit_rows)
-
-    # Classify each unit into pipeline stage
-    pipeline = {
-        'not_requested': 0,
-        'first_inspection': 0,
-        'awaiting_remediation': 0,
-        'reinspection': 0,
-        'certified': 0,
-    }
-
-    # Track per-unit stage for batch callout
-    unit_stage = {}
-
-    for u in all_units:
-        uid = u['id']
-        if u['certified_at']:
-            pipeline['certified'] += 1
-            unit_stage[uid] = 'certified'
-        elif uid in unit_max_completed and uid in in_active_batch_ids:
-            # Completed C1 AND in an active batch = re-inspection
-            pipeline['reinspection'] += 1
-            unit_stage[uid] = 'reinspection'
-        elif uid in unit_max_completed:
-            # Completed C1, not in active batch = awaiting remediation
-            pipeline['awaiting_remediation'] += 1
-            unit_stage[uid] = 'awaiting_remediation'
-        elif uid in in_batch_ids:
-            # In a batch but no completed inspection = 1st inspection
-            pipeline['first_inspection'] += 1
-            unit_stage[uid] = 'first_inspection'
-        else:
-            pipeline['not_requested'] += 1
-            unit_stage[uid] = 'not_requested'
+    # Headline metrics
+    units_inspected = len(unit_max_completed)
+    certified_count = sum(1 for u in all_units if u['certified_at'])
 
     # Cycle efficiency metrics (all None until C2+ data exists)
     metrics = {
-        'certified': pipeline['certified'],
+        'certified': certified_count,
         'avg_cycles': None,
         'avg_clearance': None,
         'first_time_fix': None,
@@ -4390,8 +4349,8 @@ def _build_pipeline_report_data():
     # Movement this week: empty list for now (no stage transitions yet)
     movements = []
 
-    # --- ACTIVE BATCHES CALLOUT (with per-stage breakdown) ---
-    active_batch_detail = query_db("""
+    # --- ACTIVE BATCHES CALLOUT ---
+    active_batch_rows = query_db("""
         SELECT ib.id, ib.name, bu.unit_id
         FROM inspection_batch ib
         JOIN batch_unit bu ON bu.batch_id = ib.id AND bu.removed_at IS NULL
@@ -4401,35 +4360,29 @@ def _build_pipeline_report_data():
         ORDER BY ib.created_at DESC
     """, [tenant_id])
 
-    # Group by batch
     batch_map = {}
-    for r in active_batch_detail:
+    for r in active_batch_rows:
         bid = r['id']
+        uid = r['unit_id']
         if bid not in batch_map:
-            batch_map[bid] = {'name': r['name'], 'stages': {}}
-        stage = unit_stage.get(r['unit_id'], 'not_requested')
-        batch_map[bid]['stages'][stage] = batch_map[bid]['stages'].get(stage, 0) + 1
-
-    stage_labels = {
-        'not_requested': 'Not Requested',
-        'first_inspection': '1st Inspection',
-        'awaiting_remediation': 'Awaiting Remediation',
-        'reinspection': 'Re-inspection',
-        'certified': 'Certified',
-    }
+            batch_map[bid] = {'name': r['name'], 'new': 0, 'reinspection': 0}
+        if uid in unit_max_completed:
+            batch_map[bid]['reinspection'] += 1
+        else:
+            batch_map[bid]['new'] += 1
 
     active_batches = []
     for bid, bdata in batch_map.items():
-        total = sum(bdata['stages'].values())
+        total = bdata['new'] + bdata['reinspection']
         parts = []
-        for skey in ['first_inspection', 'reinspection', 'awaiting_remediation', 'certified', 'not_requested']:
-            cnt = bdata['stages'].get(skey, 0)
-            if cnt > 0:
-                parts.append({'label': stage_labels[skey], 'count': cnt})
+        if bdata['new'] > 0:
+            parts.append(str(bdata['new']) + ' new')
+        if bdata['reinspection'] > 0:
+            parts.append(str(bdata['reinspection']) + ' re-inspection')
         active_batches.append({
             'name': bdata['name'],
             'total': total,
-            'parts': parts,
+            'detail': ', '.join(parts),
         })
 
         # --- PAGE 2: DEFECT POOL ---
@@ -4636,7 +4589,7 @@ def _build_pipeline_report_data():
     }
 
     return {
-        'pipeline': pipeline,
+        'units_inspected': units_inspected,
         'metrics': metrics,
         'movements': movements,
         'total_units': total_units,
