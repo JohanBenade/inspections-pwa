@@ -4368,11 +4368,93 @@ def _build_pipeline_report_data():
     # Movement this week: empty list for now (no stage transitions yet)
     movements = []
 
+    # --- PAGE 2: DEFECT POOL ---
+    from datetime import datetime as _dt, timedelta as _td
+
+    # Find all Tuesdays from first defect to today
+    first_defect = query_db(
+        "SELECT MIN(created_at) as d FROM defect WHERE tenant_id = ? AND status IN ('open','cleared')",
+        [tenant_id], one=True)
+    
+    trend_points = []
+    if first_defect and first_defect['d']:
+        # Find first Tuesday on or after first defect
+        start = _dt.fromisoformat(first_defect['d'].replace('Z', '+00:00') if 'Z' in first_defect['d'] else first_defect['d'])
+        # Find first Tuesday
+        days_until_tue = (1 - start.weekday()) % 7
+        if days_until_tue == 0 and start.hour > 0:
+            days_until_tue = 0  # same day is fine
+        first_tue = (start + _td(days=days_until_tue)).replace(hour=23, minute=59, second=59)
+        
+        today = _dt.now()
+        tue = first_tue
+        while tue <= today:
+            tue_str = tue.strftime('%Y-%m-%d %H:%M:%S')
+            raised_row = query_db(
+                "SELECT COUNT(*) as c FROM defect WHERE tenant_id = ? AND created_at <= ?",
+                [tenant_id, tue_str], one=True)
+            cleared_row = query_db(
+                "SELECT COUNT(*) as c FROM defect WHERE tenant_id = ? AND status = 'cleared' AND cleared_at <= ?",
+                [tenant_id, tue_str], one=True)
+            trend_points.append({
+                'date': tue.strftime('%d %b'),
+                'raised': raised_row['c'] if raised_row else 0,
+                'cleared': cleared_row['c'] if cleared_row else 0,
+            })
+            tue = tue + _td(days=7)
+    
+    # Weekly ledger
+    last_week = _dt.now() - _td(days=7)
+    last_week_str = last_week.strftime('%Y-%m-%d %H:%M:%S')
+    now_str = _dt.now().strftime('%Y-%m-%d %H:%M:%S')
+    
+    bfwd_row = query_db(
+        "SELECT COUNT(*) as c FROM defect WHERE tenant_id = ? AND created_at <= ? AND (status = 'open' OR (status = 'cleared' AND cleared_at > ?))",
+        [tenant_id, last_week_str, last_week_str], one=True)
+    cleared_week_row = query_db(
+        "SELECT COUNT(*) as c FROM defect WHERE tenant_id = ? AND status = 'cleared' AND cleared_at > ? AND cleared_at <= ?",
+        [tenant_id, last_week_str, now_str], one=True)
+    new_week_row = query_db(
+        "SELECT COUNT(*) as c FROM defect WHERE tenant_id = ? AND created_at > ? AND created_at <= ?",
+        [tenant_id, last_week_str, now_str], one=True)
+    
+    total_open_row = query_db(
+        "SELECT COUNT(*) as c FROM defect WHERE tenant_id = ? AND status = 'open'",
+        [tenant_id], one=True)
+    
+    ledger = {
+        'bfwd': bfwd_row['c'] if bfwd_row else 0,
+        'cleared': cleared_week_row['c'] if cleared_week_row else 0,
+        'new': new_week_row['c'] if new_week_row else 0,
+        'open': total_open_row['c'] if total_open_row else 0,
+    }
+
+    # SVG chart coordinates (600w x 200h chart area)
+    chart_w = 600
+    chart_h = 200
+    svg_points_raised = []
+    svg_points_cleared = []
+    if trend_points:
+        max_val = max(p['raised'] for p in trend_points) or 1
+        n = len(trend_points)
+        for i, p in enumerate(trend_points):
+            x = int(60 + (chart_w - 80) * i / max(n - 1, 1))
+            y_r = int(chart_h - 20 - (chart_h - 40) * p['raised'] / max_val)
+            y_c = int(chart_h - 20 - (chart_h - 40) * p['cleared'] / max_val)
+            svg_points_raised.append({'x': x, 'y': y_r, 'val': p['raised'], 'date': p['date']})
+            svg_points_cleared.append({'x': x, 'y': y_c, 'val': p['cleared'], 'date': p['date']})
+
     return {
         'pipeline': pipeline,
         'metrics': metrics,
         'movements': movements,
         'total_units': total_units,
+        'trend_points': trend_points,
+        'ledger': ledger,
+        'svg_raised': svg_points_raised,
+        'svg_cleared': svg_points_cleared,
+        'chart_w': chart_w,
+        'chart_h': chart_h,
     }
 
 

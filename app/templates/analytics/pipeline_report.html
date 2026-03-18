@@ -344,6 +344,126 @@ body {
         </div>
     </div>
 
+    <!-- PAGE BREAK -->
+    <div style="page-break-before: always;"></div>
+
+    <!-- ============ PAGE 2: DEFECT POOL ============ -->
+
+    <!-- SECTION 05: CUMULATIVE FLOW -->
+    <div class="section">
+        <div class="section-header">
+            <span class="section-number">05</span>
+            <span class="section-title">Defect Pool</span>
+        </div>
+
+        {% if svg_raised %}
+        <svg viewBox="0 0 {{ chart_w + 20 }} {{ chart_h + 30 }}" xmlns="http://www.w3.org/2000/svg"
+             style="width: 100%; height: auto; margin-bottom: 8px;">
+            <!-- Grid lines -->
+            {% for i in range(5) %}
+            {% set gy = 20 + (chart_h - 40) * i / 4 %}
+            <line x1="60" y1="{{ gy|int }}" x2="{{ chart_w }}" y2="{{ gy|int }}" stroke="#F0EEEA" stroke-width="1"/>
+            {% endfor %}
+            <!-- Baseline -->
+            <line x1="60" y1="{{ chart_h - 20 }}" x2="{{ chart_w }}" y2="{{ chart_h - 20 }}" stroke="#E8E6E1" stroke-width="1"/>
+
+            <!-- Y-axis labels -->
+            {% if svg_raised %}
+            {% set max_val = svg_raised[-1].val if svg_raised[-1].val > 0 else 1 %}
+            {% for i in range(5) %}
+            {% set label_val = (max_val * (4 - i) / 4)|int %}
+            {% set gy = 20 + (chart_h - 40) * i / 4 %}
+            <text x="54" y="{{ gy|int + 4 }}" text-anchor="end" font-family="DM Sans, sans-serif" font-size="9" fill="#9A9A9A">{{ label_val }}</text>
+            {% endfor %}
+            {% endif %}
+
+            <!-- X-axis labels -->
+            {% for p in svg_raised %}
+            <text x="{{ p.x }}" y="{{ chart_h + 4 }}" text-anchor="middle" font-family="DM Sans, sans-serif" font-size="8" fill="#9A9A9A">{{ p.date }}</text>
+            {% endfor %}
+
+            <!-- Cleared line (behind) -->
+            {% if svg_cleared|length > 1 %}
+            <polyline fill="none" stroke="#4A7C59" stroke-width="2" stroke-dasharray="4,3"
+                points="{% for p in svg_cleared %}{{ p.x }},{{ p.y }}{% if not loop.last %} {% endif %}{% endfor %}"/>
+            {% endif %}
+
+            <!-- Raised line -->
+            {% if svg_raised|length > 1 %}
+            <polyline fill="none" stroke="#C8963E" stroke-width="2.5"
+                points="{% for p in svg_raised %}{{ p.x }},{{ p.y }}{% if not loop.last %} {% endif %}{% endfor %}"/>
+            {% endif %}
+
+            <!-- Raised dots + values -->
+            {% for p in svg_raised %}
+            <circle cx="{{ p.x }}" cy="{{ p.y }}" r="3.5" fill="#C8963E"/>
+            <text x="{{ p.x }}" y="{{ p.y - 8 }}" text-anchor="middle" font-family="DM Sans, sans-serif" font-size="9" font-weight="600" fill="#1A1A1A">{{ p.val }}</text>
+            {% endfor %}
+
+            <!-- Cleared dots (if any non-zero) -->
+            {% for p in svg_cleared %}
+            {% if p.val > 0 %}
+            <circle cx="{{ p.x }}" cy="{{ p.y }}" r="3" fill="#4A7C59"/>
+            <text x="{{ p.x }}" y="{{ p.y - 8 }}" text-anchor="middle" font-family="DM Sans, sans-serif" font-size="9" font-weight="600" fill="#4A7C59">{{ p.val }}</text>
+            {% endif %}
+            {% endfor %}
+        </svg>
+
+        <!-- Chart legend -->
+        <div style="display: flex; gap: 20px; margin-bottom: 6px;">
+            <div class="legend-item">
+                <div style="width: 20px; height: 3px; background: #C8963E; border-radius: 1px;"></div>
+                <span style="font-size: 10px; color: #6B6B6B;">Cumulative Raised</span>
+            </div>
+            <div class="legend-item">
+                <div style="width: 20px; height: 3px; background: #4A7C59; border-radius: 1px; border-top: 1px dashed #4A7C59;"></div>
+                <span style="font-size: 10px; color: #6B6B6B;">Cumulative Cleared</span>
+            </div>
+        </div>
+        {% else %}
+        <div class="trend-placeholder">
+            No defect data available
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- SECTION 06: WEEKLY LEDGER -->
+    <div class="section">
+        <div class="section-header">
+            <span class="section-number">06</span>
+            <span class="section-title">This Week</span>
+        </div>
+
+        <table class="movement-table" style="max-width: 500px;">
+            <thead>
+                <tr>
+                    <th>B/Fwd</th>
+                    <th style="color: #4A7C59;">- Cleared</th>
+                    <th style="color: #C8963E;">+ New</th>
+                    <th>= Open</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td style="font-weight: 600; font-size: 18px;">{{ '{:,}'.format(ledger.bfwd) }}</td>
+                    <td style="font-weight: 600; font-size: 18px; color: #4A7C59;">{{ '{:,}'.format(ledger.cleared) }}</td>
+                    <td style="font-weight: 600; font-size: 18px; color: #C8963E;">{{ '{:,}'.format(ledger.new) }}</td>
+                    <td style="font-weight: 700; font-size: 20px;">{{ '{:,}'.format(ledger.open) }}</td>
+                </tr>
+            </tbody>
+        </table>
+
+        {% if ledger.new > ledger.cleared %}
+        <div style="margin-top: 12px; padding: 10px 14px; background: #FFF8EE; border-left: 3px solid #C8963E; border-radius: 0 4px 4px 0; font-size: 11px; color: #6B6B6B;">
+            Pool growing &mdash; expected while C1 inspections are in progress. Pool will stabilise once all 191 units complete C1.
+        </div>
+        {% elif ledger.cleared > ledger.new %}
+        <div style="margin-top: 12px; padding: 10px 14px; background: #EEF5EF; border-left: 3px solid #4A7C59; border-radius: 0 4px 4px 0; font-size: 11px; color: #6B6B6B;">
+            Pool shrinking &mdash; remediation outpacing new defect discovery.
+        </div>
+        {% endif %}
+    </div>
+
 </div>
 
 </body>
