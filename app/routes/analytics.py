@@ -4626,7 +4626,12 @@ def pipeline_report_pdf():
     else:
         data['logo_b64'] = ''
     html_str = render_template('analytics/pipeline_report.html', **data)
-    pdf_bytes = html_to_pdf(html_str)
+    footer = '''<div style="width: 100%; font-size: 8px; font-family: 'DM Sans', Helvetica, Arial, sans-serif; padding: 0 16mm; display: flex; justify-content: space-between; color: #9A9A9A;">
+        <span>Confidential &mdash; Monograph Architects</span>
+        <span>Power Park Student Housing &ndash; Phase 3</span>
+        <span>Page <span class="pageNumber"></span> of <span class="totalPages"></span></span>
+    </div>'''
+    pdf_bytes = html_to_pdf(html_str, footer_template=footer)
     resp = make_response(pdf_bytes)
     resp.headers['Content-Type'] = 'application/pdf'
     resp.headers['Content-Disposition'] = 'attachment; filename=Pipeline_Report_{}.pdf'.format(
