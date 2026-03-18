@@ -121,6 +121,12 @@ body {
 .tl-red { background: #C44D3F; }
 .tl-grey { background: #9A9A9A; }
 
+/* -- CHAPTER HEADING -- */
+.chapter-heading { margin: 28px 0 20px 0; padding: 10px 0; border-top: 3px solid #0A0A0A; border-bottom: 1px solid #E8E6E1; page-break-before: always; }
+.chapter-heading:first-of-type { page-break-before: avoid; }
+.chapter-label { font-family: 'DM Sans', sans-serif; font-size: 10px; font-weight: 700; letter-spacing: 3px; text-transform: uppercase; color: #9A9A9A; margin-bottom: 2px; }
+.chapter-title { font-family: 'DM Sans', Helvetica, Arial, sans-serif; font-size: 24px; font-weight: 300; letter-spacing: 0.5px; color: #0A0A0A; }
+
 /* -- FOOTER -- */
 .report-footer { margin-top: 28px; padding-top: 14px; border-top: 3px solid #0A0A0A; page-break-inside: avoid; }
 .report-footer::after { content: ""; display: table; clear: both; }
@@ -140,6 +146,21 @@ body {
 {% endif %}
 
 <div class="page" style="padding: 20px 10px;">
+
+{# === DATA SOURCE SELECTION: C1-scoped when mixed, combined otherwise === #}
+{% set ch1_zones = c1_zones if is_mixed else zones %}
+{% set ch1_kpis = c1_kpis if is_mixed else kpis %}
+{% set ch1_area = c1_area_data if is_mixed else area_data %}
+{% set ch1_trade = c1_category_data if is_mixed else category_data %}
+{% set ch1_worst = c1_worst_units if is_mixed else worst_units %}
+{% set ch1_worst_pct = c1_worst_pct if is_mixed else worst_pct %}
+{% set ch1_deep = c1_area_deep_dive if is_mixed else area_deep_dive %}
+{% set ch1_callout = c1_dd_callout if is_mixed else dd_callout %}
+{% set ch1_rec = c1_recurring if is_mixed else recurring %}
+{% set ch1_area_max = c1_area_max if is_mixed else area_max %}
+{% set ch1_area_median = c1_area_median if is_mixed else area_median %}
+{% set ch1_cat_max = c1_cat_max if is_mixed else cat_max %}
+{% set ch1_cat_median = c1_cat_median if is_mixed else cat_median %}
 
 <!-- ============ HEADER ============ -->
 <div class="report-header">
@@ -165,7 +186,7 @@ body {
     </div>
 </div>
 
-<!-- ============ PROGRESS KPIs ============ -->
+<!-- ============ PROGRESS KPIs (batch-level, always combined) ============ -->
 <table class="kpi-table"><tr>
     <td class="kpi-cell" style="width: 33.33%;">
         <div class="kpi-label">Units Inspected</div>
@@ -185,14 +206,14 @@ body {
     </td>
 </tr></table>
 
-<!-- ============ BATCH vs PROJECT VERDICT ============ -->
+<!-- ============ BATCH vs PROJECT VERDICT (batch-level) ============ -->
 {% set avg_delta = kpis.avg_defects - kpis.project_avg %}
 {% set avg_pct = ((avg_delta / kpis.project_avg) * 100)|round|int if kpis.project_avg > 0 else 0 %}
 {% set worse = kpis.avg_defects > kpis.project_avg %}
 {% set verdict_bg = '#FDF0EF' if worse else '#EFF5F1' %}
 {% set verdict_border = '#C44D3F' if worse else '#4A7C59' %}
 {% set verdict_colour = '#C44D3F' if worse else '#4A7C59' %}
-{% set verdict_arrow = '▲' if worse else '▼' %}
+{% set verdict_arrow = '&#x25B2;' if worse else '&#x25BC;' %}
 {% set verdict_word = 'ABOVE' if worse else 'BELOW' %}
 {% set avg_max = [kpis.avg_defects, kpis.project_avg]|max %}
 {% set rate_max = [kpis.defect_rate|float, kpis.proj_defect_rate|float]|max %}
@@ -235,7 +256,7 @@ body {
     </div>
 </div>
 
-<!-- ============ QUALITY SECTION ============ -->
+<!-- ============ QUALITY SECTION (batch-level) ============ -->
 <div style="margin: 1rem 0 0.5rem 0; font-size: 0.65rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: #888;">Quality (Inspected Units Only)</div>
 <table style="width: 100%; border-collapse: collapse; margin-bottom: 1.5rem;">
 <tr>
@@ -258,7 +279,7 @@ body {
 </tr>
 </table>
 
-<!-- ============ RECTIFICATION ============ -->
+<!-- ============ RECTIFICATION OVERVIEW (batch-level, shows when any C2+ zone exists) ============ -->
 {% if batch_rectification %}
 <div class="rect-box">
     <div class="rect-label">Rectification &mdash; {{ batch_rectification.zone_units }} units re-inspected</div>
@@ -287,6 +308,22 @@ body {
 </div>
 {% endif %}
 
+
+{# ================================================================ #}
+{# CHAPTER 1: SNAG RESULTS (C1)                                     #}
+{# For pure C1 batches: no chapter heading, renders as before        #}
+{# For mixed batches: chapter heading + C1-scoped data               #}
+{# ================================================================ #}
+
+{% if is_mixed and c1_zones %}
+<div class="chapter-heading">
+    <div class="chapter-label">Chapter 1</div>
+    <div class="chapter-title">Snag Results (C1) &mdash; {{ ch1_kpis.inspected }} of {{ ch1_kpis.total_units }} units</div>
+</div>
+{% endif %}
+
+{% if c1_zones or not is_mixed %}
+
 <!-- ============ 01: ZONE SUMMARY ============ -->
 <div class="section">
     <div class="section-header">
@@ -306,8 +343,7 @@ body {
             </tr>
         </thead>
         <tbody>
-        {% set batch_rate_denom = kpis.total_defects %}
-        {% for z in zones %}
+        {% for z in ch1_zones %}
         {% set zone_rate = (z.defects / (437 * z.inspected) * 100)|round(1) if z.inspected > 0 else 0 %}
         <tr>
             <td style="font-weight: 600;">{{ z.label }}</td>
@@ -317,7 +353,7 @@ body {
             <td class="text-right">{{ z.total_units }}</td>
             <td class="text-right">{{ z.inspected }}</td>
             <td class="text-right">
-                <span style="font-weight: 700; color: {% if z.avg > kpis.avg_defects %}#C44D3F{% elif z.avg < kpis.avg_defects %}#4A7C59{% else %}#C8963E{% endif %};">{{ z.avg }}</span>
+                <span style="font-weight: 700; color: {% if z.avg > ch1_kpis.avg_defects %}#C44D3F{% elif z.avg < ch1_kpis.avg_defects %}#4A7C59{% else %}#C8963E{% endif %};">{{ z.avg }}</span>
             </td>
             <td class="text-right font-bold">{{ z.defects }}</td>
             <td class="text-right" style="color: #9A9A9A;">{{ zone_rate }}%</td>
@@ -326,16 +362,16 @@ body {
         </tbody>
         <tfoot>
             <tr>
-                <td colspan="3" style="font-weight: 600;">Batch Total</td>
-                <td class="text-right font-bold">{{ kpis.inspected }}</td>
-                <td class="text-right font-bold">{{ kpis.avg_defects }}</td>
-                <td class="text-right font-bold">{{ kpis.total_defects }}</td>
-                <td class="text-right" style="color: #9A9A9A;">{{ kpis.defect_rate }}%</td>
+                <td colspan="3" style="font-weight: 600;">{% if is_mixed %}C1 Total{% else %}Batch Total{% endif %}</td>
+                <td class="text-right font-bold">{{ ch1_kpis.inspected }}</td>
+                <td class="text-right font-bold">{{ ch1_kpis.avg_defects }}</td>
+                <td class="text-right font-bold">{{ ch1_kpis.total_defects }}</td>
+                <td class="text-right" style="color: #9A9A9A;">{{ ch1_kpis.defect_rate }}%</td>
             </tr>
         </tfoot>
     </table>
     <div class="callout callout-gold" style="margin-top: 10px;">
-        Batch avg {{ kpis.avg_defects }} defects/unit vs project avg {{ kpis.project_avg }}.
+        {% if is_mixed %}C1 avg {{ ch1_kpis.avg_defects }} defects/unit vs project avg {{ ch1_kpis.project_avg }}.{% else %}Batch avg {{ kpis.avg_defects }} defects/unit vs project avg {{ kpis.project_avg }}.{% endif %}
     </div>
 </div>
 
@@ -352,25 +388,25 @@ body {
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
                 <span style="font-size: 11px; font-weight: 600; color: #1A1A1A;">Defects by Area</span>
             </div>
-            {% for a in area_data %}
+            {% for a in ch1_area %}
             <div style="display: flex; align-items: center; gap: 4px; padding: 3px 0;">
                 <span style="font-size: 10px; color: #1A1A1A; min-width: 75px; white-space: nowrap;">
                     <span style="display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: {{ area_colours[loop.index0 % area_colours|length] }}; margin-right: 3px; vertical-align: middle;"></span>{{ a.area }}
                 </span>
                 <div style="flex: 1; height: 8px; background: #E8E6E1; border-radius: 3px; overflow: hidden;">
-                    <div style="height: 8px; width: {{ (a.defect_count / area_max * 100)|round }}%; background: {% if a.defect_count > area_median %}#C44D3F{% elif a.defect_count == area_median %}#C8963E{% else %}#4A7C59{% endif %}; border-radius: 2px;"></div>
+                    <div style="height: 8px; width: {{ (a.defect_count / ch1_area_max * 100)|round }}%; background: {% if a.defect_count > ch1_area_median %}#C44D3F{% elif a.defect_count == ch1_area_median %}#C8963E{% else %}#4A7C59{% endif %}; border-radius: 2px;"></div>
                 </div>
                 <span style="font-size: 9px; color: #9A9A9A; width: 30px; text-align: right;">{{ a.pct }}%</span>
-                <span style="font-size: 10px; font-weight: 700; width: 30px; text-align: right; color: {% if a.defect_count > area_median %}#C44D3F{% elif a.defect_count == area_median %}#C8963E{% else %}#4A7C59{% endif %};">{{ a.defect_count }}</span>
+                <span style="font-size: 10px; font-weight: 700; width: 30px; text-align: right; color: {% if a.defect_count > ch1_area_median %}#C44D3F{% elif a.defect_count == ch1_area_median %}#C8963E{% else %}#4A7C59{% endif %};">{{ a.defect_count }}</span>
             </div>
             {% endfor %}
             <div style="font-size: 10px; color: #9A9A9A; margin-top: 8px; padding-top: 6px; border-top: 1px solid #E8E6E1;">
-                <span class="legend-swatch" style="background: rgba(74,124,89,0.25); width: 8px; height: 8px;"></span><span class="legend-text">&lt;{{ area_median|round|int }}</span>&ensp;
-                <span class="legend-swatch" style="background: rgba(200,150,62,0.25); width: 8px; height: 8px;"></span><span class="legend-text">{{ area_median|round|int }}</span>&ensp;
-                <span class="legend-swatch" style="background: rgba(196,77,63,0.25); width: 8px; height: 8px;"></span><span class="legend-text">&gt;{{ area_median|round|int }}</span>&ensp;
-                average: {{ area_median|round|int }}
+                <span class="legend-swatch" style="background: rgba(74,124,89,0.25); width: 8px; height: 8px;"></span><span class="legend-text">&lt;{{ ch1_area_median|round|int }}</span>&ensp;
+                <span class="legend-swatch" style="background: rgba(200,150,62,0.25); width: 8px; height: 8px;"></span><span class="legend-text">{{ ch1_area_median|round|int }}</span>&ensp;
+                <span class="legend-swatch" style="background: rgba(196,77,63,0.25); width: 8px; height: 8px;"></span><span class="legend-text">&gt;{{ ch1_area_median|round|int }}</span>&ensp;
+                average: {{ ch1_area_median|round|int }}
             </div>
-            {% set bad_areas = area_data | selectattr('defect_count', 'gt', area_median) | list %}
+            {% set bad_areas = ch1_area | selectattr('defect_count', 'gt', ch1_area_median) | list %}
             {% if bad_areas %}
             {% set bad_pct = bad_areas | sum(attribute='pct') | round(1) %}
             <div style="font-size: 10px; color: #6B6B6B; margin-top: 6px; font-style: italic;">
@@ -384,14 +420,14 @@ body {
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
                 <span style="font-size: 11px; font-weight: 600; color: #1A1A1A;">Units by Defect Count</span>
             </div>
-            {% for unit in worst_units %}
+            {% for unit in ch1_worst %}
             {% set unit_colour = '#C44D3F' if unit.defect_count > kpis.q3 else '#C8963E' if unit.defect_count > kpis.q1 else '#4A7C59' %}
-            {% set unit_pct = (unit.defect_count / kpis.total_defects * 100)|round(1) if kpis.total_defects > 0 else 0 %}
+            {% set unit_pct = (unit.defect_count / ch1_kpis.total_defects * 100)|round(1) if ch1_kpis.total_defects > 0 else 0 %}
             <div style="display: flex; align-items: center; gap: 4px; padding: 3px 0;">
                 <span style="font-size: 10px; font-weight: 700; min-width: 28px; flex-shrink: 0;">{{ unit.unit_number }}</span>
                 <span style="font-size: 10px; color: #9A9A9A; min-width: 80px; flex-shrink: 0;">{{ unit.block }} {{ floor_labels.get(unit.floor, 'Floor ' ~ unit.floor|string) }}</span>
                 <div style="flex: 1; height: 8px; background: #E8E6E1; border-radius: 3px; overflow: hidden;">
-                    <div style="height: 8px; width: {{ (unit.defect_count / worst_units[0].defect_count * 100)|round }}%; background: {{ unit_colour }}; border-radius: 2px;"></div>
+                    <div style="height: 8px; width: {{ (unit.defect_count / ch1_worst[0].defect_count * 100)|round if ch1_worst else 0 }}%; background: {{ unit_colour }}; border-radius: 2px;"></div>
                 </div>
                 <span style="font-size: 9px; color: #9A9A9A; min-width: 32px; text-align: right; flex-shrink: 0;">{{ unit_pct }}%</span>
                 <span style="font-size: 10px; font-weight: 700; min-width: 24px; text-align: right; flex-shrink: 0; color: {{ unit_colour }};">{{ unit.defect_count }}</span>
@@ -404,7 +440,6 @@ body {
                 <span class="legend-swatch" style="background: rgba(196,77,63,0.25); width: 8px; height: 8px;"></span><span class="legend-text">Top 25%</span>&ensp;
                 &middot; Q1: {{ kpis.q1 }} &middot; Q3: {{ kpis.q3 }} defects/unit
             </div>
-
         </div>
     </div>
 </div>
@@ -416,13 +451,13 @@ body {
         <span class="section-title">Area Deep Dive</span>
     </div>
     <div class="clearfix">
-        {% for area_info in area_deep_dive %}
+        {% for area_info in ch1_deep %}
         <div style="float: {% if loop.first %}left{% else %}right{% endif %}; width: 48%;">
             <div style="background: #F5F3EE; border-left: 3px solid {{ area_info.colour }}; padding: 14px 16px;">
                 <div style="font-size: 10px; font-weight: 600; letter-spacing: 2px; text-transform: uppercase; color: #6B6B6B; margin-bottom: 2px;">{{ area_info.area }}</div>
                 <div style="margin-bottom: 10px;">
                     <span style="font-family: 'DM Sans', Helvetica, Arial, sans-serif; font-size: 24px; font-weight: 300; color: #0A0A0A;">{{ area_info.total }}</span>
-                    <span style="font-size: 10px; color: #9A9A9A; margin-left: 4px;">of {{ kpis.total_defects }} defects ({{ area_info.pct }}%)</span>
+                    <span style="font-size: 10px; color: #9A9A9A; margin-left: 4px;">of {{ ch1_kpis.total_defects }} defects ({{ area_info.pct }}%)</span>
                 </div>
                 <table style="width: 100%; border-collapse: collapse;">
                     {% for d in area_info.defects %}
@@ -446,9 +481,9 @@ body {
         </div>
         {% endfor %}
     </div>
-    {% if dd_callout %}
+    {% if ch1_callout %}
     <div class="callout callout-gold" style="margin-top: 12px;">
-        <strong>Key finding:</strong> {{ dd_callout }}
+        <strong>Key finding:</strong> {{ ch1_callout }}
     </div>
     {% endif %}
 </div>
@@ -460,19 +495,19 @@ body {
         <span class="section-title">Systemic Issues</span>
     </div>
 
-    {% if recurring %}
+    {% if ch1_rec %}
     <div style="display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 2px;">
-        <div style="font-size: 11px; font-weight: 600; color: #1A1A1A;">Top {{ recurring|length }} recurring defects (2+ units)</div>
-        <div style="font-size: 10px; color: #9A9A9A;">{{ recurring|sum(attribute='cnt') }} occurrences</div>
+        <div style="font-size: 11px; font-weight: 600; color: #1A1A1A;">Top {{ ch1_rec|length }} recurring defects (2+ units)</div>
+        <div style="font-size: 10px; color: #9A9A9A;">{{ ch1_rec|sum(attribute='cnt') }} occurrences</div>
     </div>
     <div style="font-size: 10px; color: #6B6B6B; margin-bottom: 12px;">Ranked by spread across units &mdash; address these across the batch, not unit-by-unit</div>
 
-    {% set rec_max = recurring[0].cnt if recurring else 1 %}
-    {% for r in recurring %}
+    {% set rec_max = ch1_rec[0].cnt if ch1_rec else 1 %}
+    {% for r in ch1_rec %}
     <div style="padding: 6px 0; {% if not loop.last %}border-bottom: 1px solid #F0F0F0;{% endif %}">
         <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 4px;">
             <span style="display: inline-block; width: 22px; height: 22px; line-height: 22px; text-align: center; font-size: 10px; font-weight: 700; color: white; background: #C44D3F; border-radius: 50%; flex-shrink: 0;">{{ loop.index }}</span>
-            <span style="font-size: 10px; font-weight: 500; color: #1A1A1A; flex: 1;">{{ r.original_comment }}{% if r.cat_breakdown %} <span style="font-size: 9px; color: #9A9A9A; font-weight: 400;">({% for cb in r.cat_breakdown %}{{ cb.cat }} {{ cb.cnt }}{% if not loop.last %} &middot; {% endif %}{% endfor %})</span>{% endif %}</span>
+            <span style="font-size: 10px; font-weight: 500; color: #1A1A1A; flex: 1;">{{ r.original_comment }}{% if r.cat_breakdown is defined and r.cat_breakdown %} <span style="font-size: 9px; color: #9A9A9A; font-weight: 400;">({% for cb in r.cat_breakdown %}{{ cb.cat }} {{ cb.cnt }}{% if not loop.last %} &middot; {% endif %}{% endfor %})</span>{% endif %}</span>
             <span style="font-size: 10px; font-weight: 700; color: #C44D3F; width: 30px; text-align: right;">{{ r.cnt }}</span>
             <span style="font-size: 10px; color: #9A9A9A; width: 40px; text-align: right;">{{ r.unit_count }}u</span>
         </div>
@@ -486,7 +521,7 @@ body {
     </div>
     {% endfor %}
     <div style="font-size: 10px; color: #9A9A9A; margin-top: 8px; padding-top: 6px; border-top: 1px solid #F0F0F0;">
-        {{ recurring|length }} defect type{{ 's' if recurring|length != 1 else '' }} found across 2 or more units &middot; {{ recurring|sum(attribute='cnt') }} total occurrences
+        {{ ch1_rec|length }} defect type{{ 's' if ch1_rec|length != 1 else '' }} found across 2 or more units &middot; {{ ch1_rec|sum(attribute='cnt') }} total occurrences
     </div>
     {% else %}
     <div class="callout callout-green">No recurring defects found across 2 or more units in this batch.</div>
@@ -502,30 +537,193 @@ body {
 
     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
         <span style="font-size: 11px; font-weight: 600; color: #1A1A1A;">Construction trade breakdown</span>
-        <span style="font-size: 9px; color: #9A9A9A;">median: {{ cat_median|round|int }}</span>
+        <span style="font-size: 9px; color: #9A9A9A;">median: {{ ch1_cat_median|round|int }}</span>
     </div>
 
-    {% for c in category_data %}
-    {% set cat_pct = (c.count / kpis.total_defects * 100)|round(1) if kpis.total_defects > 0 else 0 %}
+    {% for c in ch1_trade %}
+    {% set cat_pct = (c.count / ch1_kpis.total_defects * 100)|round(1) if ch1_kpis.total_defects > 0 else 0 %}
     <div style="display: flex; align-items: center; gap: 6px; padding: 4px 0;">
         <span style="font-size: 10px; color: #1A1A1A; min-width: 100px;">{{ c.category }}</span>
         <div style="flex: 1; height: 8px; background: #E8E6E1; border-radius: 3px; overflow: hidden;">
-            <div style="height: 8px; width: {{ (c.count / cat_max * 100)|round }}%; background: {% if c.count > cat_median %}#C44D3F{% elif c.count == cat_median %}#C8963E{% else %}#4A7C59{% endif %}; border-radius: 2px;"></div>
+            <div style="height: 8px; width: {{ (c.count / ch1_cat_max * 100)|round }}%; background: {% if c.count > ch1_cat_median %}#C44D3F{% elif c.count == ch1_cat_median %}#C8963E{% else %}#4A7C59{% endif %}; border-radius: 2px;"></div>
         </div>
         <span style="font-size: 9px; color: #9A9A9A; width: 30px; text-align: right;">{{ cat_pct }}%</span>
-        <span style="font-size: 9px; color: #9A9A9A; width: 45px; text-align: right;">{{ (c.count / kpis.inspected)|round(1) if kpis.inspected > 0 else 0 }} /unit</span>
-        <span style="font-size: 10px; font-weight: 700; width: 35px; text-align: right; color: {% if c.count > cat_median %}#C44D3F{% elif c.count == cat_median %}#C8963E{% else %}#4A7C59{% endif %};">{{ c.count }}</span>
+        <span style="font-size: 9px; color: #9A9A9A; width: 45px; text-align: right;">{{ (c.count / ch1_kpis.inspected)|round(1) if ch1_kpis.inspected > 0 else 0 }} /unit</span>
+        <span style="font-size: 10px; font-weight: 700; width: 35px; text-align: right; color: {% if c.count > ch1_cat_median %}#C44D3F{% elif c.count == ch1_cat_median %}#C8963E{% else %}#4A7C59{% endif %};">{{ c.count }}</span>
     </div>
     {% endfor %}
 
     <div style="font-size: 9px; color: #9A9A9A; margin-top: 8px; padding-top: 6px; border-top: 1px solid #F0F0F0;">
-        <span class="legend-swatch" style="background: rgba(74,124,89,0.25); width: 8px; height: 8px;"></span><span class="legend-text">&lt;{{ cat_median|round|int }}</span>&ensp;
-        <span class="legend-swatch" style="background: rgba(200,150,62,0.25); width: 8px; height: 8px;"></span><span class="legend-text">{{ cat_median|round|int }}</span>&ensp;
-        <span class="legend-swatch" style="background: rgba(196,77,63,0.25); width: 8px; height: 8px;"></span><span class="legend-text">&gt;{{ cat_median|round|int }}</span>&ensp;
+        <span class="legend-swatch" style="background: rgba(74,124,89,0.25); width: 8px; height: 8px;"></span><span class="legend-text">&lt;{{ ch1_cat_median|round|int }}</span>&ensp;
+        <span class="legend-swatch" style="background: rgba(200,150,62,0.25); width: 8px; height: 8px;"></span><span class="legend-text">{{ ch1_cat_median|round|int }}</span>&ensp;
+        <span class="legend-swatch" style="background: rgba(196,77,63,0.25); width: 8px; height: 8px;"></span><span class="legend-text">&gt;{{ ch1_cat_median|round|int }}</span>&ensp;
         <span style="color: #BABABA;">&middot;</span>&ensp;
-        average: {{ cat_median|round|int }}
+        average: {{ ch1_cat_median|round|int }}
     </div>
 </div>
+
+{% endif %}{# end c1_zones or not is_mixed #}
+
+
+{# ================================================================ #}
+{# CHAPTER 2: DE-SNAG RESULTS (C2)                                  #}
+{# Only renders when C2 zones exist in the batch                     #}
+{# ================================================================ #}
+
+{% if c2_zones %}
+<div class="chapter-heading" {% if not c1_zones %}style="page-break-before: avoid;"{% endif %}>
+    <div class="chapter-label">{% if is_mixed %}Chapter 2{% else %}Rectification{% endif %}</div>
+    <div class="chapter-title">De-snag Results (C2) &mdash; {{ c2_summary.units_inspected }} of {{ c2_zones|sum(attribute='total_units') }} units</div>
+</div>
+
+<!-- C2 Section 1: Rectification KPIs -->
+<div class="section">
+    <div class="section-header">
+        <span class="section-number">{% if is_mixed %}06{% else %}01{% endif %}</span>
+        <span class="section-title">Rectification Summary</span>
+    </div>
+
+    {% if c2_summary.units_inspected > 0 %}
+    <table class="kpi-table"><tr>
+        <td class="kpi-cell" style="width: 33.33%; border-left-color: #3D6B8E;">
+            <div class="kpi-label">Defects Reviewed</div>
+            <div class="kpi-value">{{ c2_summary.total_r1 }}</div>
+            <div class="kpi-sub">C1 defects across {{ c2_summary.units_inspected }} units</div>
+        </td>
+        <td class="kpi-cell" style="width: 33.33%; border-left-color: #4A7C59;">
+            <div class="kpi-label">Cleared</div>
+            <div class="kpi-value kpi-value-green">{{ c2_summary.total_cleared }}</div>
+            <div class="kpi-sub">defects rectified by Raubex</div>
+        </td>
+        <td class="kpi-cell" style="width: 33.33%; border-left-color: {% if c2_summary.clearance_pct >= 70 %}#4A7C59{% elif c2_summary.clearance_pct >= 40 %}#C8963E{% else %}#C44D3F{% endif %};">
+            <div class="kpi-label">Clearance Rate</div>
+            <div class="kpi-value" style="color: {% if c2_summary.clearance_pct >= 70 %}#4A7C59{% elif c2_summary.clearance_pct >= 40 %}#C8963E{% else %}#C44D3F{% endif %};">{{ c2_summary.clearance_pct }}%</div>
+            <div class="kpi-sub">{{ c2_summary.total_still_open }} still open{% if c2_summary.total_new > 0 %} &middot; {{ c2_summary.total_new }} new{% endif %}</div>
+        </td>
+    </tr></table>
+
+    {% set c2_verdict_colour = '#4A7C59' if c2_summary.clearance_pct >= 70 else '#C8963E' if c2_summary.clearance_pct >= 40 else '#C44D3F' %}
+    {% set c2_verdict_bg = '#EFF5F1' if c2_summary.clearance_pct >= 70 else 'rgba(200,150,62,0.08)' if c2_summary.clearance_pct >= 40 else '#FDF0EF' %}
+    <div class="callout" style="border-left: 3px solid {{ c2_verdict_colour }}; background: {{ c2_verdict_bg }};">
+        {% if c2_summary.clearance_pct >= 70 %}
+        <strong>Good progress.</strong> Raubex cleared {{ c2_summary.clearance_pct }}% of defects. {{ c2_summary.total_still_open }} items remain open.
+        {% elif c2_summary.clearance_pct >= 40 %}
+        <strong>Partial progress.</strong> {{ c2_summary.clearance_pct }}% clearance rate. {{ c2_summary.total_still_open }} defects still require rectification.
+        {% else %}
+        <strong>Insufficient progress.</strong> Only {{ c2_summary.clearance_pct }}% of defects cleared. {{ c2_summary.total_still_open }} items remain open. Escalation may be required.
+        {% endif %}
+        {% if c2_summary.total_new > 0 %}
+        {{ c2_summary.total_new }} new defect{{ 's' if c2_summary.total_new != 1 else '' }} found during re-inspection.
+        {% endif %}
+    </div>
+    {% else %}
+    <div class="callout callout-blue">
+        No C2 inspections completed yet. {{ c2_zones|sum(attribute='total_units') }} units assigned for re-inspection.
+    </div>
+    {% endif %}
+</div>
+
+{% if c2_summary.units_inspected > 0 %}
+<!-- C2 Section 2: Unit Rectification Table -->
+<div class="section">
+    <div class="section-header">
+        <span class="section-number">{% if is_mixed %}07{% else %}02{% endif %}</span>
+        <span class="section-title">Unit Rectification</span>
+    </div>
+    <table class="data-table">
+        <thead>
+            <tr>
+                <th>Unit</th>
+                <th>Zone</th>
+                <th class="text-right">C1 Defects</th>
+                <th class="text-right">Cleared</th>
+                <th class="text-right">Still Open</th>
+                <th class="text-right">New</th>
+                <th class="text-right">Clearance</th>
+            </tr>
+        </thead>
+        <tbody>
+        {% for u in c2_unit_table %}
+        {% set row_colour = '#C44D3F' if u.clearance_pct < 40 else '#C8963E' if u.clearance_pct < 70 else '#4A7C59' %}
+        <tr>
+            <td style="font-weight: 700;">{{ u.unit_number }}</td>
+            <td style="font-size: 9px; color: #6B6B6B;">{{ u.zone }}</td>
+            <td class="text-right">{{ u.r1_defects }}</td>
+            <td class="text-right" style="color: #4A7C59; font-weight: 600;">{{ u.cleared }}</td>
+            <td class="text-right" style="color: #C44D3F; font-weight: 600;">{{ u.still_open }}</td>
+            <td class="text-right">{% if u.new > 0 %}<span style="color: #C44D3F;">+{{ u.new }}</span>{% else %}&mdash;{% endif %}</td>
+            <td class="text-right">
+                <span style="font-weight: 700; color: {{ row_colour }};">{{ u.clearance_pct }}%</span>
+                <div style="height: 4px; background: #E8E6E1; border-radius: 2px; margin-top: 2px; overflow: hidden;">
+                    <div style="height: 4px; width: {{ u.clearance_pct }}%; background: {{ row_colour }}; border-radius: 2px;"></div>
+                </div>
+            </td>
+        </tr>
+        {% endfor %}
+        </tbody>
+        <tfoot>
+            <tr>
+                <td colspan="2" style="font-weight: 600;">Total ({{ c2_unit_table|length }} units)</td>
+                <td class="text-right font-bold">{{ c2_summary.total_r1 }}</td>
+                <td class="text-right font-bold" style="color: #4A7C59;">{{ c2_summary.total_cleared }}</td>
+                <td class="text-right font-bold" style="color: #C44D3F;">{{ c2_summary.total_still_open }}</td>
+                <td class="text-right font-bold">{% if c2_summary.total_new > 0 %}<span style="color: #C44D3F;">+{{ c2_summary.total_new }}</span>{% else %}&mdash;{% endif %}</td>
+                <td class="text-right font-bold" style="color: {% if c2_summary.clearance_pct >= 70 %}#4A7C59{% elif c2_summary.clearance_pct >= 40 %}#C8963E{% else %}#C44D3F{% endif %};">{{ c2_summary.clearance_pct }}%</td>
+            </tr>
+        </tfoot>
+    </table>
+</div>
+
+<!-- C2 Section 3: Remaining Defects by Area -->
+{% if c2_area_data %}
+<div class="section">
+    <div class="section-header">
+        <span class="section-number">{% if is_mixed %}08{% else %}03{% endif %}</span>
+        <span class="section-title">Remaining Defects by Area</span>
+    </div>
+    <div style="font-size: 10px; color: #6B6B6B; margin-bottom: 10px;">Open defects still requiring rectification, grouped by room</div>
+    {% set c2_area_total = c2_area_data|sum(attribute='defect_count') %}
+    {% for a in c2_area_data %}
+    {% set apct = (a.defect_count / c2_area_total * 100)|round(1) if c2_area_total > 0 else 0 %}
+    <div style="display: flex; align-items: center; gap: 6px; padding: 4px 0;">
+        <span style="font-size: 10px; color: #1A1A1A; min-width: 85px;">{{ a.area }}</span>
+        <div style="flex: 1; height: 8px; background: #E8E6E1; border-radius: 3px; overflow: hidden;">
+            <div style="height: 8px; width: {{ (a.defect_count / c2_area_max * 100)|round }}%; background: #C44D3F; border-radius: 2px;"></div>
+        </div>
+        <span style="font-size: 9px; color: #9A9A9A; width: 32px; text-align: right;">{{ apct }}%</span>
+        <span style="font-size: 10px; font-weight: 700; width: 30px; text-align: right; color: #C44D3F;">{{ a.defect_count }}</span>
+    </div>
+    {% endfor %}
+</div>
+{% endif %}
+
+<!-- C2 Section 4: Remaining Defects by Trade -->
+{% if c2_trade_data %}
+<div class="section">
+    <div class="section-header">
+        <span class="section-number">{% if is_mixed %}09{% else %}04{% endif %}</span>
+        <span class="section-title">Remaining Defects by Trade</span>
+    </div>
+    <div style="font-size: 10px; color: #6B6B6B; margin-bottom: 10px;">Open defects still requiring rectification, grouped by construction trade</div>
+    {% set c2_trade_total = c2_trade_data|sum(attribute='count') %}
+    {% for c in c2_trade_data %}
+    {% set cpct = (c.count / c2_trade_total * 100)|round(1) if c2_trade_total > 0 else 0 %}
+    <div style="display: flex; align-items: center; gap: 6px; padding: 4px 0;">
+        <span style="font-size: 10px; color: #1A1A1A; min-width: 100px;">{{ c.category }}</span>
+        <div style="flex: 1; height: 8px; background: #E8E6E1; border-radius: 3px; overflow: hidden;">
+            <div style="height: 8px; width: {{ (c.count / c2_trade_max * 100)|round }}%; background: #C44D3F; border-radius: 2px;"></div>
+        </div>
+        <span style="font-size: 9px; color: #9A9A9A; width: 32px; text-align: right;">{{ cpct }}%</span>
+        <span style="font-size: 10px; font-weight: 700; width: 30px; text-align: right; color: #C44D3F;">{{ c.count }}</span>
+    </div>
+    {% endfor %}
+</div>
+{% endif %}
+
+{% endif %}{# end c2_summary.units_inspected > 0 #}
+
+{% endif %}{# end c2_zones #}
+
 
 <!-- ============ FOOTER ============ -->
 <div class="report-footer clearfix">

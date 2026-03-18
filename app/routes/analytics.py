@@ -3931,6 +3931,229 @@ def _build_batch_report_data(batch_id):
     report_date = __import__('datetime').datetime.utcnow().strftime('%d %B %Y')
     report_date_slug = __import__('datetime').datetime.utcnow().strftime('%Y%m%d')
 
+    # === MIXED BATCH SPLIT (C1/C2) ===
+    c1_zones = [z for z in zones if z['cycle_number'] == 1]
+    c2_zones = [z for z in zones if z['cycle_number'] > 1]
+    is_mixed = bool(c1_zones) and bool(c2_zones)
+
+    # C1-scoped KPIs
+    c1_inspected = sum(z['inspected'] for z in c1_zones)
+    c1_defects = sum(z['defects'] for z in c1_zones)
+    c1_avg = round(c1_defects / c1_inspected, 1) if c1_inspected > 0 else 0
+    c1_items = ITEMS_PER_UNIT * c1_inspected
+    c1_defect_rate = round(c1_defects / c1_items * 100, 1) if c1_items > 0 else 0
+    c1_kpis = {
+        'inspected': c1_inspected,
+        'total_units': sum(z['total_units'] for z in c1_zones),
+        'total_defects': c1_defects,
+        'avg_defects': c1_avg,
+        'defect_rate': c1_defect_rate,
+        'items_inspected': c1_items,
+        'project_avg': project_avg,
+        'proj_defect_rate': proj_defect_rate,
+    }
+
+    # C1-scoped area/trade/worst — defaults to combined; re-scoped when mixed
+    c1_area_data = area_data
+    c1_category_data = category_data
+    c1_worst_units = worst_units
+    c1_area_deep_dive = area_deep_dive
+    c1_dd_callout = dd_callout
+    c1_recurring = recurring
+    c1_area_max = area_max
+    c1_area_median = area_median
+    c1_cat_max = cat_max
+    c1_cat_median = cat_median
+    c1_worst_pct = worst_pct
+
+    if is_mixed:
+        c1_cids = [z['cycle_id'] for z in c1_zones]
+        c1ph = ','.join('?' * len(c1_cids))
+
+        c1_area_data = [dict(r) for r in query_db(
+            "SELECT at2.area_name AS area, COUNT(d.id) AS defect_count "
+            "FROM defect d "
+            "JOIN item_template it ON d.item_template_id = it.id "
+            "JOIN category_template ct ON it.category_id = ct.id "
+            "JOIN area_template at2 ON ct.area_id = at2.id "
+            "WHERE d.tenant_id = ? AND d.status = 'open' "
+            "AND d.unit_id IN (SELECT unit_id FROM batch_unit WHERE batch_id = ? AND removed_at IS NULL AND tenant_id = ?) "
+            "AND EXISTS (SELECT 1 FROM inspection i2 WHERE i2.unit_id = d.unit_id "
+            "AND i2.cycle_id = d.raised_cycle_id "
+            "AND i2.status IN ('reviewed','approved','certified','pending_followup')) "
+            "AND d.raised_cycle_id IN ({}) "
+            "GROUP BY at2.area_name ORDER BY defect_count DESC".format(c1ph),
+            [tenant_id, batch_id, tenant_id] + c1_cids)]
+        c1_area_max = c1_area_data[0]['defect_count'] if c1_area_data else 1
+        c1_ac = sorted([a['defect_count'] for a in c1_area_data])
+        if c1_ac:
+            mid = len(c1_ac) // 2
+            c1_area_median = c1_ac[mid] if len(c1_ac) % 2 else (c1_ac[mid-1] + c1_ac[mid]) / 2
+        else:
+            c1_area_median = 0
+        for a in c1_area_data:
+            a['pct'] = round(a['defect_count'] / c1_defects * 100, 1) if c1_defects > 0 else 0
+
+        c1_category_data = [dict(r) for r in query_db(
+            "SELECT ct.category_name AS category, COUNT(d.id) AS count "
+            "FROM defect d "
+            "JOIN item_template it ON d.item_template_id = it.id "
+            "JOIN category_template ct ON it.category_id = ct.id "
+            "WHERE d.tenant_id = ? AND d.status = 'open' "
+            "AND d.unit_id IN (SELECT unit_id FROM batch_unit WHERE batch_id = ? AND removed_at IS NULL AND tenant_id = ?) "
+            "AND EXISTS (SELECT 1 FROM inspection i2 WHERE i2.unit_id = d.unit_id "
+            "AND i2.cycle_id = d.raised_cycle_id "
+            "AND i2.status IN ('reviewed','approved','certified','pending_followup')) "
+            "AND d.raised_cycle_id IN ({}) "
+            "GROUP BY ct.category_name ORDER BY count DESC".format(c1ph),
+            [tenant_id, batch_id, tenant_id] + c1_cids)]
+        c1_cat_max = c1_category_data[0]['count'] if c1_category_data else 1
+        c1_cc = sorted([c['count'] for c in c1_category_data])
+        if c1_cc:
+            mid = len(c1_cc) // 2
+            c1_cat_median = c1_cc[mid] if len(c1_cc) % 2 else (c1_cc[mid-1] + c1_cc[mid]) / 2
+        else:
+            c1_cat_median = 0
+
+        c1_worst_units = [dict(r) for r in query_db(
+            "SELECT u.unit_number, u.block, u.floor, COUNT(d.id) as defect_count "
+            "FROM defect d JOIN unit_real u ON d.unit_id = u.id "
+            "WHERE d.tenant_id = ? AND d.status = 'open' "
+            "AND d.unit_id IN (SELECT unit_id FROM batch_unit WHERE batch_id = ? AND removed_at IS NULL AND tenant_id = ?) "
+            "AND d.raised_cycle_id IN ({}) "
+            "AND EXISTS (SELECT 1 FROM inspection i2 WHERE i2.unit_id = d.unit_id "
+            "AND i2.cycle_id = d.raised_cycle_id "
+            "AND i2.status IN ('reviewed','approved','certified','pending_followup')) "
+            "GROUP BY u.id ORDER BY defect_count DESC".format(c1ph),
+            [tenant_id, batch_id, tenant_id] + c1_cids)]
+        c1_ws = sum(u['defect_count'] for u in c1_worst_units)
+        c1_worst_pct = round(c1_ws / c1_defects * 100) if c1_defects > 0 else 0
+
+        c1_area_deep_dive = []
+        for idx2, ar2 in enumerate(c1_area_data[:2]):
+            aname = ar2['area']
+            dd2 = [dict(r) for r in query_db(
+                "SELECT d.original_comment AS description, COUNT(*) AS count "
+                "FROM defect d "
+                "JOIN item_template it ON d.item_template_id = it.id "
+                "JOIN category_template ct ON it.category_id = ct.id "
+                "JOIN area_template at2 ON ct.area_id = at2.id "
+                "WHERE d.tenant_id = ? AND d.status = 'open' "
+                "AND d.unit_id IN (SELECT unit_id FROM batch_unit WHERE batch_id = ? AND removed_at IS NULL AND tenant_id = ?) "
+                "AND EXISTS (SELECT 1 FROM inspection i2 WHERE i2.unit_id = d.unit_id "
+                "AND i2.cycle_id = d.raised_cycle_id "
+                "AND i2.status IN ('reviewed','approved','certified','pending_followup')) "
+                "AND d.raised_cycle_id IN ({}) AND at2.area_name = ? "
+                "GROUP BY d.original_comment ORDER BY count DESC LIMIT 3".format(c1ph),
+                [tenant_id, batch_id, tenant_id] + c1_cids + [aname])]
+            mx = dd2[0]['count'] if dd2 else 1
+            for d in dd2:
+                d['bar_pct'] = round(d['count'] / mx * 100)
+            apct = round(ar2['defect_count'] / c1_defects * 100, 1) if c1_defects > 0 else 0
+            c1_area_deep_dive.append({
+                'area': aname, 'total': ar2['defect_count'],
+                'pct': apct, 'colour': dd_colours[idx2], 'defects': dd2,
+            })
+        c1_dd_callout = ''
+        if c1_area_deep_dive and c1_area_deep_dive[0]['defects']:
+            a1c = c1_area_deep_dive[0]
+            d1c = a1c['defects'][0]
+            c1_dd_callout = 'The most frequent defect in {} is {} ({} occurrences).'.format(
+                a1c['area'].title(), d1c['description'].lower(), d1c['count'])
+
+        c1_recurring = [dict(r) for r in query_db(
+            "SELECT d.original_comment, COUNT(d.id) AS cnt, COUNT(DISTINCT d.unit_id) AS unit_count "
+            "FROM defect d JOIN unit_real u ON d.unit_id = u.id "
+            "WHERE d.tenant_id = ? AND d.status = 'open' "
+            "AND d.unit_id IN (SELECT unit_id FROM batch_unit WHERE batch_id = ? AND removed_at IS NULL AND tenant_id = ?) "
+            "AND EXISTS (SELECT 1 FROM inspection i2 WHERE i2.unit_id = d.unit_id "
+            "AND i2.cycle_id = d.raised_cycle_id "
+            "AND i2.status IN ('reviewed','approved','certified','pending_followup')) "
+            "AND d.raised_cycle_id IN ({}) "
+            "GROUP BY d.original_comment HAVING unit_count >= 2 ORDER BY cnt DESC LIMIT 10".format(c1ph),
+            [tenant_id, batch_id, tenant_id] + c1_cids)]
+
+    # C2 unit rectification table
+    c2_unit_table = []
+    c2_total_r1 = 0
+    c2_total_cleared = 0
+    c2_total_new = 0
+    c2_total_still_open = 0
+    for z in c2_zones:
+        cyc_id = z['cycle_id']
+        prev_row = query_db(
+            "SELECT id FROM inspection_cycle WHERE block=? AND floor=? AND cycle_number=? AND tenant_id=?",
+            [z['block'], z['floor'], z['cycle_number'] - 1, tenant_id], one=True)
+        if not prev_row:
+            continue
+        prev_id = prev_row['id']
+        for u in z['units']:
+            if u['insp_status'] not in reviewed_statuses:
+                continue
+            uid = u['unit_id']
+            r1r = query_db('SELECT COUNT(*) as cnt FROM defect WHERE raised_cycle_id=? AND unit_id=? AND tenant_id=?',
+                           [prev_id, uid, tenant_id], one=True)
+            clr = query_db('SELECT COUNT(*) as cnt FROM defect WHERE cleared_cycle_id=? AND unit_id=? AND tenant_id=?',
+                           [cyc_id, uid, tenant_id], one=True)
+            nwr = query_db('SELECT COUNT(*) as cnt FROM defect WHERE raised_cycle_id=? AND unit_id=? AND tenant_id=?',
+                           [cyc_id, uid, tenant_id], one=True)
+            r1c = r1r['cnt'] if r1r else 0
+            clc = clr['cnt'] if clr else 0
+            nwc = nwr['cnt'] if nwr else 0
+            so = max(r1c - clc, 0)
+            cpct = round(clc / r1c * 100) if r1c > 0 else 0
+            c2_unit_table.append({
+                'unit_number': u['unit_number'],
+                'zone': '{} {}'.format(z['block'], z['floor_label']),
+                'cycle_number': z['cycle_number'],
+                'r1_defects': r1c, 'cleared': clc,
+                'still_open': so, 'new': nwc, 'clearance_pct': cpct,
+            })
+            c2_total_r1 += r1c
+            c2_total_cleared += clc
+            c2_total_new += nwc
+            c2_total_still_open += so
+    c2_unit_table.sort(key=lambda x: (x['clearance_pct'], -x['still_open']))
+    c2_summary = {
+        'total_r1': c2_total_r1, 'total_cleared': c2_total_cleared,
+        'total_new': c2_total_new, 'total_still_open': c2_total_still_open,
+        'clearance_pct': round(c2_total_cleared / c2_total_r1 * 100) if c2_total_r1 > 0 else 0,
+        'units_inspected': len(c2_unit_table),
+    }
+
+    # C2 area/trade (remaining open defects for C2 units)
+    c2_area_data = []
+    c2_trade_data = []
+    c2_area_max = 1
+    c2_trade_max = 1
+    if c2_zones:
+        c2_uids = []
+        for z in c2_zones:
+            for u in z['units']:
+                if u['insp_status'] in reviewed_statuses:
+                    c2_uids.append(u['unit_id'])
+        if c2_uids:
+            uph2 = ','.join('?' * len(c2_uids))
+            c2_area_data = [dict(r) for r in query_db(
+                "SELECT at2.area_name AS area, COUNT(d.id) AS defect_count "
+                "FROM defect d "
+                "JOIN item_template it ON d.item_template_id = it.id "
+                "JOIN category_template ct ON it.category_id = ct.id "
+                "JOIN area_template at2 ON ct.area_id = at2.id "
+                "WHERE d.tenant_id = ? AND d.status = 'open' AND d.unit_id IN ({}) "
+                "GROUP BY at2.area_name ORDER BY defect_count DESC".format(uph2),
+                [tenant_id] + c2_uids)]
+            c2_area_max = c2_area_data[0]['defect_count'] if c2_area_data else 1
+            c2_trade_data = [dict(r) for r in query_db(
+                "SELECT ct.category_name AS category, COUNT(d.id) AS count "
+                "FROM defect d "
+                "JOIN item_template it ON d.item_template_id = it.id "
+                "JOIN category_template ct ON it.category_id = ct.id "
+                "WHERE d.tenant_id = ? AND d.status = 'open' AND d.unit_id IN ({}) "
+                "GROUP BY ct.category_name ORDER BY count DESC".format(uph2),
+                [tenant_id] + c2_uids)]
+            c2_trade_max = c2_trade_data[0]['count'] if c2_trade_data else 1
+
     return {
         'batch': batch,
         'zones': zones,
@@ -3956,6 +4179,27 @@ def _build_batch_report_data(batch_id):
         'report_date_slug': report_date_slug,
         'floor_labels': FLOOR_LABELS,
         'batch_id': batch_id,
+        'is_mixed': is_mixed,
+        'c1_zones': c1_zones,
+        'c2_zones': c2_zones,
+        'c1_kpis': c1_kpis,
+        'c1_area_data': c1_area_data,
+        'c1_category_data': c1_category_data,
+        'c1_worst_units': c1_worst_units,
+        'c1_worst_pct': c1_worst_pct,
+        'c1_area_deep_dive': c1_area_deep_dive,
+        'c1_dd_callout': c1_dd_callout,
+        'c1_recurring': c1_recurring,
+        'c1_area_max': c1_area_max,
+        'c1_area_median': c1_area_median,
+        'c1_cat_max': c1_cat_max,
+        'c1_cat_median': c1_cat_median,
+        'c2_unit_table': c2_unit_table,
+        'c2_summary': c2_summary,
+        'c2_area_data': c2_area_data,
+        'c2_trade_data': c2_trade_data,
+        'c2_area_max': c2_area_max,
+        'c2_trade_max': c2_trade_max,
     }
 
 
