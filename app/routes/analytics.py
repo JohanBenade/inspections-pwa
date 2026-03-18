@@ -4519,6 +4519,58 @@ def _build_pipeline_report_data():
             'pct': pct,
         })
 
+    # --- PAGE 4: STUCK UNITS ---
+
+    # All units with open defects + their C1 submission date + cycle info
+    stuck_rows = query_db("""
+        SELECT u.unit_number, u.block, u.floor,
+               COUNT(d.id) as open_count,
+               MIN(i.submitted_at) as first_c1_submitted,
+               MAX(i.cycle_number) as max_cycle,
+               SUM(CASE WHEN d.raised_cycle_number >= 2 THEN 1 ELSE 0 END) as new_c2
+        FROM defect d
+        JOIN unit u ON d.unit_id = u.id
+        LEFT JOIN inspection i ON i.unit_id = u.id AND i.tenant_id = d.tenant_id
+            AND i.status IN ('submitted', 'reviewed', 'approved', 'pending_followup')
+        WHERE d.tenant_id = ? AND d.status = 'open'
+        AND u.unit_number NOT LIKE 'TEST%'
+        GROUP BY u.id
+        ORDER BY open_count DESC
+    """, [tenant_id])
+
+    stuck_units = []
+    total_stuck_defects = 0
+    oldest_weeks = 0
+    for r in stuck_rows:
+        weeks = 0
+        if r['first_c1_submitted']:
+            try:
+                sub_dt = _dt.fromisoformat(r['first_c1_submitted'].replace('Z', '+00:00') if 'Z' in r['first_c1_submitted'] else r['first_c1_submitted'])
+                weeks = max(0, (_dt.now(sub_dt.tzinfo) - sub_dt).days // 7) if sub_dt.tzinfo else max(0, (_dt.now() - sub_dt).days // 7)
+            except (ValueError, TypeError):
+                weeks = 0
+        if weeks > oldest_weeks:
+            oldest_weeks = weeks
+        total_stuck_defects += r['open_count']
+        floor_lbl = floor_labels.get(r['floor'], str(r['floor']))
+        stuck_units.append({
+            'unit': r['unit_number'],
+            'zone': '{} {}'.format(r['block'], floor_lbl),
+            'cycle': r['max_cycle'] or 1,
+            'open': r['open_count'],
+            'weeks': weeks,
+            'new_c2': r['new_c2'] or 0,
+        })
+
+    avg_per_unit = round(total_stuck_defects / len(stuck_units), 0) if stuck_units else 0
+
+    stuck_headline = {
+        'worst_unit': stuck_units[0]['unit'] if stuck_units else None,
+        'worst_count': stuck_units[0]['open'] if stuck_units else 0,
+        'avg_per_unit': int(avg_per_unit),
+        'oldest_weeks': oldest_weeks,
+    }
+
     return {
         'pipeline': pipeline,
         'metrics': metrics,
@@ -4534,6 +4586,8 @@ def _build_pipeline_report_data():
         'floor_labels': floor_labels,
         'areas': areas,
         'trades': trades,
+        'stuck_units': stuck_units,
+        'stuck_headline': stuck_headline,
     }
 
 

@@ -584,6 +584,74 @@ body {
         {% endif %}
     </div>
 
+    <!-- PAGE BREAK -->
+    <div style="page-break-before: always;"></div>
+
+    <!-- ============ PAGE 4: STUCK UNITS ============ -->
+
+    <!-- SECTION 10: HEADLINE METRICS -->
+    <div class="section">
+        <div class="section-header">
+            <span class="section-number">10</span>
+            <span class="section-title">Stuck Units</span>
+        </div>
+
+        <div class="metric-row">
+            <div class="metric-card">
+                <div class="metric-value">{{ stuck_headline.worst_unit or '—' }} <span style="font-size: 16px; color: #C44D3F;">({{ stuck_headline.worst_count }})</span></div>
+                <div class="metric-label">Worst Unit</div>
+            </div>
+            <div class="metric-card">
+                <div class="metric-value">{{ stuck_headline.avg_per_unit }}</div>
+                <div class="metric-label">Avg Defects / Unit</div>
+            </div>
+            <div class="metric-card">
+                <div class="metric-value">{{ stuck_headline.oldest_weeks }} <span style="font-size: 14px; color: #9A9A9A;">wks</span></div>
+                <div class="metric-label">Oldest Open Defects</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- SECTION 11: UNIT TABLE -->
+    <div class="section">
+        <div class="section-header">
+            <span class="section-number">11</span>
+            <span class="section-title">All Units with Open Defects</span>
+        </div>
+
+        {% if stuck_units %}
+        <table style="width: 100%; border-collapse: collapse; font-size: 10px; table-layout: fixed;">
+            <thead>
+                <tr>
+                    <th style="text-align: left; padding: 5px 8px; font-size: 8px; font-weight: 600; color: #9A9A9A; letter-spacing: 1.2px; text-transform: uppercase; border-bottom: 2px solid #E8E6E1; width: 55px;">Unit</th>
+                    <th style="text-align: left; padding: 5px 8px; font-size: 8px; font-weight: 600; color: #9A9A9A; letter-spacing: 1.2px; text-transform: uppercase; border-bottom: 2px solid #E8E6E1; width: 130px;">Zone</th>
+                    <th style="text-align: center; padding: 5px 8px; font-size: 8px; font-weight: 600; color: #9A9A9A; letter-spacing: 1.2px; text-transform: uppercase; border-bottom: 2px solid #E8E6E1; width: 45px;">Cycle</th>
+                    <th style="text-align: right; padding: 5px 8px; font-size: 8px; font-weight: 600; color: #9A9A9A; letter-spacing: 1.2px; text-transform: uppercase; border-bottom: 2px solid #E8E6E1; width: 50px;">Open</th>
+                    <th style="text-align: right; padding: 5px 8px; font-size: 8px; font-weight: 600; color: #9A9A9A; letter-spacing: 1.2px; text-transform: uppercase; border-bottom: 2px solid #E8E6E1; width: 65px;">Wks since C1</th>
+                    <th style="text-align: right; padding: 5px 8px; font-size: 8px; font-weight: 600; color: #9A9A9A; letter-spacing: 1.2px; text-transform: uppercase; border-bottom: 2px solid #E8E6E1; width: 55px;">New (C2+)</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for u in stuck_units %}
+                <tr style="{% if u.open > stuck_headline.avg_per_unit %}background: #FFF8F6;{% endif %}">
+                    <td style="padding: 4px 8px; border-bottom: 1px solid #F0EEEA; font-weight: 700;">{{ u.unit }}</td>
+                    <td style="padding: 4px 8px; border-bottom: 1px solid #F0EEEA;">{{ u.zone }}</td>
+                    <td style="text-align: center; padding: 4px 8px; border-bottom: 1px solid #F0EEEA;">C{{ u.cycle }}</td>
+                    <td style="text-align: right; padding: 4px 8px; border-bottom: 1px solid #F0EEEA; font-weight: 700; {% if u.open > stuck_headline.avg_per_unit %}color: #C44D3F;{% endif %}">{{ u.open }}</td>
+                    <td style="text-align: right; padding: 4px 8px; border-bottom: 1px solid #F0EEEA;">{{ u.weeks }}</td>
+                    <td style="text-align: right; padding: 4px 8px; border-bottom: 1px solid #F0EEEA; {% if u.new_c2 > 0 %}color: #C44D3F; font-weight: 600;{% else %}color: #9A9A9A;{% endif %}">{{ u.new_c2 }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        <div style="margin-top: 8px; font-size: 9px; color: #9A9A9A;">
+            {{ stuck_units|length }} units with open defects. Highlighted rows exceed per-unit average ({{ stuck_headline.avg_per_unit }}).
+        </div>
+        {% else %}
+        <div class="trend-placeholder">No units with open defects</div>
+        {% endif %}
+    </div>
+
 </div>
 
 </body>
