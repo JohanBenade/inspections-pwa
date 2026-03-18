@@ -46,7 +46,7 @@
         </div>
         <div style="margin-top: 1rem; display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap;">
             <select onchange="if(this.value) window.location=this.value;" style="padding: 0.4rem 0.75rem; font-size: 0.85rem; border: 1px solid #e5e5e5; border-radius: 6px; background: #fff; color: #1A1A1A; cursor: pointer;">
-                <option value="{{ url_for('analytics.dashboard') }}">Project Overview</option>
+                <option value="{{ url_for('analytics.pipeline_dashboard') }}">Project Overview</option>
                 {% for b in all_batches %}
                 <option value="{{ url_for('analytics.batch_analytics', batch_id=b.id) }}" {% if b.id == batch_id %}selected{% endif %}>{{ b.name }}</option>
                 {% endfor %}
