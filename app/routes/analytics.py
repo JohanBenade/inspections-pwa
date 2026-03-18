@@ -4444,6 +4444,81 @@ def _build_pipeline_report_data():
             svg_points_raised.append({'x': x, 'y': y_r, 'val': p['raised'], 'date': p['date']})
             svg_points_cleared.append({'x': x, 'y': y_c, 'val': p['cleared'], 'date': p['date']})
 
+    # --- PAGE 3: WHERE'S THE PROBLEM ---
+
+    # Zone grid: block x floor open defect counts
+    zone_rows = query_db("""
+        SELECT u.block, u.floor, COUNT(*) as cnt
+        FROM defect d
+        JOIN unit u ON d.unit_id = u.id
+        WHERE d.tenant_id = ? AND d.status = 'open'
+        AND u.unit_number NOT LIKE 'TEST%'
+        GROUP BY u.block, u.floor
+        ORDER BY u.block, u.floor
+    """, [tenant_id])
+
+    # Build zone grid structure
+    blocks_set = sorted(set(r['block'] for r in zone_rows))
+    floors_set = sorted(set(r['floor'] for r in zone_rows))
+    zone_map = {}
+    for r in zone_rows:
+        zone_map[(r['block'], r['floor'])] = r['cnt']
+    
+    zone_vals = [r['cnt'] for r in zone_rows] if zone_rows else [0]
+    zone_median = sorted(zone_vals)[len(zone_vals) // 2] if zone_vals else 0
+
+    zone_grid = {
+        'blocks': blocks_set,
+        'floors': floors_set,
+        'data': zone_map,
+        'median': zone_median,
+    }
+
+    # Floor label helper
+    floor_labels = {0: 'Ground', 1: '1st Floor', 2: '2nd Floor'}
+
+    # Area breakdown (by room)
+    area_rows = query_db("""
+        SELECT at2.area_name, COUNT(*) as cnt
+        FROM defect d
+        JOIN item_template it ON d.item_template_id = it.id
+        JOIN category_template ct ON it.category_id = ct.id
+        JOIN area_template at2 ON ct.area_id = at2.id
+        WHERE d.tenant_id = ? AND d.status = 'open'
+        GROUP BY at2.area_name
+        ORDER BY cnt DESC
+    """, [tenant_id])
+
+    total_open = ledger['open']
+    areas = []
+    for r in area_rows:
+        pct = round(100 * r['cnt'] / total_open, 1) if total_open > 0 else 0
+        areas.append({
+            'name': r['area_name'],
+            'count': r['cnt'],
+            'pct': pct,
+        })
+
+    # Trade breakdown (by category)
+    trade_rows = query_db("""
+        SELECT ct.category_name, COUNT(*) as cnt
+        FROM defect d
+        JOIN item_template it ON d.item_template_id = it.id
+        JOIN category_template ct ON it.category_id = ct.id
+        WHERE d.tenant_id = ? AND d.status = 'open'
+        GROUP BY ct.category_name
+        ORDER BY cnt DESC
+    """, [tenant_id])
+
+    trades = []
+    for r in trade_rows:
+        pct = round(100 * r['cnt'] / total_open, 1) if total_open > 0 else 0
+        trades.append({
+            'name': r['category_name'],
+            'count': r['cnt'],
+            'pct': pct,
+        })
+
     return {
         'pipeline': pipeline,
         'metrics': metrics,
@@ -4455,6 +4530,10 @@ def _build_pipeline_report_data():
         'svg_cleared': svg_points_cleared,
         'chart_w': chart_w,
         'chart_h': chart_h,
+        'zone_grid': zone_grid,
+        'floor_labels': floor_labels,
+        'areas': areas,
+        'trades': trades,
     }
 
 
