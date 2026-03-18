@@ -4334,28 +4334,50 @@ def _build_pipeline_report_data():
     """, [tenant_id])
     unit_open = {r['unit_id']: r['cnt'] for r in open_rows}
 
+    # Units in active (non-complete) batches
+    active_batch_unit_rows = query_db("""
+        SELECT DISTINCT bu.unit_id
+        FROM batch_unit bu
+        JOIN inspection_batch ib ON bu.batch_id = ib.id
+        JOIN unit u ON bu.unit_id = u.id
+        WHERE bu.tenant_id = ? AND u.unit_number NOT LIKE 'TEST%'
+        AND bu.removed_at IS NULL
+        AND ib.status NOT IN ('complete', 'signed_off')
+    """, [tenant_id])
+    in_active_batch_ids = set(r['unit_id'] for r in active_batch_unit_rows)
+
     # Classify each unit into pipeline stage
     pipeline = {
         'not_requested': 0,
-        'awaiting': 0,
-        'defects_raised': 0,
-        'verification': 0,
+        'first_inspection': 0,
+        'awaiting_remediation': 0,
+        'reinspection': 0,
         'certified': 0,
     }
+
+    # Track per-unit stage for batch callout
+    unit_stage = {}
 
     for u in all_units:
         uid = u['id']
         if u['certified_at']:
             pipeline['certified'] += 1
-        elif uid in c2_plus_ids:
-            pipeline['verification'] += 1
+            unit_stage[uid] = 'certified'
+        elif uid in unit_max_completed and uid in in_active_batch_ids:
+            # Completed C1 AND in an active batch = re-inspection
+            pipeline['reinspection'] += 1
+            unit_stage[uid] = 'reinspection'
         elif uid in unit_max_completed:
-            # Has completed C1 inspection
-            pipeline['defects_raised'] += 1
+            # Completed C1, not in active batch = awaiting remediation
+            pipeline['awaiting_remediation'] += 1
+            unit_stage[uid] = 'awaiting_remediation'
         elif uid in in_batch_ids:
-            pipeline['awaiting'] += 1
+            # In a batch but no completed inspection = 1st inspection
+            pipeline['first_inspection'] += 1
+            unit_stage[uid] = 'first_inspection'
         else:
             pipeline['not_requested'] += 1
+            unit_stage[uid] = 'not_requested'
 
     # Cycle efficiency metrics (all None until C2+ data exists)
     metrics = {
@@ -4368,31 +4390,46 @@ def _build_pipeline_report_data():
     # Movement this week: empty list for now (no stage transitions yet)
     movements = []
 
-    # --- ACTIVE BATCHES CALLOUT ---
-    active_batches_rows = query_db("""
-        SELECT ib.name,
-               COUNT(bu.id) as total_units,
-               SUM(CASE WHEN EXISTS (
-                   SELECT 1 FROM inspection i2
-                   WHERE i2.unit_id = bu.unit_id AND i2.tenant_id = bu.tenant_id
-                   AND i2.status IN ('submitted','reviewed','approved','pending_followup')
-               ) THEN 0 ELSE 1 END) as c1_units
+    # --- ACTIVE BATCHES CALLOUT (with per-stage breakdown) ---
+    active_batch_detail = query_db("""
+        SELECT ib.id, ib.name, bu.unit_id
         FROM inspection_batch ib
         JOIN batch_unit bu ON bu.batch_id = ib.id AND bu.removed_at IS NULL
+        JOIN unit u ON bu.unit_id = u.id
         WHERE ib.tenant_id = ? AND ib.status NOT IN ('complete', 'signed_off')
-        GROUP BY ib.id
+        AND u.unit_number NOT LIKE 'TEST%'
         ORDER BY ib.created_at DESC
     """, [tenant_id])
 
+    # Group by batch
+    batch_map = {}
+    for r in active_batch_detail:
+        bid = r['id']
+        if bid not in batch_map:
+            batch_map[bid] = {'name': r['name'], 'stages': {}}
+        stage = unit_stage.get(r['unit_id'], 'not_requested')
+        batch_map[bid]['stages'][stage] = batch_map[bid]['stages'].get(stage, 0) + 1
+
+    stage_labels = {
+        'not_requested': 'Not Requested',
+        'first_inspection': '1st Inspection',
+        'awaiting_remediation': 'Awaiting Remediation',
+        'reinspection': 'Re-inspection',
+        'certified': 'Certified',
+    }
+
     active_batches = []
-    for r in active_batches_rows:
-        c1 = r['c1_units']
-        c2_plus = r['total_units'] - c1
+    for bid, bdata in batch_map.items():
+        total = sum(bdata['stages'].values())
+        parts = []
+        for skey in ['first_inspection', 'reinspection', 'awaiting_remediation', 'certified', 'not_requested']:
+            cnt = bdata['stages'].get(skey, 0)
+            if cnt > 0:
+                parts.append({'label': stage_labels[skey], 'count': cnt})
         active_batches.append({
-            'name': r['name'],
-            'total': r['total_units'],
-            'c1': c1,
-            'c2_plus': c2_plus,
+            'name': bdata['name'],
+            'total': total,
+            'parts': parts,
         })
 
         # --- PAGE 2: DEFECT POOL ---

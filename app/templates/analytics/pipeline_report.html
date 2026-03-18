@@ -233,14 +233,14 @@ body {
             {% if pipeline.not_requested > 0 %}
             <div class="pipeline-seg seg-not-requested" style="flex: {{ pipeline.not_requested }};">{{ pipeline.not_requested }}</div>
             {% endif %}
-            {% if pipeline.awaiting > 0 %}
-            <div class="pipeline-seg seg-awaiting" style="flex: {{ pipeline.awaiting }};">{{ pipeline.awaiting }}</div>
+            {% if pipeline.first_inspection > 0 %}
+            <div class="pipeline-seg seg-awaiting" style="flex: {{ pipeline.first_inspection }};">{{ pipeline.first_inspection }}</div>
             {% endif %}
-            {% if pipeline.defects_raised > 0 %}
-            <div class="pipeline-seg seg-defects" style="flex: {{ pipeline.defects_raised }};">{{ pipeline.defects_raised }}</div>
+            {% if pipeline.awaiting_remediation > 0 %}
+            <div class="pipeline-seg seg-defects" style="flex: {{ pipeline.awaiting_remediation }};">{{ pipeline.awaiting_remediation }}</div>
             {% endif %}
-            {% if pipeline.verification > 0 %}
-            <div class="pipeline-seg seg-verification" style="flex: {{ pipeline.verification }};">{{ pipeline.verification }}</div>
+            {% if pipeline.reinspection > 0 %}
+            <div class="pipeline-seg seg-verification" style="flex: {{ pipeline.reinspection }};">{{ pipeline.reinspection }}</div>
             {% endif %}
             {% if pipeline.certified > 0 %}
             <div class="pipeline-seg seg-certified" style="flex: {{ pipeline.certified }};">{{ pipeline.certified }}</div>
@@ -255,15 +255,15 @@ body {
             </div>
             <div class="legend-item">
                 <div class="legend-dot" style="background: #6B8EC4;"></div>
-                Awaiting Inspection <span class="legend-count">{{ pipeline.awaiting }}</span>
+                1st Inspection <span class="legend-count">{{ pipeline.first_inspection }}</span>
             </div>
             <div class="legend-item">
                 <div class="legend-dot" style="background: #C8963E;"></div>
-                Defects Raised <span class="legend-count">{{ pipeline.defects_raised }}</span>
+                Awaiting Remediation <span class="legend-count">{{ pipeline.awaiting_remediation }}</span>
             </div>
             <div class="legend-item">
                 <div class="legend-dot" style="background: #8B6BAE;"></div>
-                Under Verification <span class="legend-count">{{ pipeline.verification }}</span>
+                Re-inspection <span class="legend-count">{{ pipeline.reinspection }}</span>
             </div>
             <div class="legend-item">
                 <div class="legend-dot" style="background: #4A7C59;"></div>
@@ -273,9 +273,14 @@ body {
 
         {% if active_batches %}
         <div style="margin-top: 14px; padding: 10px 14px; background: #F8F7F5; border: 1px solid #E8E6E1; border-radius: 6px; font-size: 11px;">
-            <span style="font-weight: 600; color: #1A1A1A;">Active batch{{ 'es' if active_batches|length > 1 else '' }}:</span>
             {% for b in active_batches %}
-            <span style="color: #6B6B6B; margin-left: 6px;">{{ b.name }} &mdash; {{ b.total }} units ({{ b.c1 }} C1{% if b.c2_plus > 0 %}, {{ b.c2_plus }} C2+{% endif %})</span>{% if not loop.last %};{% endif %}
+            <div{% if not loop.first %} style="margin-top: 6px;"{% endif %}>
+                <span style="font-weight: 600; color: #1A1A1A;">{{ b.name }}</span>
+                <span style="color: #6B6B6B;">&mdash; {{ b.total }} units:</span>
+                {% for p in b.parts %}
+                <span style="color: #1A1A1A; font-weight: 500; margin-left: 4px;">{{ p.count }} {{ p.label }}</span>{% if not loop.last %},{% endif %}
+                {% endfor %}
+            </div>
             {% endfor %}
         </div>
         {% endif %}
