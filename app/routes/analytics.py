@@ -4899,3 +4899,85 @@ def pipeline_report_pdf():
     resp.headers['Content-Disposition'] = 'attachment; filename=Pipeline_Report_{}.pdf'.format(
         datetime.datetime.now().strftime('%Y%m%d'))
     return resp
+
+
+@analytics_bp.route('/pipeline/dashboard')
+@require_manager
+def pipeline_dashboard():
+    """Pipeline Dashboard - HTML screen with batch list and headline metrics."""
+    import base64, os as _os
+    from flask import current_app
+    tenant_id = session.get('tenant_id', 'MONOGRAPH')
+
+    # Headline metrics (lightweight queries)
+    inspected_row = query_db("""
+        SELECT COUNT(DISTINCT i.unit_id) as cnt
+        FROM inspection i
+        JOIN unit u ON i.unit_id = u.id
+        WHERE i.tenant_id = ? AND u.unit_number NOT LIKE 'TEST%'
+        AND i.status IN ('submitted', 'reviewed', 'approved', 'pending_followup')
+    """, [tenant_id], one=True)
+    units_inspected = inspected_row['cnt'] if inspected_row else 0
+
+    total_row = query_db(
+        "SELECT COUNT(*) as cnt FROM unit WHERE tenant_id = ? AND unit_number NOT LIKE 'TEST%'",
+        [tenant_id], one=True)
+    total_units = total_row['cnt'] if total_row else 0
+
+    open_row = query_db(
+        "SELECT COUNT(*) as cnt FROM defect WHERE tenant_id = ? AND status = 'open'",
+        [tenant_id], one=True)
+    open_defects = open_row['cnt'] if open_row else 0
+
+    certified_row = query_db(
+        "SELECT COUNT(*) as cnt FROM unit WHERE tenant_id = ? AND unit_number NOT LIKE 'TEST%' AND certified_at IS NOT NULL",
+        [tenant_id], one=True)
+    certified = certified_row['cnt'] if certified_row else 0
+
+    # All batches with unit counts and status
+    batches_raw = query_db("""
+        SELECT ib.id, ib.name, ib.status, ib.created_at,
+               COUNT(DISTINCT bu.unit_id) as total_units,
+               COUNT(DISTINCT CASE WHEN i.status IN ('submitted','reviewed','approved','pending_followup')
+                   THEN bu.unit_id END) as inspected_units,
+               COUNT(DISTINCT CASE WHEN bu.status = 'signed' THEN bu.unit_id END) as signed_units
+        FROM inspection_batch ib
+        LEFT JOIN batch_unit bu ON bu.batch_id = ib.id AND bu.removed_at IS NULL
+        LEFT JOIN inspection i ON i.unit_id = bu.unit_id AND i.cycle_id = bu.cycle_id
+        WHERE ib.tenant_id = ?
+        GROUP BY ib.id
+        ORDER BY ib.created_at DESC
+    """, [tenant_id])
+    batches = [dict(r) for r in batches_raw]
+
+    for b in batches:
+        s = b['status']
+        if s == 'complete':
+            b['status_label'] = 'Complete'
+            b['status_colour'] = '#4A7C59'
+            b['status_bg'] = 'rgba(74,124,89,0.12)'
+        elif s == 'signed_off':
+            b['status_label'] = 'Signed Off'
+            b['status_colour'] = '#4A7C59'
+            b['status_bg'] = 'rgba(74,124,89,0.12)'
+        elif s in ('reviewed', 'inspected'):
+            b['status_label'] = s.title()
+            b['status_colour'] = '#7B6B8D'
+            b['status_bg'] = 'rgba(123,107,141,0.12)'
+        elif s == 'received':
+            b['status_label'] = 'In Progress'
+            b['status_colour'] = '#3D6B8E'
+            b['status_bg'] = 'rgba(61,107,142,0.12)'
+        else:
+            b['status_label'] = 'Open'
+            b['status_colour'] = '#C8963E'
+            b['status_bg'] = 'rgba(200,150,62,0.12)'
+        # Progress percentage
+        b['progress_pct'] = round(b['inspected_units'] / b['total_units'] * 100) if b['total_units'] > 0 else 0
+
+    return render_template('analytics/pipeline_dashboard.html',
+                           units_inspected=units_inspected,
+                           total_units=total_units,
+                           open_defects=open_defects,
+                           certified=certified,
+                           batches=batches)
