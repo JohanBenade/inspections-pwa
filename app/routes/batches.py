@@ -883,6 +883,7 @@ def _build_live_monitor_data(batch_id, tenant_id):
                u.unit_number, u.block, u.floor,
                COALESCE(i.status, 'not_started') AS insp_status,
                i.id AS inspection_id,
+               i.started_at,
                COALESCE(i.cycle_number, (SELECT cycle_number FROM inspection WHERE cycle_id = bu.cycle_id LIMIT 1), (SELECT cycle_number FROM inspection_cycle WHERE id = bu.cycle_id)) AS cycle_number,
                COALESCE(insp.name, i.inspector_name) AS inspector_name
         FROM batch_unit bu
@@ -1104,9 +1105,9 @@ def _build_live_monitor_data(batch_id, tenant_id):
         u['pct'] = round(u['total_marked'] / u['total_items'] * 100) if u['total_items'] else 0
         u['floor_label'] = FLOOR_LABELS.get(u['floor'], u['floor'])
 
-        # Timing
+        # Timing (with started_at fallback for C2 carry-forward units)
         timing = unit_timing_map.get(u['inspection_id'], {})
-        u['started_iso'] = timing.get('started')
+        u['started_iso'] = timing.get('started') or u.get('started_at')
         u['ended_iso'] = timing.get('ended')
         u['start_time'] = _format_local_hhmm(u['started_iso'])
         u['end_time'] = _format_local_hhmm(u['ended_iso'])
