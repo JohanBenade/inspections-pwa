@@ -126,8 +126,11 @@
             </div>
             <div class="unit-header-right">
                 <span class="unit-counts">{{ u.total_marked }}/{{ u.total_items }}</span>
+                {% if u.cycle_number and u.cycle_number >= 2 and u.open_defects > 0 %}
+                <span class="unit-defects-small" style="color:#C8963E;">{{ u.open_defects }} open</span>
+                {% endif %}
                 {% if u.total_defects > 0 %}
-                <span class="unit-defects-small">{{ u.total_defects }} defect{{ 's' if u.total_defects != 1 }}</span>
+                <span class="unit-defects-small" style="color:#C44D3F;">{{ u.total_defects }} new</span>
                 {% endif %}
             </div>
         </div>
@@ -212,8 +215,12 @@
                 {% endif %}
             </div>
             <div class="unit-header-right" style="flex-direction: column; align-items: flex-end; gap: 0;">
+                {% if u.cycle_number and u.cycle_number >= 2 and u.open_defects > 0 %}
+                <span class="defect-hero" style="color:#C8963E;">{{ u.open_defects }}</span>
+                <span class="defect-hero-label">open</span>
+                {% endif %}
                 <span class="defect-hero severity-{{ u.severity }}">{{ u.total_defects }}</span>
-                <span class="defect-hero-label">defects</span>
+                <span class="defect-hero-label">{{ 'new' if u.cycle_number and u.cycle_number >= 2 else 'defects' }}</span>
             </div>
         </div>
         {% if u.areas and u.total_defects > 0 %}
