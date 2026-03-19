@@ -1029,6 +1029,7 @@ def _build_live_monitor_data(batch_id, tenant_id):
 
     # --- Pre-existing open defects per unit (for C2 display) ---
     open_defects_map = {}
+    open_defects_area_map = {}
     c2_unit_ids = [u['unit_id'] for u in units if (u.get('cycle_number') or 1) >= 2]
     if c2_unit_ids:
         ph_od = ','.join('?' * len(c2_unit_ids))
@@ -1039,6 +1040,18 @@ def _build_live_monitor_data(batch_id, tenant_id):
         """.format(ph_od), c2_unit_ids + [tenant_id])
         for r in [dict(x) for x in od_raw]:
             open_defects_map[r['unit_id']] = r['cnt']
+        # Per-area breakdown
+        oda_raw = query_db("""
+            SELECT d.unit_id, at2.area_name, COUNT(*) AS cnt
+            FROM defect d
+            JOIN item_template it ON d.item_template_id = it.id
+            JOIN category_template ct ON it.category_id = ct.id
+            JOIN area_template at2 ON ct.area_id = at2.id
+            WHERE d.unit_id IN ({}) AND d.status = 'open' AND d.tenant_id = ?
+            GROUP BY d.unit_id, at2.area_name
+        """.format(ph_od), c2_unit_ids + [tenant_id])
+        for r in [dict(x) for x in oda_raw]:
+            open_defects_area_map[(r['unit_id'], r['area_name'])] = r['cnt']
 
     # --- Batch started (earliest mark in entire batch) ---
     batch_started = None
@@ -1055,6 +1068,9 @@ def _build_live_monitor_data(batch_id, tenant_id):
         u['total_items'] = sum(a['total'] for a in u['areas'])
         u['total_defects'] = sum(a['defects'] for a in u['areas'])
         u['open_defects'] = open_defects_map.get(u['unit_id'], 0)
+        if (u.get('cycle_number') or 1) >= 2:
+            for a in u['areas']:
+                a['bfwd'] = open_defects_area_map.get((u['unit_id'], a['area']), 0)
         u['pct'] = round(u['total_marked'] / u['total_items'] * 100) if u['total_items'] else 0
         u['floor_label'] = FLOOR_LABELS.get(u['floor'], u['floor'])
 
