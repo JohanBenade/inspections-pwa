@@ -118,11 +118,22 @@ def start_inspection(unit_id):
     unit_floor = query_db("SELECT floor FROM unit WHERE id = ?", [unit_id], one=True)
     unit_floor_val = unit_floor['floor'] if unit_floor else 0
     
-    # Get current exclusions — prefer exclusion_list_item, fall back to cycle_excluded_item
+    # Get current exclusions from exclusion_list (batch_unit is source of truth)
     current_exclusions = set()
     insp_row = query_db(
         "SELECT exclusion_list_id FROM inspection WHERE id = ?", [inspection_id], one=True)
     excl_list_id = insp_row['exclusion_list_id'] if insp_row else None
+    # If inspection has no list, re-check batch_unit (handles pre-created inspections)
+    if not excl_list_id:
+        bu_excl = query_db("""
+            SELECT exclusion_list_id FROM batch_unit
+            WHERE unit_id = ? AND cycle_id = ? AND tenant_id = ? AND removed_at IS NULL
+            LIMIT 1
+        """, [unit_id, cycle_id, tenant_id], one=True)
+        if bu_excl and bu_excl['exclusion_list_id']:
+            excl_list_id = bu_excl['exclusion_list_id']
+            db.execute("UPDATE inspection SET exclusion_list_id = ? WHERE id = ?",
+                       [excl_list_id, inspection_id])
     if excl_list_id:
         excluded_rows = query_db("""
             SELECT item_template_id FROM exclusion_list_item
