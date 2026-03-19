@@ -205,20 +205,6 @@ def start_inspection(unit_id):
             VALUES (?, ?, ?, ?, ?, ?, NULL)
         """, [generate_id(), tenant_id, inspection_id, template_id, status, comment])
     
-    # Mark open defects on excluded items as excluded (C2+ only)
-    if cycle['cycle_number'] > 1:
-        excluded_count = db.execute("""
-            UPDATE defect SET excluded_at_cycle_number = ?, updated_at = ?
-            WHERE unit_id = ? AND status = 'open'
-            AND excluded_at_cycle_number IS NULL
-            AND item_template_id IN (
-                SELECT item_template_id FROM inspection_item
-                WHERE inspection_id = ? AND status = 'skipped'
-            )
-        """, [cycle['cycle_number'], now, unit_id, inspection_id]).rowcount
-        if excluded_count > 0:
-            print(f"Marked {excluded_count} open defects as excluded at cycle {cycle['cycle_number']}")
-    
     db.commit()
     
     log_audit(db, tenant_id, 'inspection', inspection_id, 'inspection_started',
@@ -602,15 +588,6 @@ def inspect_area(inspection_id, area_id):
             is_parent = item['parent_item_id'] is None
             is_child = not is_parent
             
-            # C2+: hide carry-forward-ok items (passed in previous cycle, no action needed)
-            is_carried_ok = item['status'] == 'ok' and item['marked_at'] is None
-            if is_followup and is_carried_ok:
-                # But keep parent visible if it has actionable children
-                if is_parent and item['template_id'] in parent_has_active_child:
-                    pass
-                else:
-                    continue
-            
             # Filter logic: show item if...
             if filter_mode == 'defects':
                 # Always skip if no defects in category
@@ -688,21 +665,12 @@ def inspect_area(inspection_id, area_id):
         
         cat_comment = cat_comment_map.get(cat['id'])
         
-        # C2+: detect if category was fully installed at C1
-        cat_was_inst = False
-        if is_followup and parent_items:
-            cat_was_inst = all(
-                p['status'] == 'ok' and p['marked_at'] is None
-                for p in parent_items.values()
-            )
-        
         category_data.append({
             'id': cat['id'],
             'name': cat['category_name'],
             'checklist': checklist,
             'all_skipped': all_skipped and len(checklist) > 0,
             'comment': cat_comment,
-            'was_inst': cat_was_inst,
         })
     
     area_note = query_db("""
