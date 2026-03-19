@@ -127,14 +127,10 @@
             <div class="unit-header-right">
                 <span class="unit-counts">{{ u.total_marked }}/{{ u.total_items }}</span>
                 {% if u.cycle_number and u.cycle_number >= 2 and u.open_defects > 0 %}
-                <span class="unit-defects-small" style="color:#C8963E;">{{ u.open_defects }} b/fwd</span>
+                <span class="unit-defects-small" style="color:#C8963E;">{{ u.open_defects }}</span>
                 {% endif %}
                 {% if u.total_defects > 0 %}
-                <span class="unit-defects-small" style="color:#C44D3F;">{{ u.total_defects }} new</span>
-                {% endif %}
-                {% if u.cycle_number is not defined or u.cycle_number is none or u.cycle_number < 2 %}
-                {% if u.total_defects > 0 %}
-                {% endif %}
+                <span class="unit-defects-small" style="color:#C44D3F;">{{ u.total_defects }}</span>
                 {% endif %}
             </div>
         </div>
@@ -150,10 +146,10 @@
                 <div class="area-stats">
                     <span class="area-count">{{ a.marked }}/{{ a.total }}</span>
                     {% if a.bfwd is defined and a.bfwd > 0 %}
-                    <span class="area-defects-badge" style="background:#C8963E;">{{ a.bfwd }}</span>
+                    <span style="color:#C8963E;font-weight:600;font-size:0.8rem;margin-left:6px;">{{ a.bfwd }}</span>
                     {% endif %}
                     {% if a.defects > 0 %}
-                    <span class="area-defects-badge" style="background:#C44D3F;">{{ a.defects }}</span>
+                    <span style="color:#C44D3F;font-weight:600;font-size:0.8rem;margin-left:6px;">{{ a.defects }}</span>
                     {% endif %}
                 </div>
             </div>
