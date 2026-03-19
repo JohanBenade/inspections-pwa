@@ -133,7 +133,10 @@ def create_app():
 
             return render_template('inspector_home.html', inspections=inspections)
         
-        # All other roles go to cycles
+        # Manager/admin go to Pipeline Dashboard
+        if role in ('manager', 'admin'):
+            return redirect(url_for('analytics.pipeline_dashboard'))
+        # All other roles go to batches
         return redirect(url_for('batches.list_batches'))
     
     # Simple auth (magic link style - to be enhanced)
