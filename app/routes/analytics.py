@@ -4992,6 +4992,8 @@ def _build_pipeline_report_data(live=False):
         'stuck_units': stuck_units,
         'stuck_headline': stuck_headline,
         'snapshot_label': snapshot_label,
+        'ledger_from': (snapshot_utc - _td(days=7) + _td(hours=2)).strftime('%d %b'),
+        'ledger_to': (snapshot_utc + _td(hours=2)).strftime('%d %b %Y'),
         'kpi': kpi,
         'pipeline': pipeline,
     }

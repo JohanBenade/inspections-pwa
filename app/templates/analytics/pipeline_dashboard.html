@@ -111,9 +111,10 @@
 
     <!-- ========== WEEKLY LEDGER ========== -->
     <div style="margin-bottom: 2rem;">
-        <h2 style="font-family: 'DM Sans', sans-serif; font-weight: 600; font-size: 1.1rem; color: #1A1A1A; margin-bottom: 0.75rem;">
-            {% if mode == 'live' %}Rolling 7 Days{% else %}This Week (Tue to Tue){% endif %}
+        <h2 style="font-family: 'DM Sans', sans-serif; font-weight: 600; font-size: 1.1rem; color: #1A1A1A; margin-bottom: 0;">
+            {% if mode == 'live' %}Rolling 7 Days{% else %}Weekly Ledger{% endif %}
         </h2>
+        <p style="font-size: 0.75rem; color: #9A9A9A; margin: 2px 0 12px 0;">{{ ledger_from }} &ndash; {{ ledger_to }}</p>
         <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 0; max-width: 480px;">
             <div style="text-align: center; padding: 8px;">
                 <div style="font-size: 0.65rem; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: #6B6B6B;">B/Fwd</div>
