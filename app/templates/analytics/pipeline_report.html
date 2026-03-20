@@ -93,7 +93,7 @@ body {
 }
 
 /* Sections */
-.section { margin-bottom: 28px; }
+.section { margin-bottom: 28px; page-break-inside: avoid; }
 .section-header { margin-bottom: 14px; border-bottom: 1px solid #C8963E; padding-bottom: 8px; }
 .section-number {
     font-family: "DM Sans", Helvetica, Arial, sans-serif;
@@ -520,7 +520,7 @@ body {
 
     <!-- SECTION 07: AREA DEEP DIVE -->
     {% if area_deep_dive %}
-    <div class="section" style="margin-bottom: 18px;">
+    <div class="section" style="margin-bottom: 18px; page-break-before: always;">
         <div class="section-header">
             <span class="section-number">07</span>
             <span class="section-title">Area Deep Dive</span>
@@ -619,7 +619,8 @@ body {
         {% endif %}
     </div>
 
-    <!-- ============ PAGE 3 (continued): STUCK UNITS ============ -->
+    <!-- ============ STUCK UNITS ============ -->
+    <div style="page-break-before: always;"></div>
 
     <!-- SECTION 10: HEADLINE METRICS -->
     <div class="section">
