@@ -133,11 +133,11 @@
             </div>
         </div>
         {% if ledger.new > ledger.cleared %}
-        <div style="margin-top: 8px; padding: 8px 12px; background: #F0EBE2; border-left: 3px solid #C8963E; border-radius: 0 4px 4px 0; font-size: 0.75rem; color: #6B6B6B; max-width: 480px;">
+        <div style="margin-top: 8px; padding: 8px 12px; background: #E4DDD2; border-left: 3px solid #C8963E; border-radius: 0 4px 4px 0; font-size: 0.75rem; color: #6B6B6B; max-width: 480px;">
             Pool growing &mdash; expected while C1 inspections are in progress.
         </div>
         {% elif ledger.cleared > ledger.new %}
-        <div style="margin-top: 8px; padding: 8px 12px; background: #EEF5EF; border-left: 3px solid #4A7C59; border-radius: 0 4px 4px 0; font-size: 0.75rem; color: #6B6B6B; max-width: 480px;">
+        <div style="margin-top: 8px; padding: 8px 12px; background: #D9E6DA; border-left: 3px solid #4A7C59; border-radius: 0 4px 4px 0; font-size: 0.75rem; color: #6B6B6B; max-width: 480px;">
             Pool shrinking &mdash; remediation outpacing new defect discovery.
         </div>
         {% endif %}
@@ -165,9 +165,9 @@
                         {% set zd = zone_grid.data.get((block, fl), None) %}
                         <td style="padding: 8px; text-align: center; border-bottom: 1px solid #F0EEEA;
                             {% if zd is not none %}
-                                {% if zd.avg > zone_grid.project_avg * 1.5 %}background: #F2E4E2;
-                                {% elif zd.avg > zone_grid.project_avg %}background: #F0EDE4;
-                                {% else %}background: #EEF5EF;{% endif %}
+                                {% if zd.avg > zone_grid.project_avg * 1.5 %}background: #E4D5D2;
+                                {% elif zd.avg > zone_grid.project_avg %}background: #E6DFD2;
+                                {% else %}background: #D9E6DA;{% endif %}
                             {% endif %}
                         ">
                             {% if zd is not none %}
@@ -289,7 +289,7 @@
                 </thead>
                 <tbody>
                     {% for u in stuck_units %}
-                    <tr style="{% if u.open > stuck_headline.avg_per_unit %}background: #F5F0ED;{% endif %}">
+                    <tr style="{% if u.open > stuck_headline.avg_per_unit %}background: #E8E0D8;{% endif %}">
                         <td style="padding: 4px 8px; border-bottom: 1px solid #F0EEEA; font-weight: 600;">{{ u.unit }}</td>
                         <td style="padding: 4px 8px; border-bottom: 1px solid #F0EEEA;">{{ u.zone }}</td>
                         <td style="padding: 4px 8px; border-bottom: 1px solid #F0EEEA; text-align: center;">C{{ u.cycle }}</td>
