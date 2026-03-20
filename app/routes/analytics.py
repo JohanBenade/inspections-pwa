@@ -4693,10 +4693,16 @@ def _build_pipeline_report_data():
                 'cleared': cleared_today['c'] if cleared_today else 0,
             })
 
-    # Weekly ledger
-    last_week = _dt.now() - _td(days=7)
-    last_week_str = last_week.strftime('%Y-%m-%d %H:%M:%S')
-    now_str = _dt.now().strftime('%Y-%m-%d %H:%M:%S')
+    # Weekly ledger (anchored on Tuesday midnight SAST = UTC+2)
+    now_utc = _dt.now()
+    now_sast = now_utc + _td(hours=2)
+    days_since_tue = (now_sast.weekday() - 1) % 7  # Tuesday = weekday 1
+    if days_since_tue == 0:
+        days_since_tue = 7  # On Tuesday itself, anchor on LAST Tuesday
+    last_tue_sast = now_sast.replace(hour=0, minute=0, second=0, microsecond=0) - _td(days=days_since_tue)
+    last_tue_utc = last_tue_sast - _td(hours=2)  # Convert back to UTC for DB
+    last_week_str = last_tue_utc.strftime('%Y-%m-%d %H:%M:%S')
+    now_str = now_utc.strftime('%Y-%m-%d %H:%M:%S')
     
     bfwd_row = query_db(
         "SELECT COUNT(*) as c FROM defect d JOIN unit_real u ON d.unit_id = u.id WHERE d.tenant_id = ? AND d.created_at <= ? AND (d.status = 'open' OR (d.status = 'cleared' AND d.cleared_at > ?)) AND d.raised_cycle_id NOT LIKE 'test-%%' AND EXISTS (SELECT 1 FROM inspection i2 WHERE i2.unit_id = d.unit_id AND i2.cycle_id = d.raised_cycle_id AND i2.status IN ('reviewed','approved','certified','pending_followup'))",
