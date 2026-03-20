@@ -470,45 +470,124 @@ body {
         {% endif %}
     </div>
 
-    <!-- SECTION 08: AREA BREAKDOWN -->
+    <!-- SECTION 06: HOT SPOTS -->
     <div class="section" style="margin-bottom: 18px;">
         <div class="section-header">
             <span class="section-number">06</span>
-            <span class="section-title">Defects by Area</span>
+            <span class="section-title">Hot Spots</span>
         </div>
 
         {% if areas %}
-        <table style="width: 100%; border-collapse: collapse; font-size: 11px;">
-            <thead>
-                <tr>
-                    <th style="text-align: left; padding: 6px 10px; font-size: 9px; font-weight: 600; color: #9A9A9A; letter-spacing: 1.2px; text-transform: uppercase; border-bottom: 2px solid #E8E6E1; width: 120px;">Area</th>
-                    <th style="text-align: right; padding: 6px 10px; font-size: 9px; font-weight: 600; color: #9A9A9A; letter-spacing: 1.2px; text-transform: uppercase; border-bottom: 2px solid #E8E6E1; width: 70px;">Count</th>
-                    <th style="text-align: right; padding: 6px 10px; font-size: 9px; font-weight: 600; color: #9A9A9A; letter-spacing: 1.2px; text-transform: uppercase; border-bottom: 2px solid #E8E6E1; width: 50px;">%</th>
-                    <th style="padding: 6px 10px; border-bottom: 2px solid #E8E6E1;"></th>
-                </tr>
-            </thead>
-            <tbody>
+        <div style="display: flex; gap: 20px;">
+            <!-- Defects by Area -->
+            <div style="flex: 1;">
+                <div style="font-size: 10px; font-weight: 600; color: #1A1A1A; margin-bottom: 6px;">Defects by Area</div>
                 {% for a in areas %}
-                <tr>
-                    <td style="padding: 5px 10px; border-bottom: 1px solid #F0EEEA; font-weight: 600;">{{ a.name }}</td>
-                    <td style="text-align: right; padding: 5px 10px; border-bottom: 1px solid #F0EEEA;">{{ '{:,}'.format(a.count) }}</td>
-                    <td style="text-align: right; padding: 5px 10px; border-bottom: 1px solid #F0EEEA; color: #6B6B6B;">{{ a.pct }}%</td>
-                    <td style="padding: 5px 10px; border-bottom: 1px solid #F0EEEA;">
-                        <div style="background: #F0EEEA; border-radius: 2px; height: 14px; width: 100%;">
-                            <div style="background: #C8963E; border-radius: 2px; height: 14px; width: {{ (a.pct / areas[0].pct * 100)|round(1) }}%;"></div>
-                        </div>
-                    </td>
-                </tr>
+                <div style="display: flex; align-items: center; gap: 6px; margin-bottom: 4px;">
+                    <span style="font-size: 9px; font-weight: 600; color: #1A1A1A; width: 70px;">{{ a.name }}</span>
+                    <div style="flex: 1; height: 10px; background: #F0EEEA; border-radius: 2px; overflow: hidden;">
+                        <div style="height: 100%; width: {{ (a.count / area_max * 100)|round }}%; background: {% if a.count > area_median %}#C44D3F{% elif a.count == area_median %}#C8963E{% else %}#4A7C59{% endif %}; border-radius: 2px;"></div>
+                    </div>
+                    <span style="font-size: 9px; color: #6B6B6B; width: 30px; text-align: right;">{{ a.pct }}%</span>
+                    <span style="font-size: 9px; font-weight: 700; color: #1A1A1A; width: 40px; text-align: right;">{{ '{:,}'.format(a.count) }}</span>
+                </div>
                 {% endfor %}
-            </tbody>
-        </table>
+                <div style="font-size: 8px; color: #9A9A9A; margin-top: 4px;">
+                    {% if area_top2_names %}{{ area_top2_names[0] }} and {{ area_top2_names[1] }} account for {{ area_top2_pct }}% of all defects{% endif %}
+                </div>
+            </div>
+            <!-- Top 5 Units -->
+            <div style="flex: 1;">
+                <div style="font-size: 10px; font-weight: 600; color: #1A1A1A; margin-bottom: 6px;">Top 5 Units by Defect Count</div>
+                {% for u in stuck_units[:5] %}
+                {% set u_colour = '#C44D3F' if u.open > q3 else '#C8963E' if u.open > q1 else '#4A7C59' %}
+                <div style="display: flex; align-items: center; gap: 6px; margin-bottom: 4px;">
+                    <span style="font-size: 9px; font-weight: 700; color: #1A1A1A; width: 28px;">{{ u.unit }}</span>
+                    <span style="font-size: 8px; color: #9A9A9A; width: 70px;">{{ u.zone }}</span>
+                    <div style="flex: 1; height: 10px; background: #F0EEEA; border-radius: 2px; overflow: hidden;">
+                        <div style="height: 100%; width: {{ (u.open / stuck_units[0].open * 100)|round }}%; background: {{ u_colour }}; border-radius: 2px;"></div>
+                    </div>
+                    <span style="font-size: 9px; font-weight: 700; color: {{ u_colour }}; width: 30px; text-align: right;">{{ u.open }}</span>
+                </div>
+                {% endfor %}
+                <div style="font-size: 8px; color: #9A9A9A; margin-top: 4px;">
+                    Quartile: Q1={{ q1|int }} &middot; Q3={{ q3|int }} defects/unit
+                </div>
+            </div>
+        </div>
         {% endif %}
     </div>
+
+    <!-- SECTION 07: AREA DEEP DIVE -->
+    {% if area_deep_dive %}
+    <div class="section" style="margin-bottom: 18px;">
+        <div class="section-header">
+            <span class="section-number">07</span>
+            <span class="section-title">Area Deep Dive</span>
+        </div>
+        <div style="font-size: 9px; color: #6B6B6B; margin-bottom: 10px;">Top 3 defect types in the highest-defect areas</div>
+        <div style="display: flex; gap: 20px;">
+            {% for area in area_deep_dive %}
+            <div style="flex: 1; border-left: 3px solid {{ area.colour }}; padding-left: 10px;">
+                <div style="display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 8px;">
+                    <span style="font-size: 11px; font-weight: 700; color: #1A1A1A;">{{ area.area }}</span>
+                    <span style="font-size: 9px; color: #6B6B6B;">{{ area.total }} defects ({{ area.pct }}%)</span>
+                </div>
+                {% for d in area.defects %}
+                <div style="margin-bottom: 6px;">
+                    <div style="display: flex; align-items: center; gap: 4px; margin-bottom: 2px;">
+                        <span style="display: inline-block; width: 14px; height: 14px; border-radius: 50%; background: {{ area.colour }}; color: #fff; font-size: 8px; font-weight: 700; text-align: center; line-height: 14px;">{{ loop.index }}</span>
+                        <span style="font-size: 9px; color: #1A1A1A; flex: 1;">{{ d.description }}</span>
+                        <span style="font-size: 9px; font-weight: 700; color: #1A1A1A;">{{ d.count }}</span>
+                    </div>
+                    <div style="margin-left: 18px; height: 5px; background: #E8E6E1; border-radius: 2px; overflow: hidden;">
+                        <div style="width: {{ d.bar_pct }}%; height: 100%; background: {{ area.colour }}; border-radius: 2px;"></div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            {% endfor %}
+        </div>
+        {% if dd_callout %}
+        <div style="margin-top: 8px; border-left: 3px solid #C8963E; background: rgba(200,150,62,0.08); padding: 8px 10px; border-radius: 0 4px 4px 0; font-size: 9px;">
+            <span style="font-weight: 700; color: #C8963E;">Key finding:</span> {{ dd_callout }}
+        </div>
+        {% endif %}
+    </div>
+    {% endif %}
+
+    <!-- SECTION 08: SYSTEMIC ISSUES -->
+    {% if recurring %}
+    <div class="section" style="margin-bottom: 18px;">
+        <div class="section-header">
+            <span class="section-number">08</span>
+            <span class="section-title">Systemic Issues</span>
+        </div>
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+            <span style="font-size: 9px; color: #6B6B6B;">Ranked by spread across units &mdash; address project-wide</span>
+            <span style="font-size: 9px; color: #9A9A9A;">{{ recurring|sum(attribute='cnt') }} occurrences</span>
+        </div>
+        {% set rec_max = recurring[0].cnt if recurring else 1 %}
+        {% for r in recurring %}
+        <div style="padding: 4px 0; {% if not loop.last %}border-bottom: 1px solid #F0EEEA;{% endif %}">
+            <div style="display: flex; align-items: center; gap: 4px; margin-bottom: 2px;">
+                <span style="display: inline-block; width: 14px; height: 14px; line-height: 14px; border-radius: 50%; text-align: center; font-size: 8px; font-weight: 700; color: white; background: #C44D3F; flex-shrink: 0;">{{ loop.index }}</span>
+                <span style="font-size: 9px; color: #1A1A1A; flex: 1;">{{ r.original_comment }}{% if r.cat_breakdown %} <span style="font-size: 8px; color: #6B6B6B;">({% for c in r.cat_breakdown %}{{ c.cat }} {{ c.cnt }}{% if not loop.last %} &middot; {% endif %}{% endfor %})</span>{% endif %}</span>
+                <span style="font-size: 9px; font-weight: 700; color: #C44D3F; flex-shrink: 0;">{{ r.cnt }}</span>
+                <span style="font-size: 8px; color: #9A9A9A; width: 28px; text-align: right; flex-shrink: 0;">{{ r.unit_count }}u</span>
+            </div>
+            <div style="margin-left: 18px; height: 5px; background: #F0EEEA; border-radius: 2px; overflow: hidden;">
+                <div style="height: 100%; width: {{ (r.cnt / rec_max * 100)|round }}%; background: #C44D3F; border-radius: 2px;"></div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
 
     <!-- SECTION 09: TRADE BREAKDOWN -->
     <div class="section" style="margin-bottom: 18px;">
         <div class="section-header">
-            <span class="section-number">07</span>
+            <span class="section-number">09</span>
             <span class="section-title">Defects by Trade</span>
         </div>
 
@@ -545,7 +624,7 @@ body {
     <!-- SECTION 10: HEADLINE METRICS -->
     <div class="section">
         <div class="section-header">
-            <span class="section-number">08</span>
+            <span class="section-number">10</span>
             <span class="section-title">Open Defects by Unit</span>
         </div>
 
@@ -568,7 +647,7 @@ body {
     <!-- SECTION 11: UNIT TABLE -->
     <div class="section">
         <div class="section-header">
-            <span class="section-number">09</span>
+            <span class="section-number">11</span>
             <span class="section-title">Top 10 Units with Open Defects</span>
         </div>
 

@@ -5016,6 +5016,33 @@ def _build_pipeline_report_data(live=False):
         'oldest_weeks': oldest_weeks,
     }
 
+    # Hot Spots data: area median, quartiles for unit coloring
+    area_counts_list = [a['count'] for a in areas]
+    if area_counts_list:
+        area_counts_sorted_hs = sorted(area_counts_list)
+        mid_a = len(area_counts_sorted_hs) // 2
+        area_median = area_counts_sorted_hs[mid_a] if len(area_counts_sorted_hs) % 2 else (area_counts_sorted_hs[mid_a-1] + area_counts_sorted_hs[mid_a]) / 2
+    else:
+        area_median = 0
+    area_max = areas[0]['count'] if areas else 1
+
+    area_top2_sum = sum(a['count'] for a in areas[:2]) if len(areas) >= 2 else 0
+    area_top2_pct = round(area_top2_sum / total_open * 100) if total_open > 0 else 0
+    area_top2_names = [a['name'].title() for a in areas[:2]] if len(areas) >= 2 else []
+
+    unit_defect_counts = sorted([u['open'] for u in stuck_units]) if stuck_units else []
+    def _pctl(data, pct):
+        if not data:
+            return 0
+        k = (len(data) - 1) * pct / 100
+        lo = int(k)
+        hi = lo + 1
+        if hi >= len(data):
+            return data[lo]
+        return data[lo] + (data[hi] - data[lo]) * (k - lo)
+    q1 = round(_pctl(unit_defect_counts, 25), 1)
+    q3 = round(_pctl(unit_defect_counts, 75), 1)
+
     # Additional KPI metrics (snapshot-based)
     # Median defects per unit
     defect_counts_sorted = sorted([u['open'] for u in stuck_units]) if stuck_units else []
@@ -5080,6 +5107,12 @@ def _build_pipeline_report_data(live=False):
         'area_deep_dive': area_deep_dive,
         'dd_callout': dd_callout,
         'recurring': recurring,
+        'area_median': area_median,
+        'area_max': area_max,
+        'area_top2_pct': area_top2_pct,
+        'area_top2_names': area_top2_names,
+        'q1': q1,
+        'q3': q3,
         'snapshot_label': snapshot_label,
         'ledger_from': (snapshot_utc - _td(days=7) + _td(hours=2)).strftime('%d %b'),
         'ledger_to': (snapshot_utc + _td(hours=2)).strftime('%d %b %Y'),
