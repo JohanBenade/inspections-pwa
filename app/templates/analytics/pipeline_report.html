@@ -569,7 +569,7 @@ body {
     <div class="section">
         <div class="section-header">
             <span class="section-number">09</span>
-            <span class="section-title">All Units with Open Defects</span>
+            <span class="section-title">Top 10 Units with Open Defects</span>
         </div>
 
         {% if stuck_units %}
@@ -585,7 +585,7 @@ body {
                 </tr>
             </thead>
             <tbody>
-                {% for u in stuck_units[:20] %}
+                {% for u in stuck_units[:10] %}
                 <tr style="{% if u.open > stuck_headline.avg_per_unit %}background: #FFF8F6;{% endif %}">
                     <td style="padding: 4px 8px; border-bottom: 1px solid #F0EEEA; font-weight: 700;">{{ u.unit }}</td>
                     <td style="padding: 4px 8px; border-bottom: 1px solid #F0EEEA;">{{ u.zone }}</td>
@@ -598,8 +598,8 @@ body {
             </tbody>
         </table>
         <div style="margin-top: 8px; font-size: 9px; color: #9A9A9A;">
-            {% if stuck_units|length > 20 %}
-            Showing top 20 of {{ stuck_units|length }} units with open defects ({{ '{:,}'.format(ledger.open) }} total).
+            {% if stuck_units|length > 10 %}
+            Showing top 10 of {{ stuck_units|length }} units with open defects ({{ '{:,}'.format(ledger.open) }} total).
             {% else %}
             {{ stuck_units|length }} units with open defects.
             {% endif %}

@@ -223,6 +223,70 @@
     </div>
     {% endif %}
 
+    <!-- ========== AREA DEEP DIVE ========== -->
+    {% if area_deep_dive %}
+    <div style="margin-bottom: 2rem;">
+        <h2 style="font-family: 'DM Sans', sans-serif; font-weight: 600; font-size: 1.1rem; color: #1A1A1A; margin-bottom: 0.25rem;">Area Deep Dive</h2>
+        <p style="font-size: 0.75rem; color: #6B6B6B; margin: 0 0 12px 0;">Top 3 defect types in the highest-defect areas</p>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+            {% for area in area_deep_dive %}
+            <div style="background: #EBE6DE; border-left: 3px solid {{ area.colour }}; border-radius: 0 6px 6px 0; padding: 14px 16px;">
+                <div style="display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 10px;">
+                    <span style="font-size: 0.9rem; font-weight: 700; color: #1A1A1A;">{{ area.area }}</span>
+                    <span style="font-size: 0.7rem; color: #6B6B6B;">{{ area.total }} defects ({{ area.pct }}%)</span>
+                </div>
+                {% for d in area.defects %}
+                <div style="margin-bottom: 8px;">
+                    <div style="display: flex; align-items: center; gap: 6px; margin-bottom: 3px;">
+                        <span style="display: inline-block; width: 18px; height: 18px; border-radius: 50%; background: {{ area.colour }}; color: #fff; font-size: 0.6rem; font-weight: 700; text-align: center; line-height: 18px;">{{ loop.index }}</span>
+                        <span style="font-size: 0.75rem; color: #1A1A1A; flex: 1;">{{ d.description }}</span>
+                        <span style="font-size: 0.75rem; font-weight: 700; color: #1A1A1A;">{{ d.count }}</span>
+                    </div>
+                    <div style="margin-left: 24px; height: 6px; background: #D9D4CB; border-radius: 3px; overflow: hidden;">
+                        <div style="width: {{ d.bar_pct }}%; height: 100%; background: {{ area.colour }}; border-radius: 3px;"></div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            {% endfor %}
+        </div>
+        {% if dd_callout %}
+        <div style="margin-top: 10px; border-left: 3px solid #C8963E; background: #E8D9C0; padding: 10px 14px; border-radius: 0 4px 4px 0; font-size: 0.75rem;">
+            <span style="font-weight: 700; color: #C8963E;">Key finding:</span>
+            <span style="color: #1A1A1A;">{{ dd_callout }}</span>
+        </div>
+        {% endif %}
+    </div>
+    {% endif %}
+
+    <!-- ========== SYSTEMIC ISSUES ========== -->
+    {% if recurring %}
+    <div style="margin-bottom: 2rem;">
+        <h2 style="font-family: 'DM Sans', sans-serif; font-weight: 600; font-size: 1.1rem; color: #1A1A1A; margin-bottom: 0.25rem;">Systemic Issues</h2>
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+            <p style="font-size: 0.75rem; color: #6B6B6B; margin: 0;">Ranked by spread across units — address project-wide, not unit-by-unit</p>
+            <span style="font-size: 0.7rem; color: #9A9A9A;">{{ recurring|sum(attribute='cnt') }} occurrences</span>
+        </div>
+        {% set rec_max = recurring[0].cnt if recurring else 1 %}
+        {% for r in recurring %}
+        <div style="padding: 8px 0; {% if not loop.last %}border-bottom: 1px solid #E8E6E1;{% endif %}">
+            <div style="display: flex; align-items: center; gap: 6px; margin-bottom: 4px;">
+                <span style="display: inline-block; width: 18px; height: 18px; line-height: 18px; border-radius: 50%; text-align: center; font-size: 0.6rem; font-weight: 700; color: white; background: #C44D3F; flex-shrink: 0;">{{ loop.index }}</span>
+                <span style="font-size: 0.75rem; color: #1A1A1A; flex: 1;">{{ r.original_comment }}{% if r.cat_breakdown %} <span style="font-size: 0.65rem; color: #6B6B6B;">({% for c in r.cat_breakdown %}{{ c.cat }} {{ c.cnt }}{% if not loop.last %} &middot; {% endif %}{% endfor %})</span>{% endif %}</span>
+                <span style="font-size: 0.75rem; font-weight: 700; color: #C44D3F; flex-shrink: 0;">{{ r.cnt }}</span>
+                <span style="font-size: 0.65rem; color: #9A9A9A; width: 36px; text-align: right; flex-shrink: 0;">{{ r.unit_count }}u</span>
+            </div>
+            <div style="margin-left: 24px; height: 6px; background: #E8E6E1; border-radius: 3px; overflow: hidden;">
+                <div style="height: 100%; width: {{ (r.cnt / rec_max * 100)|round }}%; background: #C44D3F; border-radius: 3px;"></div>
+            </div>
+        </div>
+        {% endfor %}
+        <div style="font-size: 0.65rem; color: #9A9A9A; margin-top: 6px; padding-top: 6px; border-top: 1px solid #E8E6E1;">
+            {{ recurring|length }} defect type{{ 's' if recurring|length != 1 }} found across 3 or more units
+        </div>
+    </div>
+    {% endif %}
+
     <!-- ========== TRADE BREAKDOWN ========== -->
     {% if trades %}
     <div style="margin-bottom: 2rem;">

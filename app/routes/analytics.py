@@ -4876,6 +4876,92 @@ def _build_pipeline_report_data(live=False):
             'pct': pct,
         })
 
+    # --- AREA DEEP DIVE (top 3 defects in top 2 areas) ---
+    area_deep_dive = []
+    dd_colours = ['#C8963E', '#3D6B8E']
+    for idx, area_row in enumerate(areas[:2]):
+        area_name = area_row['name']
+        area_defects = [dict(r) for r in query_db("""
+            SELECT d.original_comment AS description, COUNT(*) AS count
+            FROM defect d
+            JOIN unit_real u ON d.unit_id = u.id
+            JOIN item_template it ON d.item_template_id = it.id
+            JOIN category_template ct ON it.category_id = ct.id
+            JOIN area_template at2 ON ct.area_id = at2.id
+            WHERE d.tenant_id = ? AND d.created_at <= ?
+            AND (d.status = 'open' OR (d.status = 'cleared' AND d.cleared_at > ?))
+            AND d.raised_cycle_id NOT LIKE 'test-%%'
+            AND EXISTS (SELECT 1 FROM inspection i2 WHERE i2.unit_id = d.unit_id AND i2.cycle_id = d.raised_cycle_id AND i2.status IN ('reviewed','approved','certified','pending_followup'))
+            AND at2.area_name = ?
+            GROUP BY d.original_comment
+            ORDER BY count DESC
+            LIMIT 3
+        """, [tenant_id, snapshot_str, snapshot_str, area_name])]
+        max_dd = area_defects[0]['count'] if area_defects else 1
+        for d in area_defects:
+            d['bar_pct'] = round(d['count'] / max_dd * 100)
+        area_deep_dive.append({
+            'area': area_name,
+            'total': area_row['count'],
+            'pct': area_row['pct'],
+            'colour': dd_colours[idx],
+            'defects': area_defects,
+        })
+
+    dd_callout = ''
+    if len(area_deep_dive) >= 1 and area_deep_dive[0]['defects']:
+        a1 = area_deep_dive[0]
+        d1 = a1['defects'][0]
+        dd_callout = 'The most frequent defect in {} is {} ({} occurrences).'.format(
+            a1['area'].title(), d1['description'].lower(), d1['count'])
+        if len(area_deep_dive) >= 2 and area_deep_dive[1]['defects']:
+            a2 = area_deep_dive[1]
+            d2 = a2['defects'][0]
+            dd_callout += ' In {}, {} leads with {} occurrences.'.format(
+                a2['area'].title(), d2['description'].lower(), d2['count'])
+
+    # --- SYSTEMIC ISSUES (recurring defects across 3+ units) ---
+    recurring_raw = query_db("""
+        SELECT d.original_comment,
+            COUNT(d.id) AS cnt,
+            COUNT(DISTINCT d.unit_id) AS unit_count
+        FROM defect d
+        JOIN unit_real u ON d.unit_id = u.id
+        WHERE d.tenant_id = ? AND d.created_at <= ?
+        AND (d.status = 'open' OR (d.status = 'cleared' AND d.cleared_at > ?))
+        AND d.raised_cycle_id NOT LIKE 'test-%%'
+        AND EXISTS (SELECT 1 FROM inspection i2 WHERE i2.unit_id = d.unit_id AND i2.cycle_id = d.raised_cycle_id AND i2.status IN ('reviewed','approved','certified','pending_followup'))
+        GROUP BY d.original_comment
+        HAVING unit_count >= 3
+        ORDER BY cnt DESC
+        LIMIT 10
+    """, [tenant_id, snapshot_str, snapshot_str])
+    recurring = [dict(r) for r in recurring_raw]
+
+    if recurring:
+        top_comments = [r['original_comment'] for r in recurring]
+        placeholders = ','.join('?' * len(top_comments))
+        cat_raw = query_db("""
+            SELECT d.original_comment, ct.category_name, COUNT(d.id) AS cat_cnt
+            FROM defect d
+            JOIN unit_real u ON d.unit_id = u.id
+            JOIN item_template it ON d.item_template_id = it.id
+            JOIN category_template ct ON it.category_id = ct.id
+            WHERE d.tenant_id = ? AND d.created_at <= ?
+            AND (d.status = 'open' OR (d.status = 'cleared' AND d.cleared_at > ?))
+            AND d.raised_cycle_id NOT LIKE 'test-%%'
+            AND d.original_comment IN ({})
+            AND EXISTS (SELECT 1 FROM inspection i2 WHERE i2.unit_id = d.unit_id AND i2.cycle_id = d.raised_cycle_id AND i2.status IN ('reviewed','approved','certified','pending_followup'))
+            GROUP BY d.original_comment, ct.category_name
+            ORDER BY d.original_comment, cat_cnt DESC
+        """.format(placeholders), [tenant_id, snapshot_str, snapshot_str] + top_comments)
+        from collections import defaultdict
+        cat_map = defaultdict(list)
+        for row in cat_raw:
+            cat_map[row['original_comment']].append({'cat': row['category_name'], 'cnt': row['cat_cnt']})
+        for r in recurring:
+            r['cat_breakdown'] = cat_map.get(r['original_comment'], [])
+
     # --- PAGE 4: STUCK UNITS ---
 
     # All units with open defects + their C1 submission date + cycle info
@@ -4991,6 +5077,9 @@ def _build_pipeline_report_data(live=False):
         'active_batches': active_batches,
         'stuck_units': stuck_units,
         'stuck_headline': stuck_headline,
+        'area_deep_dive': area_deep_dive,
+        'dd_callout': dd_callout,
+        'recurring': recurring,
         'snapshot_label': snapshot_label,
         'ledger_from': (snapshot_utc - _td(days=7) + _td(hours=2)).strftime('%d %b'),
         'ledger_to': (snapshot_utc + _td(hours=2)).strftime('%d %b %Y'),
