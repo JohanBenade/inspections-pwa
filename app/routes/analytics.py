@@ -4720,6 +4720,21 @@ def _build_pipeline_report_data(live=False):
             })
             tue = tue + _td(days=7)
 
+    # In live mode, add today as final trend point
+    if live and trend_points:
+        today_str = _dt.now().strftime('%Y-%m-%d %H:%M:%S')
+        raised_today = query_db(
+            "SELECT COUNT(*) as c FROM defect d JOIN unit_real u ON d.unit_id = u.id WHERE d.tenant_id = ? AND d.created_at <= ? AND d.raised_cycle_id NOT LIKE 'test-%%' AND EXISTS (SELECT 1 FROM inspection i2 WHERE i2.unit_id = d.unit_id AND i2.cycle_id = d.raised_cycle_id AND i2.status IN ('reviewed','approved','certified','pending_followup'))",
+            [tenant_id, today_str], one=True)
+        cleared_today = query_db(
+            "SELECT COUNT(*) as c FROM defect d JOIN unit_real u ON d.unit_id = u.id WHERE d.tenant_id = ? AND d.status = 'cleared' AND d.cleared_at <= ? AND d.raised_cycle_id NOT LIKE 'test-%%' AND EXISTS (SELECT 1 FROM inspection i2 WHERE i2.unit_id = d.unit_id AND i2.cycle_id = d.raised_cycle_id AND i2.status IN ('reviewed','approved','certified','pending_followup'))",
+            [tenant_id, today_str], one=True)
+        trend_points.append({
+            'date': _dt.now().strftime('%d %b'),
+            'raised': raised_today['c'] if raised_today else 0,
+            'cleared': cleared_today['c'] if cleared_today else 0,
+        })
+
     # Weekly ledger (prev Tuesday -> snapshot Tuesday)
     last_week_str = prev_tue_str
     now_str = snapshot_str
