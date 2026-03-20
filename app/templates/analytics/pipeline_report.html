@@ -256,6 +256,7 @@ body {
         {% endif %}
     </div>
 
+    {% if metrics.certified and metrics.certified > 0 %}
     <!-- SECTION 02: CERTIFICATION TREND -->
     <div class="section">
         <div class="section-header">
@@ -267,9 +268,7 @@ body {
             Certification trend line will appear when the first unit is certified
         </div>
     </div>
-
-    <!-- PAGE BREAK -->
-    <div style="page-break-before: always;"></div>
+    {% endif %}
 
     <!-- ============ PAGE 2: DEFECT POOL ============ -->
 
@@ -388,10 +387,7 @@ body {
         {% endif %}
     </div>
 
-    <!-- PAGE BREAK -->
-    <div style="page-break-before: always;"></div>
-
-    <!-- ============ PAGE 3: WHERE'S THE PROBLEM ============ -->
+    <!-- ============ PAGE 3 (continued): WHERE'S THE PROBLEM ============ -->
 
     <!-- SECTION 07: ZONE GRID -->
     <div class="section" style="margin-bottom: 18px;">
