@@ -17,10 +17,10 @@
         <div style="margin-top: 1rem; display: flex; gap: 0.5rem; flex-wrap: wrap; align-items: center;">
             <!-- Toggle -->
             <div style="display: inline-flex; border: 1px solid #E8E6E1; border-radius: 4px; overflow: hidden; margin-right: 0.5rem;">
-                <a href="?mode=live" style="padding: 6px 14px; font-size: 0.75rem; font-weight: 600; text-decoration: none; {% if mode == 'live' %}background: #1A1A1A; color: white;{% else %}background: #F5F3EE; color: #6B6B6B;{% endif %}">Live</a>
-                <a href="?mode=snapshot" style="padding: 6px 14px; font-size: 0.75rem; font-weight: 600; text-decoration: none; {% if mode == 'snapshot' %}background: #1A1A1A; color: white;{% else %}background: #F5F3EE; color: #6B6B6B;{% endif %}">Tuesday Snapshot</a>
+                <a href="?mode=live" style="padding: 6px 14px; font-size: 0.75rem; font-weight: 600; text-decoration: none; {% if mode == 'live' %}background: #1A1A1A; color: white;{% else %}background: #EBE6DE; color: #6B6B6B;{% endif %}">Live</a>
+                <a href="?mode=snapshot" style="padding: 6px 14px; font-size: 0.75rem; font-weight: 600; text-decoration: none; {% if mode == 'snapshot' %}background: #1A1A1A; color: white;{% else %}background: #EBE6DE; color: #6B6B6B;{% endif %}">Tuesday Snapshot</a>
             </div>
-            <a href="{{ url_for('analytics.pipeline_report_view') }}" class="inline-block px-4 py-2 text-sm font-semibold rounded" style="background: #F5F3EE; color: #1A1A1A; border: 1px solid #E8E6E1; text-decoration: none;">
+            <a href="{{ url_for('analytics.pipeline_report_view') }}" class="inline-block px-4 py-2 text-sm font-semibold rounded" style="background: #EBE6DE; color: #1A1A1A; border: 1px solid #E8E6E1; text-decoration: none;">
                 View Report
             </a>
             <a href="{{ url_for('analytics.pipeline_report_pdf') }}" class="inline-block px-4 py-2 text-sm font-semibold rounded" style="background: #C8963E; color: white; text-decoration: none;"
@@ -33,7 +33,7 @@
     <!-- ========== 8 KPI CARDS ========== -->
     <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 2rem;">
         <!-- Row 1: Project Progress -->
-        <div style="background: #F5F3EE; padding: 14px 16px; border-radius: 6px;">
+        <div style="background: #EBE6DE; padding: 14px 16px; border-radius: 6px;">
             <div style="font-size: 0.65rem; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: #6B6B6B;">Units Inspected</div>
             <div style="font-family: 'DM Sans', sans-serif; font-size: 1.6rem; font-weight: 300; color: #0A0A0A; line-height: 1; margin-top: 4px;">
                 {{ kpi.units_inspected }} <span style="font-size: 0.8rem; color: #9A9A9A;">/ {{ kpi.total_units }}</span>
@@ -43,21 +43,21 @@
             </div>
             <div style="font-size: 0.65rem; color: #9A9A9A; margin-top: 3px;">{{ kpi.pct_complete }}% complete</div>
         </div>
-        <div style="background: #F5F3EE; padding: 14px 16px; border-radius: 6px;">
+        <div style="background: #EBE6DE; padding: 14px 16px; border-radius: 6px;">
             <div style="font-size: 0.65rem; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: #6B6B6B;">Est. C1 Complete</div>
             <div style="font-family: 'DM Sans', sans-serif; font-size: 1.3rem; font-weight: 300; color: #0A0A0A; line-height: 1; margin-top: 4px;">
                 {% if kpi.est_complete %}{{ kpi.est_complete }}{% else %}&mdash;{% endif %}
             </div>
             <div style="font-size: 0.65rem; color: #9A9A9A; margin-top: 6px;">{{ kpi.units_remaining }} remaining &middot; {{ kpi.rate_per_week }}/wk</div>
         </div>
-        <div style="background: #F5F3EE; padding: 14px 16px; border-radius: 6px;">
+        <div style="background: #EBE6DE; padding: 14px 16px; border-radius: 6px;">
             <div style="font-size: 0.65rem; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: #6B6B6B;">Open Defects</div>
             <div style="font-family: 'DM Sans', sans-serif; font-size: 1.6rem; font-weight: 300; color: #C8963E; line-height: 1; margin-top: 4px;">
                 {{ '{:,}'.format(kpi.open_defects) }}
             </div>
             <div style="font-size: 0.65rem; color: #9A9A9A; margin-top: 6px;">across all zones</div>
         </div>
-        <div style="background: #F5F3EE; padding: 14px 16px; border-radius: 6px;">
+        <div style="background: #EBE6DE; padding: 14px 16px; border-radius: 6px;">
             <div style="font-size: 0.65rem; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: #6B6B6B;">Certified</div>
             <div style="font-family: 'DM Sans', sans-serif; font-size: 1.6rem; font-weight: 300; color: {% if kpi.certified > 0 %}#4A7C59{% else %}#9A9A9A{% endif %}; line-height: 1; margin-top: 4px;">
                 {{ kpi.certified }}
@@ -65,22 +65,22 @@
             <div style="font-size: 0.65rem; color: #9A9A9A; margin-top: 6px;">of {{ kpi.units_inspected }} inspected</div>
         </div>
         <!-- Row 2: Quality -->
-        <div style="background: #F5F3EE; padding: 14px 16px; border-radius: 6px;">
+        <div style="background: #EBE6DE; padding: 14px 16px; border-radius: 6px;">
             <div style="font-size: 0.65rem; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: #6B6B6B;">Avg Defects / Unit</div>
             <div style="font-family: 'DM Sans', sans-serif; font-size: 1.6rem; font-weight: 300; color: #0A0A0A; line-height: 1; margin-top: 4px;">{{ kpi.avg_per_unit }}</div>
             <div style="font-size: 0.65rem; color: #9A9A9A; margin-top: 6px;">{{ kpi.units_inspected }} units</div>
         </div>
-        <div style="background: #F5F3EE; padding: 14px 16px; border-radius: 6px;">
+        <div style="background: #EBE6DE; padding: 14px 16px; border-radius: 6px;">
             <div style="font-size: 0.65rem; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: #6B6B6B;">Median / Unit</div>
             <div style="font-family: 'DM Sans', sans-serif; font-size: 1.6rem; font-weight: 300; color: #0A0A0A; line-height: 1; margin-top: 4px;">{{ kpi.median_per_unit }}</div>
             <div style="font-size: 0.65rem; color: #9A9A9A; margin-top: 6px;">midpoint</div>
         </div>
-        <div style="background: #F5F3EE; padding: 14px 16px; border-radius: 6px;">
+        <div style="background: #EBE6DE; padding: 14px 16px; border-radius: 6px;">
             <div style="font-size: 0.65rem; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: #6B6B6B;">Defect Rate</div>
             <div style="font-family: 'DM Sans', sans-serif; font-size: 1.6rem; font-weight: 300; color: #C8963E; line-height: 1; margin-top: 4px;">{{ kpi.defect_rate }}%</div>
             <div style="font-size: 0.65rem; color: #9A9A9A; margin-top: 6px;">{{ '{:,}'.format(kpi.items_inspected) }} items</div>
         </div>
-        <div style="background: #F5F3EE; padding: 14px 16px; border-radius: 6px;">
+        <div style="background: #EBE6DE; padding: 14px 16px; border-radius: 6px;">
             <div style="font-size: 0.65rem; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: #6B6B6B;">Worst Unit</div>
             <div style="font-family: 'DM Sans', sans-serif; font-size: 1.6rem; font-weight: 300; color: #C44D3F; line-height: 1; margin-top: 4px;">
                 {% if kpi.worst_count %}{{ kpi.worst_count }}{% else %}&mdash;{% endif %}
@@ -133,7 +133,7 @@
             </div>
         </div>
         {% if ledger.new > ledger.cleared %}
-        <div style="margin-top: 8px; padding: 8px 12px; background: #E4DDD2; border-left: 3px solid #C8963E; border-radius: 0 4px 4px 0; font-size: 0.75rem; color: #6B6B6B; max-width: 480px;">
+        <div style="margin-top: 8px; padding: 8px 12px; background: #E8D9C0; border-left: 3px solid #C8963E; border-radius: 0 4px 4px 0; font-size: 0.75rem; color: #6B6B6B; max-width: 480px;">
             Pool growing &mdash; expected while C1 inspections are in progress.
         </div>
         {% elif ledger.cleared > ledger.new %}
@@ -165,8 +165,8 @@
                         {% set zd = zone_grid.data.get((block, fl), None) %}
                         <td style="padding: 8px; text-align: center; border-bottom: 1px solid #F0EEEA;
                             {% if zd is not none %}
-                                {% if zd.avg > zone_grid.project_avg * 1.5 %}background: #E4D5D2;
-                                {% elif zd.avg > zone_grid.project_avg %}background: #E6DFD2;
+                                {% if zd.avg > zone_grid.project_avg * 1.5 %}background: #D9C4B8;
+                                {% elif zd.avg > zone_grid.project_avg %}background: #E8D9C0;
                                 {% else %}background: #D9E6DA;{% endif %}
                             {% endif %}
                         ">
@@ -260,15 +260,15 @@
 
         <!-- Headline cards -->
         <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 12px;">
-            <div style="background: #F5F3EE; padding: 12px 14px; border-radius: 6px; text-align: center;">
+            <div style="background: #EBE6DE; padding: 12px 14px; border-radius: 6px; text-align: center;">
                 <div style="font-size: 0.65rem; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: #6B6B6B;">Worst Unit</div>
                 <div style="font-family: 'DM Sans', sans-serif; font-size: 1.2rem; font-weight: 600; color: #1A1A1A; margin-top: 2px;">{{ stuck_headline.worst_unit }} <span style="color: #C44D3F;">({{ stuck_headline.worst_count }})</span></div>
             </div>
-            <div style="background: #F5F3EE; padding: 12px 14px; border-radius: 6px; text-align: center;">
+            <div style="background: #EBE6DE; padding: 12px 14px; border-radius: 6px; text-align: center;">
                 <div style="font-size: 0.65rem; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: #6B6B6B;">Avg / Unit</div>
                 <div style="font-family: 'DM Sans', sans-serif; font-size: 1.2rem; font-weight: 600; color: #1A1A1A; margin-top: 2px;">{{ stuck_headline.avg_per_unit }}</div>
             </div>
-            <div style="background: #F5F3EE; padding: 12px 14px; border-radius: 6px; text-align: center;">
+            <div style="background: #EBE6DE; padding: 12px 14px; border-radius: 6px; text-align: center;">
                 <div style="font-size: 0.65rem; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: #6B6B6B;">Oldest</div>
                 <div style="font-family: 'DM Sans', sans-serif; font-size: 1.2rem; font-weight: 600; color: #1A1A1A; margin-top: 2px;">{{ stuck_headline.oldest_weeks }} wks</div>
             </div>
@@ -289,7 +289,7 @@
                 </thead>
                 <tbody>
                     {% for u in stuck_units %}
-                    <tr style="{% if u.open > stuck_headline.avg_per_unit %}background: #E8E0D8;{% endif %}">
+                    <tr style="{% if u.open > stuck_headline.avg_per_unit %}background: #E6D8CC;{% endif %}">
                         <td style="padding: 4px 8px; border-bottom: 1px solid #F0EEEA; font-weight: 600;">{{ u.unit }}</td>
                         <td style="padding: 4px 8px; border-bottom: 1px solid #F0EEEA;">{{ u.zone }}</td>
                         <td style="padding: 4px 8px; border-bottom: 1px solid #F0EEEA; text-align: center;">C{{ u.cycle }}</td>
