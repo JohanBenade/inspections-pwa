@@ -93,7 +93,7 @@
     {% if trend_points %}
     <div style="margin-bottom: 2rem;">
         <h2 style="font-family: 'DM Sans', sans-serif; font-weight: 600; font-size: 1.1rem; color: #1A1A1A; margin-bottom: 0.75rem;">Defect Pool</h2>
-        <div style="position: relative; height: 240px; width: 100%;">
+        <div style="position: relative; height: 300px; width: 100%;">
             <canvas id="defectPoolChart"></canvas>
         </div>
         <div style="display: flex; gap: 16px; margin-top: 6px;">
@@ -133,7 +133,7 @@
             </div>
         </div>
         {% if ledger.new > ledger.cleared %}
-        <div style="margin-top: 8px; padding: 8px 12px; background: #F8F2E8; border-left: 3px solid #C8963E; border-radius: 0 4px 4px 0; font-size: 0.75rem; color: #6B6B6B; max-width: 480px;">
+        <div style="margin-top: 8px; padding: 8px 12px; background: #F0EBE2; border-left: 3px solid #C8963E; border-radius: 0 4px 4px 0; font-size: 0.75rem; color: #6B6B6B; max-width: 480px;">
             Pool growing &mdash; expected while C1 inspections are in progress.
         </div>
         {% elif ledger.cleared > ledger.new %}
@@ -165,8 +165,8 @@
                         {% set zd = zone_grid.data.get((block, fl), None) %}
                         <td style="padding: 8px; text-align: center; border-bottom: 1px solid #F0EEEA;
                             {% if zd is not none %}
-                                {% if zd.avg > zone_grid.project_avg * 1.5 %}background: #FCEAE8;
-                                {% elif zd.avg > zone_grid.project_avg %}background: #F5EEDF;
+                                {% if zd.avg > zone_grid.project_avg * 1.5 %}background: #F2E4E2;
+                                {% elif zd.avg > zone_grid.project_avg %}background: #F0EDE4;
                                 {% else %}background: #EEF5EF;{% endif %}
                             {% endif %}
                         ">
@@ -289,7 +289,7 @@
                 </thead>
                 <tbody>
                     {% for u in stuck_units %}
-                    <tr style="{% if u.open > stuck_headline.avg_per_unit %}background: #FFF8F6;{% endif %}">
+                    <tr style="{% if u.open > stuck_headline.avg_per_unit %}background: #F5F0ED;{% endif %}">
                         <td style="padding: 4px 8px; border-bottom: 1px solid #F0EEEA; font-weight: 600;">{{ u.unit }}</td>
                         <td style="padding: 4px 8px; border-bottom: 1px solid #F0EEEA;">{{ u.zone }}</td>
                         <td style="padding: 4px 8px; border-bottom: 1px solid #F0EEEA; text-align: center;">C{{ u.cycle }}</td>
@@ -364,7 +364,7 @@ new Chart(ctx, {
             datalabels: { display: true }
         },
         scales: {
-            y: { beginAtZero: true, ticks: { font: { size: 11 } }, grid: { color: '#F0EEEA' } },
+            y: { beginAtZero: true, grace: '15%', ticks: { font: { size: 11 } }, grid: { color: '#F0EEEA' } },
             x: { ticks: { font: { size: 10 } }, grid: { display: false } }
         }
     }
