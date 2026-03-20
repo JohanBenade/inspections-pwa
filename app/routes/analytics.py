@@ -4665,10 +4665,10 @@ def _build_pipeline_report_data():
         while tue <= today:
             tue_str = tue.strftime('%Y-%m-%d %H:%M:%S')
             raised_row = query_db(
-                "SELECT COUNT(*) as c FROM defect WHERE tenant_id = ? AND created_at <= ?",
+                "SELECT COUNT(*) as c FROM defect d JOIN unit_real u ON d.unit_id = u.id WHERE d.tenant_id = ? AND d.created_at <= ? AND d.raised_cycle_id NOT LIKE 'test-%%' AND EXISTS (SELECT 1 FROM inspection i2 WHERE i2.unit_id = d.unit_id AND i2.cycle_id = d.raised_cycle_id AND i2.status IN ('reviewed','approved','certified','pending_followup'))",
                 [tenant_id, tue_str], one=True)
             cleared_row = query_db(
-                "SELECT COUNT(*) as c FROM defect WHERE tenant_id = ? AND status = 'cleared' AND cleared_at <= ?",
+                "SELECT COUNT(*) as c FROM defect d JOIN unit_real u ON d.unit_id = u.id WHERE d.tenant_id = ? AND d.status = 'cleared' AND d.cleared_at <= ? AND d.raised_cycle_id NOT LIKE 'test-%%' AND EXISTS (SELECT 1 FROM inspection i2 WHERE i2.unit_id = d.unit_id AND i2.cycle_id = d.raised_cycle_id AND i2.status IN ('reviewed','approved','certified','pending_followup'))",
                 [tenant_id, tue_str], one=True)
             trend_points.append({
                 'date': tue.strftime('%d %b'),
@@ -4683,17 +4683,17 @@ def _build_pipeline_report_data():
     now_str = _dt.now().strftime('%Y-%m-%d %H:%M:%S')
     
     bfwd_row = query_db(
-        "SELECT COUNT(*) as c FROM defect WHERE tenant_id = ? AND created_at <= ? AND (status = 'open' OR (status = 'cleared' AND cleared_at > ?))",
+        "SELECT COUNT(*) as c FROM defect d JOIN unit_real u ON d.unit_id = u.id WHERE d.tenant_id = ? AND d.created_at <= ? AND (d.status = 'open' OR (d.status = 'cleared' AND d.cleared_at > ?)) AND d.raised_cycle_id NOT LIKE 'test-%%' AND EXISTS (SELECT 1 FROM inspection i2 WHERE i2.unit_id = d.unit_id AND i2.cycle_id = d.raised_cycle_id AND i2.status IN ('reviewed','approved','certified','pending_followup'))",
         [tenant_id, last_week_str, last_week_str], one=True)
     cleared_week_row = query_db(
-        "SELECT COUNT(*) as c FROM defect WHERE tenant_id = ? AND status = 'cleared' AND cleared_at > ? AND cleared_at <= ?",
+        "SELECT COUNT(*) as c FROM defect d JOIN unit_real u ON d.unit_id = u.id WHERE d.tenant_id = ? AND d.status = 'cleared' AND d.cleared_at > ? AND d.cleared_at <= ? AND d.raised_cycle_id NOT LIKE 'test-%%' AND EXISTS (SELECT 1 FROM inspection i2 WHERE i2.unit_id = d.unit_id AND i2.cycle_id = d.raised_cycle_id AND i2.status IN ('reviewed','approved','certified','pending_followup'))",
         [tenant_id, last_week_str, now_str], one=True)
     new_week_row = query_db(
-        "SELECT COUNT(*) as c FROM defect WHERE tenant_id = ? AND created_at > ? AND created_at <= ?",
+        "SELECT COUNT(*) as c FROM defect d JOIN unit_real u ON d.unit_id = u.id WHERE d.tenant_id = ? AND d.created_at > ? AND d.created_at <= ? AND d.raised_cycle_id NOT LIKE 'test-%%' AND EXISTS (SELECT 1 FROM inspection i2 WHERE i2.unit_id = d.unit_id AND i2.cycle_id = d.raised_cycle_id AND i2.status IN ('reviewed','approved','certified','pending_followup'))",
         [tenant_id, last_week_str, now_str], one=True)
     
     total_open_row = query_db(
-        "SELECT COUNT(*) as c FROM defect WHERE tenant_id = ? AND status = 'open'",
+        "SELECT COUNT(*) as c FROM defect d JOIN unit_real u ON d.unit_id = u.id WHERE d.tenant_id = ? AND d.status = 'open' AND d.raised_cycle_id NOT LIKE 'test-%%' AND EXISTS (SELECT 1 FROM inspection i2 WHERE i2.unit_id = d.unit_id AND i2.cycle_id = d.raised_cycle_id AND i2.status IN ('reviewed','approved','certified','pending_followup'))",
         [tenant_id], one=True)
     
     ledger = {
@@ -4937,9 +4937,15 @@ def pipeline_dashboard():
         [tenant_id], one=True)
     total_units = total_row['cnt'] if total_row else 0
 
-    open_row = query_db(
-        "SELECT COUNT(*) as cnt FROM defect WHERE tenant_id = ? AND status = 'open'",
-        [tenant_id], one=True)
+    open_row = query_db("""
+        SELECT COUNT(*) as cnt FROM defect d
+        JOIN unit_real u ON d.unit_id = u.id
+        WHERE d.tenant_id = ? AND d.status = 'open'
+        AND d.raised_cycle_id NOT LIKE 'test-%%'
+        AND EXISTS (SELECT 1 FROM inspection i2 WHERE i2.unit_id = d.unit_id
+            AND i2.cycle_id = d.raised_cycle_id
+            AND i2.status IN ('reviewed','approved','certified','pending_followup'))
+    """, [tenant_id], one=True)
     open_defects = open_row['cnt'] if open_row else 0
 
     certified_row = query_db(
