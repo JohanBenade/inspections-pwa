@@ -4526,23 +4526,35 @@ def login_status():
 # PIPELINE REPORT (Project Overview - unified remediation pipeline)
 # ============================================================
 
-def _build_pipeline_report_data():
-    """Build data for the Pipeline Report (Page 1: Project Pipeline)."""
+def _build_pipeline_report_data(live=False):
+    """Build data for the Pipeline Report / Dashboard.
+    live=False: Tuesday snapshot (PDF report).
+    live=True: current state (dashboard).
+    """
     tenant_id = session.get('tenant_id', 'MONOGRAPH')
 
-    # Snapshot: last Tuesday midnight SAST (UTC+2) converted to UTC
     from datetime import datetime as _dt, timedelta as _td
     _now_sast = _dt.utcnow() + _td(hours=2)
-    _days_since_tue = (_now_sast.weekday() - 1) % 7
-    if _days_since_tue == 0:
-        _days_since_tue = 7  # On Tuesday, use LAST Tuesday
-    snapshot_sast = _now_sast.replace(hour=0, minute=0, second=0, microsecond=0) - _td(days=_days_since_tue)
-    snapshot_utc = snapshot_sast - _td(hours=2)
-    snapshot_str = snapshot_utc.strftime('%Y-%m-%d %H:%M:%S')
-    # Previous Tuesday (for ledger B/Fwd)
-    prev_tue_utc = snapshot_utc - _td(days=7)
-    prev_tue_str = prev_tue_utc.strftime('%Y-%m-%d %H:%M:%S')
-    snapshot_label = snapshot_sast.strftime('%d %b %Y')
+
+    if live:
+        # Live mode: snapshot = now, ledger = rolling 7 days
+        snapshot_sast = _now_sast
+        snapshot_utc = _dt.utcnow()
+        snapshot_str = snapshot_utc.strftime('%Y-%m-%d %H:%M:%S')
+        prev_tue_utc = snapshot_utc - _td(days=7)
+        prev_tue_str = prev_tue_utc.strftime('%Y-%m-%d %H:%M:%S')
+        snapshot_label = 'Live'
+    else:
+        # Snapshot mode: last Tuesday midnight SAST
+        _days_since_tue = (_now_sast.weekday() - 1) % 7
+        if _days_since_tue == 0:
+            _days_since_tue = 7  # On Tuesday, use LAST Tuesday
+        snapshot_sast = _now_sast.replace(hour=0, minute=0, second=0, microsecond=0) - _td(days=_days_since_tue)
+        snapshot_utc = snapshot_sast - _td(hours=2)
+        snapshot_str = snapshot_utc.strftime('%Y-%m-%d %H:%M:%S')
+        prev_tue_utc = snapshot_utc - _td(days=7)
+        prev_tue_str = prev_tue_utc.strftime('%Y-%m-%d %H:%M:%S')
+        snapshot_label = snapshot_sast.strftime('%d %b %Y')
 
     # All real units
     all_units = query_db("""
@@ -4610,6 +4622,21 @@ def _build_pipeline_report_data():
 
     # Movement this week: empty list for now (no stage transitions yet)
     movements = []
+
+    # --- 5-STAGE PIPELINE ---
+    pipeline = {'not_requested': 0, 'awaiting': 0, 'defects_raised': 0, 'under_verification': 0, 'certified': 0}
+    for u in all_units:
+        uid = u['id']
+        if u['certified_at']:
+            pipeline['certified'] += 1
+        elif uid in c2_plus_ids:
+            pipeline['under_verification'] += 1
+        elif uid in unit_max_completed and unit_open.get(uid, 0) > 0:
+            pipeline['defects_raised'] += 1
+        elif uid in in_batch_ids:
+            pipeline['awaiting'] += 1
+        else:
+            pipeline['not_requested'] += 1
 
     # --- ACTIVE BATCHES CALLOUT ---
     active_batch_rows = query_db("""
@@ -4951,6 +4978,7 @@ def _build_pipeline_report_data():
         'stuck_headline': stuck_headline,
         'snapshot_label': snapshot_label,
         'kpi': kpi,
+        'pipeline': pipeline,
     }
 
 
@@ -5005,86 +5033,9 @@ def pipeline_report_pdf():
 @analytics_bp.route('/pipeline/dashboard')
 @require_manager
 def pipeline_dashboard():
-    """Pipeline Dashboard - HTML screen with batch list and headline metrics."""
-    import base64, os as _os
-    from flask import current_app
-    tenant_id = session.get('tenant_id', 'MONOGRAPH')
-
-    # Headline metrics (lightweight queries)
-    inspected_row = query_db("""
-        SELECT COUNT(DISTINCT i.unit_id) as cnt
-        FROM inspection i
-        JOIN unit u ON i.unit_id = u.id
-        WHERE i.tenant_id = ? AND u.unit_number NOT LIKE 'TEST%'
-        AND i.status IN ('reviewed', 'approved', 'pending_followup')
-    """, [tenant_id], one=True)
-    units_inspected = inspected_row['cnt'] if inspected_row else 0
-
-    total_row = query_db(
-        "SELECT COUNT(*) as cnt FROM unit WHERE tenant_id = ? AND unit_number NOT LIKE 'TEST%'",
-        [tenant_id], one=True)
-    total_units = total_row['cnt'] if total_row else 0
-
-    open_row = query_db("""
-        SELECT COUNT(*) as cnt FROM defect d
-        JOIN unit_real u ON d.unit_id = u.id
-        WHERE d.tenant_id = ? AND d.status = 'open'
-        AND d.raised_cycle_id NOT LIKE 'test-%%'
-        AND EXISTS (SELECT 1 FROM inspection i2 WHERE i2.unit_id = d.unit_id
-            AND i2.cycle_id = d.raised_cycle_id
-            AND i2.status IN ('reviewed','approved','certified','pending_followup'))
-    """, [tenant_id], one=True)
-    open_defects = open_row['cnt'] if open_row else 0
-
-    certified_row = query_db(
-        "SELECT COUNT(*) as cnt FROM unit WHERE tenant_id = ? AND unit_number NOT LIKE 'TEST%' AND certified_at IS NOT NULL",
-        [tenant_id], one=True)
-    certified = certified_row['cnt'] if certified_row else 0
-
-    # All batches with unit counts and status
-    batches_raw = query_db("""
-        SELECT ib.id, ib.name, ib.status, ib.created_at,
-               COUNT(DISTINCT bu.unit_id) as total_units,
-               COUNT(DISTINCT CASE WHEN i.status IN ('reviewed','approved','pending_followup')
-                   THEN bu.unit_id END) as inspected_units,
-               COUNT(DISTINCT CASE WHEN bu.status = 'signed' THEN bu.unit_id END) as signed_units
-        FROM inspection_batch ib
-        LEFT JOIN batch_unit bu ON bu.batch_id = ib.id AND bu.removed_at IS NULL
-        LEFT JOIN inspection i ON i.unit_id = bu.unit_id AND i.cycle_id = bu.cycle_id
-        WHERE ib.tenant_id = ?
-        GROUP BY ib.id
-        ORDER BY ib.created_at DESC
-    """, [tenant_id])
-    batches = [dict(r) for r in batches_raw]
-
-    for b in batches:
-        s = b['status']
-        if s == 'complete':
-            b['status_label'] = 'Complete'
-            b['status_colour'] = '#4A7C59'
-            b['status_bg'] = 'rgba(74,124,89,0.12)'
-        elif s == 'signed_off':
-            b['status_label'] = 'Signed Off'
-            b['status_colour'] = '#4A7C59'
-            b['status_bg'] = 'rgba(74,124,89,0.12)'
-        elif s in ('reviewed', 'inspected'):
-            b['status_label'] = s.title()
-            b['status_colour'] = '#7B6B8D'
-            b['status_bg'] = 'rgba(123,107,141,0.12)'
-        elif s == 'received':
-            b['status_label'] = 'In Progress'
-            b['status_colour'] = '#3D6B8E'
-            b['status_bg'] = 'rgba(61,107,142,0.12)'
-        else:
-            b['status_label'] = 'Open'
-            b['status_colour'] = '#C8963E'
-            b['status_bg'] = 'rgba(200,150,62,0.12)'
-        # Progress percentage
-        b['progress_pct'] = round(b['inspected_units'] / b['total_units'] * 100) if b['total_units'] > 0 else 0
-
-    return render_template('analytics/pipeline_dashboard.html',
-                           units_inspected=units_inspected,
-                           total_units=total_units,
-                           open_defects=open_defects,
-                           certified=certified,
-                           batches=batches)
+    """Pipeline Dashboard - mirror of Pipeline PDF with live/snapshot toggle."""
+    mode = request.args.get('mode', 'live')
+    is_live = (mode != 'snapshot')
+    data = _build_pipeline_report_data(live=is_live)
+    data['mode'] = 'live' if is_live else 'snapshot'
+    return render_template('analytics/pipeline_dashboard.html', **data)
