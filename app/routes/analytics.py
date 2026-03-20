@@ -4676,7 +4676,23 @@ def _build_pipeline_report_data():
                 'cleared': cleared_row['c'] if cleared_row else 0,
             })
             tue = tue + _td(days=7)
-    
+
+        # Add today as live final data point (so chart matches metric card)
+        today_str = today.strftime('%Y-%m-%d %H:%M:%S')
+        today_label = today.strftime('%d %b')
+        if not trend_points or trend_points[-1]['date'] != today_label:
+            raised_today = query_db(
+                "SELECT COUNT(*) as c FROM defect d JOIN unit_real u ON d.unit_id = u.id WHERE d.tenant_id = ? AND d.created_at <= ? AND d.raised_cycle_id NOT LIKE 'test-%%' AND EXISTS (SELECT 1 FROM inspection i2 WHERE i2.unit_id = d.unit_id AND i2.cycle_id = d.raised_cycle_id AND i2.status IN ('reviewed','approved','certified','pending_followup'))",
+                [tenant_id, today_str], one=True)
+            cleared_today = query_db(
+                "SELECT COUNT(*) as c FROM defect d JOIN unit_real u ON d.unit_id = u.id WHERE d.tenant_id = ? AND d.status = 'cleared' AND d.cleared_at <= ? AND d.raised_cycle_id NOT LIKE 'test-%%' AND EXISTS (SELECT 1 FROM inspection i2 WHERE i2.unit_id = d.unit_id AND i2.cycle_id = d.raised_cycle_id AND i2.status IN ('reviewed','approved','certified','pending_followup'))",
+                [tenant_id, today_str], one=True)
+            trend_points.append({
+                'date': today_label,
+                'raised': raised_today['c'] if raised_today else 0,
+                'cleared': cleared_today['c'] if cleared_today else 0,
+            })
+
     # Weekly ledger
     last_week = _dt.now() - _td(days=7)
     last_week_str = last_week.strftime('%Y-%m-%d %H:%M:%S')
@@ -4724,9 +4740,10 @@ def _build_pipeline_report_data():
     zone_rows = query_db("""
         SELECT u.block, u.floor, COUNT(*) as cnt
         FROM defect d
-        JOIN unit u ON d.unit_id = u.id
+        JOIN unit_real u ON d.unit_id = u.id
         WHERE d.tenant_id = ? AND d.status = 'open'
-        AND u.unit_number NOT LIKE 'TEST%'
+        AND d.raised_cycle_id NOT LIKE 'test-%%'
+        AND EXISTS (SELECT 1 FROM inspection i2 WHERE i2.unit_id = d.unit_id AND i2.cycle_id = d.raised_cycle_id AND i2.status IN ('reviewed','approved','certified','pending_followup'))
         GROUP BY u.block, u.floor
         ORDER BY u.block, u.floor
     """, [tenant_id])
@@ -4755,10 +4772,13 @@ def _build_pipeline_report_data():
     area_rows = query_db("""
         SELECT at2.area_name, COUNT(*) as cnt
         FROM defect d
+        JOIN unit_real u ON d.unit_id = u.id
         JOIN item_template it ON d.item_template_id = it.id
         JOIN category_template ct ON it.category_id = ct.id
         JOIN area_template at2 ON ct.area_id = at2.id
         WHERE d.tenant_id = ? AND d.status = 'open'
+        AND d.raised_cycle_id NOT LIKE 'test-%%'
+        AND EXISTS (SELECT 1 FROM inspection i2 WHERE i2.unit_id = d.unit_id AND i2.cycle_id = d.raised_cycle_id AND i2.status IN ('reviewed','approved','certified','pending_followup'))
         GROUP BY at2.area_name
         ORDER BY cnt DESC
     """, [tenant_id])
@@ -4777,9 +4797,12 @@ def _build_pipeline_report_data():
     trade_rows = query_db("""
         SELECT ct.category_name, COUNT(*) as cnt
         FROM defect d
+        JOIN unit_real u ON d.unit_id = u.id
         JOIN item_template it ON d.item_template_id = it.id
         JOIN category_template ct ON it.category_id = ct.id
         WHERE d.tenant_id = ? AND d.status = 'open'
+        AND d.raised_cycle_id NOT LIKE 'test-%%'
+        AND EXISTS (SELECT 1 FROM inspection i2 WHERE i2.unit_id = d.unit_id AND i2.cycle_id = d.raised_cycle_id AND i2.status IN ('reviewed','approved','certified','pending_followup'))
         GROUP BY ct.category_name
         ORDER BY cnt DESC
     """, [tenant_id])
@@ -4803,11 +4826,12 @@ def _build_pipeline_report_data():
                MAX(i.cycle_number) as max_cycle,
                SUM(CASE WHEN d.raised_cycle_number >= 2 THEN 1 ELSE 0 END) as new_c2
         FROM defect d
-        JOIN unit u ON d.unit_id = u.id
+        JOIN unit_real u ON d.unit_id = u.id
         LEFT JOIN inspection i ON i.unit_id = u.id AND i.tenant_id = d.tenant_id
             AND i.status IN ('reviewed', 'approved', 'pending_followup')
         WHERE d.tenant_id = ? AND d.status = 'open'
-        AND u.unit_number NOT LIKE 'TEST%'
+        AND d.raised_cycle_id NOT LIKE 'test-%%'
+        AND EXISTS (SELECT 1 FROM inspection i2 WHERE i2.unit_id = d.unit_id AND i2.cycle_id = d.raised_cycle_id AND i2.status IN ('reviewed','approved','certified','pending_followup'))
         GROUP BY u.id
         ORDER BY open_count DESC
     """, [tenant_id])
