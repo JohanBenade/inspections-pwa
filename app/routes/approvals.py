@@ -1932,9 +1932,11 @@ def _get_tracker_defects(batch_id, tenant_id):
             AND dl.tenant_id = d.tenant_id
             AND LOWER(TRIM(dl.description)) = LOWER(TRIM(d.original_comment))
         )
-        AND d.unit_id IN (
-            SELECT unit_id FROM batch_unit
-            WHERE batch_id = ? AND removed_at IS NULL
+        AND EXISTS (
+            SELECT 1 FROM batch_unit bu2
+            WHERE bu2.batch_id = ? AND bu2.removed_at IS NULL
+            AND bu2.unit_id = d.unit_id
+            AND bu2.cycle_id = d.raised_cycle_id
         )
         AND (d.reviewed_comment IS NULL OR d.reviewed_comment = d.original_comment)
         ORDER BY d.created_at DESC
