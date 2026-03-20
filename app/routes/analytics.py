@@ -4566,21 +4566,21 @@ def _build_pipeline_report_data():
     completed_rows = query_db("""
         SELECT i.unit_id, MAX(i.cycle_number) as max_cycle
         FROM inspection i
-        JOIN unit u ON i.unit_id = u.id
-        WHERE i.tenant_id = ? AND u.unit_number NOT LIKE 'TEST%'
+        JOIN unit_real u ON i.unit_id = u.id
+        WHERE i.tenant_id = ? AND i.submitted_at <= ?
         AND i.status IN ('reviewed', 'approved', 'pending_followup')
         GROUP BY i.unit_id
-    """, [tenant_id])
+    """, [tenant_id, snapshot_str])
     unit_max_completed = {r['unit_id']: r['max_cycle'] for r in completed_rows}
 
     # Any C2+ inspection (any status = under verification)
     c2_rows = query_db("""
         SELECT DISTINCT i.unit_id
         FROM inspection i
-        JOIN unit u ON i.unit_id = u.id
-        WHERE i.tenant_id = ? AND u.unit_number NOT LIKE 'TEST%'
+        JOIN unit_real u ON i.unit_id = u.id
+        WHERE i.tenant_id = ? AND i.created_at <= ?
         AND i.cycle_number >= 2
-    """, [tenant_id])
+    """, [tenant_id, snapshot_str])
     c2_plus_ids = set(r['unit_id'] for r in c2_rows)
 
     # Open defects per unit (as of snapshot Tuesday)
