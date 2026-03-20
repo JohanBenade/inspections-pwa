@@ -4888,6 +4888,49 @@ def _build_pipeline_report_data():
         'oldest_weeks': oldest_weeks,
     }
 
+    # Additional KPI metrics (snapshot-based)
+    # Median defects per unit
+    defect_counts_sorted = sorted([u['open'] for u in stuck_units]) if stuck_units else []
+    if defect_counts_sorted:
+        mid = len(defect_counts_sorted) // 2
+        median_defects = defect_counts_sorted[mid] if len(defect_counts_sorted) % 2 else round((defect_counts_sorted[mid-1] + defect_counts_sorted[mid]) / 2, 1)
+    else:
+        median_defects = 0
+
+    # Defect rate: total open defects / items inspected (units * 509)
+    items_inspected = units_inspected * 509
+    total_open_defects = ledger['open']
+    defect_rate = round(total_open_defects / items_inspected * 100, 1) if items_inspected > 0 else 0
+
+    # Est C1 complete: based on weekly inspection rate up to snapshot
+    weeks_elapsed = len(trend_points) if trend_points else 1
+    rate_per_week = round(units_inspected / max(weeks_elapsed, 1), 1)
+    units_remaining = total_units - units_inspected
+    if rate_per_week > 0:
+        weeks_to_go = units_remaining / rate_per_week
+        from datetime import date as _date
+        est_complete = snapshot_sast.date() + _td(weeks=weeks_to_go)
+        est_complete_str = est_complete.strftime('%d %b %Y')
+    else:
+        est_complete_str = None
+
+    kpi = {
+        'units_inspected': units_inspected,
+        'total_units': total_units,
+        'pct_complete': round(units_inspected / total_units * 100) if total_units else 0,
+        'open_defects': total_open_defects,
+        'certified': metrics['certified'],
+        'avg_per_unit': stuck_headline['avg_per_unit'],
+        'median_per_unit': median_defects,
+        'defect_rate': defect_rate,
+        'items_inspected': items_inspected,
+        'worst_unit': stuck_headline['worst_unit'],
+        'worst_count': stuck_headline['worst_count'],
+        'est_complete': est_complete_str,
+        'units_remaining': units_remaining,
+        'rate_per_week': rate_per_week,
+    }
+
     return {
         'units_inspected': units_inspected,
         'metrics': metrics,
@@ -4907,6 +4950,7 @@ def _build_pipeline_report_data():
         'stuck_units': stuck_units,
         'stuck_headline': stuck_headline,
         'snapshot_label': snapshot_label,
+        'kpi': kpi,
     }
 
 

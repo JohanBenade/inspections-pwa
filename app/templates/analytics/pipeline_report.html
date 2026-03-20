@@ -230,22 +230,55 @@ body {
 
         <div class="metric-row">
             <div class="metric-card">
-                <div class="metric-value">{{ units_inspected }} <span style="font-size: 16px; color: #9A9A9A;">/ {{ total_units }}</span></div>
                 <div class="metric-label">Units Inspected</div>
+                <div class="metric-value">{{ kpi.units_inspected }} <span style="font-size: 16px; color: #9A9A9A;">/ {{ kpi.total_units }}</span></div>
+                <div style="margin-top: 4px; height: 4px; background: #E8E6E1; border-radius: 2px;"><div style="height: 100%; width: {{ kpi.pct_complete }}%; background: #C8963E; border-radius: 2px;"></div></div>
+                <div style="font-size: 9px; color: #9A9A9A; margin-top: 3px;">{{ kpi.pct_complete }}% of project</div>
             </div>
             <div class="metric-card">
-                <div class="metric-value">{{ '{:,}'.format(ledger.open) }}</div>
+                <div class="metric-label">Est. C1 Complete</div>
+                <div class="metric-value" style="font-size: 20px;">{% if kpi.est_complete %}{{ kpi.est_complete }}{% else %}&mdash;{% endif %}</div>
+                <div style="font-size: 9px; color: #9A9A9A; margin-top: 3px;">{{ kpi.units_remaining }} remaining &middot; {{ kpi.rate_per_week }} units/week</div>
+            </div>
+            <div class="metric-card">
                 <div class="metric-label">Open Defects</div>
+                <div class="metric-value" style="color: #C8963E;">{{ '{:,}'.format(kpi.open_defects) }}</div>
+                <div style="font-size: 9px; color: #9A9A9A; margin-top: 3px;">across all zones</div>
             </div>
             <div class="metric-card">
-                <div class="metric-value">{{ metrics.certified }} <span style="font-size: 16px; color: #9A9A9A;">/ {{ total_units }}</span></div>
-                <div class="metric-label">Units Certified</div>
+                <div class="metric-label">Certified</div>
+                <div class="metric-value">{{ kpi.certified }}</div>
+                <div style="font-size: 9px; color: #9A9A9A; margin-top: 3px;">of {{ kpi.units_inspected }} inspected</div>
+            </div>
+        </div>
+
+        <div style="margin-top: 6px; font-size: 9px; font-weight: 600; color: #9A9A9A; letter-spacing: 1.2px; text-transform: uppercase;">Quality (Inspected Units Only)</div>
+        <div class="metric-row" style="margin-top: 6px;">
+            <div class="metric-card">
+                <div class="metric-label">Avg Defects / Unit</div>
+                <div class="metric-value">{{ kpi.avg_per_unit }}</div>
+                <div style="font-size: 9px; color: #9A9A9A; margin-top: 3px;">{{ kpi.units_inspected }} units inspected</div>
+            </div>
+            <div class="metric-card">
+                <div class="metric-label">Median Defects / Unit</div>
+                <div class="metric-value">{{ kpi.median_per_unit }}</div>
+                <div style="font-size: 9px; color: #9A9A9A; margin-top: 3px;">midpoint of {{ kpi.units_inspected }} units</div>
+            </div>
+            <div class="metric-card">
+                <div class="metric-label">Defect Rate</div>
+                <div class="metric-value" style="color: #C8963E;">{{ kpi.defect_rate }}%</div>
+                <div style="font-size: 9px; color: #9A9A9A; margin-top: 3px;">{{ '{:,}'.format(kpi.items_inspected) }} items inspected</div>
+            </div>
+            <div class="metric-card">
+                <div class="metric-label">Worst Unit</div>
+                <div class="metric-value">{% if kpi.worst_count %}{{ kpi.worst_count }}{% else %}&mdash;{% endif %}</div>
+                <div style="font-size: 9px; color: #9A9A9A; margin-top: 3px;">{% if kpi.worst_unit %}Unit {{ kpi.worst_unit }}{% endif %}</div>
             </div>
         </div>
 
         {% if active_batches %}
-        <div style="margin-top: 16px; padding: 12px 14px; background: #F8F7F5; border: 1px solid #E8E6E1; border-radius: 6px;">
-            <div style="font-size: 9px; font-weight: 600; color: #9A9A9A; letter-spacing: 1.5px; text-transform: uppercase; margin-bottom: 6px;">This Week</div>
+        <div style="margin-top: 12px; padding: 12px 14px; background: #F8F7F5; border: 1px solid #E8E6E1; border-radius: 6px;">
+            <div style="font-size: 9px; font-weight: 600; color: #9A9A9A; letter-spacing: 1.5px; text-transform: uppercase; margin-bottom: 6px;">Latest Batch</div>
             {% for b in active_batches %}
             <div style="font-size: 12px;{% if not loop.first %} margin-top: 6px;{% endif %}">
                 <span style="font-weight: 700; color: #1A1A1A;">{{ b.name }}</span>
