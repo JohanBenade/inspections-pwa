@@ -255,7 +255,7 @@ def detail(batch_id):
     units_raw = query_db("""
         SELECT bu.id AS bu_id, COALESCE(i.status, 'not_started') AS bu_status, COALESCE(bu.inspector_id, i.inspector_id) AS inspector_id,
             bu.cycle_id, u.id AS unit_id, u.unit_number, u.block, u.floor,
-            COALESCE(i.cycle_number, (SELECT cycle_number FROM inspection WHERE cycle_id = bu.cycle_id LIMIT 1), (SELECT cycle_number FROM inspection_cycle WHERE id = bu.cycle_id)) AS cycle_number,
+            (SELECT cycle_number FROM inspection_cycle WHERE id = bu.cycle_id) AS cycle_number,
             i.id AS inspection_id, i.status AS inspection_status,
             COALESCE(insp.name, i.inspector_name) AS inspector_name,
             bu.exclusion_list_id
@@ -273,7 +273,7 @@ def detail(batch_id):
     removed_raw = query_db("""
         SELECT bu.id AS bu_id, bu.removed_at, bu.removed_by, bu.removed_reason,
                u.unit_number, u.block, u.floor,
-               COALESCE((SELECT cycle_number FROM inspection WHERE cycle_id = bu.cycle_id LIMIT 1), (SELECT cycle_number FROM inspection_cycle WHERE id = bu.cycle_id)) AS cycle_number,
+               (SELECT cycle_number FROM inspection_cycle WHERE id = bu.cycle_id) AS cycle_number,
                COALESCE(insp.name, bu.removed_by) AS removed_by_name
         FROM batch_unit bu
         JOIN unit u ON bu.unit_id = u.id
@@ -679,7 +679,7 @@ def assign_inspector(batch_id):
     else:
         insp_id = generate_id()
         today = datetime.now().strftime('%Y-%m-%d')
-        cn_row = query_db("SELECT cycle_number FROM inspection WHERE cycle_id = ? LIMIT 1", [bu['cycle_id']], one=True)
+        cn_row = query_db("SELECT cycle_number FROM inspection_cycle WHERE id = ?", [bu['cycle_id']], one=True)
         cn = cn_row['cycle_number'] if cn_row else 1
         db.execute("""
             INSERT INTO inspection
@@ -884,7 +884,7 @@ def _build_live_monitor_data(batch_id, tenant_id):
                COALESCE(i.status, 'not_started') AS insp_status,
                i.id AS inspection_id,
                i.started_at,
-               COALESCE(i.cycle_number, (SELECT cycle_number FROM inspection WHERE cycle_id = bu.cycle_id LIMIT 1), (SELECT cycle_number FROM inspection_cycle WHERE id = bu.cycle_id)) AS cycle_number,
+               (SELECT cycle_number FROM inspection_cycle WHERE id = bu.cycle_id) AS cycle_number,
                COALESCE(insp.name, i.inspector_name) AS inspector_name
         FROM batch_unit bu
         JOIN unit u ON bu.unit_id = u.id
