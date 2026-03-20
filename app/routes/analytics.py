@@ -4530,6 +4530,20 @@ def _build_pipeline_report_data():
     """Build data for the Pipeline Report (Page 1: Project Pipeline)."""
     tenant_id = session.get('tenant_id', 'MONOGRAPH')
 
+    # Snapshot: last Tuesday midnight SAST (UTC+2) converted to UTC
+    from datetime import datetime as _dt, timedelta as _td
+    _now_sast = _dt.utcnow() + _td(hours=2)
+    _days_since_tue = (_now_sast.weekday() - 1) % 7
+    if _days_since_tue == 0:
+        _days_since_tue = 7  # On Tuesday, use LAST Tuesday
+    snapshot_sast = _now_sast.replace(hour=0, minute=0, second=0, microsecond=0) - _td(days=_days_since_tue)
+    snapshot_utc = snapshot_sast - _td(hours=2)
+    snapshot_str = snapshot_utc.strftime('%Y-%m-%d %H:%M:%S')
+    # Previous Tuesday (for ledger B/Fwd)
+    prev_tue_utc = snapshot_utc - _td(days=7)
+    prev_tue_str = prev_tue_utc.strftime('%Y-%m-%d %H:%M:%S')
+    snapshot_label = snapshot_sast.strftime('%d %b %Y')
+
     # All real units
     all_units = query_db("""
         SELECT id, unit_number, block, floor, certified_at
@@ -4569,15 +4583,17 @@ def _build_pipeline_report_data():
     """, [tenant_id])
     c2_plus_ids = set(r['unit_id'] for r in c2_rows)
 
-    # Open defects per unit
+    # Open defects per unit (as of snapshot Tuesday)
     open_rows = query_db("""
         SELECT d.unit_id, COUNT(*) as cnt
         FROM defect d
-        JOIN unit u ON d.unit_id = u.id
-        WHERE d.tenant_id = ? AND u.unit_number NOT LIKE 'TEST%'
-        AND d.status = 'open'
+        JOIN unit_real u ON d.unit_id = u.id
+        WHERE d.tenant_id = ? AND d.created_at <= ?
+        AND (d.status = 'open' OR (d.status = 'cleared' AND d.cleared_at > ?))
+        AND d.raised_cycle_id NOT LIKE 'test-%%'
+        AND EXISTS (SELECT 1 FROM inspection i2 WHERE i2.unit_id = d.unit_id AND i2.cycle_id = d.raised_cycle_id AND i2.status IN ('reviewed','approved','certified','pending_followup'))
         GROUP BY d.unit_id
-    """, [tenant_id])
+    """, [tenant_id, snapshot_str, snapshot_str])
     unit_open = {r['unit_id']: r['cnt'] for r in open_rows}
 
     # Headline metrics
@@ -4677,32 +4693,9 @@ def _build_pipeline_report_data():
             })
             tue = tue + _td(days=7)
 
-        # Add today as live final data point (so chart matches metric card)
-        today_str = today.strftime('%Y-%m-%d %H:%M:%S')
-        today_label = today.strftime('%d %b')
-        if not trend_points or trend_points[-1]['date'] != today_label:
-            raised_today = query_db(
-                "SELECT COUNT(*) as c FROM defect d JOIN unit_real u ON d.unit_id = u.id WHERE d.tenant_id = ? AND d.created_at <= ? AND d.raised_cycle_id NOT LIKE 'test-%%' AND EXISTS (SELECT 1 FROM inspection i2 WHERE i2.unit_id = d.unit_id AND i2.cycle_id = d.raised_cycle_id AND i2.status IN ('reviewed','approved','certified','pending_followup'))",
-                [tenant_id, today_str], one=True)
-            cleared_today = query_db(
-                "SELECT COUNT(*) as c FROM defect d JOIN unit_real u ON d.unit_id = u.id WHERE d.tenant_id = ? AND d.status = 'cleared' AND d.cleared_at <= ? AND d.raised_cycle_id NOT LIKE 'test-%%' AND EXISTS (SELECT 1 FROM inspection i2 WHERE i2.unit_id = d.unit_id AND i2.cycle_id = d.raised_cycle_id AND i2.status IN ('reviewed','approved','certified','pending_followup'))",
-                [tenant_id, today_str], one=True)
-            trend_points.append({
-                'date': today_label,
-                'raised': raised_today['c'] if raised_today else 0,
-                'cleared': cleared_today['c'] if cleared_today else 0,
-            })
-
-    # Weekly ledger (anchored on Tuesday midnight SAST = UTC+2)
-    now_utc = _dt.now()
-    now_sast = now_utc + _td(hours=2)
-    days_since_tue = (now_sast.weekday() - 1) % 7  # Tuesday = weekday 1
-    if days_since_tue == 0:
-        days_since_tue = 7  # On Tuesday itself, anchor on LAST Tuesday
-    last_tue_sast = now_sast.replace(hour=0, minute=0, second=0, microsecond=0) - _td(days=days_since_tue)
-    last_tue_utc = last_tue_sast - _td(hours=2)  # Convert back to UTC for DB
-    last_week_str = last_tue_utc.strftime('%Y-%m-%d %H:%M:%S')
-    now_str = now_utc.strftime('%Y-%m-%d %H:%M:%S')
+    # Weekly ledger (prev Tuesday -> snapshot Tuesday)
+    last_week_str = prev_tue_str
+    now_str = snapshot_str
     
     bfwd_row = query_db(
         "SELECT COUNT(*) as c FROM defect d JOIN unit_real u ON d.unit_id = u.id WHERE d.tenant_id = ? AND d.created_at <= ? AND (d.status = 'open' OR (d.status = 'cleared' AND d.cleared_at > ?)) AND d.raised_cycle_id NOT LIKE 'test-%%' AND EXISTS (SELECT 1 FROM inspection i2 WHERE i2.unit_id = d.unit_id AND i2.cycle_id = d.raised_cycle_id AND i2.status IN ('reviewed','approved','certified','pending_followup'))",
@@ -4715,8 +4708,8 @@ def _build_pipeline_report_data():
         [tenant_id, last_week_str, now_str], one=True)
     
     total_open_row = query_db(
-        "SELECT COUNT(*) as c FROM defect d JOIN unit_real u ON d.unit_id = u.id WHERE d.tenant_id = ? AND d.status = 'open' AND d.raised_cycle_id NOT LIKE 'test-%%' AND EXISTS (SELECT 1 FROM inspection i2 WHERE i2.unit_id = d.unit_id AND i2.cycle_id = d.raised_cycle_id AND i2.status IN ('reviewed','approved','certified','pending_followup'))",
-        [tenant_id], one=True)
+        "SELECT COUNT(*) as c FROM defect d JOIN unit_real u ON d.unit_id = u.id WHERE d.tenant_id = ? AND d.created_at <= ? AND (d.status = 'open' OR (d.status = 'cleared' AND d.cleared_at > ?)) AND d.raised_cycle_id NOT LIKE 'test-%%' AND EXISTS (SELECT 1 FROM inspection i2 WHERE i2.unit_id = d.unit_id AND i2.cycle_id = d.raised_cycle_id AND i2.status IN ('reviewed','approved','certified','pending_followup'))",
+        [tenant_id, snapshot_str, snapshot_str], one=True)
     
     ledger = {
         'bfwd': bfwd_row['c'] if bfwd_row else 0,
@@ -4747,12 +4740,13 @@ def _build_pipeline_report_data():
         SELECT u.block, u.floor, COUNT(*) as cnt
         FROM defect d
         JOIN unit_real u ON d.unit_id = u.id
-        WHERE d.tenant_id = ? AND d.status = 'open'
+        WHERE d.tenant_id = ? AND d.created_at <= ?
+        AND (d.status = 'open' OR (d.status = 'cleared' AND d.cleared_at > ?))
         AND d.raised_cycle_id NOT LIKE 'test-%%'
         AND EXISTS (SELECT 1 FROM inspection i2 WHERE i2.unit_id = d.unit_id AND i2.cycle_id = d.raised_cycle_id AND i2.status IN ('reviewed','approved','certified','pending_followup'))
         GROUP BY u.block, u.floor
         ORDER BY u.block, u.floor
-    """, [tenant_id])
+    """, [tenant_id, snapshot_str, snapshot_str])
 
     # Build zone grid structure
     blocks_set = sorted(set(r['block'] for r in zone_rows))
@@ -4782,12 +4776,13 @@ def _build_pipeline_report_data():
         JOIN item_template it ON d.item_template_id = it.id
         JOIN category_template ct ON it.category_id = ct.id
         JOIN area_template at2 ON ct.area_id = at2.id
-        WHERE d.tenant_id = ? AND d.status = 'open'
+        WHERE d.tenant_id = ? AND d.created_at <= ?
+        AND (d.status = 'open' OR (d.status = 'cleared' AND d.cleared_at > ?))
         AND d.raised_cycle_id NOT LIKE 'test-%%'
         AND EXISTS (SELECT 1 FROM inspection i2 WHERE i2.unit_id = d.unit_id AND i2.cycle_id = d.raised_cycle_id AND i2.status IN ('reviewed','approved','certified','pending_followup'))
         GROUP BY at2.area_name
         ORDER BY cnt DESC
-    """, [tenant_id])
+    """, [tenant_id, snapshot_str, snapshot_str])
 
     total_open = ledger['open']
     areas = []
@@ -4806,12 +4801,13 @@ def _build_pipeline_report_data():
         JOIN unit_real u ON d.unit_id = u.id
         JOIN item_template it ON d.item_template_id = it.id
         JOIN category_template ct ON it.category_id = ct.id
-        WHERE d.tenant_id = ? AND d.status = 'open'
+        WHERE d.tenant_id = ? AND d.created_at <= ?
+        AND (d.status = 'open' OR (d.status = 'cleared' AND d.cleared_at > ?))
         AND d.raised_cycle_id NOT LIKE 'test-%%'
         AND EXISTS (SELECT 1 FROM inspection i2 WHERE i2.unit_id = d.unit_id AND i2.cycle_id = d.raised_cycle_id AND i2.status IN ('reviewed','approved','certified','pending_followup'))
         GROUP BY ct.category_name
         ORDER BY cnt DESC
-    """, [tenant_id])
+    """, [tenant_id, snapshot_str, snapshot_str])
 
     trades = []
     for r in trade_rows:
@@ -4835,12 +4831,13 @@ def _build_pipeline_report_data():
         JOIN unit_real u ON d.unit_id = u.id
         LEFT JOIN inspection i ON i.unit_id = u.id AND i.tenant_id = d.tenant_id
             AND i.status IN ('reviewed', 'approved', 'pending_followup')
-        WHERE d.tenant_id = ? AND d.status = 'open'
+        WHERE d.tenant_id = ? AND d.created_at <= ?
+        AND (d.status = 'open' OR (d.status = 'cleared' AND d.cleared_at > ?))
         AND d.raised_cycle_id NOT LIKE 'test-%%'
         AND EXISTS (SELECT 1 FROM inspection i2 WHERE i2.unit_id = d.unit_id AND i2.cycle_id = d.raised_cycle_id AND i2.status IN ('reviewed','approved','certified','pending_followup'))
         GROUP BY u.id
         ORDER BY open_count DESC
-    """, [tenant_id])
+    """, [tenant_id, snapshot_str, snapshot_str])
 
     stuck_units = []
     total_stuck_defects = 0
@@ -4893,6 +4890,7 @@ def _build_pipeline_report_data():
         'active_batches': active_batches,
         'stuck_units': stuck_units,
         'stuck_headline': stuck_headline,
+        'snapshot_label': snapshot_label,
     }
 
 

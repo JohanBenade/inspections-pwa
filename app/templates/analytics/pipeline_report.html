@@ -191,7 +191,7 @@ body {
 {% if not is_pdf %}
 <div class="toolbar">
     <a href="{{ url_for('analytics.pipeline_report_pdf') }}" class="btn-pdf"
-       onclick="this.textContent='Preparing...'; this.style.opacity='0.6'; this.style.pointerEvents='none';">
+       onclick="var b=this; b.textContent='Preparing...'; b.style.opacity='0.6'; b.style.pointerEvents='none'; setTimeout(function(){b.textContent='Download PDF'; b.style.opacity='1'; b.style.pointerEvents='auto';}, 5000);">
         Download PDF
     </a>
     <button class="btn-print" onclick="window.print()">Print</button>

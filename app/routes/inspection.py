@@ -205,6 +205,19 @@ def start_inspection(unit_id):
             VALUES (?, ?, ?, ?, ?, ?, NULL)
         """, [generate_id(), tenant_id, inspection_id, template_id, status, comment])
     
+    # Flag items with open prior defects (for C2+ progress calculation)
+    if cycle['cycle_number'] > 1:
+        db.execute("""
+            UPDATE inspection_item SET has_prior_defects = 1
+            WHERE inspection_id = ?
+            AND item_template_id IN (
+                SELECT DISTINCT d.item_template_id
+                FROM defect d
+                WHERE d.unit_id = ? AND d.raised_cycle_id != ?
+                AND d.status = 'open'
+            )
+        """, [inspection_id, unit_id, cycle_id])
+    
     db.commit()
     
     log_audit(db, tenant_id, 'inspection', inspection_id, 'inspection_started',
