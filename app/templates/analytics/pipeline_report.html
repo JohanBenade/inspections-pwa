@@ -415,23 +415,23 @@ body {
                 <tr>
                     <td style="padding: 5px 10px; border-bottom: 1px solid #F0EEEA; font-weight: 600;">{{ block }}</td>
                     {% for fl in zone_grid.floors %}
-                    {% set val = zone_grid.data.get((block, fl), None) %}
-                    <td style="text-align: center; padding: 5px 10px; border-bottom: 1px solid #F0EEEA;
-                        {% if val is not none %}
-                            {% if val > zone_grid.median * 1.5 %}background: #FCEAE8; color: #C44D3F; font-weight: 700;
-                            {% elif val > zone_grid.median %}background: #FFF4E5; color: #8A6420; font-weight: 600;
-                            {% else %}background: #EEF5EF; color: #2D5A3A; font-weight: 600;
+                    {% set zd = zone_grid.data.get((block, fl), None) %}
+                    <td style="text-align: center; padding: 8px 6px; border-bottom: 1px solid #F0EEEA; line-height: 1.4;
+                        {% if zd is not none %}
+                            {% if zd.avg > zone_grid.project_avg * 1.5 %}background: #FCEAE8;
+                            {% elif zd.avg > zone_grid.project_avg %}background: #FFF4E5;
+                            {% else %}background: #EEF5EF;
                             {% endif %}
                         {% else %}color: #BFBDB8;
                         {% endif %}
-                    ">{% if val is not none %}{{ val }}{% else %}&mdash;{% endif %}</td>
+                    ">{% if zd is not none %}<span style="font-size: 14px; font-weight: 700; {% if zd.avg > zone_grid.project_avg * 1.5 %}color: #C44D3F;{% elif zd.avg > zone_grid.project_avg %}color: #8A6420;{% else %}color: #2D5A3A;{% endif %}">{{ zd.avg }}</span> <span style="font-size: 8px; color: #9A9A9A;">avg/unit</span><br><span style="font-size: 9px; color: #6B6B6B;">{{ zd.cnt }} defects</span><br><span style="font-size: 9px; color: #9A9A9A;">{{ zd.units }} units</span>{% else %}<span style="color: #BFBDB8;">&mdash;</span><br><span style="font-size: 8px; color: #BFBDB8;">No data</span>{% endif %}</td>
                     {% endfor %}
                 </tr>
                 {% endfor %}
             </tbody>
         </table>
         <div style="margin-top: 6px; font-size: 9px; color: #9A9A9A;">
-            Traffic light vs median ({{ zone_grid.median }} defects). Red &gt; 1.5x median. Amber &gt; median. Green &le; median.
+            Traffic light vs project average ({{ zone_grid.project_avg }} defects/unit). Red &gt; 1.5x avg. Amber &gt; avg. Green &le; avg.
         </div>
         {% else %}
         <div class="trend-placeholder">No zone data available</div>

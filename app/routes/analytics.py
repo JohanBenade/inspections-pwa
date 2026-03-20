@@ -4748,21 +4748,37 @@ def _build_pipeline_report_data():
         ORDER BY u.block, u.floor
     """, [tenant_id, snapshot_str, snapshot_str])
 
+    # Units inspected per zone (as of snapshot)
+    zone_unit_rows = query_db("""
+        SELECT u.block, u.floor, COUNT(DISTINCT i.unit_id) as units
+        FROM inspection i
+        JOIN unit_real u ON i.unit_id = u.id
+        WHERE i.tenant_id = ? AND i.submitted_at <= ?
+        AND i.status IN ('reviewed','approved','certified','pending_followup')
+        GROUP BY u.block, u.floor
+    """, [tenant_id, snapshot_str])
+    zone_units = {}
+    for r in zone_unit_rows:
+        zone_units[(r['block'], r['floor'])] = r['units']
+
     # Build zone grid structure
     blocks_set = sorted(set(r['block'] for r in zone_rows))
     floors_set = sorted(set(r['floor'] for r in zone_rows))
     zone_map = {}
     for r in zone_rows:
-        zone_map[(r['block'], r['floor'])] = r['cnt']
-    
-    zone_vals = [r['cnt'] for r in zone_rows] if zone_rows else [0]
-    zone_median = sorted(zone_vals)[len(zone_vals) // 2] if zone_vals else 0
+        key = (r['block'], r['floor'])
+        units = zone_units.get(key, 0)
+        avg = round(r['cnt'] / units, 1) if units > 0 else 0
+        zone_map[key] = {'cnt': r['cnt'], 'units': units, 'avg': avg}
+
+    zone_avgs = [v['avg'] for v in zone_map.values() if v['avg'] > 0]
+    project_avg = round(sum(v['cnt'] for v in zone_map.values()) / sum(v['units'] for v in zone_map.values()), 1) if zone_map and sum(v['units'] for v in zone_map.values()) > 0 else 0
 
     zone_grid = {
         'blocks': blocks_set,
         'floors': floors_set,
         'data': zone_map,
-        'median': zone_median,
+        'project_avg': project_avg,
     }
 
     # Floor label helper
