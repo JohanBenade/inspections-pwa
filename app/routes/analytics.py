@@ -2435,6 +2435,7 @@ def dashboard_legacy():
         pipeline_raw = query_db(
             "SELECT i.status, COUNT(*) as cnt FROM inspection i "
             "WHERE i.tenant_id = ? AND i.cycle_id NOT LIKE 'test-%' "
+            "AND i.status IN ('reviewed','approved','certified','pending_followup') "
             "GROUP BY i.status", [tenant_id])
         pipe_counts = {r['status']: r['cnt'] for r in pipeline_raw}
         pipeline_total = sum(pipe_counts.values()) or 1
@@ -2794,6 +2795,7 @@ def dashboard_legacy():
     pipeline_raw = query_db("""
         SELECT i.status, COUNT(*) as cnt FROM inspection i
         WHERE i.cycle_id = ? AND i.tenant_id = ?
+        AND i.status IN ('reviewed','approved','certified','pending_followup')
         GROUP BY i.status
     """, [selected_cycle_id, tenant_id])
     pipe_counts = {r['status']: r['cnt'] for r in pipeline_raw}
@@ -4607,13 +4609,24 @@ def _build_pipeline_report_data():
     batch_map = {}
     for r in active_batch_rows:
         bid = r['id']
-        uid = r['unit_id']
         if bid not in batch_map:
             batch_map[bid] = {'name': r['name'], 'new': 0, 'reinspection': 0}
-        if uid in unit_max_completed:
-            batch_map[bid]['reinspection'] += 1
-        else:
-            batch_map[bid]['new'] += 1
+    # Count new vs re-inspection using cycle_number from inspection_cycle
+    for bid in batch_map:
+        cycle_counts = query_db("""
+            SELECT ic.cycle_number, COUNT(*) as cnt
+            FROM batch_unit bu
+            JOIN inspection_cycle ic ON bu.cycle_id = ic.id
+            JOIN unit u ON bu.unit_id = u.id
+            WHERE bu.batch_id = ? AND bu.removed_at IS NULL
+            AND u.unit_number NOT LIKE 'TEST%'
+            GROUP BY ic.cycle_number
+        """, [bid])
+        for cc in cycle_counts:
+            if cc['cycle_number'] >= 2:
+                batch_map[bid]['reinspection'] += cc['cnt']
+            else:
+                batch_map[bid]['new'] += cc['cnt']
 
     active_batches = []
     for bid, bdata in batch_map.items():
