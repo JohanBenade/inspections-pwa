@@ -4554,7 +4554,7 @@ def _build_pipeline_report_data():
         FROM inspection i
         JOIN unit u ON i.unit_id = u.id
         WHERE i.tenant_id = ? AND u.unit_number NOT LIKE 'TEST%'
-        AND i.status IN ('submitted', 'reviewed', 'approved', 'pending_followup')
+        AND i.status IN ('reviewed', 'approved', 'pending_followup')
         GROUP BY i.unit_id
     """, [tenant_id])
     unit_max_completed = {r['unit_id']: r['max_cycle'] for r in completed_rows}
@@ -4805,7 +4805,7 @@ def _build_pipeline_report_data():
         FROM defect d
         JOIN unit u ON d.unit_id = u.id
         LEFT JOIN inspection i ON i.unit_id = u.id AND i.tenant_id = d.tenant_id
-            AND i.status IN ('submitted', 'reviewed', 'approved', 'pending_followup')
+            AND i.status IN ('reviewed', 'approved', 'pending_followup')
         WHERE d.tenant_id = ? AND d.status = 'open'
         AND u.unit_number NOT LIKE 'TEST%'
         GROUP BY u.id
@@ -4928,7 +4928,7 @@ def pipeline_dashboard():
         FROM inspection i
         JOIN unit u ON i.unit_id = u.id
         WHERE i.tenant_id = ? AND u.unit_number NOT LIKE 'TEST%'
-        AND i.status IN ('submitted', 'reviewed', 'approved', 'pending_followup')
+        AND i.status IN ('reviewed', 'approved', 'pending_followup')
     """, [tenant_id], one=True)
     units_inspected = inspected_row['cnt'] if inspected_row else 0
 
@@ -4951,7 +4951,7 @@ def pipeline_dashboard():
     batches_raw = query_db("""
         SELECT ib.id, ib.name, ib.status, ib.created_at,
                COUNT(DISTINCT bu.unit_id) as total_units,
-               COUNT(DISTINCT CASE WHEN i.status IN ('submitted','reviewed','approved','pending_followup')
+               COUNT(DISTINCT CASE WHEN i.status IN ('reviewed','approved','pending_followup')
                    THEN bu.unit_id END) as inspected_units,
                COUNT(DISTINCT CASE WHEN bu.status = 'signed' THEN bu.unit_id END) as signed_units
         FROM inspection_batch ib
