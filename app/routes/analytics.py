@@ -4667,13 +4667,15 @@ def _build_pipeline_report_data(live=False):
             'colour': '#C8963E',
         })
 
-    # 3. C2+ inspections created this week (Defects Raised -> Under Verification)
+    # 3. Units entered C2+ batch this week (Defects Raised -> Under Verification)
     c2_enter_rows = query_db("""
         SELECT DISTINCT u.unit_number
-        FROM inspection i
-        JOIN unit_real u ON i.unit_id = u.id
-        WHERE i.tenant_id = ? AND i.cycle_number >= 2
-        AND i.created_at > ? AND i.created_at <= ?
+        FROM batch_unit bu
+        JOIN unit_real u ON bu.unit_id = u.id
+        JOIN inspection_cycle ic ON bu.cycle_id = ic.id
+        WHERE bu.tenant_id = ? AND bu.removed_at IS NULL
+        AND ic.cycle_number >= 2
+        AND bu.created_at > ? AND bu.created_at <= ?
         ORDER BY u.unit_number
     """, [tenant_id, prev_tue_str, snapshot_str])
     if c2_enter_rows:
