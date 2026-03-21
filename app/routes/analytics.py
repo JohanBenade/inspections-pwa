@@ -5086,6 +5086,26 @@ def _build_pipeline_report_data(live=False):
         'rate_per_week': rate_per_week,
     }
 
+    # --- POOL TREND (avg net change over last 4 weeks) ---
+    pool_trend = {'direction': 'stable', 'avg_change': 0, 'weeks': 0}
+    if len(trend_points) >= 2:
+        recent = trend_points[-4:]  # last 4 (or fewer)
+        deltas = []
+        for i in range(1, len(recent)):
+            open_prev = recent[i-1]['raised'] - recent[i-1]['cleared']
+            open_curr = recent[i]['raised'] - recent[i]['cleared']
+            deltas.append(open_curr - open_prev)
+        if deltas:
+            avg_change = round(sum(deltas) / len(deltas))
+            pool_trend = {
+                'direction': 'growing' if avg_change > 0 else 'shrinking' if avg_change < 0 else 'stable',
+                'avg_change': abs(avg_change),
+                'weeks': len(deltas),
+            }
+
+    # --- STUCK UNITS SORT (cycle desc, then open desc) ---
+    stuck_units.sort(key=lambda x: (-x['cycle'], -x['open']))
+
     return {
         'units_inspected': units_inspected,
         'metrics': metrics,
@@ -5118,6 +5138,7 @@ def _build_pipeline_report_data(live=False):
         'ledger_to': (snapshot_utc + _td(hours=2)).strftime('%d %b %Y'),
         'kpi': kpi,
         'pipeline': pipeline,
+        'pool_trend': pool_trend,
     }
 
 
