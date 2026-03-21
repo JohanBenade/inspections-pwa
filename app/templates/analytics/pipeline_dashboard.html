@@ -94,9 +94,12 @@
     <div style="margin-bottom: 1.5rem; padding: 12px 16px; background: #F5F3EE; border-radius: 6px;">
         <h3 style="font-family: 'DM Sans', sans-serif; font-weight: 600; font-size: 0.85rem; color: #1A1A1A; margin-bottom: 8px;">Movement This Week</h3>
         {% for m in movements %}
-        <div style="display: flex; align-items: baseline; gap: 8px; margin-bottom: 6px;">
-            <span style="display: inline-block; padding: 2px 8px; border-radius: 3px; font-size: 0.65rem; font-weight: 700; background: {{ m.colour }}20; color: {{ m.colour }}; white-space: nowrap;">{{ m.label }}</span>
-            <span style="font-size: 0.75rem; color: #6B6B6B;">Units {{ m.units|join(', ') }}</span>
+        <div style="margin-bottom: 8px;">
+            <div style="display: flex; align-items: baseline; gap: 8px; margin-bottom: 2px;">
+                <span style="display: inline-block; padding: 2px 8px; border-radius: 3px; font-size: 0.65rem; font-weight: 700; background: {{ m.colour }}20; color: {{ m.colour }}; white-space: nowrap;">{{ m.label }}</span>
+                <span style="font-size: 0.75rem; font-weight: 600; color: #1A1A1A;">{{ m.detail }}</span>
+            </div>
+            <div style="font-size: 0.7rem; color: #9A9A9A; padding-left: 8px;">{{ m.units|join(', ') }}</div>
         </div>
         {% endfor %}
     </div>

@@ -4623,7 +4623,33 @@ def _build_pipeline_report_data(live=False):
     # --- MOVEMENTS THIS WEEK ---
     movements = []
 
-    # Units that completed C1 this week
+    # 1. Units entered a batch this week (Not Requested -> Awaiting Inspection)
+    batch_enter_rows = query_db("""
+        SELECT u.unit_number, ib.name as batch_name
+        FROM batch_unit bu
+        JOIN unit_real u ON bu.unit_id = u.id
+        JOIN inspection_batch ib ON bu.batch_id = ib.id
+        WHERE bu.tenant_id = ? AND bu.removed_at IS NULL
+        AND bu.created_at > ? AND bu.created_at <= ?
+        ORDER BY ib.name, u.unit_number
+    """, [tenant_id, prev_tue_str, snapshot_str])
+    if batch_enter_rows:
+        from collections import OrderedDict
+        batch_groups = OrderedDict()
+        for r in batch_enter_rows:
+            bn = r['batch_name']
+            if bn not in batch_groups:
+                batch_groups[bn] = []
+            batch_groups[bn].append(r['unit_number'])
+        for bn, units in batch_groups.items():
+            movements.append({
+                'label': 'Awaiting Inspection',
+                'detail': '{} ({} units)'.format(bn, len(units)),
+                'units': units,
+                'colour': '#6B6B6B',
+            })
+
+    # 2. C1 inspections reviewed this week (Awaiting -> Defects Raised)
     c1_done_rows = query_db("""
         SELECT u.unit_number
         FROM inspection i
@@ -4634,14 +4660,14 @@ def _build_pipeline_report_data(live=False):
         ORDER BY u.unit_number
     """, [tenant_id, prev_tue_str, snapshot_str])
     if c1_done_rows:
-        units = [r['unit_number'] for r in c1_done_rows]
         movements.append({
             'label': 'Defects Raised',
-            'units': units,
+            'detail': '{} units completed C1'.format(len(c1_done_rows)),
+            'units': [r['unit_number'] for r in c1_done_rows],
             'colour': '#C8963E',
         })
 
-    # Units that entered C2+ this week
+    # 3. C2+ inspections created this week (Defects Raised -> Under Verification)
     c2_enter_rows = query_db("""
         SELECT DISTINCT u.unit_number
         FROM inspection i
@@ -4651,14 +4677,14 @@ def _build_pipeline_report_data(live=False):
         ORDER BY u.unit_number
     """, [tenant_id, prev_tue_str, snapshot_str])
     if c2_enter_rows:
-        units = [r['unit_number'] for r in c2_enter_rows]
         movements.append({
             'label': 'Under Verification',
-            'units': units,
+            'detail': '{} units entered C2+'.format(len(c2_enter_rows)),
+            'units': [r['unit_number'] for r in c2_enter_rows],
             'colour': '#3D6B8E',
         })
 
-    # Units certified this week
+    # 4. Units certified this week
     cert_rows = query_db("""
         SELECT u.unit_number
         FROM unit_real u
@@ -4666,10 +4692,10 @@ def _build_pipeline_report_data(live=False):
         ORDER BY u.unit_number
     """, [tenant_id, prev_tue_str, snapshot_str])
     if cert_rows:
-        units = [r['unit_number'] for r in cert_rows]
         movements.append({
             'label': 'Certified',
-            'units': units,
+            'detail': '{} units completed'.format(len(cert_rows)),
+            'units': [r['unit_number'] for r in cert_rows],
             'colour': '#4A7C59',
         })
 
