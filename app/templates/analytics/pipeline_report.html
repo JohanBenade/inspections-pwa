@@ -303,7 +303,31 @@ body {
     </div>
     {% endif %}
 
-    <!-- ============ PAGE 2: DEFECT POOL ============ -->
+    <!-- ============ MOVEMENT THIS WEEK ============ -->
+    {% if movements %}
+    <div class="section">
+        <div class="section-header">
+            <span class="section-number">02</span>
+            <span class="section-title">Movement This Week</span>
+        </div>
+        {% for m in movements %}
+        <div style="display: flex; align-items: baseline; gap: 8px; margin-bottom: 6px;">
+            <span style="display: inline-block; padding: 2px 8px; border-radius: 3px; font-size: 9px; font-weight: 700; background: {{ m.colour }}20; color: {{ m.colour }}; white-space: nowrap;">{{ m.label }}</span>
+            <span style="font-size: 10px; color: #6B6B6B;">Units {{ m.units|join(', ') }}</span>
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="section">
+        <div class="section-header">
+            <span class="section-number">02</span>
+            <span class="section-title">Movement This Week</span>
+        </div>
+        <div style="font-size: 10px; color: #9A9A9A;">No stage changes this week.</div>
+    </div>
+    {% endif %}
+
+        <!-- ============ PAGE 2: DEFECT POOL ============ -->
 
     <!-- SECTION 05: CUMULATIVE FLOW -->
     <div class="section">

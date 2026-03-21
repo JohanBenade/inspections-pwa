@@ -4620,8 +4620,58 @@ def _build_pipeline_report_data(live=False):
         'first_time_fix': None,
     }
 
-    # Movement this week: empty list for now (no stage transitions yet)
+    # --- MOVEMENTS THIS WEEK ---
     movements = []
+
+    # Units that completed C1 this week
+    c1_done_rows = query_db("""
+        SELECT u.unit_number
+        FROM inspection i
+        JOIN unit_real u ON i.unit_id = u.id
+        WHERE i.tenant_id = ? AND i.cycle_number = 1
+        AND i.submitted_at > ? AND i.submitted_at <= ?
+        AND i.status IN ('reviewed','approved','certified','pending_followup')
+        ORDER BY u.unit_number
+    """, [tenant_id, prev_tue_str, snapshot_str])
+    if c1_done_rows:
+        units = [r['unit_number'] for r in c1_done_rows]
+        movements.append({
+            'label': 'Defects Raised',
+            'units': units,
+            'colour': '#C8963E',
+        })
+
+    # Units that entered C2+ this week
+    c2_enter_rows = query_db("""
+        SELECT DISTINCT u.unit_number
+        FROM inspection i
+        JOIN unit_real u ON i.unit_id = u.id
+        WHERE i.tenant_id = ? AND i.cycle_number >= 2
+        AND i.created_at > ? AND i.created_at <= ?
+        ORDER BY u.unit_number
+    """, [tenant_id, prev_tue_str, snapshot_str])
+    if c2_enter_rows:
+        units = [r['unit_number'] for r in c2_enter_rows]
+        movements.append({
+            'label': 'Under Verification',
+            'units': units,
+            'colour': '#3D6B8E',
+        })
+
+    # Units certified this week
+    cert_rows = query_db("""
+        SELECT u.unit_number
+        FROM unit_real u
+        WHERE u.tenant_id = ? AND u.certified_at > ? AND u.certified_at <= ?
+        ORDER BY u.unit_number
+    """, [tenant_id, prev_tue_str, snapshot_str])
+    if cert_rows:
+        units = [r['unit_number'] for r in cert_rows]
+        movements.append({
+            'label': 'Certified',
+            'units': units,
+            'colour': '#4A7C59',
+        })
 
     # --- 5-STAGE PIPELINE ---
     pipeline = {'not_requested': 0, 'awaiting': 0, 'defects_raised': 0, 'under_verification': 0, 'certified': 0}
