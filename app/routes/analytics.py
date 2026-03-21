@@ -4115,7 +4115,7 @@ def _build_batch_report_data(batch_id):
             c2_total_cleared += clc
             c2_total_new += nwc
             c2_total_still_open += so
-    c2_unit_table.sort(key=lambda x: (x['clearance_pct'], -x['still_open']))
+    c2_unit_table.sort(key=lambda x: (-x['cycle_number'], x['clearance_pct'], -x['still_open']))
     c2_summary = {
         'total_r1': c2_total_r1, 'total_cleared': c2_total_cleared,
         'total_new': c2_total_new, 'total_still_open': c2_total_still_open,

@@ -186,6 +186,7 @@ body {
     </div>
 </div>
 
+{%- if not c2_zones %}
 <!-- ============ PROGRESS KPIs (batch-level, always combined) ============ -->
 <table class="kpi-table"><tr>
     <td class="kpi-cell" style="width: 33.33%;">
@@ -308,6 +309,74 @@ body {
 </div>
 {% endif %}
 
+
+{% endif %}{# end pure C1 page 1 #}
+
+{% if c2_zones and not c1_zones %}
+<!-- ============ PROGRESS KPIs (pure C2+ batch) ============ -->
+{% set c2_total_zu = c2_zones|sum(attribute='total_units') %}
+<table class="kpi-table"><tr>
+    <td class="kpi-cell" style="width: 33.33%; border-left-color: #3D6B8E;">
+        <div class="kpi-label">Units Re-inspected</div>
+        <div class="kpi-value">{{ c2_summary.units_inspected }} <span style="font-size: 14px; font-weight: 300; color: #9A9A9A;">/ {{ c2_total_zu }}</span></div>
+        <div class="progress-track"><div class="progress-fill" style="width: {{ (c2_summary.units_inspected / c2_total_zu * 100)|round if c2_total_zu > 0 else 0 }}%; background: #3D6B8E;"></div></div>
+        <div class="kpi-sub">{{ (c2_summary.units_inspected / c2_total_zu * 100)|round|int if c2_total_zu > 0 else 0 }}% complete</div>
+    </td>
+    <td class="kpi-cell" style="width: 33.33%; border-left-color: #4A7C59;">
+        <div class="kpi-label">Cleared</div>
+        <div class="kpi-value kpi-value-green">{{ c2_summary.total_cleared }}</div>
+        <div class="kpi-sub">of {{ c2_summary.total_r1 }} defects reviewed</div>
+    </td>
+    <td class="kpi-cell" style="width: 33.33%; border-left-color: {% if c2_summary.clearance_pct >= 70 %}#4A7C59{% elif c2_summary.clearance_pct >= 40 %}#C8963E{% else %}#C44D3F{% endif %};">
+        <div class="kpi-label">Clearance Rate</div>
+        <div class="kpi-value" style="color: {% if c2_summary.clearance_pct >= 70 %}#4A7C59{% elif c2_summary.clearance_pct >= 40 %}#C8963E{% else %}#C44D3F{% endif %};">{{ c2_summary.clearance_pct }}%</div>
+        <div class="kpi-sub">{{ c2_summary.total_still_open }} still open{% if c2_summary.total_new > 0 %} &middot; {{ c2_summary.total_new }} new{% endif %}</div>
+    </td>
+</tr></table>
+
+{% set c2v_colour = '#4A7C59' if c2_summary.clearance_pct >= 70 else '#C8963E' if c2_summary.clearance_pct >= 40 else '#C44D3F' %}
+{% set c2v_bg = '#EFF5F1' if c2_summary.clearance_pct >= 70 else 'rgba(200,150,62,0.08)' if c2_summary.clearance_pct >= 40 else '#FDF0EF' %}
+<div style="margin: 1rem 0; border: 1.5px solid {{ c2v_colour }}; border-radius: 4px; background: {{ c2v_bg }}; padding: 14px 16px;">
+    {% if c2_summary.clearance_pct >= 70 %}
+    <div style="font-size: 0.7rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: {{ c2v_colour }};">&#x25BC; GOOD PROGRESS</div>
+    <div style="font-size: 0.7rem; color: #6B6B6B; margin-top: 4px;">Raubex cleared {{ c2_summary.clearance_pct }}% of defects. {{ c2_summary.total_still_open }} items remain open.</div>
+    {% elif c2_summary.clearance_pct >= 40 %}
+    <div style="font-size: 0.7rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: {{ c2v_colour }};">&#x25B6; PARTIAL PROGRESS</div>
+    <div style="font-size: 0.7rem; color: #6B6B6B; margin-top: 4px;">{{ c2_summary.clearance_pct }}% clearance rate. {{ c2_summary.total_still_open }} defects still require rectification.</div>
+    {% else %}
+    <div style="font-size: 0.7rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: {{ c2v_colour }};">&#x25B2; INSUFFICIENT PROGRESS</div>
+    <div style="font-size: 0.7rem; color: #6B6B6B; margin-top: 4px;">Only {{ c2_summary.clearance_pct }}% of defects cleared. {{ c2_summary.total_still_open }} items remain open. Escalation may be required.</div>
+    {% endif %}
+    {% if c2_summary.total_new > 0 %}
+    <div style="font-size: 0.7rem; color: #6B6B6B; margin-top: 4px;">{{ c2_summary.total_new }} new defect{{ 's' if c2_summary.total_new != 1 else '' }} found during re-inspection.</div>
+    {% endif %}
+</div>
+{% endif %}
+
+{% if is_mixed %}
+<!-- ============ PROGRESS KPIs (mixed batch composition) ============ -->
+{% set c2_total_zu = c2_zones|sum(attribute='total_units') %}
+<table class="kpi-table"><tr>
+    <td class="kpi-cell" style="width: 33.33%;">
+        <div class="kpi-label">Units in Batch</div>
+        <div class="kpi-value">{{ kpis.total_units }}</div>
+        <div class="progress-track"><div class="progress-fill" style="width: {{ (kpis.inspected / kpis.total_units * 100)|round if kpis.total_units > 0 else 0 }}%;"></div></div>
+        <div class="kpi-sub">{{ kpis.inspected }} of {{ kpis.total_units }} inspected</div>
+    </td>
+    <td class="kpi-cell" style="width: 33.33%; border-left-color: #C8963E;">
+        <div class="kpi-label">C1 Inspections</div>
+        <div class="kpi-value">{{ c1_kpis.inspected }} <span style="font-size: 14px; font-weight: 300; color: #9A9A9A;">/ {{ c1_kpis.total_units }}</span></div>
+        <div class="progress-track"><div class="progress-fill" style="width: {{ (c1_kpis.inspected / c1_kpis.total_units * 100)|round if c1_kpis.total_units > 0 else 0 }}%; background: #C8963E;"></div></div>
+        <div class="kpi-sub">{{ c1_kpis.total_defects }} defects found</div>
+    </td>
+    <td class="kpi-cell" style="width: 33.33%; border-left-color: #3D6B8E;">
+        <div class="kpi-label">C2+ Re-inspections</div>
+        <div class="kpi-value">{{ c2_summary.units_inspected }} <span style="font-size: 14px; font-weight: 300; color: #9A9A9A;">/ {{ c2_total_zu }}</span></div>
+        <div class="progress-track"><div class="progress-fill" style="width: {{ (c2_summary.units_inspected / c2_total_zu * 100)|round if c2_total_zu > 0 else 0 }}%; background: #3D6B8E;"></div></div>
+        <div class="kpi-sub">{% if c2_summary.units_inspected > 0 %}{{ c2_summary.clearance_pct }}% clearance rate{% else %}awaiting inspection{% endif %}</div>
+    </td>
+</tr></table>
+{% endif %}
 
 {# ================================================================ #}
 {# CHAPTER 1: SNAG RESULTS (C1)                                     #}
@@ -635,6 +704,7 @@ body {
             <tr>
                 <th>Unit</th>
                 <th>Zone</th>
+                <th class="text-center">Cycle</th>
                 <th class="text-right">C1 Defects</th>
                 <th class="text-right">Cleared</th>
                 <th class="text-right">Still Open</th>
@@ -648,6 +718,7 @@ body {
         <tr>
             <td style="font-weight: 700;">{{ u.unit_number }}</td>
             <td style="font-size: 9px; color: #6B6B6B;">{{ u.zone }}</td>
+            <td class="text-center"><span style="display: inline-block; padding: 2px 8px; border-radius: 3px; font-size: 9px; font-weight: 700; background: {% if u.cycle_number > 2 %}rgba(196,77,63,0.15); color: #C44D3F{% else %}rgba(61,107,142,0.15); color: #3D6B8E{% endif %};">C{{ u.cycle_number }}</span></td>
             <td class="text-right">{{ u.r1_defects }}</td>
             <td class="text-right" style="color: #4A7C59; font-weight: 600;">{{ u.cleared }}</td>
             <td class="text-right" style="color: #C44D3F; font-weight: 600;">{{ u.still_open }}</td>
@@ -663,7 +734,7 @@ body {
         </tbody>
         <tfoot>
             <tr>
-                <td colspan="2" style="font-weight: 600;">Total ({{ c2_unit_table|length }} units)</td>
+                <td colspan="3" style="font-weight: 600;">Total ({{ c2_unit_table|length }} units)</td>
                 <td class="text-right font-bold">{{ c2_summary.total_r1 }}</td>
                 <td class="text-right font-bold" style="color: #4A7C59;">{{ c2_summary.total_cleared }}</td>
                 <td class="text-right font-bold" style="color: #C44D3F;">{{ c2_summary.total_still_open }}</td>
