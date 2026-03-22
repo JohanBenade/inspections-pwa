@@ -233,6 +233,8 @@ def start_inspection(unit_id):
                      WHERE c.parent_item_id = it.id
                      AND ci.inspection_id = ?
                      AND ci.status != 'skipped') = 0
+                AND (SELECT COUNT(*) FROM item_template c2
+                     WHERE c2.parent_item_id = it.id) > 0
             )
         """, [inspection_id, tenant_id, inspection_id])
     
