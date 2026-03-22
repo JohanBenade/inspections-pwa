@@ -48,7 +48,7 @@
     {# Count active items, marked items, and defects (from defect table + chips) for this category #}
     {% set ns = namespace(active=0, marked=0, defects=0, ni=0, parent_count=0, parent_carried_ok=0) %}
     {% for item in category.checklist %}
-        {% if not item.parent_item_id and item.status not in ['skipped', 'pending'] %}
+        {% if not item.parent_item_id and item.status != 'skipped' and (is_followup or item.status != 'pending') %}
             {% set ns.parent_count = ns.parent_count + 1 %}
             {% if item.is_carried_ok|default(false) %}
                 {% set ns.parent_carried_ok = ns.parent_carried_ok + 1 %}
