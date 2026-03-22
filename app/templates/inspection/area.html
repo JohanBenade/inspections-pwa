@@ -48,13 +48,16 @@
     {# Count active items, marked items, and defects (from defect table + chips) for this category #}
     {% set ns = namespace(active=0, marked=0, defects=0, ni=0, parent_count=0, parent_carried_ok=0) %}
     {% for item in category.checklist %}
-        {% if not item.parent_item_id and item.status not in ['skipped', 'pending'] and not item.has_prior_defects|default(false) %}
+        {% if not item.parent_item_id and item.status not in ['skipped', 'pending'] %}
             {% set ns.parent_count = ns.parent_count + 1 %}
             {% if item.is_carried_ok|default(false) %}
                 {% set ns.parent_carried_ok = ns.parent_carried_ok + 1 %}
             {% endif %}
         {% endif %}
-        {% if item.status != 'skipped' and not item.is_carried_ok|default(false) and not (is_followup and not item.parent_item_id and item.child_count == 0 and not item.has_open_prior|default(false)) %}
+        {% if not item.parent_item_id and item.was_not_installed|default(false) %}
+            {% set ns.any_parent_was_ni = true %}
+        {% endif %}
+        {% if item.status != 'skipped' and not item.is_carried_ok|default(false) %}
             {% set ns.active = ns.active + 1 %}
             {% if item.status not in ['pending', 'skipped'] %}
                 {% set ns.marked = ns.marked + 1 %}
@@ -89,7 +92,7 @@
             <h3 class="font-semibold text-gray-800 flex-1">{{ category.name }} <span class="cat-defect-badge bg-red-500 text-white text-xs px-1.5 py-0.5 rounded-full font-medium align-middle" {% if ns.defects == 0 %}style="display:none"{% endif %}>{{ ns.defects }}</span></h3>
             {% if category.all_skipped %}
             <span class="text-xs bg-orange-100 text-orange-600 px-2 py-0.5 rounded-full font-medium ml-2">{{ category.checklist|length }} excluded</span>
-            {% elif is_followup and ns.parent_count > 0 and ns.parent_carried_ok == ns.parent_count %}
+            {% elif is_followup and ns.parent_count > 0 and not ns.any_parent_was_ni %}
             <span class="flex items-center gap-2 ml-2 flex-shrink-0">
                 {% if ns.active > 0 %}
                 <span class="cat-counter text-xs {% if ns.marked == ns.active %}text-green-600 font-medium{% else %}text-gray-500{% endif %}">
@@ -153,7 +156,7 @@
             <!-- Items -->
             <div class="divide-y">
                 {% for item in category.checklist %}
-                {% if item.status != 'skipped' and (not item.is_carried_ok|default(false) or item.children_have_defects|default(false)) and not (is_followup and item.parent_item_id is none and item.child_count == 0 and not item.has_open_prior|default(false)) %}
+                {% if item.status != 'skipped' and (not item.is_carried_ok|default(false) or item.children_have_defects|default(false)) %}
                 <div id="item-{{ item.id }}"{% if item.parent_item_id %} data-parent-id="{{ item.parent_item_id }}"{% endif %}{% if item.parent_item_id and item.parent_status in [none, "pending"] and not (is_followup and item.has_open_prior|default(false)) %} style="display:none"{% endif %}>
                 {% include 'inspection/_single_item.html' %}
                 </div>
