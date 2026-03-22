@@ -81,14 +81,14 @@
                 </span>
                 <span class="text-sm text-gray-700 ml-1">{{ pd.comment }}</span>
             </div>
-            {% if pd.status == 'open' %}
+            {% if pd.status == 'open' and not was_ni %}
             <button type="button"
                     hx-post="{{ url_for('inspection.clear_prior_defect', inspection_id=inspection.id, defect_id=pd.id) }}"
                     hx-vals='{"area_id":"{{ area.id }}"}'
                     hx-target="#item-{{ item.id }}" hx-swap="innerHTML"
                     class="flex-shrink-0 px-2.5 py-1 bg-green-500 text-white text-xs font-semibold rounded-lg"
                     ontouchend="event.preventDefault();this.click()">Clear</button>
-            {% else %}
+            {% elif pd.status != 'open' and not was_ni %}
             <button type="button"
                     hx-post="{{ url_for('inspection.reopen_prior_defect', inspection_id=inspection.id, defect_id=pd.id) }}"
                     hx-vals='{"area_id":"{{ area.id }}"}'
@@ -103,10 +103,13 @@
 
     {# ---- BUTTONS ---- #}
 
-    {# -- C2: Carry-forward-ok (Type 4) -- read-only label -- #}
+    {# -- C2: Carry-forward-ok (Type 4) -- read-only label + chevron -- #}
     {% if is_followup and item.is_carried_ok|default(false) %}
     <div class="flex items-center gap-2 mt-2">
         <span class="px-2.5 py-1 text-xs font-semibold rounded-full bg-blue-100 text-blue-700">Installed</span>
+        {% if is_parent and has_children %}
+        <a href="javascript:void(0)" onclick="var ch=document.querySelectorAll('[data-parent-id=&quot;{{ item.template_id }}&quot;]');var vis=false;ch.forEach(function(c){if(c.style.display!='none')vis=true});ch.forEach(function(c){if(vis)c.style.display='none';else c.style.display=''})" ontouchend="event.preventDefault();this.click()" class="text-xs text-blue-600 font-medium ml-1" style="text-decoration:none">Show subitems</a>
+        {% endif %}
     </div>
 
     {# -- C2: NTS b/fwd (Type 1) -- open prior NTS defects -- #}
@@ -119,6 +122,9 @@
                 class="px-4 h-11 rounded-lg text-sm font-semibold border-2 {% if item.status == 'not_to_standard' %}bg-red-500 text-white border-red-500{% else %}border-red-400 text-red-700 bg-red-50{% endif %}"
                 ontouchend="event.preventDefault();this.click()">Defects Remain</button>
     </div>
+    {% if is_parent and has_children %}
+    <a href="javascript:void(0)" onclick="var ch=document.querySelectorAll('[data-parent-id=&quot;{{ item.template_id }}&quot;]');var vis=false;ch.forEach(function(c){if(c.style.display!='none')vis=true});ch.forEach(function(c){if(vis)c.style.display='none';else c.style.display=''})" ontouchend="event.preventDefault();this.click()" class="text-xs text-blue-600 font-medium mt-1 inline-block" style="text-decoration:none;padding:6px 0">Show subitems</a>
+    {% endif %}
 
     {# -- C2: NI b/fwd (Type 2) -- open prior NI defects -- #}
     {% elif is_followup and has_open_prior and was_ni %}

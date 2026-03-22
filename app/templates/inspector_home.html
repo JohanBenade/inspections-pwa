@@ -54,10 +54,11 @@
         {% endif %}
         <div class="flex justify-between items-center text-sm">
             <span class="text-gray-500">Round {{ insp.cycle_number }}</span>
+            {% set total_defects = insp.defect_count + (insp.prior_open_defects|default(0)) %}
             {% if insp.inspection_status == 'not_started' %}
             <span class="text-gray-400">Ready</span>
-            {% elif insp.defect_count > 0 %}
-            <span class="text-red-600 font-medium">{{ insp.defect_count }} defect{{ 's' if insp.defect_count != 1 }}</span>
+            {% elif total_defects > 0 %}
+            <span class="text-red-600 font-medium">{{ total_defects }} defect{{ 's' if total_defects != 1 }}</span>
             {% else %}
             <span class="text-green-600 font-medium">No defects</span>
             {% endif %}

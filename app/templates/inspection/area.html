@@ -46,9 +46,15 @@
     {% else %}
     
     {# Count active items, marked items, and defects (from defect table + chips) for this category #}
-    {% set ns = namespace(active=0, marked=0, defects=0, ni=0) %}
+    {% set ns = namespace(active=0, marked=0, defects=0, ni=0, parent_count=0, parent_carried_ok=0) %}
     {% for item in category.checklist %}
-        {% if item.status != 'skipped' %}
+        {% if not item.parent_item_id and item.status != 'skipped' %}
+            {% set ns.parent_count = ns.parent_count + 1 %}
+            {% if item.is_carried_ok|default(false) %}
+                {% set ns.parent_carried_ok = ns.parent_carried_ok + 1 %}
+            {% endif %}
+        {% endif %}
+        {% if item.status != 'skipped' and not item.is_carried_ok|default(false) %}
             {% set ns.active = ns.active + 1 %}
             {% if item.status not in ['pending', 'skipped'] %}
                 {% set ns.marked = ns.marked + 1 %}
@@ -83,6 +89,15 @@
             <h3 class="font-semibold text-gray-800 flex-1">{{ category.name }} <span class="cat-defect-badge bg-red-500 text-white text-xs px-1.5 py-0.5 rounded-full font-medium align-middle" {% if ns.defects == 0 %}style="display:none"{% endif %}>{{ ns.defects }}</span></h3>
             {% if category.all_skipped %}
             <span class="text-xs bg-orange-100 text-orange-600 px-2 py-0.5 rounded-full font-medium ml-2">{{ category.checklist|length }} excluded</span>
+            {% elif is_followup and ns.parent_count > 0 and ns.parent_carried_ok == ns.parent_count %}
+            <span class="flex items-center gap-2 ml-2 flex-shrink-0">
+                {% if ns.active > 0 %}
+                <span class="cat-counter text-xs {% if ns.marked == ns.active %}text-green-600 font-medium{% else %}text-gray-500{% endif %}">
+                    {{ ns.marked }}/{{ ns.active }}{% if ns.marked == ns.active %} &#10003;{% endif %}
+                </span>
+                {% endif %}
+                <span class="px-2.5 py-1 text-xs font-semibold rounded-full bg-blue-100 text-blue-700">Installed</span>
+            </span>
             {% else %}
             <span class="flex items-center gap-2 ml-2 flex-shrink-0">
                 {% if ns.active > 0 %}
