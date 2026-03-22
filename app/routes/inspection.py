@@ -257,7 +257,7 @@ def inspect(inspection_id):
         JOIN area_template at ON ct.area_id = at.id
         WHERE ii.inspection_id = ?
         AND ii.status != 'skipped'
-        AND NOT (ii.status = 'ok' AND ii.marked_at IS NULL)
+        AND NOT (ii.status = 'ok' AND ii.marked_at IS NULL AND COALESCE(ii.has_prior_defects, 0) = 0)
     """, [inspection_id]))
     # Only filter if there are active areas — prevents empty template on fresh inspections
     if active_area_ids:
@@ -269,7 +269,7 @@ def inspect(inspection_id):
             SUM(CASE WHEN ii.status NOT IN ('pending', 'skipped') THEN 1 ELSE 0 END) as completed,
             SUM(CASE WHEN ii.status = 'skipped' THEN 1 ELSE 0 END) as skipped,
             SUM(CASE WHEN ii.status = 'skipped' AND it.floor_condition = 'all' THEN 1 ELSE 0 END) as excl_count,
-            SUM(CASE WHEN ii.status = 'ok' AND ii.marked_at IS NULL THEN 1 ELSE 0 END) as carried_ok
+            SUM(CASE WHEN ii.status = 'ok' AND ii.marked_at IS NULL AND COALESCE(ii.has_prior_defects, 0) = 0 THEN 1 ELSE 0 END) as carried_ok
         FROM inspection_item ii
         JOIN item_template it ON ii.item_template_id = it.id
         WHERE ii.inspection_id = ?
@@ -370,14 +370,14 @@ def inspect(inspection_id):
 
     area_progress = query_db("""
         SELECT at.id as area_id,
-            COUNT(CASE WHEN ii.status NOT IN ('pending') AND NOT (ii.status = 'ok' AND ii.marked_at IS NULL) THEN 1 END) as marked,
+            COUNT(CASE WHEN ii.status NOT IN ('pending') AND NOT (ii.status = 'ok' AND ii.marked_at IS NULL AND COALESCE(ii.has_prior_defects, 0) = 0) THEN 1 END) as marked,
             COUNT(*) as total
         FROM inspection_item ii
         JOIN item_template it ON ii.item_template_id = it.id
         JOIN category_template ct ON it.category_id = ct.id
         JOIN area_template at ON ct.area_id = at.id
         WHERE ii.inspection_id = ? AND ii.status != 'skipped'
-        AND NOT (ii.status = 'ok' AND ii.marked_at IS NULL)
+        AND NOT (ii.status = 'ok' AND ii.marked_at IS NULL AND COALESCE(ii.has_prior_defects, 0) = 0)
         GROUP BY at.id
     """, [inspection_id])
     area_progress_map = {p['area_id']: {'marked': p['marked'], 'total': p['total']} for p in area_progress}
@@ -670,6 +670,7 @@ def inspect_area(inspection_id, area_id):
                 'inspection_defects': item_defects,
                 'category_name': cat['category_name'],
                 'is_sole_parent': len(parent_items) == 1,
+                'is_carried_ok': item['status'] == 'ok' and item['marked_at'] is None and not has_any_prior and not has_current,
             })
         
         # Skip empty categories in filter modes
@@ -792,6 +793,7 @@ def _build_item_for_render(inspection_id, item_id, tenant_id, unit_id=None, cycl
         'inspection_defects': inspection_defects,
         'category_name': item_raw['category_name'],
         'is_sole_parent': item_raw['sibling_parent_count'] == 1,
+        'is_carried_ok': item_raw['status'] == 'ok' and item_raw['marked_at'] is None and len(prior_defects_list) == 0 and len(current_defects_list) == 0,
     }
 
 
@@ -1569,7 +1571,7 @@ def get_progress(inspection_id):
             SUM(CASE WHEN ii.status NOT IN ('pending', 'skipped') THEN 1 ELSE 0 END) as completed,
             SUM(CASE WHEN ii.status = 'skipped' THEN 1 ELSE 0 END) as skipped,
             SUM(CASE WHEN ii.status = 'skipped' AND it.floor_condition = 'all' THEN 1 ELSE 0 END) as excl_count,
-            SUM(CASE WHEN ii.status = 'ok' AND ii.marked_at IS NULL THEN 1 ELSE 0 END) as carried_ok
+            SUM(CASE WHEN ii.status = 'ok' AND ii.marked_at IS NULL AND COALESCE(ii.has_prior_defects, 0) = 0 THEN 1 ELSE 0 END) as carried_ok
         FROM inspection_item ii
         JOIN item_template it ON ii.item_template_id = it.id
         WHERE ii.inspection_id = ?
@@ -1716,14 +1718,14 @@ def get_area_badges(inspection_id):
     
     area_progress = query_db("""
         SELECT at.id as area_id,
-            COUNT(CASE WHEN ii.status NOT IN ('pending') AND NOT (ii.status = 'ok' AND ii.marked_at IS NULL) THEN 1 END) as marked,
+            COUNT(CASE WHEN ii.status NOT IN ('pending') AND NOT (ii.status = 'ok' AND ii.marked_at IS NULL AND COALESCE(ii.has_prior_defects, 0) = 0) THEN 1 END) as marked,
             COUNT(*) as total
         FROM inspection_item ii
         JOIN item_template it ON ii.item_template_id = it.id
         JOIN category_template ct ON it.category_id = ct.id
         JOIN area_template at ON ct.area_id = at.id
         WHERE ii.inspection_id = ? AND ii.status != 'skipped'
-        AND NOT (ii.status = 'ok' AND ii.marked_at IS NULL)
+        AND NOT (ii.status = 'ok' AND ii.marked_at IS NULL AND COALESCE(ii.has_prior_defects, 0) = 0)
         GROUP BY at.id
     """, [inspection_id])
     progress_map = {p['area_id']: (p['marked'], p['total']) for p in area_progress}
