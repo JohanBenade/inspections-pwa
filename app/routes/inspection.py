@@ -217,6 +217,24 @@ def start_inspection(unit_id):
                 AND d.status = 'open'
             )
         """, [inspection_id, unit_id, cycle_id])
+
+        # Auto-resolve orphan parents: pending, no non-skipped children, no open prior defects
+        db.execute("""
+            UPDATE inspection_item SET status = 'ok'
+            WHERE inspection_id = ?
+            AND status = 'pending'
+            AND COALESCE(has_prior_defects, 0) = 0
+            AND item_template_id IN (
+                SELECT it.id FROM item_template it
+                WHERE it.parent_item_id IS NULL
+                AND it.tenant_id = ?
+                AND (SELECT COUNT(*) FROM item_template c
+                     JOIN inspection_item ci ON c.id = ci.item_template_id
+                     WHERE c.parent_item_id = it.id
+                     AND ci.inspection_id = ?
+                     AND ci.status != 'skipped') = 0
+            )
+        """, [inspection_id, tenant_id, inspection_id])
     
     db.commit()
     

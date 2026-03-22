@@ -54,7 +54,7 @@
                 {% set ns.parent_carried_ok = ns.parent_carried_ok + 1 %}
             {% endif %}
         {% endif %}
-        {% if item.status != 'skipped' and not item.is_carried_ok|default(false) %}
+        {% if item.status != 'skipped' and not item.is_carried_ok|default(false) and not (is_followup and not item.parent_item_id and item.child_count == 0 and not item.has_open_prior|default(false)) %}
             {% set ns.active = ns.active + 1 %}
             {% if item.status not in ['pending', 'skipped'] %}
                 {% set ns.marked = ns.marked + 1 %}
@@ -153,7 +153,7 @@
             <!-- Items -->
             <div class="divide-y">
                 {% for item in category.checklist %}
-                {% if item.status != 'skipped' and (not item.is_carried_ok|default(false) or item.children_have_defects|default(false)) %}
+                {% if item.status != 'skipped' and (not item.is_carried_ok|default(false) or item.children_have_defects|default(false)) and not (is_followup and item.parent_item_id is none and item.child_count == 0 and not item.has_open_prior|default(false)) %}
                 <div id="item-{{ item.id }}"{% if item.parent_item_id %} data-parent-id="{{ item.parent_item_id }}"{% endif %}{% if item.parent_item_id and item.parent_status in [none, "pending"] %} style="display:none"{% endif %}>
                 {% include 'inspection/_single_item.html' %}
                 </div>
