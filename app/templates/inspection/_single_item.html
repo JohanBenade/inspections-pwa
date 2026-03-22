@@ -136,10 +136,10 @@
                 class="{{ INST_SEL if item.status == 'ok' else INST_UN }}"
                 ontouchend="event.preventDefault();this.click()">INST</button>
         <button type="button"
-                hx-post="{{ url_for('inspection.confirm_defects_remain', inspection_id=inspection.id, item_id=item.id) }}"
-                hx-vals='{"area_id":"{{ area.id }}"}'
+                hx-post="{{ url_for('inspection.update_item', inspection_id=inspection.id, item_id=item.id) }}"
+                hx-vals='{"status":"not_installed","area_id":"{{ area.id }}"}'
                 hx-target="#item-{{ item.id }}" hx-swap="innerHTML"
-                class="{{ NI_SEL if item.status == 'not_to_standard' else NI_UN }}"
+                class="{{ NI_SEL if item.status == 'not_installed' else NI_UN }}"
                 ontouchend="event.preventDefault();this.click()">N/I</button>
     </div>
 

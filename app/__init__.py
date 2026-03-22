@@ -103,10 +103,10 @@ def create_app():
                        ic.cycle_number, ic.id AS cycle_id,
                        (SELECT COUNT(*) FROM inspection_item ii
                         WHERE ii.inspection_id = i.id
-                        AND ii.status != 'skipped') AS total_items,
+                        AND ii.status != 'skipped' AND NOT (ii.status = 'ok' AND ii.marked_at IS NULL AND COALESCE(ii.has_prior_defects, 0) = 0)) AS total_items,
                        (SELECT COUNT(*) FROM inspection_item ii
                         WHERE ii.inspection_id = i.id
-                        AND ii.status NOT IN ('skipped', 'pending')) AS completed_items,
+                        AND ii.status NOT IN ('skipped', 'pending') AND NOT (ii.status = 'ok' AND ii.marked_at IS NULL AND COALESCE(ii.has_prior_defects, 0) = 0)) AS completed_items,
                        (SELECT COUNT(*) FROM inspection_defect idef
                         WHERE idef.inspection_id = i.id) AS defect_count,
                        (SELECT COUNT(*) FROM defect d2
