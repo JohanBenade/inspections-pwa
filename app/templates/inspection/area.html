@@ -48,7 +48,7 @@
     {# Count active items, marked items, and defects (from defect table + chips) for this category #}
     {% set ns = namespace(active=0, marked=0, defects=0, ni=0, parent_count=0, parent_carried_ok=0) %}
     {% for item in category.checklist %}
-        {% if not item.parent_item_id and item.status != 'skipped' %}
+        {% if not item.parent_item_id and item.status not in ['skipped', 'pending'] and not item.has_prior_defects|default(false) %}
             {% set ns.parent_count = ns.parent_count + 1 %}
             {% if item.is_carried_ok|default(false) %}
                 {% set ns.parent_carried_ok = ns.parent_carried_ok + 1 %}
@@ -154,7 +154,7 @@
             <div class="divide-y">
                 {% for item in category.checklist %}
                 {% if item.status != 'skipped' and (not item.is_carried_ok|default(false) or item.children_have_defects|default(false)) and not (is_followup and item.parent_item_id is none and item.child_count == 0 and not item.has_open_prior|default(false)) %}
-                <div id="item-{{ item.id }}"{% if item.parent_item_id %} data-parent-id="{{ item.parent_item_id }}"{% endif %}{% if item.parent_item_id and item.parent_status in [none, "pending"] %} style="display:none"{% endif %}>
+                <div id="item-{{ item.id }}"{% if item.parent_item_id %} data-parent-id="{{ item.parent_item_id }}"{% endif %}{% if item.parent_item_id and item.parent_status in [none, "pending"] and not (is_followup and item.has_open_prior|default(false)) %} style="display:none"{% endif %}>
                 {% include 'inspection/_single_item.html' %}
                 </div>
                 {% endif %}
