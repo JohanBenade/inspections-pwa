@@ -921,6 +921,7 @@ def _build_live_monitor_data(batch_id, tenant_id):
             SELECT COUNT(*) AS total,
                    SUM(CASE WHEN status NOT IN ('pending','skipped') THEN 1 ELSE 0 END) AS marked
             FROM inspection_item WHERE inspection_id IN ({})
+            AND NOT (status = 'ok' AND marked_at IS NULL)
         """.format(ph), inspection_ids, one=True)
         if row:
             row = dict(row)
@@ -972,6 +973,7 @@ def _build_live_monitor_data(batch_id, tenant_id):
             JOIN area_template at2 ON ct.area_id = at2.id
             WHERE ii.inspection_id IN ({})
             AND ii.status != 'skipped'
+            AND NOT (ii.status = 'ok' AND ii.marked_at IS NULL)
             GROUP BY i.unit_id, at2.area_name
             ORDER BY at2.area_name
         """.format(ph), inspection_ids)
