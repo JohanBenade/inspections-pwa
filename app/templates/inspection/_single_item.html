@@ -150,6 +150,13 @@
         <a href="javascript:void(0)" data-btn="nts" class="{{ NTS_DIM }} flex items-center justify-center" style="text-decoration:none">NTS</a>
     </div>
 
+    {# -- C2: Newly inspectable parent (Rule 3) -- default to Installed read-only -- #}
+    {% elif is_followup and is_parent and has_children and not has_open_prior and item.status == 'pending' %}
+    <div class="flex items-center gap-2 mt-2">
+        <span class="px-2.5 py-1 text-xs font-semibold rounded-full bg-blue-100 text-blue-700">Installed</span>
+        <a href="javascript:void(0)" onclick="var ch=document.querySelectorAll('[data-parent-id=&quot;{{ item.template_id }}&quot;]');var vis=false;ch.forEach(function(c){if(c.style.display!='none')vis=true});ch.forEach(function(c){if(vis)c.style.display='none';else c.style.display=''})" ontouchend="event.preventDefault();this.click()" class="text-xs text-blue-600 font-medium ml-1" style="text-decoration:none">Show subitems</a>
+    </div>
+
     {# -- PARENT with children -- #}
     {% elif is_parent and has_children %}
     <div class="flex justify-end gap-2 mt-2">
