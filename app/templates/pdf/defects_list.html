@@ -590,24 +590,6 @@
     </div>
     {% endfor %}
     
-    {% if excluded_items_by_area %}
-    <div class="area-section" style="margin-top: 24px;">
-        <div class="defects-header-title"><span>Excluded Items ({{ summary.excluded }})</span></div>
-        <p style="font-size: 8pt; font-style: italic; color: #666; margin: 4px 0 12px 0;">These items were excluded from this inspection cycle and have not been assessed.</p>
-        {% for area in excluded_items_by_area %}
-        <div style="margin-bottom: 10px;">
-            <div class="area-title"><span>{{ area.name }}</span></div>
-            {% for cat in area.categories %}
-            <div class="category-row">- {{ cat.name }} ({{ cat.excl_items|length }})</div>
-            {% for item_desc in cat.excl_items %}
-            <div class="defect-item" style="color: #666;">&#8226; {{ item_desc }}</div>
-            {% endfor %}
-            {% endfor %}
-        </div>
-        {% endfor %}
-    </div>
-    {% endif %}
-
     {% if inspection_timeline %}
     <div class="inspection-timeline">
         <div class="timeline-title">Inspection History</div>
@@ -653,6 +635,25 @@
             <p class="signatory-title">PrArch; MD</p>
         </div>
     </div>
+
+    {% if excluded_items_by_area %}
+    <div style="margin-top: 30px; page-break-before: auto;">
+        <div class="defects-header-title"><span>Addendum: Excluded Items ({{ summary.excluded }})</span></div>
+        <p style="font-size: 8pt; font-style: italic; color: #666; margin: 4px 0 12px 0;">The following items were excluded from this inspection cycle and have not been assessed.</p>
+        {% for area in excluded_items_by_area %}
+        <div style="margin-bottom: 10px;">
+            <div class="area-title"><span>{{ area.name }}</span></div>
+            {% for cat in area.categories %}
+            <div class="category-row">- {{ cat.name }} ({{ cat.excl_items|length }})</div>
+            {% for item_desc in cat.excl_items %}
+            <div class="defect-item" style="color: #666;">&#8226; {{ item_desc }}</div>
+            {% endfor %}
+            {% endfor %}
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+
 {% if not is_pdf|default(true) %}</div>{% endif %}
 </body>
 </html>
