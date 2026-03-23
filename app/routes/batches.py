@@ -1079,6 +1079,27 @@ def _build_live_monitor_data(batch_id, tenant_id):
                 open_now_map[uid] = open_now_map.get(uid, 0) + 1
                 open_now_area_map[(uid, area)] = open_now_area_map.get((uid, area), 0) + 1
 
+        # Include inspection_defect chips (not yet submitted) in new + open counts
+        idef_raw = query_db("""
+            SELECT i.unit_id, at2.area_name, COUNT(*) as cnt
+            FROM inspection_defect idef
+            JOIN inspection i ON idef.inspection_id = i.id
+            JOIN item_template it ON idef.item_template_id = it.id
+            JOIN category_template ct ON it.category_id = ct.id
+            JOIN area_template at2 ON ct.area_id = at2.id
+            WHERE i.unit_id IN ({}) AND i.tenant_id = ?
+            AND i.status IN ('in_progress', 'not_started')
+            GROUP BY i.unit_id, at2.area_name
+        """.format(ph_od), c2_unit_ids + [tenant_id])
+        for r in [dict(x) for x in idef_raw]:
+            uid = r['unit_id']
+            area = r['area_name']
+            cnt = r['cnt']
+            new_map[uid] = new_map.get(uid, 0) + cnt
+            new_area_map[(uid, area)] = new_area_map.get((uid, area), 0) + cnt
+            open_now_map[uid] = open_now_map.get(uid, 0) + cnt
+            open_now_area_map[(uid, area)] = open_now_area_map.get((uid, area), 0) + cnt
+
     # --- Batch started (earliest mark in entire batch) ---
     batch_started = None
     if unit_timing_map:
