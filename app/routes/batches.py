@@ -1038,6 +1038,7 @@ def _build_live_monitor_data(batch_id, tenant_id):
     new_map = {}
     new_area_map = {}
     open_now_map = {}
+    open_now_area_map = {}
     c2_units = [u for u in units if (u.get('cycle_number') or 1) >= 2]
     c2_unit_ids = [u['unit_id'] for u in c2_units]
     if c2_unit_ids:
@@ -1073,9 +1074,10 @@ def _build_live_monitor_data(batch_id, tenant_id):
                 new_map[uid] = new_map.get(uid, 0) + 1
                 key = (uid, area)
                 new_area_map[key] = new_area_map.get(key, 0) + 1
-            # Open now: any open defect (for unit header red total)
+            # Open now: any open defect (unit + area level)
             if r['status'] == 'open':
                 open_now_map[uid] = open_now_map.get(uid, 0) + 1
+                open_now_area_map[(uid, area)] = open_now_area_map.get((uid, area), 0) + 1
 
     # --- Batch started (earliest mark in entire batch) ---
     batch_started = None
@@ -1100,6 +1102,7 @@ def _build_live_monitor_data(batch_id, tenant_id):
                 a['bfwd'] = bfwd_area_map.get((u['unit_id'], a['area']), 0)
                 a['cleared'] = cleared_area_map.get((u['unit_id'], a['area']), 0)
                 a['new'] = new_area_map.get((u['unit_id'], a['area']), 0)
+                a['open_now'] = open_now_area_map.get((u['unit_id'], a['area']), 0)
         u['pct'] = round(u['total_marked'] / u['total_items'] * 100) if u['total_items'] else 0
         u['floor_label'] = FLOOR_LABELS.get(u['floor'], u['floor'])
 
