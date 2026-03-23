@@ -493,7 +493,7 @@
             <span class="summary-value">{{ summary.open_defects }}</span>
         </div>
         {% if excluded_items_by_area %}
-        <div style="font-size: 8pt; font-style: italic; color: #888; margin-top: 6px;">* {{ summary.excluded }} items excluded from this cycle &mdash; not yet assessed</div>
+        <div style="border-top: 1px dashed #ccc; margin-top: 8px; padding-top: 6px; font-size: 8pt; color: #888;">Excluded from inspection: {{ summary.excluded }} items not yet assessed</div>
         {% endif %}
     </div>
     {% elif cycle_number > 1 %}
