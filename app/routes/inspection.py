@@ -237,6 +237,24 @@ def start_inspection(unit_id):
                      WHERE c2.parent_item_id = it.id) > 0
             )
         """, [inspection_id, tenant_id, inspection_id])
+
+        # Carry-forward children of Rule 3 parents (newly inspectable parents shown read-only)
+        # These children are unreachable (no chevron) so mark as carried_ok
+        db.execute("""
+            UPDATE inspection_item SET status = 'ok'
+            WHERE inspection_id = ?
+            AND status = 'pending'
+            AND COALESCE(has_prior_defects, 0) = 0
+            AND item_template_id IN (
+                SELECT c.id FROM item_template c
+                JOIN item_template p ON c.parent_item_id = p.id
+                JOIN inspection_item pi ON p.id = pi.item_template_id
+                WHERE pi.inspection_id = ?
+                AND pi.status = 'pending'
+                AND COALESCE(pi.has_prior_defects, 0) = 0
+                AND p.parent_item_id IS NULL
+            )
+        """, [inspection_id, inspection_id])
     
     db.commit()
     
