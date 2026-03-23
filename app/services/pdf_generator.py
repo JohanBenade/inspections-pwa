@@ -295,7 +295,8 @@ def get_defects_data(tenant_id, unit_id, cycle_id=None):
     grand_total_rectified = sum(stats['rectified'] for stats in cycle_stats.values())
     
     # Determine if unit is certified (no outstanding defects)
-    is_certified = (total_not_rectified == 0 and total_new == 0 and cycle_number > 1)
+    all_defects_cleared = (total_not_rectified == 0 and total_new == 0 and cycle_number > 1)
+    is_certified = (all_defects_cleared and excluded_count == 0)
     
     # Build inspection timeline
     inspection_timeline = []

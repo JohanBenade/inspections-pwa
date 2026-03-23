@@ -495,31 +495,45 @@
     </div>
     {% elif cycle_number > 1 %}
         {% if is_certified %}
-        <!-- Certification Summary Box (unit cleared) -->
-        <div class="summary-box {% if not excluded_items_by_area %}certified{% endif %}">
-            <div class="summary-title">{% if excluded_items_by_area %}Rectification Summary{% else %}Certification Summary{% endif %}</div>
+        <!-- C2+ Summary Box (ledger format) -->
+        <div class="summary-box {% if is_certified %}certified{% endif %}">
+            <div class="summary-title">{% if is_certified %}Certification Summary{% else %}Rectification Summary{% endif %}</div>
             <div class="summary-row">
-                <span class="summary-label">Total defects raised:</span>
-                <span class="summary-value">{{ grand_totals.raised }}</span>
+                <span class="summary-label">Defects brought forward:</span>
+                <span class="summary-value">{{ summary.brought_forward }}</span>
             </div>
             <div class="summary-row">
-                <span class="summary-label">Total defects rectified:</span>
-                <span class="summary-value">{{ grand_totals.rectified }}</span>
+                <span class="summary-label">Rectified:</span>
+                <span class="summary-value" style="color: #228B22;">-{{ summary.rectified }}</span>
             </div>
             <div class="summary-row">
-                <span class="summary-label">Outstanding:</span>
-                <span class="summary-value green-text">0</span>
+                <span class="summary-label">Not rectified:</span>
+                <span class="summary-value" style="color: {% if summary.not_rectified > 0 %}#cc0000{% else %}#000{% endif %};">{{ summary.not_rectified }}</span>
+            </div>
+            {% if summary.new > 0 %}
+            <div class="summary-row">
+                <span class="summary-label">New defects raised:</span>
+                <span class="summary-value" style="color: #3D6B8E;">+{{ summary.new }}</span>
+            </div>
+            {% endif %}
+            <div class="summary-divider"></div>
+            <div class="summary-row">
+                <span class="summary-label" style="font-weight: bold;">Open defects:</span>
+                <span class="summary-value" style="color: {% if summary.open_defects > 0 %}#cc0000{% else %}#228B22{% endif %};">{{ summary.open_defects }}</span>
             </div>
             {% if excluded_items_by_area %}
             <div class="summary-row">
                 <span class="summary-label">Items excluded (not inspected):</span>
                 <span class="summary-value" style="color: #C8963E;">{{ summary.excluded }}</span>
             </div>
+            {% endif %}
             <div class="summary-divider"></div>
+            {% if is_certified %}
+            <div class="summary-status">UNIT CLEARED &amp; CERTIFIED</div>
+            {% elif excluded_items_by_area and summary.open_defects == 0 %}
             <div class="summary-status" style="color: #C8963E;">ALL INSPECTED DEFECTS RECTIFIED &mdash; {{ summary.excluded }} EXCLUDED ITEMS PENDING</div>
             {% else %}
-            <div class="summary-divider"></div>
-            <div class="summary-status">UNIT CLEARED &amp; CERTIFIED</div>
+            <div class="summary-status" style="color: #cc0000;">{{ summary.open_defects }} DEFECT{{ 'S' if summary.open_defects != 1 else '' }} OUTSTANDING</div>
             {% endif %}
         </div>
         {% else %}
@@ -651,6 +665,9 @@
         <div class="closing-text">
             {% if is_certified %}
             <p>All defects have been rectified and this unit is hereby certified as complete.</p>
+            {% elif excluded_items_by_area and summary.open_defects == 0 %}
+            <p>All inspected defects have been rectified. {{ summary.excluded }} items were excluded from this inspection cycle and remain to be assessed before certification.</p>
+            <p>We await an invitation for a follow up inspection to assess the excluded items.</p>
             {% else %}
             <p>We trust you find the above in order and will rectify any defect within the afforded contract period.</p>
             <p>We await an invitation for a follow up inspection if required.</p>
