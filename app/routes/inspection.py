@@ -388,6 +388,10 @@ def inspect(inspection_id):
 
     area_defect_map = area_defect_counts
 
+    # Rule 3 parents (C2+): newly inspectable parents shown read-only, not actionable
+    rule3_exclude = ""
+    if is_followup:
+        rule3_exclude = "AND NOT (it.parent_item_id IS NULL AND ii.status = 'pending' AND COALESCE(ii.has_prior_defects, 0) = 0)"
     area_progress = query_db("""
         SELECT at.id as area_id,
             COUNT(CASE WHEN ii.status NOT IN ('pending') AND NOT (ii.status = 'ok' AND ii.marked_at IS NULL AND COALESCE(ii.has_prior_defects, 0) = 0) THEN 1 END) as marked,
@@ -398,8 +402,9 @@ def inspect(inspection_id):
         JOIN area_template at ON ct.area_id = at.id
         WHERE ii.inspection_id = ? AND ii.status != 'skipped'
         AND NOT (ii.status = 'ok' AND ii.marked_at IS NULL AND COALESCE(ii.has_prior_defects, 0) = 0)
+        {}
         GROUP BY at.id
-    """, [inspection_id])
+    """.format(rule3_exclude), [inspection_id])
     area_progress_map = {p['area_id']: {'marked': p['marked'], 'total': p['total']} for p in area_progress}
     
     area_notes = query_db("""
@@ -1699,9 +1704,10 @@ def get_defect_count(inspection_id):
 @require_auth
 def get_area_badges(inspection_id):
     """Return updated area defect badges for HTMX OOB swap."""
-    inspection = query_db("SELECT unit_id FROM inspection WHERE id = ?", [inspection_id], one=True)
+    inspection = query_db("SELECT unit_id, cycle_number FROM inspection WHERE id = ?", [inspection_id], one=True)
     if not inspection:
         return ''
+    is_followup_badge = (inspection['cycle_number'] or 1) > 1
 
     area_defects = query_db("""
         SELECT at.id as area_id, COUNT(d.id) as defect_count
@@ -1736,6 +1742,9 @@ def get_area_badges(inspection_id):
         WHERE ii.inspection_id = ? AND ii.status != 'skipped'
     """, [inspection_id])
     
+    rule3_excl = ""
+    if is_followup_badge:
+        rule3_excl = "AND NOT (it.parent_item_id IS NULL AND ii.status = 'pending' AND COALESCE(ii.has_prior_defects, 0) = 0)"
     area_progress = query_db("""
         SELECT at.id as area_id,
             COUNT(CASE WHEN ii.status NOT IN ('pending') AND NOT (ii.status = 'ok' AND ii.marked_at IS NULL AND COALESCE(ii.has_prior_defects, 0) = 0) THEN 1 END) as marked,
@@ -1746,8 +1755,9 @@ def get_area_badges(inspection_id):
         JOIN area_template at ON ct.area_id = at.id
         WHERE ii.inspection_id = ? AND ii.status != 'skipped'
         AND NOT (ii.status = 'ok' AND ii.marked_at IS NULL AND COALESCE(ii.has_prior_defects, 0) = 0)
+        {}
         GROUP BY at.id
-    """, [inspection_id])
+    """.format(rule3_excl), [inspection_id])
     progress_map = {p['area_id']: (p['marked'], p['total']) for p in area_progress}
 
     html_parts = []
