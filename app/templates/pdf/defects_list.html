@@ -529,8 +529,7 @@
             {% if is_certified %}
             <div class="summary-status">UNIT CLEARED &amp; CERTIFIED</div>
 
-            {% elif summary.open_defects > 0 %}
-            <div class="summary-status" style="color: #cc0000;">{{ summary.open_defects }} DEFECT{{ 'S' if summary.open_defects != 1 else '' }} OUTSTANDING</div>
+
             {% endif %}
         </div>
     {% endif %}
