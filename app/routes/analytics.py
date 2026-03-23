@@ -4841,17 +4841,15 @@ def _build_pipeline_report_data(live=False):
     # SVG chart coordinates (600w x 200h chart area)
     chart_w = 600
     chart_h = 200
-    svg_points_raised = []
-    svg_points_cleared = []
+    svg_points_open = []
     if trend_points:
-        max_val = max(p['raised'] for p in trend_points) or 1
+        max_val = max(p['raised'] - p['cleared'] for p in trend_points) or 1
         n = len(trend_points)
         for i, p in enumerate(trend_points):
+            open_val = p['raised'] - p['cleared']
             x = int(60 + (chart_w - 80) * i / max(n - 1, 1))
-            y_r = int(chart_h - 20 - (chart_h - 40) * p['raised'] / max_val)
-            y_c = int(chart_h - 20 - (chart_h - 40) * p['cleared'] / max_val)
-            svg_points_raised.append({'x': x, 'y': y_r, 'val': p['raised'], 'date': p['date']})
-            svg_points_cleared.append({'x': x, 'y': y_c, 'val': p['cleared'], 'date': p['date']})
+            y = int(chart_h - 20 - (chart_h - 40) * open_val / max_val)
+            svg_points_open.append({'x': x, 'y': y, 'val': open_val, 'date': p['date']})
 
     # --- PAGE 3: WHERE'S THE PROBLEM ---
 
@@ -5191,8 +5189,7 @@ def _build_pipeline_report_data(live=False):
         'total_units': total_units,
         'trend_points': trend_points,
         'ledger': ledger,
-        'svg_raised': svg_points_raised,
-        'svg_cleared': svg_points_cleared,
+        'svg_open': svg_points_open,
         'chart_w': chart_w,
         'chart_h': chart_h,
         'zone_grid': zone_grid,
