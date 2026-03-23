@@ -496,8 +496,8 @@
     {% elif cycle_number > 1 %}
         {% if is_certified %}
         <!-- Certification Summary Box (unit cleared) -->
-        <div class="summary-box certified">
-            <div class="summary-title">Certification Summary</div>
+        <div class="summary-box {% if not excluded_items_by_area %}certified{% endif %}">
+            <div class="summary-title">{% if excluded_items_by_area %}Rectification Summary{% else %}Certification Summary{% endif %}</div>
             <div class="summary-row">
                 <span class="summary-label">Total defects raised:</span>
                 <span class="summary-value">{{ grand_totals.raised }}</span>
@@ -510,8 +510,17 @@
                 <span class="summary-label">Outstanding:</span>
                 <span class="summary-value green-text">0</span>
             </div>
+            {% if excluded_items_by_area %}
+            <div class="summary-row">
+                <span class="summary-label">Items excluded (not inspected):</span>
+                <span class="summary-value" style="color: #C8963E;">{{ summary.excluded }}</span>
+            </div>
+            <div class="summary-divider"></div>
+            <div class="summary-status" style="color: #C8963E;">ALL INSPECTED DEFECTS RECTIFIED &mdash; {{ summary.excluded }} EXCLUDED ITEMS PENDING</div>
+            {% else %}
             <div class="summary-divider"></div>
             <div class="summary-status">UNIT CLEARED &amp; CERTIFIED</div>
+            {% endif %}
         </div>
         {% else %}
         <!-- Defect Summary Box (defects still open) -->
@@ -597,6 +606,24 @@
     </div>
     {% endfor %}
     
+    {% if excluded_items_by_area %}
+    <div class="area-section" style="margin-top: 24px;">
+        <div class="defects-header-title"><span>Excluded Items ({{ summary.excluded }})</span></div>
+        <p style="font-size: 8pt; font-style: italic; color: #666; margin: 4px 0 12px 0;">These items were excluded from this inspection cycle and have not been assessed.</p>
+        {% for area in excluded_items_by_area %}
+        <div style="margin-bottom: 10px;">
+            <div class="area-title"><span>{{ area.name }}</span></div>
+            {% for cat in area.categories %}
+            <div class="category-row">- {{ cat.name }} ({{ cat.items|length }})</div>
+            {% for item_desc in cat.items %}
+            <div class="defect-item" style="color: #666;">&#8226; {{ item_desc }}</div>
+            {% endfor %}
+            {% endfor %}
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+
     {% if inspection_timeline %}
     <div class="inspection-timeline">
         <div class="timeline-title">Inspection History</div>

@@ -146,14 +146,42 @@ def get_defects_data(tenant_id, unit_id, cycle_id=None):
         if key not in category_comments:
             category_comments[key] = c['latest_comment']
     
-    # Get excluded items count for summary (not for listing in PDF)
+    # Get excluded (skipped) items from inspection for PDF listing
     excluded_count = 0
-    if cycle_id:
-        count_row = query_db(
-            "SELECT COUNT(*) as cnt FROM cycle_excluded_item WHERE cycle_id = ?",
-            [cycle_id], one=True
-        )
-        excluded_count = count_row['cnt'] if count_row else 0
+    excluded_items_by_area = []
+    if inspection:
+        excluded_raw = query_db("""
+            SELECT it.item_description,
+                   parent.item_description as parent_description,
+                   ct.category_name, ct.category_order,
+                   at2.area_name, at2.area_order,
+                   it.item_order
+            FROM inspection_item ii
+            JOIN item_template it ON ii.item_template_id = it.id
+            JOIN category_template ct ON it.category_id = ct.id
+            JOIN area_template at2 ON ct.area_id = at2.id
+            LEFT JOIN item_template parent ON it.parent_item_id = parent.id
+            WHERE ii.inspection_id = ? AND ii.status = 'skipped'
+            ORDER BY at2.area_order, ct.category_order, it.item_order
+        """, [inspection['id']])
+        excluded_count = len(excluded_raw)
+        excl_areas = {}
+        for ei in excluded_raw:
+            area = ei['area_name']
+            cat = ei['category_name']
+            if area not in excl_areas:
+                excl_areas[area] = {'name': area, 'order': ei['area_order'], 'categories': {}}
+            if cat not in excl_areas[area]['categories']:
+                excl_areas[area]['categories'][cat] = {'name': cat, 'order': ei['category_order'], 'items': []}
+            desc = ei['item_description']
+            if ei['parent_description']:
+                desc = '{} - {}'.format(ei['parent_description'], desc)
+            excl_areas[area]['categories'][cat]['items'].append(desc)
+        for area_name, area_data in sorted(excl_areas.items(), key=lambda x: x[1]['order']):
+            cats = []
+            for cat_name, cat_data in sorted(area_data['categories'].items(), key=lambda x: x[1]['order']):
+                cats.append({'name': cat_name, 'items': cat_data['items']})
+            excluded_items_by_area.append({'name': area_name, 'categories': cats})
     
     # Structure defects by area -> category
     defects_by_area = {}
@@ -402,7 +430,8 @@ def get_defects_data(tenant_id, unit_id, cycle_id=None):
         'inspector_name': inspection['inspector_name'] if inspection else 'N/A',
         'certification_date': certification_date,
         'general_notes_html': general_notes_html,
-        'exclusion_notes_html': exclusion_notes_html
+        'exclusion_notes_html': exclusion_notes_html,
+        'excluded_items_by_area': excluded_items_by_area
     }
 
 
