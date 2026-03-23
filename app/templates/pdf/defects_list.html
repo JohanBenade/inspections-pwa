@@ -495,7 +495,7 @@
     </div>
     {% elif cycle_number > 1 %}
         {% if is_certified %}
-        <!-- C2+ Summary Box (ledger format) -->
+        <!-- C2+ Summary Box (unified ledger format) -->
         <div class="summary-box {% if is_certified %}certified{% endif %}">
             <div class="summary-title">{% if is_certified %}Certification Summary{% else %}Rectification Summary{% endif %}</div>
             <div class="summary-row">
@@ -523,46 +523,19 @@
             </div>
             {% if excluded_items_by_area %}
             <div class="summary-row">
-                <span class="summary-label">Items excluded (not inspected):</span>
-                <span class="summary-value" style="color: #C8963E;">{{ summary.excluded }}</span>
+                <span class="summary-label" style="font-size: 8pt; color: #666;">Items excluded (not inspected):</span>
+                <span class="summary-value" style="font-size: 8pt; color: #C8963E;">{{ summary.excluded }}</span>
             </div>
             {% endif %}
             <div class="summary-divider"></div>
             {% if is_certified %}
             <div class="summary-status">UNIT CLEARED &amp; CERTIFIED</div>
             {% elif excluded_items_by_area and summary.open_defects == 0 %}
-            <div class="summary-status" style="color: #C8963E;">ALL INSPECTED DEFECTS RECTIFIED &mdash; {{ summary.excluded }} EXCLUDED ITEMS PENDING</div>
-            {% else %}
+            <div class="summary-status" style="color: #C8963E; font-size: 9pt;">All inspected defects rectified &mdash; {{ summary.excluded }} excluded items pending</div>
+            {% elif summary.open_defects > 0 %}
             <div class="summary-status" style="color: #cc0000;">{{ summary.open_defects }} DEFECT{{ 'S' if summary.open_defects != 1 else '' }} OUTSTANDING</div>
             {% endif %}
         </div>
-        {% else %}
-        <!-- Defect Summary Box (defects still open) -->
-        <div class="summary-box">
-            <div class="summary-title">Defect Summary</div>
-            <div class="summary-row">
-                <span class="summary-label">Defects brought forward:</span>
-                <span class="summary-value">{{ summary.brought_forward }}</span>
-            </div>
-            <div class="summary-row">
-                <span class="summary-label">Rectified:</span>
-                <span class="summary-value">-{{ summary.rectified }}</span>
-            </div>
-            <div class="summary-row">
-                <span class="summary-label">Not rectified:</span>
-                <span class="summary-value">{{ summary.not_rectified }}</span>
-            </div>
-            <div class="summary-row">
-                <span class="summary-label">Added:</span>
-                <span class="summary-value">+{{ summary.new }}</span>
-            </div>
-            <div class="summary-divider"></div>
-            <div class="summary-row">
-                <span class="summary-label" style="font-weight: bold;">Open defects:</span>
-                <span class="summary-value">{{ summary.open_defects }}</span>
-            </div>
-        </div>
-        {% endif %}
     {% endif %}
     
     <div class="standards">
