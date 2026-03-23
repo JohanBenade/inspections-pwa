@@ -172,15 +172,15 @@ def get_defects_data(tenant_id, unit_id, cycle_id=None):
             if area not in excl_areas:
                 excl_areas[area] = {'name': area, 'order': ei['area_order'], 'categories': {}}
             if cat not in excl_areas[area]['categories']:
-                excl_areas[area]['categories'][cat] = {'name': cat, 'order': ei['category_order'], 'items': []}
+                excl_areas[area]['categories'][cat] = {'name': cat, 'order': ei['category_order'], 'excl_items': []}
             desc = ei['item_description']
             if ei['parent_description']:
                 desc = '{} - {}'.format(ei['parent_description'], desc)
-            excl_areas[area]['categories'][cat]['items'].append(desc)
+            excl_areas[area]['categories'][cat]['excl_items'].append(desc)
         for area_name, area_data in sorted(excl_areas.items(), key=lambda x: x[1]['order']):
             cats = []
             for cat_name, cat_data in sorted(area_data['categories'].items(), key=lambda x: x[1]['order']):
-                cats.append({'name': cat_name, 'items': cat_data['items']})
+                cats.append({'name': cat_name, 'excl_items': cat_data['excl_items']})
             excluded_items_by_area.append({'name': area_name, 'categories': cats})
     
     # Structure defects by area -> category

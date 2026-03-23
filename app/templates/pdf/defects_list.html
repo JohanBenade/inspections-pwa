@@ -614,8 +614,8 @@
         <div style="margin-bottom: 10px;">
             <div class="area-title"><span>{{ area.name }}</span></div>
             {% for cat in area.categories %}
-            <div class="category-row">- {{ cat.name }} ({{ cat.items|length }})</div>
-            {% for item_desc in cat.items %}
+            <div class="category-row">- {{ cat.name }} ({{ cat.excl_items|length }})</div>
+            {% for item_desc in cat.excl_items %}
             <div class="defect-item" style="color: #666;">&#8226; {{ item_desc }}</div>
             {% endfor %}
             {% endfor %}
