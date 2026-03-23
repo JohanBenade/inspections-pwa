@@ -594,7 +594,7 @@ def inspect_area(inspection_id, area_id):
         # Get all items for this category
         items_raw = query_db("""
             SELECT it.id as template_id, it.item_description, it.parent_item_id, it.item_order,
-                   ii.id, ii.status, ii.comment, ii.marked_at,
+                   ii.id, ii.status, ii.comment, ii.marked_at, ii.has_prior_defects,
                    (SELECT COUNT(*) FROM item_template it_c JOIN inspection_item ii_c ON it_c.id = ii_c.item_template_id WHERE it_c.parent_item_id = it.id AND ii_c.inspection_id = ii.inspection_id AND ii_c.status != 'skipped') as child_count
             FROM item_template it
             JOIN inspection_item ii ON it.id = ii.item_template_id
