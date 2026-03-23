@@ -725,7 +725,7 @@ def inspect_area(inspection_id, area_id):
                 'inspection_defects': item_defects,
                 'category_name': cat['category_name'],
                 'is_sole_parent': len(parent_items) == 1,
-                'is_carried_ok': item['status'] == 'ok' and item['marked_at'] is None and not has_any_prior and not has_current,
+                'is_carried_ok': item['status'] == 'ok' and item['marked_at'] is None and (item.get('has_prior_defects') or 0) == 0,
             })
         
         # Skip empty categories in filter modes
