@@ -1030,59 +1030,52 @@ def _build_live_monitor_data(batch_id, tenant_id):
     for uid in area_progress:
         area_progress[uid].sort(key=lambda a: (area_order.get(a['area'], 10), a['area']))
 
-    # --- C2 defect tracking: b/fwd, cleared (live), new ---
+    # --- C2 defect tracking: b/fwd (static), cleared (live), new (live) ---
     bfwd_map = {}
     bfwd_area_map = {}
     cleared_map = {}
     cleared_area_map = {}
-    c2_unit_ids = [u['unit_id'] for u in units if (u.get('cycle_number') or 1) >= 2]
+    new_map = {}
+    new_area_map = {}
+    open_now_map = {}
+    c2_units = [u for u in units if (u.get('cycle_number') or 1) >= 2]
+    c2_unit_ids = [u['unit_id'] for u in c2_units]
     if c2_unit_ids:
+        # Build unit_id -> cycle_id mapping for per-unit bucketing
+        unit_cycle = {u['unit_id']: u['cycle_id'] for u in c2_units}
         ph_od = ','.join('?' * len(c2_unit_ids))
-        # B/Fwd: all open defects (static from defect table)
-        od_raw = query_db("""
-            SELECT unit_id, COUNT(*) AS cnt FROM defect
-            WHERE unit_id IN ({}) AND status = 'open' AND tenant_id = ?
-            GROUP BY unit_id
-        """.format(ph_od), c2_unit_ids + [tenant_id])
-        for r in [dict(x) for x in od_raw]:
-            bfwd_map[r['unit_id']] = r['cnt']
-        # B/Fwd per area
-        oda_raw = query_db("""
-            SELECT d.unit_id, at2.area_name, COUNT(*) AS cnt
+        # Single query: ALL defects for C2 units (any status)
+        all_defects_raw = query_db("""
+            SELECT d.unit_id, d.status, d.raised_cycle_id, d.cleared_cycle_id,
+                   at2.area_name
             FROM defect d
             JOIN item_template it ON d.item_template_id = it.id
             JOIN category_template ct ON it.category_id = ct.id
             JOIN area_template at2 ON ct.area_id = at2.id
-            WHERE d.unit_id IN ({}) AND d.status = 'open' AND d.tenant_id = ?
-            GROUP BY d.unit_id, at2.area_name
+            WHERE d.unit_id IN ({}) AND d.tenant_id = ?
         """.format(ph_od), c2_unit_ids + [tenant_id])
-        for r in [dict(x) for x in oda_raw]:
-            bfwd_area_map[(r['unit_id'], r['area_name'])] = r['cnt']
-        # Cleared: open defects where inspector marked item ok in current inspection
-        c2_insp_ids = [u['inspection_id'] for u in units
-                       if (u.get('cycle_number') or 1) >= 2 and u.get('inspection_id')]
-        if c2_insp_ids:
-            ph_insp = ','.join('?' * len(c2_insp_ids))
-            cl_raw = query_db("""
-                SELECT d.unit_id, at2.area_name
-                FROM defect d
-                JOIN item_template it ON d.item_template_id = it.id
-                JOIN category_template ct ON it.category_id = ct.id
-                JOIN area_template at2 ON ct.area_id = at2.id
-                WHERE d.unit_id IN ({od}) AND d.status = 'open' AND d.tenant_id = ?
-                AND EXISTS (
-                    SELECT 1 FROM inspection_item ii
-                    JOIN inspection i ON ii.inspection_id = i.id
-                    WHERE i.unit_id = d.unit_id
-                    AND ii.item_template_id = d.item_template_id
-                    AND ii.inspection_id IN ({insp})
-                    AND ii.status = 'ok'
-                )
-            """.format(od=ph_od, insp=ph_insp), c2_unit_ids + [tenant_id] + c2_insp_ids)
-            for r in [dict(x) for x in cl_raw]:
-                cleared_map[r['unit_id']] = cleared_map.get(r['unit_id'], 0) + 1
-                key = (r['unit_id'], r['area_name'])
-                cleared_area_map[key] = cleared_area_map.get(key, 0) + 1
+        for r in [dict(x) for x in all_defects_raw]:
+            uid = r['unit_id']
+            area = r['area_name']
+            cyc = unit_cycle.get(uid)
+            is_prior = (r['raised_cycle_id'] != cyc)
+            if is_prior:
+                # B/Fwd: prior-cycle defect, ANY status (static)
+                bfwd_map[uid] = bfwd_map.get(uid, 0) + 1
+                key = (uid, area)
+                bfwd_area_map[key] = bfwd_area_map.get(key, 0) + 1
+                # Cleared: prior defect cleared THIS cycle
+                if r['status'] == 'cleared' and r['cleared_cycle_id'] == cyc:
+                    cleared_map[uid] = cleared_map.get(uid, 0) + 1
+                    cleared_area_map[key] = cleared_area_map.get(key, 0) + 1
+            else:
+                # New: raised THIS cycle (regression)
+                new_map[uid] = new_map.get(uid, 0) + 1
+                key = (uid, area)
+                new_area_map[key] = new_area_map.get(key, 0) + 1
+            # Open now: any open defect (for unit header red total)
+            if r['status'] == 'open':
+                open_now_map[uid] = open_now_map.get(uid, 0) + 1
 
     # --- Batch started (earliest mark in entire batch) ---
     batch_started = None
@@ -1098,12 +1091,15 @@ def _build_live_monitor_data(batch_id, tenant_id):
         u['total_marked'] = sum(a['marked'] for a in u['areas'])
         u['total_items'] = sum(a['total'] for a in u['areas'])
         u['total_defects'] = sum(a['defects'] for a in u['areas'])
-        u['open_defects'] = bfwd_map.get(u['unit_id'], 0)
+        u['bfwd_defects'] = bfwd_map.get(u['unit_id'], 0)
         u['cleared_defects'] = cleared_map.get(u['unit_id'], 0)
+        u['new_defects'] = new_map.get(u['unit_id'], 0)
+        u['open_defects'] = open_now_map.get(u['unit_id'], 0)
         if (u.get('cycle_number') or 1) >= 2:
             for a in u['areas']:
                 a['bfwd'] = bfwd_area_map.get((u['unit_id'], a['area']), 0)
                 a['cleared'] = cleared_area_map.get((u['unit_id'], a['area']), 0)
+                a['new'] = new_area_map.get((u['unit_id'], a['area']), 0)
         u['pct'] = round(u['total_marked'] / u['total_items'] * 100) if u['total_items'] else 0
         u['floor_label'] = FLOOR_LABELS.get(u['floor'], u['floor'])
 

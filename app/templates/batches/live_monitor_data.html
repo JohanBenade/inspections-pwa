@@ -128,14 +128,12 @@
                 <span class="unit-counts">{{ u.total_marked }}/{{ u.total_items }}</span>
                 {% if u.cycle_number and u.cycle_number >= 2 %}
                 {% if u.open_defects > 0 %}
-                <span class="unit-defects-small" style="color:#C8963E;">{{ u.open_defects }}</span>
+                <span class="unit-defects-small" style="color:#C44D3F;">{{ u.open_defects }} open</span>
                 {% endif %}
-                {% if u.cleared_defects > 0 %}
-                <span class="unit-defects-small" style="color:#4A7C59;">-{{ u.cleared_defects }}</span>
-                {% endif %}
-                {% endif %}
+                {% else %}
                 {% if u.total_defects > 0 %}
                 <span class="unit-defects-small" style="color:#C44D3F;">{{ u.total_defects }}</span>
+                {% endif %}
                 {% endif %}
             </div>
         </div>
@@ -156,7 +154,9 @@
                     {% if a.cleared is defined and a.cleared > 0 %}
                     <span style="color:#4A7C59;font-weight:600;font-size:0.8rem;margin-left:6px;">-{{ a.cleared }}</span>
                     {% endif %}
-                    {% if a.defects > 0 %}
+                    {% if a.new is defined and a.new > 0 %}
+                    <span style="color:#C44D3F;font-weight:600;font-size:0.8rem;margin-left:6px;">+{{ a.new }}</span>
+                    {% elif a.defects > 0 and not (a.bfwd is defined) %}
                     <span style="color:#C44D3F;font-weight:600;font-size:0.8rem;margin-left:6px;">{{ a.defects }}</span>
                     {% endif %}
                 </div>
@@ -226,12 +226,21 @@
                 {% endif %}
             </div>
             <div class="unit-header-right" style="flex-direction: column; align-items: flex-end; gap: 0;">
-                {% if u.cycle_number and u.cycle_number >= 2 and u.open_defects > 0 %}
-                <span class="defect-hero" style="color:#C8963E;">{{ u.open_defects }}</span>
+                {% if u.cycle_number and u.cycle_number >= 2 %}
+                <span class="defect-hero" style="color:#C8963E;">{{ u.bfwd_defects }}</span>
+                <span class="defect-hero-label">b/fwd</span>
+                {% if u.cleared_defects > 0 %}
+                <span class="defect-hero" style="color:#4A7C59;">-{{ u.cleared_defects }}</span>
+                <span class="defect-hero-label">cleared</span>
+                {% endif %}
+                {% if u.open_defects > 0 %}
+                <span class="defect-hero" style="color:#C44D3F;">{{ u.open_defects }}</span>
                 <span class="defect-hero-label">open</span>
                 {% endif %}
+                {% else %}
                 <span class="defect-hero severity-{{ u.severity }}">{{ u.total_defects }}</span>
-                <span class="defect-hero-label">{{ 'new' if u.cycle_number and u.cycle_number >= 2 else 'defects' }}</span>
+                <span class="defect-hero-label">defects</span>
+                {% endif %}
             </div>
         </div>
         {% if u.areas and u.total_defects > 0 %}
