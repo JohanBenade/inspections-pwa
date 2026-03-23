@@ -492,6 +492,9 @@
             <span class="summary-label" style="font-weight: bold;">Open defects:</span>
             <span class="summary-value">{{ summary.open_defects }}</span>
         </div>
+        {% if excluded_items_by_area %}
+        <div style="font-size: 8pt; font-style: italic; color: #888; margin-top: 6px;">* {{ summary.excluded }} items excluded from this cycle &mdash; not yet assessed</div>
+        {% endif %}
     </div>
     {% elif cycle_number > 1 %}
         <!-- C2+ Summary Box (unified ledger format) -->
@@ -521,16 +524,13 @@
                 <span class="summary-value" style="color: {% if summary.open_defects > 0 %}#cc0000{% else %}#228B22{% endif %};">{{ summary.open_defects }}</span>
             </div>
             {% if excluded_items_by_area %}
-            <div class="summary-row">
-                <span class="summary-label" style="font-size: 8pt; color: #666;">Items excluded (not inspected):</span>
-                <span class="summary-value" style="font-size: 8pt; color: #C8963E;">{{ summary.excluded }}</span>
-            </div>
+            <div style="font-size: 8pt; font-style: italic; color: #888; margin-top: 6px;">* {{ summary.excluded }} items excluded from this cycle &mdash; not yet assessed</div>
             {% endif %}
             <div class="summary-divider"></div>
             {% if is_certified %}
             <div class="summary-status">UNIT CLEARED &amp; CERTIFIED</div>
             {% elif excluded_items_by_area and summary.open_defects == 0 %}
-            <div class="summary-status" style="color: #C8963E; font-size: 9pt;">All inspected defects rectified &mdash; {{ summary.excluded }} excluded items pending</div>
+            <div class="summary-status" style="color: #C8963E; font-size: 9pt;">All defects rectified &middot; Excluded items pending next cycle</div>
             {% elif summary.open_defects > 0 %}
             <div class="summary-status" style="color: #cc0000;">{{ summary.open_defects }} DEFECT{{ 'S' if summary.open_defects != 1 else '' }} OUTSTANDING</div>
             {% endif %}
