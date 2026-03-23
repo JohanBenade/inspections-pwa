@@ -255,6 +255,21 @@ def start_inspection(unit_id):
             )
         """, [inspection_id, inspection_id])
 
+        # Mark Rule 3 parents themselves as carried_ok
+        # (newly inspectable parents with children, no defects)
+        db.execute("""
+            UPDATE inspection_item SET status = 'ok'
+            WHERE inspection_id = ?
+            AND status = 'pending'
+            AND COALESCE(has_prior_defects, 0) = 0
+            AND item_template_id IN (
+                SELECT p.id FROM item_template p
+                WHERE p.parent_item_id IS NULL
+                AND p.tenant_id = ?
+                AND EXISTS (SELECT 1 FROM item_template c WHERE c.parent_item_id = p.id)
+            )
+        """, [inspection_id, tenant_id])
+
     
     db.commit()
     
@@ -406,10 +421,7 @@ def inspect(inspection_id):
 
     area_defect_map = area_defect_counts
 
-    # Rule 3 parents (C2+): newly inspectable parents shown read-only, not actionable
     rule3_exclude = ""
-    if is_followup:
-        rule3_exclude = "AND NOT (it.parent_item_id IS NULL AND ii.status = 'pending' AND COALESCE(ii.has_prior_defects, 0) = 0 AND EXISTS (SELECT 1 FROM item_template c WHERE c.parent_item_id = it.id))"
     area_progress = query_db("""
         SELECT at.id as area_id,
             COUNT(CASE WHEN ii.status NOT IN ('pending') AND NOT (ii.status = 'ok' AND ii.marked_at IS NULL AND COALESCE(ii.has_prior_defects, 0) = 0) THEN 1 END) as marked,
@@ -1761,8 +1773,6 @@ def get_area_badges(inspection_id):
     """, [inspection_id])
     
     rule3_excl = ""
-    if is_followup_badge:
-        rule3_excl = "AND NOT (it.parent_item_id IS NULL AND ii.status = 'pending' AND COALESCE(ii.has_prior_defects, 0) = 0 AND EXISTS (SELECT 1 FROM item_template c WHERE c.parent_item_id = it.id))"
     area_progress = query_db("""
         SELECT at.id as area_id,
             COUNT(CASE WHEN ii.status NOT IN ('pending') AND NOT (ii.status = 'ok' AND ii.marked_at IS NULL AND COALESCE(ii.has_prior_defects, 0) = 0) THEN 1 END) as marked,

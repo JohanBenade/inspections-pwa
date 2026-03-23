@@ -57,8 +57,7 @@
         {% if not item.parent_item_id and item.was_not_installed|default(false) %}
             {% set ns.any_parent_was_ni = true %}
         {% endif %}
-        {% set is_rule3_parent = is_followup and not item.parent_item_id and item.child_count > 0 and item.status == 'pending' and not item.has_open_prior|default(false) and not item.was_not_installed|default(false) %}
-        {% if item.status != 'skipped' and not item.is_carried_ok|default(false) and not is_rule3_parent %}
+        {% if item.status != 'skipped' and not item.is_carried_ok|default(false) %}
             {% set ns.active = ns.active + 1 %}
             {% if item.status not in ['pending', 'skipped'] %}
                 {% set ns.marked = ns.marked + 1 %}
