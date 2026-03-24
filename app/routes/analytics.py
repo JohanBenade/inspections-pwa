@@ -4640,7 +4640,7 @@ def _build_pipeline_report_data(live=False):
         from collections import OrderedDict
         zone_groups = OrderedDict()
         for r in c1_done_rows:
-            zone = '{} Floor {}'.format(r['block'], r['floor'])
+            zone = '{} {}'.format(r['block'], FLOOR_LABELS.get(r['floor'], 'Floor {}'.format(r['floor'])))
             if zone not in zone_groups:
                 zone_groups[zone] = {'units': [], 'defects': 0}
             zone_groups[zone]['units'].append(r['unit_number'])
@@ -4671,7 +4671,7 @@ def _build_pipeline_report_data(live=False):
         from collections import OrderedDict
         zone_groups = OrderedDict()
         for r in c2_done_rows:
-            zone = '{} Floor {}'.format(r['block'], r['floor'])
+            zone = '{} {}'.format(r['block'], FLOOR_LABELS.get(r['floor'], 'Floor {}'.format(r['floor'])))
             if zone not in zone_groups:
                 zone_groups[zone] = {'units': [], 'cleared': 0, 'open': 0}
             zone_groups[zone]['units'].append(r['unit_number'])
