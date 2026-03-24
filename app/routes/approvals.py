@@ -973,7 +973,7 @@ def batch_push_pdfs(batch_id):
     zip_buffer = io.BytesIO()
     success_count = 0
     fail_count = 0
-    with zipfile.ZipFile(zip_buffer, 'w', zipfile.ZIP_DEFLATED) as zf:
+    with zipfile.ZipFile(zip_buffer, 'w', zipfile.ZIP_STORED) as zf:
         for unit in units:
             try:
                 pdf_bytes = generate_defects_pdf(tenant_id, unit['id'], unit['cycle_id'])
