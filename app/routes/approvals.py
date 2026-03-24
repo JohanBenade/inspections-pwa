@@ -417,10 +417,31 @@ def _build_review_data(tenant_id, cycle_id):
         "SELECT MAX(updated_at) AS val FROM inspection WHERE cycle_id = ? AND status IN ('reviewed', 'pending_followup', 'certified', 'closed')",
         [cycle_id], one=True)
 
+    # For C2+ cycles, compute cleared/open counts per unit
+    if cycle['cycle_number'] and cycle['cycle_number'] >= 2:
+        c2_stats = query_db("""
+            SELECT d.unit_id,
+                   SUM(CASE WHEN d.status = 'cleared' AND d.cleared_cycle_id = ? THEN 1 ELSE 0 END) AS cleared_count,
+                   SUM(CASE WHEN d.status = 'open' THEN 1 ELSE 0 END) AS open_count
+            FROM defect d
+            WHERE d.unit_id IN (SELECT unit_id FROM inspection WHERE cycle_id = ? AND tenant_id = ?)
+            AND d.tenant_id = ?
+            GROUP BY d.unit_id
+        """, [cycle_id, cycle_id, tenant_id, tenant_id])
+        c2_map = {r['unit_id']: r for r in c2_stats}
+        total_to_fix = 0
+        for unit in units:
+            s = c2_map.get(unit['unit_id'])
+            unit['cleared_count'] = s['cleared_count'] if s else 0
+            unit['open_count'] = s['open_count'] if s else 0
+            unit['to_fix'] = unit['open_count']
+            unit['defect_count'] = (unit['cleared_count'] or 0) + (unit['open_count'] or 0)
+            total_to_fix += unit['open_count'] or 0
+
     stats = {
         'total': len(inspections),
         'reviewed': total_reviewed,
-        'defects': len(defects),
+        'defects': len(defects) if cycle['cycle_number'] == 1 else sum(u['defect_count'] for u in units),
         'to_fix': total_to_fix,
         'first_submitted_at': first_sub['val'] if first_sub else None,
         'last_reviewed_at': last_rev['val'] if last_rev else None,

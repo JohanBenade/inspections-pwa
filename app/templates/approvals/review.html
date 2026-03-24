@@ -199,7 +199,11 @@
             </svg>
             <div>
                 <span class="font-semibold text-gray-900">Unit {{ unit.unit_number }}</span>
+                {% if cycle.cycle_number and cycle.cycle_number >= 2 %}
+                <span class="text-sm text-gray-400 ml-2">{{ unit.cleared_count|default(0) }} cleared, {{ unit.open_count|default(0) }} open</span>
+                {% else %}
                 <span class="text-sm text-gray-400 ml-2">{{ unit.defect_count }} defects</span>
+                {% endif %}
                 <a href="{{ url_for('certification.view_unit', unit_id=unit.unit_id, cycle=cycle.id, **{'from': 'approvals'}) }}"
                    class="text-xs text-blue-600 hover:text-blue-800 ml-2"
                    onclick="event.stopPropagation();">View &rarr;</a>
