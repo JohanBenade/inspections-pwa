@@ -4721,9 +4721,10 @@ def _build_pipeline_report_data(live=False):
         FROM inspection_batch ib
         JOIN batch_unit bu ON bu.batch_id = ib.id AND bu.removed_at IS NULL
         JOIN unit u ON bu.unit_id = u.id
-        WHERE ib.tenant_id = ? AND ib.status NOT IN ('complete', 'signed_off')
+        WHERE ib.tenant_id = ?
         AND u.unit_number NOT LIKE 'TEST%'
         ORDER BY ib.created_at DESC
+        LIMIT 1
     """, [tenant_id])
 
     batch_map = {}
