@@ -636,13 +636,91 @@ body {
         {% endif %}
     </div>
 
+    <!-- SECTION 10: DE-SNAG RESULTS -->
+    {% if desnag %}
+    <div class="section" style="margin-bottom: 18px;">
+        <div class="section-header">
+            <span class="section-number">10</span>
+            <span class="section-title">De-snag Results</span>
+        </div>
+
+        <!-- Metric cards -->
+        <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 14px;">
+            <div style="background: #F5F3EE; padding: 10px 12px; border-radius: 4px; text-align: center;">
+                <div style="font-size: 8px; font-weight: 600; letter-spacing: 1px; text-transform: uppercase; color: #9A9A9A;">Units De-snagged</div>
+                <div style="font-size: 16px; font-weight: 700; color: #1A1A1A; margin-top: 2px;">{{ desnag.count }} <span style="font-size: 11px; color: #9A9A9A;">of {{ desnag.eligible }}</span></div>
+            </div>
+            <div style="background: #F5F3EE; padding: 10px 12px; border-radius: 4px; text-align: center;">
+                <div style="font-size: 8px; font-weight: 600; letter-spacing: 1px; text-transform: uppercase; color: #9A9A9A;">Clearance Rate</div>
+                <div style="font-size: 16px; font-weight: 700; color: {% if desnag.clearance_rate >= 90 %}#4A7C59{% elif desnag.clearance_rate >= 70 %}#C8963E{% else %}#C44D3F{% endif %}; margin-top: 2px;">{{ desnag.clearance_rate }}%</div>
+            </div>
+            <div style="background: #F5F3EE; padding: 10px 12px; border-radius: 4px; text-align: center;">
+                <div style="font-size: 8px; font-weight: 600; letter-spacing: 1px; text-transform: uppercase; color: #9A9A9A;">Defects Cleared</div>
+                <div style="font-size: 16px; font-weight: 700; color: #4A7C59; margin-top: 2px;">{{ '{:,}'.format(desnag.total_cleared) }}</div>
+            </div>
+            <div style="background: #F5F3EE; padding: 10px 12px; border-radius: 4px; text-align: center;">
+                <div style="font-size: 8px; font-weight: 600; letter-spacing: 1px; text-transform: uppercase; color: #9A9A9A;">Still Open</div>
+                <div style="font-size: 16px; font-weight: 700; color: {% if desnag.total_still_open == 0 %}#4A7C59{% else %}#C44D3F{% endif %}; margin-top: 2px;">{{ desnag.total_still_open }}</div>
+            </div>
+            <div style="background: #F5F3EE; padding: 10px 12px; border-radius: 4px; text-align: center;">
+                <div style="font-size: 8px; font-weight: 600; letter-spacing: 1px; text-transform: uppercase; color: #9A9A9A;">Fully Cleared</div>
+                <div style="font-size: 16px; font-weight: 700; color: #4A7C59; margin-top: 2px;">{{ desnag.fully_cleared }} <span style="font-size: 11px; color: #9A9A9A;">of {{ desnag.count }}</span></div>
+            </div>
+            <div style="background: #F5F3EE; padding: 10px 12px; border-radius: 4px; text-align: center;">
+                <div style="font-size: 8px; font-weight: 600; letter-spacing: 1px; text-transform: uppercase; color: #9A9A9A;">Regressions</div>
+                <div style="font-size: 16px; font-weight: 700; color: {% if desnag.total_regressions == 0 %}#4A7C59{% else %}#C44D3F{% endif %}; margin-top: 2px;">{{ desnag.total_regressions }}</div>
+            </div>
+        </div>
+
+        <!-- Clearance bar -->
+        {% set bar_total = desnag.total_cleared + desnag.total_still_open %}
+        {% set green_pct = (desnag.total_cleared / bar_total * 100)|round(1) if bar_total > 0 else 0 %}
+        <div style="margin-bottom: 14px;">
+            <div style="display: flex; height: 22px; border-radius: 3px; overflow: hidden; font-size: 9px; font-weight: 700;">
+                {% if desnag.total_cleared > 0 %}
+                <div style="width: {{ green_pct }}%; background: #4A7C59; color: #fff; display: flex; align-items: center; justify-content: center;">{{ desnag.total_cleared }} cleared</div>
+                {% endif %}
+                {% if desnag.total_still_open > 0 %}
+                <div style="width: {{ 100 - green_pct }}%; background: #C44D3F; color: #fff; display: flex; align-items: center; justify-content: center;">{{ desnag.total_still_open }} open</div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Unit results table -->
+        <table style="width: 100%; border-collapse: collapse; font-size: 11px;">
+            <thead>
+                <tr>
+                    <th style="text-align: left; padding: 6px 10px; font-size: 9px; font-weight: 600; color: #9A9A9A; letter-spacing: 1.2px; text-transform: uppercase; border-bottom: 2px solid #E8E6E1; width: 60px;">Unit</th>
+                    <th style="text-align: left; padding: 6px 10px; font-size: 9px; font-weight: 600; color: #9A9A9A; letter-spacing: 1.2px; text-transform: uppercase; border-bottom: 2px solid #E8E6E1; width: 120px;">Zone</th>
+                    <th style="text-align: right; padding: 6px 10px; font-size: 9px; font-weight: 600; color: #9A9A9A; letter-spacing: 1.2px; text-transform: uppercase; border-bottom: 2px solid #E8E6E1; width: 60px;">B/Fwd</th>
+                    <th style="text-align: right; padding: 6px 10px; font-size: 9px; font-weight: 600; color: #9A9A9A; letter-spacing: 1.2px; text-transform: uppercase; border-bottom: 2px solid #E8E6E1; width: 60px;">Cleared</th>
+                    <th style="text-align: right; padding: 6px 10px; font-size: 9px; font-weight: 600; color: #9A9A9A; letter-spacing: 1.2px; text-transform: uppercase; border-bottom: 2px solid #E8E6E1; width: 60px;">Open</th>
+                    <th style="text-align: right; padding: 6px 10px; font-size: 9px; font-weight: 600; color: #9A9A9A; letter-spacing: 1.2px; text-transform: uppercase; border-bottom: 2px solid #E8E6E1; width: 60px;">Rate</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for u in desnag.units %}
+                <tr>
+                    <td style="padding: 5px 10px; border-bottom: 1px solid #F0EEEA; font-weight: 600;">{{ u.unit }}</td>
+                    <td style="padding: 5px 10px; border-bottom: 1px solid #F0EEEA; color: #6B6B6B;">{{ u.zone }}</td>
+                    <td style="text-align: right; padding: 5px 10px; border-bottom: 1px solid #F0EEEA;">{{ u.bfwd }}</td>
+                    <td style="text-align: right; padding: 5px 10px; border-bottom: 1px solid #F0EEEA; color: #4A7C59;">{{ u.cleared }}</td>
+                    <td style="text-align: right; padding: 5px 10px; border-bottom: 1px solid #F0EEEA; {% if u.open > 0 %}color: #C44D3F; font-weight: 600;{% endif %}">{{ u.open }}</td>
+                    <td style="text-align: right; padding: 5px 10px; border-bottom: 1px solid #F0EEEA; font-weight: 600; color: {% if u.rate >= 95 %}#4A7C59{% elif u.rate >= 80 %}#C8963E{% else %}#C44D3F{% endif %};">{{ u.rate }}%</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% endif %}
+
     <!-- ============ STUCK UNITS ============ -->
     <div style="page-break-before: always;"></div>
 
     <!-- SECTION 10: HEADLINE METRICS -->
     <div class="section">
         <div class="section-header">
-            <span class="section-number">10</span>
+            <span class="section-number">11</span>
             <span class="section-title">Open Defects by Unit</span>
         </div>
 
@@ -665,7 +743,7 @@ body {
     <!-- SECTION 11: UNIT TABLE -->
     <div class="section">
         <div class="section-header">
-            <span class="section-number">11</span>
+            <span class="section-number">12</span>
             <span class="section-title">Top 10 Units with Open Defects</span>
         </div>
 
