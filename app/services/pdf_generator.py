@@ -478,4 +478,7 @@ def generate_pdf_filename(unit, cycle=None, inspection_date=None):
         date_str = inspection_date.replace('-', '')
     else:
         date_str = datetime.now().strftime('%Y%m%d')
-    return '{}_UNIT_INSPECTION {}_{}.pdf'.format(unit_num, cycle_num, date_str)
+    cycle_int = int(cycle_num)
+    if cycle_int > 1:
+        return '{}_UNIT_INSPECTION_01_DESNAG_{}.pdf'.format(unit_num, date_str)
+    return '{}_UNIT_INSPECTION_{}_{}.pdf'.format(unit_num, cycle_num, date_str)

@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>{{ unit.unit_number }}_UNIT_INSPECTION {% if cycle %}{{ "%02d"|format(cycle.cycle_number) }}{% else %}01{% endif %}_{{ inspection_date_raw|replace("-","") }}</title>
+    <title>{{ unit.unit_number }}_UNIT_INSPECTION{% if cycle and cycle.cycle_number > 1 %}_01_DESNAG{% else %}_{% if cycle %}{{ "%02d"|format(cycle.cycle_number) }}{% else %}01{% endif %}{% endif %}_{{ inspection_date_raw|replace("-","") }}</title>
     <style>
         @page {
             size: A4;
@@ -460,7 +460,7 @@
     </div>
     <div class="metadata-row">
         <span class="metadata-label">RE:</span>
-        <span class="metadata-value">DEFECTIVE WORKS LIST</span>
+        <span class="metadata-value">DEFECTIVE WORKS LIST{% if cycle_number > 1 %} — DE-SNAG{% endif %}</span>
     </div>
     <div class="metadata-row">
         <span class="metadata-label">PROJECT</span>
@@ -475,7 +475,7 @@
         <span class="metadata-value red-text">{{ unit.unit_number }}</span>
     </div>
     <div class="metadata-row">
-        <span class="metadata-label">INSPECTION CYCLE</span>
+        <span class="metadata-label">{% if cycle_number > 1 %}DE-SNAG CYCLE{% else %}INSPECTION CYCLE{% endif %}</span>
         <span class="metadata-value red-text">{{ cycle.cycle_number if cycle else '1' }}</span>
     </div>
     
@@ -607,8 +607,18 @@
     {% endif %}
     
     <div class="inspection-details">
+        {% if cycle_number > 1 and inspection_timeline %}
+        {% set c1 = inspection_timeline|selectattr('cycle_number', 'equalto', 1)|first %}
+        {% if c1 %}
+        <p><span class="detail-label">Inspection Date:</span> {{ c1.date }}</p>
+        <p><span class="detail-label">Inspected By:</span> {{ c1.inspector }}</p>
+        {% endif %}
+        <p><span class="detail-label">Desnag Date:</span> {{ inspection_date }}</p>
+        <p><span class="detail-label">Desnag By:</span> {{ inspector_name }}</p>
+        {% else %}
         <p><span class="detail-label">Inspection Date:</span> {{ inspection_date }}</p>
         <p><span class="detail-label">Inspected By:</span> {{ inspector_name }}</p>
+        {% endif %}
         <p><span class="detail-label">Certification date:</span> {% if certification_date %}{{ certification_date }}{% else %}Not Certified{% endif %}</p>
     </div>
     
