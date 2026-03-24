@@ -5176,7 +5176,7 @@ def _build_pipeline_report_data(live=False):
             }
 
     # --- STUCK UNITS SORT (cycle desc, then open desc) ---
-    stuck_units.sort(key=lambda x: (-x['cycle'], -x['open']))
+    stuck_units.sort(key=lambda x: -x['open'])
 
     return {
         'units_inspected': units_inspected,
