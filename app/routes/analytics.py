@@ -5042,13 +5042,11 @@ def _build_pipeline_report_data(live=False):
     stuck_rows = query_db("""
         SELECT u.unit_number, u.block, u.floor,
                COUNT(d.id) as open_count,
-               MIN(i.submitted_at) as first_c1_submitted,
-               MAX(i.cycle_number) as max_cycle,
+               (SELECT MIN(i.submitted_at) FROM inspection i WHERE i.unit_id = u.id AND i.tenant_id = d.tenant_id AND i.status IN ('reviewed','approved','pending_followup')) as first_c1_submitted,
+               (SELECT MAX(i.cycle_number) FROM inspection i WHERE i.unit_id = u.id AND i.tenant_id = d.tenant_id AND i.status IN ('reviewed','approved','pending_followup')) as max_cycle,
                SUM(CASE WHEN d.raised_cycle_number >= 2 THEN 1 ELSE 0 END) as new_c2
         FROM defect d
         JOIN unit_real u ON d.unit_id = u.id
-        LEFT JOIN inspection i ON i.unit_id = u.id AND i.tenant_id = d.tenant_id
-            AND i.status IN ('reviewed', 'approved', 'pending_followup')
         WHERE d.tenant_id = ? AND d.created_at <= ?
         AND (d.status = 'open' OR (d.status = 'cleared' AND d.cleared_at > ?))
         AND d.raised_cycle_id NOT LIKE 'test-%%'
