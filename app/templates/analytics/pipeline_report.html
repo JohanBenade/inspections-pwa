@@ -225,7 +225,7 @@ body {
     <div class="section">
         <div class="section-header">
             <span class="section-number">01</span>
-            <span class="section-title">Project Status</span>
+            <span class="section-title">Project Status as at {{ snapshot_date }}</span>
         </div>
 
         <div class="metric-row">
@@ -308,7 +308,7 @@ body {
     <div class="section">
         <div class="section-header">
             <span class="section-number">02</span>
-            <span class="section-title">Movement This Week</span>
+            <span class="section-title">Movement This Week ({{ ledger_from }} &ndash; {{ ledger_to }})</span>
         </div>
         {% for m in movements %}
         <div style="margin-bottom: 8px;">
@@ -324,7 +324,7 @@ body {
     <div class="section">
         <div class="section-header">
             <span class="section-number">02</span>
-            <span class="section-title">Movement This Week</span>
+            <span class="section-title">Movement This Week ({{ ledger_from }} &ndash; {{ ledger_to }})</span>
         </div>
         <div style="font-size: 10px; color: #9A9A9A;">No stage changes this week.</div>
     </div>
@@ -399,7 +399,7 @@ body {
     <div class="section">
         <div class="section-header">
             <span class="section-number">04</span>
-            <span class="section-title">Weekly Ledger</span>
+            <span class="section-title">Weekly Ledger ({{ ledger_from }} &ndash; {{ ledger_to }})</span>
         </div>
 
         <table class="movement-table" style="max-width: 500px;">

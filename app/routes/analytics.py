@@ -4544,6 +4544,7 @@ def _build_pipeline_report_data(live=False):
         prev_week_utc = snapshot_utc - _td(days=7)
         prev_week_str = prev_week_utc.strftime('%Y-%m-%d %H:%M:%S')
         snapshot_label = 'Live'
+        snapshot_date = _now_sast.strftime('%d %B %Y')
     else:
         # Snapshot mode: Monday midnight SAST (= Tuesday 00:00 SAST)
         # Report covers prev-Tue 00:00 SAST -> this-Mon 23:59 SAST
@@ -4554,6 +4555,7 @@ def _build_pipeline_report_data(live=False):
         prev_week_utc = snapshot_utc - _td(days=7)
         prev_week_str = prev_week_utc.strftime('%Y-%m-%d %H:%M:%S')
         snapshot_label = (snapshot_sast - _td(days=1)).strftime('Week ending %d %b %Y')
+        snapshot_date = (snapshot_sast - _td(days=1)).strftime('%d %B %Y')
 
     # All real units
     all_units = query_db("""
@@ -4753,7 +4755,7 @@ def _build_pipeline_report_data(live=False):
         if bdata['new'] > 0:
             parts.append(str(bdata['new']) + ' new')
         if bdata['reinspection'] > 0:
-            parts.append(str(bdata['reinspection']) + ' re-inspection')
+            parts.append(str(bdata['reinspection']) + ' de-snag')
         active_batches.append({
             'name': bdata['name'],
             'total': total,
@@ -5205,8 +5207,9 @@ def _build_pipeline_report_data(live=False):
         'q1': q1,
         'q3': q3,
         'snapshot_label': snapshot_label,
+        'snapshot_date': snapshot_date,
         'ledger_from': (snapshot_utc - _td(days=7) + _td(hours=2)).strftime('%d %b'),
-        'ledger_to': (snapshot_utc + _td(hours=2)).strftime('%d %b %Y'),
+        'ledger_to': (snapshot_utc + _td(hours=2) - _td(days=1)).strftime('%d %b %Y'),
         'kpi': kpi,
         'pipeline': pipeline,
         'pool_trend': pool_trend,
