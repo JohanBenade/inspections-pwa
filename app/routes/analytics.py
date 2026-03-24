@@ -4545,10 +4545,9 @@ def _build_pipeline_report_data(live=False):
         prev_tue_str = prev_tue_utc.strftime('%Y-%m-%d %H:%M:%S')
         snapshot_label = 'Live'
     else:
-        # Snapshot mode: last Tuesday midnight SAST
+        # Snapshot mode: Monday midnight SAST (= Tuesday 00:00 SAST)
+        # Report covers prev-Tue 00:00 SAST -> this-Mon 23:59 SAST
         _days_since_tue = (_now_sast.weekday() - 1) % 7
-        if _days_since_tue == 0:
-            _days_since_tue = 7  # On Tuesday, use LAST Tuesday
         snapshot_sast = _now_sast.replace(hour=0, minute=0, second=0, microsecond=0) - _td(days=_days_since_tue)
         snapshot_utc = snapshot_sast - _td(hours=2)
         snapshot_str = snapshot_utc.strftime('%Y-%m-%d %H:%M:%S')
@@ -4623,70 +4622,68 @@ def _build_pipeline_report_data(live=False):
     # --- MOVEMENTS THIS WEEK ---
     movements = []
 
-    # 1. Units entered a batch this week (Not Requested -> Awaiting Inspection)
-    batch_enter_rows = query_db("""
-        SELECT u.unit_number, ib.name as batch_name
-        FROM batch_unit bu
-        JOIN unit_real u ON bu.unit_id = u.id
-        JOIN inspection_batch ib ON bu.batch_id = ib.id
-        WHERE bu.tenant_id = ? AND bu.removed_at IS NULL
-        AND bu.created_at > ? AND bu.created_at <= ?
-        ORDER BY ib.name, u.unit_number
-    """, [tenant_id, prev_tue_str, snapshot_str])
-    if batch_enter_rows:
-        from collections import OrderedDict
-        batch_groups = OrderedDict()
-        for r in batch_enter_rows:
-            bn = r['batch_name']
-            if bn not in batch_groups:
-                batch_groups[bn] = []
-            batch_groups[bn].append(r['unit_number'])
-        for bn, units in batch_groups.items():
-            movements.append({
-                'label': 'Awaiting Inspection',
-                'detail': '{} ({} units)'.format(bn, len(units)),
-                'units': units,
-                'colour': '#6B6B6B',
-            })
-
-    # 2. C1 inspections reviewed this week (Awaiting -> Defects Raised)
+    # 1. C1 inspections completed this week (grouped by zone, with defect counts)
     c1_done_rows = query_db("""
-        SELECT u.unit_number
+        SELECT u.unit_number, u.block, u.floor, i.unit_id,
+            (SELECT COUNT(*) FROM defect d WHERE d.unit_id = i.unit_id AND d.status IN ('open','cleared')
+             AND d.raised_cycle_id = i.cycle_id) as defect_count
         FROM inspection i
         JOIN unit_real u ON i.unit_id = u.id
         WHERE i.tenant_id = ? AND i.cycle_number = 1
         AND i.submitted_at > ? AND i.submitted_at <= ?
         AND i.status IN ('reviewed','approved','certified','pending_followup')
-        ORDER BY u.unit_number
+        ORDER BY u.block, u.floor, u.unit_number
     """, [tenant_id, prev_tue_str, snapshot_str])
     if c1_done_rows:
-        movements.append({
-            'label': 'Defects Raised',
-            'detail': '{} units completed C1'.format(len(c1_done_rows)),
-            'units': [r['unit_number'] for r in c1_done_rows],
-            'colour': '#C8963E',
-        })
+        from collections import OrderedDict
+        zone_groups = OrderedDict()
+        for r in c1_done_rows:
+            zone = '{} Floor {}'.format(r['block'], r['floor'])
+            if zone not in zone_groups:
+                zone_groups[zone] = {'units': [], 'defects': 0}
+            zone_groups[zone]['units'].append(r['unit_number'])
+            zone_groups[zone]['defects'] += r['defect_count'] or 0
+        for zone, data in zone_groups.items():
+            movements.append({
+                'label': 'Defects Raised',
+                'detail': '{} — {} defects raised'.format(zone, data['defects']),
+                'units': data['units'],
+                'colour': '#C8963E',
+            })
 
-    # 3. Units entered C2+ batch this week (Defects Raised -> Under Verification)
-    c2_enter_rows = query_db("""
-        SELECT DISTINCT u.unit_number
-        FROM batch_unit bu
-        JOIN unit_real u ON bu.unit_id = u.id
-        JOIN inspection_cycle ic ON bu.cycle_id = ic.id
-        WHERE bu.tenant_id = ? AND bu.removed_at IS NULL
-        AND ic.cycle_number >= 2
-        AND bu.created_at > ? AND bu.created_at <= ?
-        ORDER BY u.unit_number
+    # 2. C2+ de-snag reviewed this week (grouped by zone, with cleared/open counts)
+    c2_done_rows = query_db("""
+        SELECT u.unit_number, u.block, u.floor, i.unit_id, i.cycle_id,
+            (SELECT COUNT(*) FROM defect d WHERE d.unit_id = i.unit_id
+             AND d.status = 'cleared' AND d.cleared_cycle_id = i.cycle_id) as cleared,
+            (SELECT COUNT(*) FROM defect d WHERE d.unit_id = i.unit_id
+             AND d.status = 'open') as still_open
+        FROM inspection i
+        JOIN unit_real u ON i.unit_id = u.id
+        WHERE i.tenant_id = ? AND i.cycle_number >= 2
+        AND i.submitted_at > ? AND i.submitted_at <= ?
+        AND i.status IN ('reviewed','approved','certified','pending_followup')
+        ORDER BY u.block, u.floor, u.unit_number
     """, [tenant_id, prev_tue_str, snapshot_str])
-    if c2_enter_rows:
-        movements.append({
-            'label': 'Under Verification',
-            'detail': '{} units entered C2+'.format(len(c2_enter_rows)),
-            'units': [r['unit_number'] for r in c2_enter_rows],
-            'colour': '#3D6B8E',
-        })
+    if c2_done_rows:
+        from collections import OrderedDict
+        zone_groups = OrderedDict()
+        for r in c2_done_rows:
+            zone = '{} Floor {}'.format(r['block'], r['floor'])
+            if zone not in zone_groups:
+                zone_groups[zone] = {'units': [], 'cleared': 0, 'open': 0}
+            zone_groups[zone]['units'].append(r['unit_number'])
+            zone_groups[zone]['cleared'] += r['cleared'] or 0
+            zone_groups[zone]['open'] += r['still_open'] or 0
+        for zone, data in zone_groups.items():
+            movements.append({
+                'label': 'De-snag Reviewed',
+                'detail': '{} — {} cleared, {} still open'.format(zone, data['cleared'], data['open']),
+                'units': data['units'],
+                'colour': '#3D6B8E',
+            })
 
-    # 4. Units certified this week
+    # 3. Units certified this week
     cert_rows = query_db("""
         SELECT u.unit_number
         FROM unit_real u
