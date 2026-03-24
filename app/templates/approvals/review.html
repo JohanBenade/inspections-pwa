@@ -121,9 +121,9 @@
 </div>
 
 <!-- Explainer -->
-{% if stats.to_fix > 0 %}
+{% if stats.to_fix > 0 and (not cycle.cycle_number or cycle.cycle_number < 2) %}
 <div class="bg-amber-50 border border-amber-200 rounded-lg px-4 py-3 mb-4 text-sm text-amber-800">
-    {% if cycle.cycle_number and cycle.cycle_number >= 2 %}<strong>{{ stats.to_fix }} defects still open</strong> across units in this cycle.{% else %}<strong>{{ stats.to_fix }} descriptions need reviewing</strong> before PDFs go to Raubex.{% endif %}
+    <strong>{{ stats.to_fix }} descriptions need reviewing</strong> before PDFs go to Raubex.
     Expand a unit, tap a blue suggestion to accept it, or tap the description to type your own.
     Once all descriptions are clean, mark the unit as reviewed.
 </div>
