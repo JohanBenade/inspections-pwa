@@ -1,0 +1,66 @@
+{# Single defect row for de-snag view.
+   Variables: defect (or d), cycle_number, is_readonly, inspection_id
+   Optional: progress, area_progress, swap_oob (for HTMX OOB swaps)
+#}
+{% set defect = defect if defect is defined else d %}
+<div class="text-sm text-gray-700 font-medium">{{ defect.item_description }}</div>
+<div class="text-sm mt-1">{{ defect.original_comment }}</div>
+<span class="inline-block mt-1 text-xs px-2 py-0.5 rounded-full {% if defect.defect_type == 'not_installed' %}bg-purple-100 text-purple-700{% else %}bg-red-100 text-red-700{% endif %}">
+    {{ 'N/I' if defect.defect_type == 'not_installed' else 'NTS' }}
+</span>
+
+{% if defect.addressed_cycle_number == cycle_number %}
+    {# Already addressed #}
+    {% if defect.status == 'cleared' %}
+    <div class="mt-2 flex items-center gap-2">
+        <span class="inline-flex items-center px-3 py-1.5 text-xs font-medium rounded-lg bg-green-100 text-green-700">Cleared &#10003;</span>
+        {% if not is_readonly %}
+        <button class="text-xs text-gray-400 hover:text-gray-600 underline"
+                hx-post="{{ url_for('inspection.desnag_undo', inspection_id=inspection_id) }}"
+                hx-vals='{"defect_id": "{{ defect.id }}"}'
+                hx-target="#defect-{{ defect.id }}"
+                hx-swap="innerHTML">Undo</button>
+        {% endif %}
+    </div>
+    {% else %}
+    <div class="mt-2 flex items-center gap-2">
+        <span class="inline-flex items-center px-3 py-1.5 text-xs font-medium rounded-lg bg-red-100 text-red-700">Still Open</span>
+        {% if not is_readonly %}
+        <button class="text-xs text-gray-400 hover:text-gray-600 underline"
+                hx-post="{{ url_for('inspection.desnag_undo', inspection_id=inspection_id) }}"
+                hx-vals='{"defect_id": "{{ defect.id }}"}'
+                hx-target="#defect-{{ defect.id }}"
+                hx-swap="innerHTML">Undo</button>
+        {% endif %}
+    </div>
+    {% endif %}
+{% else %}
+    {# Not yet addressed — show action buttons #}
+    {% if not is_readonly %}
+    <div class="mt-2 flex gap-2">
+        <button class="flex-1 py-2 px-3 text-sm font-medium rounded-lg bg-green-600 text-white hover:bg-green-700 transition-colors"
+                hx-post="{{ url_for('inspection.desnag_address', inspection_id=inspection_id) }}"
+                hx-vals='{"defect_id": "{{ defect.id }}", "action": "cleared"}'
+                hx-target="#defect-{{ defect.id }}"
+                hx-swap="innerHTML">Cleared</button>
+        <button class="flex-1 py-2 px-3 text-sm font-medium rounded-lg bg-red-100 text-red-700 hover:bg-red-200 transition-colors"
+                hx-post="{{ url_for('inspection.desnag_address', inspection_id=inspection_id) }}"
+                hx-vals='{"defect_id": "{{ defect.id }}", "action": "still_open"}'
+                hx-target="#defect-{{ defect.id }}"
+                hx-swap="innerHTML">Still Open</button>
+    </div>
+    {% endif %}
+{% endif %}
+
+{# OOB swaps for progress and area badge #}
+{% if swap_oob is defined and swap_oob %}
+<div id="desnag-progress" hx-swap-oob="innerHTML">
+    {% include 'inspection/_desnag_progress.html' %}
+</div>
+{% if area_progress is defined %}
+<span id="badge-{{ defect.area_name|replace(' ', '-')|lower }}" hx-swap-oob="outerHTML"
+      class="text-xs px-2 py-1 rounded-full {% if area_progress.addressed == area_progress.total %}bg-green-100 text-green-700{% else %}bg-gray-200 text-gray-600{% endif %}">
+    {{ area_progress.addressed }} / {{ area_progress.total }}
+</span>
+{% endif %}
+{% endif %}

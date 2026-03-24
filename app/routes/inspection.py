@@ -298,6 +298,11 @@ def inspect(inspection_id):
     
     is_initial = inspection['cycle_number'] == 1
     is_followup = not is_initial
+
+    # De-snag: redirect C2+ inspections to defect-centric view
+    if is_followup:
+        return redirect(url_for('inspection.desnag_view', inspection_id=inspection_id))
+
     template = get_inspection_template(tenant_id, inspection['unit_type'])
     
     # Filter template to only show areas that have actionable items
@@ -1935,6 +1940,309 @@ def get_defect_suggestions(item_template_id):
             >{desc}</button>'''
     pills_html += '</div>'
     return pills_html
+
+
+# ============================================================
+# DE-SNAG ROUTES (C2+ defect-centric inspection)
+# ============================================================
+
+FLOOR_LABELS = {0: 'Ground', 1: '1st Floor', 2: '2nd Floor'}
+
+@inspection_bp.route('/<inspection_id>/desnag')
+@require_auth
+def desnag_view(inspection_id):
+    tenant_id = session['tenant_id']
+
+    inspection = query_db("""
+        SELECT i.*, u.unit_number, u.block, u.floor
+        FROM inspection i
+        JOIN unit u ON i.unit_id = u.id
+        WHERE i.id = ? AND i.tenant_id = ?
+    """, [inspection_id, tenant_id], one=True)
+
+    if not inspection:
+        abort(404)
+
+    if inspection['cycle_number'] == 1:
+        return redirect(url_for('inspection.inspect', inspection_id=inspection_id))
+
+    cycle_number = inspection['cycle_number']
+    unit_id = inspection['unit_id']
+
+    # Set status to in_progress if not_started
+    if inspection['status'] == 'not_started':
+        db = get_db()
+        now = datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S')
+        db.execute("UPDATE inspection SET status='in_progress', updated_at=? WHERE id=?", [now, inspection_id])
+        # Update batch_unit too
+        db.execute("""UPDATE batch_unit SET status='inspecting'
+            WHERE unit_id=? AND cycle_id=? AND tenant_id=? AND status='not_started'""",
+            [unit_id, inspection['cycle_id'], tenant_id])
+        db.commit()
+
+    # B/fwd defects: open + raised before this cycle
+    bfwd_open = query_db("""
+        SELECT d.id, d.defect_type, d.original_comment, d.status,
+               d.addressed_cycle_number, d.item_template_id,
+               it.item_description, ct.category_name, at2.area_name,
+               at2.area_order, ct.category_order, it.item_order
+        FROM defect d
+        JOIN item_template it ON d.item_template_id = it.id
+        JOIN category_template ct ON it.category_id = ct.id
+        JOIN area_template at2 ON ct.area_id = at2.id
+        WHERE d.unit_id = ? AND d.tenant_id = ?
+          AND d.status = 'open'
+          AND d.raised_cycle_number < ?
+        ORDER BY at2.area_order, ct.category_order, it.item_order
+    """, [unit_id, tenant_id, cycle_number])
+
+    # Defects cleared THIS cycle (show as green)
+    bfwd_cleared = query_db("""
+        SELECT d.id, d.defect_type, d.original_comment, d.status,
+               d.addressed_cycle_number, d.item_template_id,
+               it.item_description, ct.category_name, at2.area_name,
+               at2.area_order, ct.category_order, it.item_order
+        FROM defect d
+        JOIN item_template it ON d.item_template_id = it.id
+        JOIN category_template ct ON it.category_id = ct.id
+        JOIN area_template at2 ON ct.area_id = at2.id
+        WHERE d.unit_id = ? AND d.tenant_id = ?
+          AND d.status = 'cleared'
+          AND d.addressed_cycle_number = ?
+        ORDER BY at2.area_order, ct.category_order, it.item_order
+    """, [unit_id, tenant_id, cycle_number])
+
+    # Regression defects (raised this cycle)
+    regressions = query_db("""
+        SELECT d.id, d.defect_type, d.original_comment, d.status,
+               d.item_template_id, it.item_description,
+               ct.category_name, at2.area_name
+        FROM defect d
+        JOIN item_template it ON d.item_template_id = it.id
+        JOIN category_template ct ON it.category_id = ct.id
+        JOIN area_template at2 ON ct.area_id = at2.id
+        WHERE d.unit_id = ? AND d.tenant_id = ?
+          AND d.raised_cycle_number = ?
+        ORDER BY at2.area_order, ct.category_order, it.item_order
+    """, [unit_id, tenant_id, cycle_number])
+
+    # Group by area -> category
+    from collections import OrderedDict
+    areas = OrderedDict()
+    for d in list(bfwd_open) + list(bfwd_cleared):
+        area = d['area_name']
+        cat = d['category_name']
+        if area not in areas:
+            areas[area] = {'categories': OrderedDict(), 'total': 0, 'addressed': 0}
+        if cat not in areas[area]['categories']:
+            areas[area]['categories'][cat] = []
+        areas[area]['categories'][cat].append(dict(d))
+        areas[area]['total'] += 1
+        if d['addressed_cycle_number'] == cycle_number:
+            areas[area]['addressed'] += 1
+
+    total_bfwd = len(bfwd_open) + len(bfwd_cleared)
+    total_addressed = sum(1 for d in list(bfwd_open) + list(bfwd_cleared) if d['addressed_cycle_number'] == cycle_number)
+    total_cleared = len(bfwd_cleared)
+    total_still_open = sum(1 for d in bfwd_open if d['addressed_cycle_number'] == cycle_number)
+
+    is_readonly = inspection['status'] in ('submitted', 'reviewed', 'approved', 'pending_followup', 'certified')
+    can_submit = (total_bfwd > 0 and total_addressed == total_bfwd and not is_readonly)
+
+    floor_label = FLOOR_LABELS.get(inspection['floor'], f"Floor {inspection['floor']}")
+
+    return render_template('inspection/desnag.html',
+        inspection=inspection,
+        areas=areas,
+        regressions=regressions,
+        total_bfwd=total_bfwd,
+        total_addressed=total_addressed,
+        total_cleared=total_cleared,
+        total_still_open=total_still_open,
+        cycle_number=cycle_number,
+        is_readonly=is_readonly,
+        can_submit=can_submit,
+        floor_label=floor_label)
+
+
+@inspection_bp.route('/<inspection_id>/desnag/address', methods=['POST'])
+@require_auth
+def desnag_address(inspection_id):
+    tenant_id = session['tenant_id']
+    defect_id = request.form.get('defect_id')
+    action = request.form.get('action')
+
+    inspection = query_db(
+        "SELECT id, unit_id, cycle_id, cycle_number FROM inspection WHERE id=? AND tenant_id=?",
+        [inspection_id, tenant_id], one=True)
+    if not inspection:
+        abort(404)
+
+    db = get_db()
+    now = datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S')
+
+    if action == 'cleared':
+        db.execute("""UPDATE defect SET status='cleared',
+            cleared_cycle_id=?, cleared_cycle_number=?, cleared_at=?,
+            addressed_cycle_number=?, clearance_note='rectified', updated_at=?
+            WHERE id=? AND status='open' AND tenant_id=?""",
+            [inspection['cycle_id'], inspection['cycle_number'], now,
+             inspection['cycle_number'], now, defect_id, tenant_id])
+    elif action == 'still_open':
+        db.execute("""UPDATE defect SET addressed_cycle_number=?, updated_at=?
+            WHERE id=? AND status='open' AND tenant_id=?""",
+            [inspection['cycle_number'], now, defect_id, tenant_id])
+    db.commit()
+
+    # Return updated defect partial
+    defect = query_db("""
+        SELECT d.id, d.defect_type, d.original_comment, d.status,
+               d.addressed_cycle_number, it.item_description,
+               ct.category_name, at2.area_name
+        FROM defect d
+        JOIN item_template it ON d.item_template_id = it.id
+        JOIN category_template ct ON it.category_id = ct.id
+        JOIN area_template at2 ON ct.area_id = at2.id
+        WHERE d.id = ? AND d.tenant_id = ?
+    """, [defect_id, tenant_id], one=True)
+
+    # Recalculate progress
+    cycle_number = inspection['cycle_number']
+    unit_id = inspection['unit_id']
+    progress = _desnag_progress(unit_id, tenant_id, cycle_number)
+    area_progress = _desnag_area_progress(unit_id, tenant_id, cycle_number, defect['area_name'])
+
+    return render_template('inspection/_desnag_defect.html',
+        defect=defect, cycle_number=cycle_number, is_readonly=False,
+        inspection_id=inspection_id,
+        progress=progress, area_progress=area_progress, swap_oob=True)
+
+
+@inspection_bp.route('/<inspection_id>/desnag/undo', methods=['POST'])
+@require_auth
+def desnag_undo(inspection_id):
+    tenant_id = session['tenant_id']
+    defect_id = request.form.get('defect_id')
+
+    inspection = query_db(
+        "SELECT id, unit_id, cycle_id, cycle_number FROM inspection WHERE id=? AND tenant_id=?",
+        [inspection_id, tenant_id], one=True)
+    if not inspection:
+        abort(404)
+
+    db = get_db()
+    now = datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S')
+    cycle_number = inspection['cycle_number']
+
+    # Check current state
+    defect = query_db('SELECT status, cleared_cycle_number, addressed_cycle_number FROM defect WHERE id=? AND tenant_id=?',
+        [defect_id, tenant_id], one=True)
+
+    if defect['status'] == 'cleared' and defect['cleared_cycle_number'] == cycle_number:
+        db.execute("""UPDATE defect SET status='open',
+            cleared_cycle_id=NULL, cleared_cycle_number=NULL, cleared_at=NULL,
+            addressed_cycle_number=NULL, clearance_note=NULL, updated_at=?
+            WHERE id=? AND tenant_id=?""", [now, defect_id, tenant_id])
+    elif defect['status'] == 'open' and defect['addressed_cycle_number'] == cycle_number:
+        db.execute("""UPDATE defect SET addressed_cycle_number=NULL, updated_at=?
+            WHERE id=? AND tenant_id=?""", [now, defect_id, tenant_id])
+    db.commit()
+
+    # Return updated defect partial
+    defect_row = query_db("""
+        SELECT d.id, d.defect_type, d.original_comment, d.status,
+               d.addressed_cycle_number, it.item_description,
+               ct.category_name, at2.area_name
+        FROM defect d
+        JOIN item_template it ON d.item_template_id = it.id
+        JOIN category_template ct ON it.category_id = ct.id
+        JOIN area_template at2 ON ct.area_id = at2.id
+        WHERE d.id = ? AND d.tenant_id = ?
+    """, [defect_id, tenant_id], one=True)
+
+    progress = _desnag_progress(inspection['unit_id'], tenant_id, cycle_number)
+    area_progress = _desnag_area_progress(inspection['unit_id'], tenant_id, cycle_number, defect_row['area_name'])
+
+    return render_template('inspection/_desnag_defect.html',
+        defect=defect_row, cycle_number=cycle_number, is_readonly=False,
+        inspection_id=inspection_id,
+        progress=progress, area_progress=area_progress, swap_oob=True)
+
+
+@inspection_bp.route('/<inspection_id>/desnag/submit', methods=['POST'])
+@require_auth
+def desnag_submit(inspection_id):
+    tenant_id = session['tenant_id']
+
+    inspection = query_db(
+        "SELECT id, unit_id, cycle_id, cycle_number FROM inspection WHERE id=? AND tenant_id=?",
+        [inspection_id, tenant_id], one=True)
+    if not inspection:
+        abort(404)
+
+    # Verify all b/fwd defects addressed
+    unaddressed = query_db("""
+        SELECT COUNT(*) as cnt FROM defect
+        WHERE unit_id = ? AND tenant_id = ?
+        AND raised_cycle_number < ?
+        AND status = 'open' AND addressed_cycle_number IS NULL
+    """, [inspection['unit_id'], tenant_id, inspection['cycle_number']], one=True)['cnt']
+
+    if unaddressed > 0:
+        abort(400)
+
+    db = get_db()
+    now = datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S')
+    db.execute("UPDATE inspection SET status='submitted', submitted_at=?, updated_at=? WHERE id=?",
+        [now, now, inspection_id])
+    db.execute("""UPDATE batch_unit SET status='submitted'
+        WHERE unit_id=? AND cycle_id=? AND tenant_id=?""",
+        [inspection['unit_id'], inspection['cycle_id'], tenant_id])
+    db.commit()
+
+    return redirect(url_for('certification.inspector_home'))
+
+
+def _desnag_progress(unit_id, tenant_id, cycle_number):
+    """Calculate overall de-snag progress."""
+    row = query_db("""
+        SELECT
+            COUNT(*) as total,
+            SUM(CASE WHEN addressed_cycle_number = ? THEN 1 ELSE 0 END) as addressed,
+            SUM(CASE WHEN status = 'cleared' AND addressed_cycle_number = ? THEN 1 ELSE 0 END) as cleared,
+            SUM(CASE WHEN status = 'open' AND addressed_cycle_number = ? THEN 1 ELSE 0 END) as still_open
+        FROM defect
+        WHERE unit_id = ? AND tenant_id = ?
+        AND raised_cycle_number < ?
+        AND (status = 'open' OR (status = 'cleared' AND cleared_cycle_number = ?))
+    """, [cycle_number, cycle_number, cycle_number, unit_id, tenant_id, cycle_number, cycle_number], one=True)
+    return {
+        'total': row['total'] or 0,
+        'addressed': row['addressed'] or 0,
+        'cleared': row['cleared'] or 0,
+        'still_open': row['still_open'] or 0,
+    }
+
+
+def _desnag_area_progress(unit_id, tenant_id, cycle_number, area_name):
+    """Calculate de-snag progress for a specific area."""
+    row = query_db("""
+        SELECT
+            COUNT(*) as total,
+            SUM(CASE WHEN d.addressed_cycle_number = ? THEN 1 ELSE 0 END) as addressed
+        FROM defect d
+        JOIN item_template it ON d.item_template_id = it.id
+        JOIN category_template ct ON it.category_id = ct.id
+        JOIN area_template at2 ON ct.area_id = at2.id
+        WHERE d.unit_id = ? AND d.tenant_id = ?
+        AND d.raised_cycle_number < ?
+        AND (d.status = 'open' OR (d.status = 'cleared' AND d.cleared_cycle_number = ?))
+        AND at2.area_name = ?
+    """, [cycle_number, unit_id, tenant_id, cycle_number, cycle_number, area_name], one=True)
+    return {
+        'total': row['total'] or 0,
+        'addressed': row['addressed'] or 0,
+    }
 
 
 @inspection_bp.route('/test/reset', methods=['POST'])
