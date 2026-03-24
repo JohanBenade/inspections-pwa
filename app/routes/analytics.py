@@ -5036,6 +5036,100 @@ def _build_pipeline_report_data(live=False):
         for r in recurring:
             r['cat_breakdown'] = cat_map.get(r['original_comment'], [])
 
+    # --- DE-SNAG RESULTS ---
+
+    desnag = None
+    desnag_unit_rows = query_db("""
+        SELECT u.id as unit_id, u.unit_number, u.block, u.floor,
+               MAX(i.cycle_number) as max_cycle
+        FROM inspection i
+        JOIN unit_real u ON i.unit_id = u.id
+        WHERE i.tenant_id = ? AND i.cycle_number >= 2
+        AND i.status IN ('reviewed','approved','certified','pending_followup')
+        AND i.submitted_at <= ?
+        AND i.cycle_id NOT LIKE 'test-%%'
+        GROUP BY u.id
+        ORDER BY u.unit_number
+    """, [tenant_id, snapshot_str])
+
+    if desnag_unit_rows:
+        desnag_units = []
+        total_bfwd = 0
+        total_cleared = 0
+        total_still_open = 0
+        total_regressions = 0
+        fully_cleared_count = 0
+
+        for row in desnag_unit_rows:
+            uid = row['unit_id']
+            mc = row['max_cycle']
+            counts = query_db("""
+                SELECT
+                    SUM(CASE WHEN d.raised_cycle_number < ? AND d.created_at <= ? THEN 1 ELSE 0 END) as bfwd,
+                    SUM(CASE WHEN d.status = 'cleared' AND d.cleared_cycle_number >= 2
+                         AND d.cleared_at <= ? THEN 1 ELSE 0 END) as cleared,
+                    SUM(CASE WHEN d.raised_cycle_number >= 2 AND d.created_at <= ? THEN 1 ELSE 0 END) as regressions
+                FROM defect d
+                WHERE d.unit_id = ? AND d.tenant_id = ?
+                AND d.raised_cycle_id NOT LIKE 'test-%%'
+            """, [mc, snapshot_str, snapshot_str, snapshot_str, uid, tenant_id], one=True)
+
+            bfwd = counts['bfwd'] or 0
+            cleared = counts['cleared'] or 0
+            still_open = bfwd - cleared
+            regressions = counts['regressions'] or 0
+            rate = round(cleared / bfwd * 100, 1) if bfwd > 0 else 0
+
+            fl = FLOOR_LABELS.get(row['floor'], 'Floor {}'.format(row['floor']))
+            desnag_units.append({
+                'unit': row['unit_number'],
+                'zone': '{} {}'.format(row['block'], fl),
+                'bfwd': bfwd,
+                'cleared': cleared,
+                'open': still_open,
+                'rate': rate,
+                'cycle': mc,
+                'regressions': regressions,
+            })
+
+            total_bfwd += bfwd
+            total_cleared += cleared
+            total_still_open += still_open
+            total_regressions += regressions
+            if still_open == 0:
+                fully_cleared_count += 1
+
+        desnag_units.sort(key=lambda x: x['rate'])
+
+        desnag_eligible_row = query_db("""
+            SELECT COUNT(DISTINCT d.unit_id) as cnt
+            FROM defect d
+            JOIN unit_real u ON d.unit_id = u.id
+            WHERE d.tenant_id = ? AND d.raised_cycle_number = 1
+            AND d.created_at <= ?
+            AND d.raised_cycle_id NOT LIKE 'test-%%'
+            AND EXISTS (SELECT 1 FROM inspection i2 WHERE i2.unit_id = d.unit_id
+                        AND i2.cycle_number = 1 AND i2.tenant_id = d.tenant_id
+                        AND i2.status IN ('reviewed','approved','certified','pending_followup')
+                        AND i2.submitted_at <= ?)
+        """, [tenant_id, snapshot_str, snapshot_str], one=True)
+        desnag_eligible = desnag_eligible_row['cnt'] if desnag_eligible_row else 0
+
+        overall_rate = round(total_cleared / total_bfwd * 100, 1) if total_bfwd > 0 else 0
+
+        desnag = {
+            'units': desnag_units,
+            'count': len(desnag_units),
+            'eligible': desnag_eligible,
+            'total_bfwd': total_bfwd,
+            'total_cleared': total_cleared,
+            'total_still_open': total_still_open,
+            'total_regressions': total_regressions,
+            'fully_cleared': fully_cleared_count,
+            'clearance_rate': overall_rate,
+        }
+
+
     # --- PAGE 4: STUCK UNITS ---
 
     # All units with open defects + their C1 submission date + cycle info
@@ -5211,6 +5305,7 @@ def _build_pipeline_report_data(live=False):
         'kpi': kpi,
         'pipeline': pipeline,
         'pool_trend': pool_trend,
+        'desnag': desnag,
     }
 
 
