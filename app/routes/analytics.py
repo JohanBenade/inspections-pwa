@@ -4528,7 +4528,7 @@ def login_status():
 
 def _build_pipeline_report_data(live=False):
     """Build data for the Pipeline Report / Dashboard.
-    live=False: Tuesday snapshot (PDF report).
+    live=False: Weekly snapshot (Monday midnight SAST).
     live=True: current state (dashboard).
     """
     tenant_id = session.get('tenant_id', 'MONOGRAPH')
@@ -4541,19 +4541,19 @@ def _build_pipeline_report_data(live=False):
         snapshot_sast = _now_sast
         snapshot_utc = _dt.utcnow()
         snapshot_str = snapshot_utc.strftime('%Y-%m-%d %H:%M:%S')
-        prev_tue_utc = snapshot_utc - _td(days=7)
-        prev_tue_str = prev_tue_utc.strftime('%Y-%m-%d %H:%M:%S')
+        prev_week_utc = snapshot_utc - _td(days=7)
+        prev_week_str = prev_week_utc.strftime('%Y-%m-%d %H:%M:%S')
         snapshot_label = 'Live'
     else:
         # Snapshot mode: Monday midnight SAST (= Tuesday 00:00 SAST)
         # Report covers prev-Tue 00:00 SAST -> this-Mon 23:59 SAST
-        _days_since_tue = (_now_sast.weekday() - 1) % 7
-        snapshot_sast = _now_sast.replace(hour=0, minute=0, second=0, microsecond=0) - _td(days=_days_since_tue)
+        _days_since_mon = (_now_sast.weekday() - 1) % 7
+        snapshot_sast = _now_sast.replace(hour=0, minute=0, second=0, microsecond=0) - _td(days=_days_since_mon)
         snapshot_utc = snapshot_sast - _td(hours=2)
         snapshot_str = snapshot_utc.strftime('%Y-%m-%d %H:%M:%S')
-        prev_tue_utc = snapshot_utc - _td(days=7)
-        prev_tue_str = prev_tue_utc.strftime('%Y-%m-%d %H:%M:%S')
-        snapshot_label = snapshot_sast.strftime('%d %b %Y')
+        prev_week_utc = snapshot_utc - _td(days=7)
+        prev_week_str = prev_week_utc.strftime('%Y-%m-%d %H:%M:%S')
+        snapshot_label = (snapshot_sast - _td(days=1)).strftime('Week ending %d %b %Y')
 
     # All real units
     all_units = query_db("""
@@ -4594,7 +4594,7 @@ def _build_pipeline_report_data(live=False):
     """, [tenant_id, snapshot_str])
     c2_plus_ids = set(r['unit_id'] for r in c2_rows)
 
-    # Open defects per unit (as of snapshot Tuesday)
+    # Open defects per unit (as of snapshot)
     open_rows = query_db("""
         SELECT d.unit_id, COUNT(*) as cnt
         FROM defect d
@@ -4633,7 +4633,7 @@ def _build_pipeline_report_data(live=False):
         AND i.submitted_at > ? AND i.submitted_at <= ?
         AND i.status IN ('reviewed','approved','certified','pending_followup')
         ORDER BY u.block, u.floor, u.unit_number
-    """, [tenant_id, prev_tue_str, snapshot_str])
+    """, [tenant_id, prev_week_str, snapshot_str])
     if c1_done_rows:
         from collections import OrderedDict
         zone_groups = OrderedDict()
@@ -4664,7 +4664,7 @@ def _build_pipeline_report_data(live=False):
         AND i.submitted_at > ? AND i.submitted_at <= ?
         AND i.status IN ('reviewed','approved','certified','pending_followup')
         ORDER BY u.block, u.floor, u.unit_number
-    """, [tenant_id, prev_tue_str, snapshot_str])
+    """, [tenant_id, prev_week_str, snapshot_str])
     if c2_done_rows:
         from collections import OrderedDict
         zone_groups = OrderedDict()
@@ -4689,7 +4689,7 @@ def _build_pipeline_report_data(live=False):
         FROM unit_real u
         WHERE u.tenant_id = ? AND u.certified_at > ? AND u.certified_at <= ?
         ORDER BY u.unit_number
-    """, [tenant_id, prev_tue_str, snapshot_str])
+    """, [tenant_id, prev_week_str, snapshot_str])
     if cert_rows:
         movements.append({
             'label': 'Certified',
@@ -4763,37 +4763,36 @@ def _build_pipeline_report_data(live=False):
         # --- PAGE 2: DEFECT POOL ---
     from datetime import datetime as _dt, timedelta as _td
 
-    # Find all Tuesdays from first defect to today
+    # Find all Mondays from first defect to today
     first_defect = query_db(
         "SELECT MIN(created_at) as d FROM defect WHERE tenant_id = ? AND status IN ('open','cleared')",
         [tenant_id], one=True)
     
     trend_points = []
     if first_defect and first_defect['d']:
-        # Find first Tuesday on or after first defect
+        # Find first Monday on or after first defect
         start = _dt.fromisoformat(first_defect['d'].replace('Z', '+00:00') if 'Z' in first_defect['d'] else first_defect['d'])
-        # Find first Tuesday
-        days_until_tue = (1 - start.weekday()) % 7
-        if days_until_tue == 0 and start.hour > 0:
-            days_until_tue = 0  # same day is fine
-        first_tue = (start + _td(days=days_until_tue)).replace(hour=23, minute=59, second=59)
+        days_until_mon = (0 - start.weekday()) % 7
+        if days_until_mon == 0 and start.hour > 0:
+            days_until_mon = 0  # same day is fine
+        first_mon = (start + _td(days=days_until_mon)).replace(hour=23, minute=59, second=59)
         
         today = _dt.now()
-        tue = first_tue
-        while tue <= today:
-            tue_str = tue.strftime('%Y-%m-%d %H:%M:%S')
+        mon = first_mon
+        while mon <= today:
+            mon_str = mon.strftime('%Y-%m-%d %H:%M:%S')
             raised_row = query_db(
                 "SELECT COUNT(*) as c FROM defect d JOIN unit_real u ON d.unit_id = u.id WHERE d.tenant_id = ? AND d.created_at <= ? AND d.raised_cycle_id NOT LIKE 'test-%%' AND EXISTS (SELECT 1 FROM inspection i2 WHERE i2.unit_id = d.unit_id AND i2.cycle_id = d.raised_cycle_id AND i2.status IN ('reviewed','approved','certified','pending_followup'))",
-                [tenant_id, tue_str], one=True)
+                [tenant_id, mon_str], one=True)
             cleared_row = query_db(
                 "SELECT COUNT(*) as c FROM defect d JOIN unit_real u ON d.unit_id = u.id WHERE d.tenant_id = ? AND d.status = 'cleared' AND d.cleared_at <= ? AND d.raised_cycle_id NOT LIKE 'test-%%' AND EXISTS (SELECT 1 FROM inspection i2 WHERE i2.unit_id = d.unit_id AND i2.cycle_id = d.raised_cycle_id AND i2.status IN ('reviewed','approved','certified','pending_followup'))",
-                [tenant_id, tue_str], one=True)
+                [tenant_id, mon_str], one=True)
             trend_points.append({
-                'date': tue.strftime('%d %b'),
+                'date': mon.strftime('%d %b'),
                 'raised': raised_row['c'] if raised_row else 0,
                 'cleared': cleared_row['c'] if cleared_row else 0,
             })
-            tue = tue + _td(days=7)
+            mon = mon + _td(days=7)
 
     # In live mode, add today as final trend point
     if live and trend_points:
@@ -4810,8 +4809,8 @@ def _build_pipeline_report_data(live=False):
             'cleared': cleared_today['c'] if cleared_today else 0,
         })
 
-    # Weekly ledger (prev Tuesday -> snapshot Tuesday)
-    last_week_str = prev_tue_str
+    # Weekly ledger (prev week -> snapshot)
+    last_week_str = prev_week_str
     now_str = snapshot_str
     
     bfwd_row = query_db(
