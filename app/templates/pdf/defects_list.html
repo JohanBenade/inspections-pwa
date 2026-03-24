@@ -559,7 +559,7 @@
     
     {% if defects_by_area %}
     <div class="defects-header">
-        <div class="defects-header-title"><span>Defective Works:</span></div>
+        <div class="defects-header-title"><span>{% if cycle_number > 1 %}De-snag Results:{% else %}Defective Works:{% endif %}</span></div>
     </div>
     {% endif %}
     
