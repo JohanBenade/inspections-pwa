@@ -841,7 +841,10 @@ def _parse_iso(ts):
         return None
     try:
         s = ts.replace('Z', '+00:00')
-        return datetime.fromisoformat(s)
+        dt = datetime.fromisoformat(s)
+        if dt.tzinfo is None:
+            dt = dt.replace(tzinfo=timezone.utc)
+        return dt
     except (ValueError, AttributeError, TypeError):
         return None
 
