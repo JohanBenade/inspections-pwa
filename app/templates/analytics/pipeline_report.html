@@ -392,9 +392,6 @@ body {
         {% endif %}
     </div>
 
-    <!-- PAGE BREAK -->
-    <div style="page-break-before: always;"></div>
-
     <!-- SECTION 06: WEEKLY LEDGER -->
     <div class="section">
         <div class="section-header">
@@ -440,7 +437,10 @@ body {
         {% endif %}
     </div>
 
-    <!-- ============ PAGE 3 (continued): WHERE'S THE PROBLEM ============ -->
+    <!-- PAGE BREAK -->
+    <div style="page-break-before: always;"></div>
+
+    <!-- ============ PAGE 3: WHERE'S THE PROBLEM ============ -->
 
     <!-- SECTION 07: ZONE GRID -->
     <div class="section" style="margin-bottom: 18px;">
@@ -675,15 +675,18 @@ body {
         <!-- Clearance bar -->
         {% set bar_total = desnag.total_cleared + desnag.total_still_open %}
         {% set green_pct = (desnag.total_cleared / bar_total * 100)|round(1) if bar_total > 0 else 0 %}
-        <div style="margin-bottom: 14px;">
-            <div style="display: flex; height: 22px; border-radius: 3px; overflow: hidden; font-size: 9px; font-weight: 700;">
+        <div style="margin-bottom: 14px; display: flex; align-items: center; gap: 8px;">
+            <div style="flex: 1; display: flex; height: 22px; border-radius: 3px; overflow: hidden; font-size: 9px; font-weight: 700;">
                 {% if desnag.total_cleared > 0 %}
-                <div style="width: {{ green_pct }}%; background: #4A7C59; color: #fff; display: flex; align-items: center; justify-content: center;">{{ desnag.total_cleared }} cleared</div>
+                <div style="width: {{ green_pct }}%; background: #4A7C59; color: #fff; display: flex; align-items: center; justify-content: center; white-space: nowrap;">{{ desnag.total_cleared }} cleared</div>
                 {% endif %}
                 {% if desnag.total_still_open > 0 %}
-                <div style="width: {{ 100 - green_pct }}%; background: #C44D3F; color: #fff; display: flex; align-items: center; justify-content: center;">{{ desnag.total_still_open }} open</div>
+                <div style="width: {{ 100 - green_pct }}%; background: #C44D3F;"></div>
                 {% endif %}
             </div>
+            {% if desnag.total_still_open > 0 %}
+            <span style="font-size: 9px; font-weight: 700; color: #C44D3F; white-space: nowrap;">{{ desnag.total_still_open }} open</span>
+            {% endif %}
         </div>
 
         <!-- Unit results table -->
