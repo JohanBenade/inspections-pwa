@@ -1256,6 +1256,9 @@ def _build_live_monitor_data(batch_id, tenant_id):
     open_now_area_map = {}
     c2_units = [u for u in units if (u.get('cycle_number') or 1) >= 2]
     c2_unit_ids = [u['unit_id'] for u in c2_units]
+    unit_cycle_num = {u['unit_id']: u.get('cycle_number', 1) for u in c2_units}
+    addressed_map = {}
+    addressed_area_map = {}
     if c2_unit_ids:
         # Build unit_id -> cycle_id mapping for per-unit bucketing
         unit_cycle = {u['unit_id']: u['cycle_id'] for u in c2_units}
@@ -1263,7 +1266,7 @@ def _build_live_monitor_data(batch_id, tenant_id):
         # Single query: ALL defects for C2 units (any status)
         all_defects_raw = query_db("""
             SELECT d.unit_id, d.status, d.raised_cycle_id, d.cleared_cycle_id,
-                   at2.area_name
+                   d.addressed_cycle_number, at2.area_name
             FROM defect d
             JOIN item_template it ON d.item_template_id = it.id
             JOIN category_template ct ON it.category_id = ct.id
@@ -1284,6 +1287,10 @@ def _build_live_monitor_data(batch_id, tenant_id):
                 if r['status'] == 'cleared' and r['cleared_cycle_id'] == cyc:
                     cleared_map[uid] = cleared_map.get(uid, 0) + 1
                     cleared_area_map[key] = cleared_area_map.get(key, 0) + 1
+                # Addressed: inspector acted on this defect this cycle
+                if r.get('addressed_cycle_number') == unit_cycle_num.get(uid):
+                    addressed_map[uid] = addressed_map.get(uid, 0) + 1
+                    addressed_area_map[key] = addressed_area_map.get(key, 0) + 1
             else:
                 # New: raised THIS cycle (regression)
                 new_map[uid] = new_map.get(uid, 0) + 1
@@ -1340,6 +1347,33 @@ def _build_live_monitor_data(batch_id, tenant_id):
                 a['new'] = new_area_map.get((u['unit_id'], a['area']), 0)
                 a['open_now'] = open_now_area_map.get((u['unit_id'], a['area']), 0)
         u['pct'] = round(u['total_marked'] / u['total_items'] * 100) if u['total_items'] else 0
+
+        # C2+ de-snag: override progress from defects (not inspection_items)
+        if (u.get('cycle_number') or 1) >= 2:
+            uid = u['unit_id']
+            u['total_items'] = bfwd_map.get(uid, 0)
+            u['total_marked'] = addressed_map.get(uid, 0)
+            u['pct'] = round(u['total_marked'] / u['total_items'] * 100) if u['total_items'] else 0
+            c2_areas = []
+            for aname in sorted(set(k[1] for k in bfwd_area_map if k[0] == uid)):
+                bf = bfwd_area_map.get((uid, aname), 0)
+                addr = addressed_area_map.get((uid, aname), 0)
+                c2_areas.append({
+                    'area': aname,
+                    'total': bf,
+                    'marked': addr,
+                    'defects': open_now_area_map.get((uid, aname), 0),
+                    'pct': round(addr / bf * 100) if bf else 0,
+                    'duration': None,
+                    'bfwd': bf,
+                    'cleared': cleared_area_map.get((uid, aname), 0),
+                    'new': new_area_map.get((uid, aname), 0),
+                    'open_now': open_now_area_map.get((uid, aname), 0),
+                })
+            c2_areas.sort(key=lambda a: (area_order.get(a['area'], 10), a['area']))
+            u['areas'] = c2_areas
+            u['total_defects'] = sum(a['defects'] for a in c2_areas)
+
         u['floor_label'] = FLOOR_LABELS.get(u['floor'], u['floor'])
 
         # Timing (with started_at fallback for C2 carry-forward units)
