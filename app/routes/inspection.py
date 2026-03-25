@@ -2053,6 +2053,7 @@ def desnag_view(inspection_id):
 
     return render_template('inspection/desnag.html',
         inspection=inspection,
+        inspection_id=inspection_id,
         areas=areas,
         regressions=regressions,
         total_bfwd=total_bfwd,
