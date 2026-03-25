@@ -1489,14 +1489,17 @@ def _build_live_monitor_data(batch_id, tenant_id):
     total_items = sum(u.get('total_items', 0) for u in units)
 
     # --- Computed KPIs ---
-    live_defects = sum(u['total_defects'] for u in units)
-    units_with_marks = sum(1 for u in units if u['total_marked'] > 0)
+    # C1 units: defects found during this batch's inspection
+    c1_units = [u for u in units if (u.get('cycle_number') or 1) == 1]
+    c1_defects = sum(u.get('total_defects', 0) for u in c1_units)
+    c1_with_marks = sum(1 for u in c1_units if u.get('total_marked', 0) > 0)
+    c1_items_marked = sum(u.get('total_marked', 0) for u in c1_units)
+    # C2 units: open defects (pre-existing, not found this batch)
+    c2_open = sum(u.get('open_defects', 0) for u in units if (u.get('cycle_number') or 1) >= 2)
+    live_defects = c1_defects  # batch KPI = C1 defects found only
     completion_pct = round(units_complete / total_units * 100) if total_units else 0
-    # Defect rate: C1 only (item-based metric, not meaningful for de-snag)
-    c1_items_marked = sum(u.get('total_marked', 0) for u in units if (u.get('cycle_number') or 1) == 1)
-    c1_defects = sum(u.get('total_defects', 0) for u in units if (u.get('cycle_number') or 1) == 1)
     defect_rate = round(c1_defects / c1_items_marked * 100, 1) if c1_items_marked else 0
-    avg_defects = round(live_defects / units_with_marks, 1) if units_with_marks else 0
+    avg_defects = round(c1_defects / c1_with_marks, 1) if c1_with_marks else 0
 
     # Zone summary for header
     zones = {}
