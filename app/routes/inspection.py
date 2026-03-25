@@ -2201,7 +2201,7 @@ def desnag_submit(inspection_id):
         [inspection['unit_id'], inspection['cycle_id'], tenant_id])
     db.commit()
 
-    return redirect(url_for('certification.my_inspections'))
+    return redirect(url_for('home'))
 
 
 def _desnag_progress(unit_id, tenant_id, cycle_number):
