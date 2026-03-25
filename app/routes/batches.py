@@ -339,6 +339,39 @@ def detail(batch_id):
     """, [batch_id, tenant_id])
     units = [dict(r) for r in units_raw]
 
+    # --- Defect ledger columns (B/fwd, Cleared, New, Open) ---
+    if units:
+        d_unit_ids = list(set(u['unit_id'] for u in units))
+        d_ph = ','.join(['?'] * len(d_unit_ids))
+        d_rows = query_db(f"""
+            SELECT unit_id, raised_cycle_number, cleared_cycle_number, status,
+                   COUNT(*) as cnt
+            FROM defect
+            WHERE tenant_id = ? AND unit_id IN ({d_ph})
+            GROUP BY unit_id, raised_cycle_number, cleared_cycle_number, status
+        """, [tenant_id] + d_unit_ids)
+
+        d_cn_map = {u['unit_id']: (u.get('cycle_number') or 1) for u in units}
+        d_map = {}
+        for dr in d_rows:
+            d_uid = dr['unit_id']
+            d_cn = d_cn_map.get(d_uid, 1)
+            if d_uid not in d_map:
+                d_map[d_uid] = {'defect_bfwd': 0, 'defect_cleared': 0, 'defect_new': 0, 'defect_open': 0}
+            d_rcn = dr['raised_cycle_number'] or 1
+            d_ccn = dr['cleared_cycle_number']
+            if d_rcn < d_cn:
+                d_map[d_uid]['defect_bfwd'] += dr['cnt']
+            if d_rcn == d_cn:
+                d_map[d_uid]['defect_new'] += dr['cnt']
+            if d_ccn == d_cn:
+                d_map[d_uid]['defect_cleared'] += dr['cnt']
+            if dr['status'] == 'open':
+                d_map[d_uid]['defect_open'] += dr['cnt']
+
+        for u in units:
+            u.update(d_map.get(u['unit_id'], {'defect_bfwd': 0, 'defect_cleared': 0, 'defect_new': 0, 'defect_open': 0}))
+
     # Removed units (separate section)
     removed_raw = query_db("""
         SELECT bu.id AS bu_id, bu.removed_at, bu.removed_by, bu.removed_reason,
