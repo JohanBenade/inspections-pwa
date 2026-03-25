@@ -4,7 +4,7 @@ Create batches with unit numbers, auto-route to cycles, assign inspectors.
 Access: Team Lead + Admin.
 """
 from datetime import datetime, timezone, timedelta
-from flask import Blueprint, render_template, session, redirect, url_for, abort, request, flash, make_response
+from flask import Blueprint, render_template, session, redirect, url_for, abort, request, flash, make_response, jsonify
 from app.auth import require_team_lead
 from app.utils import generate_id
 from app.utils.audit import log_audit
@@ -73,6 +73,76 @@ def _route_unit_to_cycle(cur, unit_id, block, floor, tenant_id, phase_id):
             exclusions_copied += 1
 
     return cycle_id, round_number, True
+
+
+@batches_bp.route('/validate-units', methods=['POST'])
+@require_team_lead
+def validate_units():
+    """AJAX endpoint: validate unit numbers and return classification."""
+    tenant_id = session['tenant_id']
+    unit_input = request.form.get('units', '').strip()
+
+    if not unit_input:
+        return jsonify({'units': [], 'summary': {}})
+
+    raw_numbers = []
+    for part in unit_input.replace(',', ' ').replace(chr(10), ' ').split():
+        part = part.strip()
+        if part:
+            raw_numbers.append(part.zfill(3))
+
+    seen = set()
+    unit_numbers = []
+    for n in raw_numbers:
+        if n not in seen:
+            seen.add(n)
+            unit_numbers.append(n)
+
+    results = []
+    for un in unit_numbers:
+        row = query_db(
+            "SELECT id, block, floor FROM unit WHERE unit_number = ? AND tenant_id = ?",
+            [un, tenant_id], one=True)
+
+        if not row:
+            results.append({'unit_number': un, 'status': 'not_found'})
+            continue
+
+        # Check max completed cycle
+        max_cycle = query_db("""
+            SELECT MAX(ic.cycle_number) as mc
+            FROM inspection i
+            JOIN inspection_cycle ic ON i.cycle_id = ic.id
+            WHERE i.unit_id = ? AND i.tenant_id = ?
+            AND i.status NOT IN ('not_started')
+        """, [row['id'], tenant_id], one=True)
+
+        round_number = (max_cycle['mc'] or 0) + 1
+        floor_label = FLOOR_LABELS.get(row['floor'], str(row['floor']))
+
+        # Get open defect count
+        defect_row = query_db(
+            "SELECT COUNT(*) as cnt FROM defect WHERE unit_id = ? AND status = 'open'",
+            [row['id']], one=True)
+
+        results.append({
+            'unit_number': un,
+            'block': row['block'],
+            'floor_label': floor_label,
+            'round': round_number,
+            'is_desnag': round_number > 1,
+            'defects': defect_row['cnt'] or 0,
+            'status': 'found',
+        })
+
+    c1 = sum(1 for r in results if r['status'] == 'found' and not r.get('is_desnag'))
+    c2 = sum(1 for r in results if r['status'] == 'found' and r.get('is_desnag'))
+    not_found = sum(1 for r in results if r['status'] == 'not_found')
+
+    return jsonify({
+        'units': results,
+        'summary': {'c1': c1, 'c2': c2, 'not_found': not_found, 'total': len(results)}
+    })
 
 
 @batches_bp.route('/')

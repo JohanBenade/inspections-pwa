@@ -12,15 +12,37 @@
         <label class="block text-sm font-medium text-gray-700 mb-1">Batch Name</label>
         <input type="text" name="name" value="{{ name }}"
                class="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary focus:border-primary"
-               placeholder="e.g. Raubex 2026-02-23">
+               placeholder="e.g. SR-011 25 Mar 2026">
     </div>
 
     <div>
         <label class="block text-sm font-medium text-gray-700 mb-1">Unit Numbers</label>
-        <textarea name="units" rows="4"
+        <textarea id="unit-input" name="units" rows="4"
                   class="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary focus:border-primary font-mono"
                   placeholder="029, 030, 046, 054, 055, 056&#10;148, 149, 150, 151, 152">{{ request.form.get('units', '') }}</textarea>
         <p class="text-xs text-gray-400 mt-1">Comma, space, or newline separated. Leading zeros added automatically.</p>
+    </div>
+
+    <!-- Unit Preview -->
+    <div id="unit-preview" class="hidden">
+        <div id="preview-summary" class="text-sm font-medium mb-2"></div>
+        <div class="border border-gray-200 rounded-lg overflow-hidden max-h-96 overflow-y-auto">
+            <table class="w-full text-sm">
+                <thead class="bg-gray-50 border-b border-gray-200 sticky top-0">
+                    <tr>
+                        <th class="px-3 py-2 text-left font-medium text-gray-600">Unit</th>
+                        <th class="px-3 py-2 text-left font-medium text-gray-600">Block / Floor</th>
+                        <th class="px-3 py-2 text-left font-medium text-gray-600">Round</th>
+                        <th class="px-3 py-2 text-right font-medium text-gray-600">Defects</th>
+                    </tr>
+                </thead>
+                <tbody id="preview-body" class="divide-y divide-gray-100"></tbody>
+            </table>
+        </div>
+        <div id="preview-errors" class="mt-2 hidden">
+            <div class="text-sm text-red-600 font-medium">Units not found:</div>
+            <div id="error-list" class="text-sm text-red-500"></div>
+        </div>
     </div>
 
     <div>
@@ -39,11 +61,11 @@
         <label class="block text-sm font-medium text-gray-700 mb-1">Notes (optional)</label>
         <input type="text" name="notes" value="{{ notes }}"
                class="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary focus:border-primary"
-               placeholder="e.g. Re-inspection request from Raubex">
+               placeholder="e.g. Inspection Request No.8 from Raubex">
     </div>
 
     <div class="flex space-x-3 pt-2">
-        <button type="submit"
+        <button type="submit" id="create-btn"
                 class="px-6 py-2.5 bg-primary text-white rounded-lg text-sm font-medium hover:bg-opacity-90 transition-colors tap-target">
             Create Batch
         </button>
@@ -53,4 +75,77 @@
         </a>
     </div>
 </form>
+
+<script>
+(function() {
+    var textarea = document.getElementById('unit-input');
+    var preview = document.getElementById('unit-preview');
+    var summaryEl = document.getElementById('preview-summary');
+    var bodyEl = document.getElementById('preview-body');
+    var errorsEl = document.getElementById('preview-errors');
+    var errorListEl = document.getElementById('error-list');
+    var timer = null;
+
+    function validate() {
+        var val = textarea.value.trim();
+        if (!val) {
+            preview.classList.add('hidden');
+            return;
+        }
+
+        fetch('{{ url_for("batches.validate_units") }}', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+            body: 'units=' + encodeURIComponent(val)
+        })
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+            if (!data.units || data.units.length === 0) {
+                preview.classList.add('hidden');
+                return;
+            }
+
+            preview.classList.remove('hidden');
+            var s = data.summary;
+            var parts = [];
+            if (s.c1 > 0) parts.push('<span class="text-gray-700">' + s.c1 + ' C1 (snag)</span>');
+            if (s.c2 > 0) parts.push('<span class="text-amber-700">' + s.c2 + ' C2+ (de-snag)</span>');
+            if (s.not_found > 0) parts.push('<span class="text-red-600">' + s.not_found + ' not found</span>');
+            summaryEl.innerHTML = s.total + ' units: ' + parts.join(' &bull; ');
+
+            var html = '';
+            var errors = [];
+            data.units.forEach(function(u) {
+                if (u.status === 'not_found') {
+                    errors.push(u.unit_number);
+                    return;
+                }
+                var roundClass = u.is_desnag
+                    ? 'px-2 py-0.5 text-xs font-semibold rounded-full bg-amber-100 text-amber-700'
+                    : 'text-gray-500';
+                html += '<tr class="hover:bg-gray-50">'
+                    + '<td class="px-3 py-2 font-medium text-gray-800">' + u.unit_number + '</td>'
+                    + '<td class="px-3 py-2 text-gray-500">' + u.block + ' ' + u.floor_label + '</td>'
+                    + '<td class="px-3 py-2"><span class="' + roundClass + '">C' + u.round + '</span></td>'
+                    + '<td class="px-3 py-2 text-right">' + (u.defects > 0 ? '<span class="text-amber-600 font-medium">' + u.defects + '</span>' : '<span class="text-gray-400">0</span>') + '</td>'
+                    + '</tr>';
+            });
+            bodyEl.innerHTML = html;
+
+            if (errors.length > 0) {
+                errorsEl.classList.remove('hidden');
+                errorListEl.textContent = errors.join(', ');
+            } else {
+                errorsEl.classList.add('hidden');
+            }
+        });
+    }
+
+    textarea.addEventListener('blur', validate);
+    textarea.addEventListener('input', function() {
+        clearTimeout(timer);
+        timer = setTimeout(validate, 800);
+    });
+})();
+</script>
 {% endblock %}
