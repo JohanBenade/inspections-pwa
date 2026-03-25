@@ -354,9 +354,10 @@ def detail(batch_id):
             excl_count_map = {r['exclusion_list_id']: r['cnt'] for r in el_rows}
 
     for u in units:
-        u['excl_count'] = excl_count_map.get(u.get('exclusion_list_id'), 0)
+        el_count = excl_count_map.get(u.get('exclusion_list_id'), 0)
         ground_only_skips = 3 if (u.get('floor') or 0) > 0 else 0
-        u['checkpoints_c1'] = 509 - u['excl_count'] - ground_only_skips
+        u['excl_count'] = el_count + ground_only_skips
+        u['checkpoints_c1'] = 509 - u['excl_count']
 
     # --- Defect ledger columns (B/fwd, Cleared, New, Open) ---
     if units:
