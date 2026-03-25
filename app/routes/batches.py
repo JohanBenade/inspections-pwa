@@ -790,6 +790,90 @@ def remove_confirm(batch_id, bu_id):
                            batch_id=batch_id, bu=dict(bu))
 
 
+@batches_bp.route('/<batch_id>/add-units', methods=['POST'])
+@require_team_lead
+def add_units(batch_id):
+    """Add units to an existing batch."""
+    tenant_id = session['tenant_id']
+    user_id = session['user_id']
+
+    batch = query_db('SELECT id, name, status FROM inspection_batch WHERE id=? AND tenant_id=?',
+        [batch_id, tenant_id], one=True)
+    if not batch:
+        abort(404)
+
+    unit_input = request.form.get('units', '').strip()
+    if not unit_input:
+        flash('Enter at least one unit number.', 'error')
+        return redirect(url_for('batches.detail', batch_id=batch_id))
+
+    exclusion_list_id = request.form.get('exclusion_list_id', '').strip() or None
+
+    raw_numbers = []
+    for part in unit_input.replace(',', ' ').replace(chr(10), ' ').split():
+        part = part.strip()
+        if part:
+            raw_numbers.append(part.zfill(3))
+
+    seen = set()
+    unit_numbers = []
+    for n in raw_numbers:
+        if n not in seen:
+            seen.add(n)
+            unit_numbers.append(n)
+
+    db = get_db()
+    cur = db.cursor()
+    now = datetime.now(timezone.utc).isoformat()
+
+    phase = query_db('SELECT id FROM phase WHERE tenant_id=? LIMIT 1', [tenant_id], one=True)
+    if not phase:
+        abort(404)
+
+    results = []
+    errors = []
+    skipped = []
+
+    for un in unit_numbers:
+        unit_row = query_db('SELECT id, block, floor FROM unit WHERE unit_number=? AND tenant_id=?',
+            [un, tenant_id], one=True)
+        if not unit_row:
+            errors.append(un)
+            continue
+
+        unit_row = dict(unit_row)
+        existing = cur.execute(
+            'SELECT id FROM batch_unit WHERE batch_id=? AND unit_id=? AND removed_at IS NULL',
+            (batch_id, unit_row['id'])).fetchone()
+        if existing:
+            skipped.append(un)
+            continue
+
+        cycle_id, round_number, new_cycle = _route_unit_to_cycle(
+            cur, unit_row['id'], unit_row['block'], unit_row['floor'],
+            tenant_id, phase['id'])
+
+        bu_id = generate_id()
+        cur.execute("""INSERT INTO batch_unit
+            (id, tenant_id, batch_id, unit_id, cycle_id, inspector_id, status, created_at, exclusion_list_id)
+            VALUES (?, ?, ?, ?, ?, NULL, 'pending', ?, ?)""",
+            (bu_id, tenant_id, batch_id, unit_row['id'], cycle_id, now, exclusion_list_id))
+        results.append(un)
+
+    db.commit()
+
+    msg = '{} units added.'.format(len(results))
+    if skipped:
+        msg += ' {} already in batch.'.format(len(skipped))
+    if errors:
+        msg += ' Not found: {}.'.format(', '.join(errors))
+        flash(msg, 'error')
+    else:
+        flash(msg, 'success')
+
+    return redirect(url_for('batches.detail', batch_id=batch_id))
+
+
 @batches_bp.route('/<batch_id>/remove-unit', methods=['POST'])
 @require_team_lead
 def remove_unit(batch_id):
