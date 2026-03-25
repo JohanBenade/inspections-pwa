@@ -84,6 +84,7 @@
     <!-- Submit -->
     {% if not is_readonly %}
     <div class="sticky bottom-0 bg-white border-t shadow-lg p-4 -mx-4">
+        <div id="desnag-submit-wrap">
         {% if can_submit %}
         <form method="POST" action="{{ url_for('inspection.desnag_submit', inspection_id=inspection.id) }}"
               onsubmit="return confirm('Submit de-snag?\n\n{{ total_cleared }} cleared, {{ total_still_open }} still open.\n\nThis cannot be undone.')">
@@ -96,6 +97,7 @@
             Address all defects to submit ({{ total_addressed }} / {{ total_bfwd }})
         </button>
         {% endif %}
+        </div>
     </div>
     {% else %}
     <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 text-center text-sm text-blue-700">

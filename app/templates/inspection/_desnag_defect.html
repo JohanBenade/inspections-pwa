@@ -57,6 +57,20 @@
 <div id="desnag-progress" hx-swap-oob="innerHTML">
     {% include 'inspection/_desnag_progress.html' %}
 </div>
+<div id="desnag-submit-wrap" hx-swap-oob="innerHTML">
+    {% if progress is defined and progress.total > 0 and progress.addressed == progress.total %}
+    <form method="POST" action="{{ url_for('inspection.desnag_submit', inspection_id=inspection_id) }}"
+          onsubmit="return confirm('Submit de-snag?\n\n{{ progress.cleared }} cleared, {{ progress.still_open }} still open.\n\nThis cannot be undone.')">
+        <button type="submit" class="w-full py-3 px-4 bg-green-600 text-white font-semibold rounded-lg hover:bg-green-700 transition-colors">
+            Submit De-snag
+        </button>
+    </form>
+    {% elif progress is defined %}
+    <button disabled class="w-full py-3 px-4 bg-gray-300 text-gray-500 font-semibold rounded-lg cursor-not-allowed">
+        Address all defects to submit ({{ progress.addressed }} / {{ progress.total }})
+    </button>
+    {% endif %}
+</div>
 {% if area_progress is defined %}
 <span id="badge-{{ defect.area_name|replace(' ', '-')|lower }}" hx-swap-oob="outerHTML"
       class="text-xs px-2 py-1 rounded-full {% if area_progress.addressed == area_progress.total %}bg-green-100 text-green-700{% else %}bg-gray-200 text-gray-600{% endif %}">
