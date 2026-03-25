@@ -1446,9 +1446,9 @@ def _build_live_monitor_data(batch_id, tenant_id):
             im['avg_pace'] = round(sum(im['durations']) / len(im['durations']))
         del im['durations']
 
-        # Use max items per unit * total units as denominator (covers not-started units with 0 items)
-        max_ipu = max((u.get('total_items', 0) for u in units), default=0)
-        expected_total = im['units_total'] * max_ipu
+        # Use sum of each unit's total_items for this inspector (handles C1+C2 mix)
+        inspector_units = [u for u in units if u.get('inspector_id') == iid]
+        expected_total = sum(u.get('total_items', 0) for u in inspector_units)
         im['items_pct'] = round(im['items_marked'] / expected_total * 100) if expected_total else 0
 
         if im['last_activity']:
@@ -1485,8 +1485,9 @@ def _build_live_monitor_data(batch_id, tenant_id):
             f['initials'] = _get_initials(f['inspector_name'])
 
     # --- Recompute batch totals from corrected per-unit data (handles C1+C2 mix) ---
-    items_marked = sum(u.get('total_marked', 0) for u in units)
-    total_items = sum(u.get('total_items', 0) for u in units)
+    # items_marked/total_items = C1 only (item-based inspection metrics)
+    items_marked = sum(u.get('total_marked', 0) for u in units if (u.get('cycle_number') or 1) == 1)
+    total_items = sum(u.get('total_items', 0) for u in units if (u.get('cycle_number') or 1) == 1)
 
     # --- Computed KPIs ---
     # C1 units: defects found during this batch's inspection
