@@ -356,7 +356,7 @@ def detail(batch_id):
     for u in units:
         u['excl_count'] = excl_count_map.get(u.get('exclusion_list_id'), 0)
         ground_only_skips = 3 if (u.get('floor') or 0) > 0 else 0
-        u['checkpoints'] = 509 - u['excl_count'] - ground_only_skips
+        u['checkpoints_c1'] = 509 - u['excl_count'] - ground_only_skips
 
     # --- Defect ledger columns (B/fwd, Cleared, New, Open) ---
     if units:
@@ -390,6 +390,11 @@ def detail(batch_id):
 
         for u in units:
             u.update(d_map.get(u['unit_id'], {'defect_bfwd': 0, 'defect_cleared': 0, 'defect_new': 0, 'defect_open': 0}))
+
+    # Set checkpoints: C1 = items after exclusions, C2+ = b/fwd defects
+    for u in units:
+        cn = u.get('cycle_number') or 1
+        u['checkpoints'] = u['defect_bfwd'] if cn > 1 else u['checkpoints_c1']
 
     # Removed units (separate section)
     removed_raw = query_db("""

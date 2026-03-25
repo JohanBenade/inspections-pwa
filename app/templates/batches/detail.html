@@ -54,7 +54,7 @@
                 <th class="px-4 py-3 text-left font-medium text-gray-600 hidden sm:table-cell">Block / Floor</th>
                 <th class="px-4 py-3 text-left font-medium text-gray-600">Round</th>
                 <th class="px-2 py-3 text-right font-medium text-gray-500 text-xs hidden lg:table-cell">Excl.</th>
-                <th class="px-2 py-3 text-right font-medium text-gray-500 text-xs hidden lg:table-cell">Checks</th>
+                <th class="px-2 py-3 text-right font-medium text-gray-500 text-xs hidden lg:table-cell">Checks<span class="text-gray-400">/509</span></th>
                 <th class="px-2 py-3 text-right font-medium text-gray-500 text-xs hidden lg:table-cell">B/fwd</th>
                 <th class="px-2 py-3 text-right font-medium text-gray-500 text-xs hidden lg:table-cell">Cleared</th>
                 <th class="px-2 py-3 text-right font-medium text-gray-500 text-xs hidden lg:table-cell">New</th>
@@ -126,11 +126,7 @@
                         </option>
                         {% endfor %}
                     </select>
-                    <span id="status-{{ u.bu_id }}" class="ml-1">
-                        {% if u.inspector_name %}
-                        <span class="text-xs text-green-600">{{ u.inspector_name }}</span>
-                        {% endif %}
-                    </span>
+                    <span id="status-{{ u.bu_id }}" class="ml-1"></span>
                 </td>
                 <td class="px-4 py-3 hidden md:table-cell" id="excl-assign-{{ u.bu_id }}">
                     <select class="text-xs border border-gray-200 rounded px-2 py-1.5 w-full max-w-[180px]"
