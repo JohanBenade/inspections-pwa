@@ -339,6 +339,25 @@ def detail(batch_id):
     """, [batch_id, tenant_id])
     units = [dict(r) for r in units_raw]
 
+    # --- Exclusion count + Checkpoints ---
+    excl_count_map = {}
+    if units:
+        el_ids = list(set(u['exclusion_list_id'] for u in units if u.get('exclusion_list_id')))
+        if el_ids:
+            el_ph = ','.join(['?'] * len(el_ids))
+            el_rows = query_db(f"""
+                SELECT exclusion_list_id, COUNT(*) as cnt
+                FROM exclusion_list_item
+                WHERE exclusion_list_id IN ({el_ph})
+                GROUP BY exclusion_list_id
+            """, el_ids)
+            excl_count_map = {r['exclusion_list_id']: r['cnt'] for r in el_rows}
+
+    for u in units:
+        u['excl_count'] = excl_count_map.get(u.get('exclusion_list_id'), 0)
+        ground_only_skips = 3 if (u.get('floor') or 0) > 0 else 0
+        u['checkpoints'] = 509 - u['excl_count'] - ground_only_skips
+
     # --- Defect ledger columns (B/fwd, Cleared, New, Open) ---
     if units:
         d_unit_ids = list(set(u['unit_id'] for u in units))

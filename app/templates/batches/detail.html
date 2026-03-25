@@ -53,6 +53,8 @@
                 <th class="px-4 py-3 text-left font-medium text-gray-600">Unit</th>
                 <th class="px-4 py-3 text-left font-medium text-gray-600 hidden sm:table-cell">Block / Floor</th>
                 <th class="px-4 py-3 text-left font-medium text-gray-600">Round</th>
+                <th class="px-2 py-3 text-right font-medium text-gray-500 text-xs hidden lg:table-cell">Excl.</th>
+                <th class="px-2 py-3 text-right font-medium text-gray-500 text-xs hidden lg:table-cell">Checks</th>
                 <th class="px-2 py-3 text-right font-medium text-gray-500 text-xs hidden lg:table-cell">B/fwd</th>
                 <th class="px-2 py-3 text-right font-medium text-gray-500 text-xs hidden lg:table-cell">Cleared</th>
                 <th class="px-2 py-3 text-right font-medium text-gray-500 text-xs hidden lg:table-cell">New</th>
@@ -84,6 +86,8 @@
                     <span class="text-gray-500">C{{ u.cycle_number }}</span>
                     {% endif %}
                 </td>
+                <td class="px-2 py-3 text-right text-xs tabular-nums hidden lg:table-cell {% if not u.excl_count %}text-gray-300{% endif %}">{{ u.excl_count }}</td>
+                <td class="px-2 py-3 text-right text-xs tabular-nums hidden lg:table-cell">{{ u.checkpoints }}</td>
                 <td class="px-2 py-3 text-right text-xs tabular-nums hidden lg:table-cell {% if not u.defect_bfwd %}text-gray-300{% endif %}">{{ u.defect_bfwd }}</td>
                 <td class="px-2 py-3 text-right text-xs tabular-nums hidden lg:table-cell {% if u.defect_cleared %}text-green-600{% else %}text-gray-300{% endif %}">{{ u.defect_cleared }}</td>
                 <td class="px-2 py-3 text-right text-xs tabular-nums hidden lg:table-cell {% if not u.defect_new %}text-gray-300{% endif %}">{{ u.defect_new }}</td>
