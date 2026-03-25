@@ -1484,14 +1484,18 @@ def _build_live_monitor_data(batch_id, tenant_id):
         for f in feed:
             f['initials'] = _get_initials(f['inspector_name'])
 
+    # --- Recompute batch totals from corrected per-unit data (handles C1+C2 mix) ---
+    items_marked = sum(u.get('total_marked', 0) for u in units)
+    total_items = sum(u.get('total_items', 0) for u in units)
+
     # --- Computed KPIs ---
-    # Use live defect counts from inspection_item (updates on every tap)
-    # instead of defect table (only updates on submission)
     live_defects = sum(u['total_defects'] for u in units)
     units_with_marks = sum(1 for u in units if u['total_marked'] > 0)
     completion_pct = round(units_complete / total_units * 100) if total_units else 0
-    total_non_skipped = items_marked  # items that have been marked (not pending/skipped)
-    defect_rate = round(live_defects / total_non_skipped * 100, 1) if total_non_skipped else 0
+    # Defect rate: C1 only (item-based metric, not meaningful for de-snag)
+    c1_items_marked = sum(u.get('total_marked', 0) for u in units if (u.get('cycle_number') or 1) == 1)
+    c1_defects = sum(u.get('total_defects', 0) for u in units if (u.get('cycle_number') or 1) == 1)
+    defect_rate = round(c1_defects / c1_items_marked * 100, 1) if c1_items_marked else 0
     avg_defects = round(live_defects / units_with_marks, 1) if units_with_marks else 0
 
     # Zone summary for header
