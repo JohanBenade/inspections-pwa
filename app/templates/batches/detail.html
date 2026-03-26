@@ -58,6 +58,9 @@
             {% endfor %}
         </select>
         <button type="submit" class="px-4 py-1.5 text-sm font-semibold rounded bg-blue-600 text-white hover:bg-blue-700">Apply to All</button>
+        <button type="submit" formaction="{{ url_for('batches.apply_exclusion_list_all', batch_id=batch.id) }}"
+                onclick="document.querySelector('[name=exclusion_list_id]').value='';return confirm('Remove exclusion list from all units not yet started?')"
+                class="px-4 py-1.5 text-sm font-semibold rounded border border-red-300 text-red-600 hover:bg-red-50">Remove All</button>
         <span class="text-xs text-gray-400">Only applies to units not yet started</span>
     </form>
 </div>
