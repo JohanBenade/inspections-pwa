@@ -105,7 +105,7 @@
                     <span class="text-gray-500">C{{ u.cycle_number }}</span>
                     {% endif %}
                 </td>
-                <td class="px-2 py-3 text-right text-xs tabular-nums hidden lg:table-cell {% if not u.excl_count %}text-gray-300{% endif %}">{{ u.excl_count }}</td>
+                <td class="px-2 py-3 text-right text-xs tabular-nums hidden lg:table-cell {% if not u.excl_count %}text-gray-300{% endif %}">{% if u.floor and u.floor > 0 and u.excl_count %}{{ u.excl_count - 3 }}+3{% else %}{{ u.excl_count }}{% endif %}</td>
                 <td class="px-2 py-3 text-right text-xs tabular-nums hidden lg:table-cell">{{ u.checkpoints }}</td>
                 <td class="px-2 py-3 text-right text-xs tabular-nums hidden lg:table-cell {% if not u.defect_bfwd %}text-gray-300{% endif %}">{{ u.defect_bfwd }}</td>
                 <td class="px-2 py-3 text-right text-xs tabular-nums hidden lg:table-cell {% if u.defect_cleared %}text-green-600{% else %}text-gray-300{% endif %}">{{ u.defect_cleared }}</td>
@@ -178,6 +178,7 @@
         </tbody>
     </table>
 </div>
+<p class="text-xs text-gray-400 mt-2 ml-1">* Upper floor units exclude 3 additional burglar bar items (ground only), shown as +3.</p>
 {% else %}
 <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-8 text-center">
     <p class="text-gray-400">No units in this batch.</p>
