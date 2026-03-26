@@ -463,6 +463,39 @@ def assign_exclusion_list(batch_id):
     return f'<span class="text-xs text-green-600">Saved</span>'
 
 
+@batches_bp.route('/<batch_id>/apply-exclusion-list-all', methods=['POST'])
+@require_team_lead
+def apply_exclusion_list_all(batch_id):
+    """Bulk-apply exclusion list to all eligible units in batch."""
+    tenant_id = session['tenant_id']
+    exclusion_list_id = request.form.get('exclusion_list_id') or None
+
+    db = get_db()
+    now = datetime.now(timezone.utc).isoformat()
+
+    # Get all batch_units that haven't started inspection yet
+    bus = db.execute("""
+        SELECT bu.id, bu.unit_id, bu.cycle_id
+        FROM batch_unit bu
+        LEFT JOIN inspection i ON i.unit_id = bu.unit_id AND i.cycle_id = bu.cycle_id
+        WHERE bu.batch_id = ? AND bu.tenant_id = ?
+        AND bu.status != 'removed'
+        AND (i.status IS NULL OR i.status IN ('not_started'))
+    """, [batch_id, tenant_id]).fetchall()
+
+    updated = 0
+    for bu in bus:
+        db.execute("UPDATE batch_unit SET exclusion_list_id = ? WHERE id = ? AND tenant_id = ?",
+            [exclusion_list_id, bu['id'], tenant_id])
+        db.execute("""UPDATE inspection SET exclusion_list_id = ?, updated_at = ?
+            WHERE unit_id = ? AND cycle_id = ? AND tenant_id = ?""",
+            [exclusion_list_id, now, bu['unit_id'], bu['cycle_id'], tenant_id])
+        updated += 1
+
+    db.commit()
+    return redirect(url_for('batches.detail', batch_id=batch_id))
+
+
 @batches_bp.route('/<batch_id>/exclusions')
 @require_team_lead
 def exclusions(batch_id):

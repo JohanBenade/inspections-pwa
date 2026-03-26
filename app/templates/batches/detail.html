@@ -46,6 +46,22 @@
 </div>
 
 {% if units %}
+<div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4 mb-4">
+    <form method="POST" action="{{ url_for('batches.apply_exclusion_list_all', batch_id=batch.id) }}"
+          class="flex items-center gap-3 flex-wrap"
+          onsubmit="return confirm('Apply this exclusion list to all units that have not started inspection?')">
+        <label class="text-sm font-medium text-gray-700 whitespace-nowrap">Exclusion List</label>
+        <select name="exclusion_list_id" class="text-sm border border-gray-300 rounded px-3 py-1.5 min-w-[200px]">
+            <option value="">-- None --</option>
+            {% for el in excl_lists %}
+            <option value="{{ el.id }}">{{ el.name }} ({{ el.item_count }} items)</option>
+            {% endfor %}
+        </select>
+        <button type="submit" class="px-4 py-1.5 text-sm font-semibold rounded bg-blue-600 text-white hover:bg-blue-700">Apply to All</button>
+        <span class="text-xs text-gray-400">Only applies to units not yet started</span>
+    </form>
+</div>
+
 <div class="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
     <table class="w-full text-sm">
         <thead class="bg-gray-50 border-b border-gray-200">
