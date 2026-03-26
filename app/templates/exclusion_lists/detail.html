@@ -110,6 +110,11 @@ function openRename(listId, name, desc) {
                     class="px-3 py-1.5 text-xs font-medium rounded border border-gray-300 text-gray-700 hover:bg-gray-50">
                 Rename
             </button>
+            <a href="{{ url_for('exclusion_lists.download_pdf', list_id=excl_list.id) }}"
+               class="px-3 py-1.5 text-xs font-medium rounded border border-gray-300 text-gray-700 hover:bg-gray-50"
+               onclick="this.textContent='Preparing...';setTimeout(()=>this.textContent='Download PDF',3000)">
+                Download PDF
+            </a>
             <a href="javascript:void(0)"
                onclick="var cats=document.querySelectorAll('.excl-cat-content');var chevs=document.querySelectorAll('.excl-chev');var btn=this;var anyHidden=false;cats.forEach(function(c){if(c.classList.contains('hidden'))anyHidden=true});cats.forEach(function(c){if(anyHidden)c.classList.remove('hidden');else c.classList.add('hidden')});chevs.forEach(function(ch){if(anyHidden)ch.classList.add('rotate-90');else ch.classList.remove('rotate-90')});btn.textContent=anyHidden?'Collapse All':'Expand All';return false"
                class="ml-auto text-sm text-blue-600 font-medium self-center" style="text-decoration:none">Expand All</a>

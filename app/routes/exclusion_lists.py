@@ -122,6 +122,67 @@ def create():
     return redirect(url_for('exclusion_lists.detail', list_id=list_id))
 
 
+@exclusion_lists_bp.route('/<list_id>/pdf')
+@require_team_lead
+def download_pdf(list_id):
+    """Download exclusion list as PDF."""
+    import base64, os
+    from flask import current_app, make_response
+    from app.services.pdf_playwright import html_to_pdf
+
+    db = get_db()
+    excl_list = db.execute(
+        'SELECT * FROM exclusion_list WHERE id = ? AND tenant_id = ?',
+        [list_id, TENANT]).fetchone()
+    if not excl_list:
+        abort(404)
+
+    rows = db.execute("""
+        SELECT at.area_name, at.area_order,
+               ct.category_name, ct.category_order,
+               it.item_description, it.item_order, it.depth, it.parent_item_id, it.id AS template_id
+        FROM exclusion_list_item eli
+        JOIN item_template it ON eli.item_template_id = it.id
+        JOIN category_template ct ON it.category_id = ct.id
+        JOIN area_template at ON ct.area_id = at.id
+        WHERE eli.exclusion_list_id = ? AND eli.tenant_id = ?
+        ORDER BY at.area_order, ct.category_order, it.item_order
+    """, [list_id, TENANT]).fetchall()
+
+    areas = {}
+    for r in rows:
+        an = r['area_name']
+        cn = r['category_name']
+        if an not in areas:
+            areas[an] = {}
+        if cn not in areas[an]:
+            areas[an][cn] = []
+        areas[an][cn].append(dict(r))
+
+    static_folder = current_app.static_folder
+    logo_path = os.path.join(static_folder, 'monograph_logo.jpg')
+    logo_url = ''
+    if os.path.exists(logo_path):
+        with open(logo_path, 'rb') as f:
+            logo_url = 'data:image/jpeg;base64,' + base64.b64encode(f.read()).decode()
+
+    from datetime import datetime
+    html_content = render_template('exclusion_lists/pdf.html',
+        excl_list=dict(excl_list), areas=areas, logo_url=logo_url,
+        generated_date=datetime.now().strftime('%d %B %Y'))
+
+    pdf_bytes = html_to_pdf(html_content)
+    if not pdf_bytes:
+        flash('PDF generation failed', 'error')
+        return redirect(url_for('exclusion_lists.detail', list_id=list_id))
+
+    response = make_response(pdf_bytes)
+    response.headers['Content-Type'] = 'application/pdf'
+    safe_name = excl_list['name'].replace(' ', '_')
+    response.headers['Content-Disposition'] = f'attachment; filename={safe_name}.pdf'
+    return response
+
+
 @exclusion_lists_bp.route('/<list_id>/clone', methods=['POST'])
 @require_team_lead
 def clone(list_id):
