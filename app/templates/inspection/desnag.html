@@ -13,8 +13,17 @@
                     Unit {{ inspection.unit_number }} &mdash; De-snag
                 </h1>
                 <div class="text-sm text-gray-600">
-                    {{ inspection.block }} {{ floor_label }} &bull; C{{ cycle_number }}
+                    {{ inspection.block }} &bull; {{ floor_label }} &bull; C{{ cycle_number }}
                 </div>
+                {% if inspection.status in ("submitted", "reviewed", "approved", "pending_followup", "certified") %}
+                <div class="flex gap-2 mt-2">
+                    <a href="{{ url_for("pdf.preview_defects_pdf", unit_id=inspection.unit_id, cycle=inspection.cycle_id) }}"
+                       class="inline-flex items-center px-3 py-1.5 text-xs font-medium rounded bg-gray-100 text-gray-700 hover:bg-gray-200">View PDF</a>
+                    <a href="{{ url_for("pdf.download_defects_pdf", unit_id=inspection.unit_id, cycle=inspection.cycle_id) }}"
+                       class="inline-flex items-center px-3 py-1.5 text-xs font-medium rounded" style="background:#C8963E;color:white"
+                       onclick="this.textContent='Preparing...';setTimeout(()=>this.textContent='Download PDF',3000)">Download PDF</a>
+                </div>
+                {% endif %}
             </div>
             <div class="text-right">
                 <div class="text-sm text-gray-500">Inspector</div>
