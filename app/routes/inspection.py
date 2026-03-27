@@ -1985,9 +1985,11 @@ def desnag_view(inspection_id):
         SELECT d.id, d.defect_type, d.original_comment, d.status,
                d.addressed_cycle_number, d.item_template_id,
                it.item_description, ct.category_name, at2.area_name,
-               at2.area_order, ct.category_order, it.item_order
+               at2.area_order, ct.category_order, it.item_order,
+               pit.item_description as parent_description
         FROM defect d
         JOIN item_template it ON d.item_template_id = it.id
+        LEFT JOIN item_template pit ON it.parent_item_id = pit.id
         JOIN category_template ct ON it.category_id = ct.id
         JOIN area_template at2 ON ct.area_id = at2.id
         WHERE d.unit_id = ? AND d.tenant_id = ?
@@ -2001,9 +2003,11 @@ def desnag_view(inspection_id):
         SELECT d.id, d.defect_type, d.original_comment, d.status,
                d.addressed_cycle_number, d.item_template_id,
                it.item_description, ct.category_name, at2.area_name,
-               at2.area_order, ct.category_order, it.item_order
+               at2.area_order, ct.category_order, it.item_order,
+               pit.item_description as parent_description
         FROM defect d
         JOIN item_template it ON d.item_template_id = it.id
+        LEFT JOIN item_template pit ON it.parent_item_id = pit.id
         JOIN category_template ct ON it.category_id = ct.id
         JOIN area_template at2 ON ct.area_id = at2.id
         WHERE d.unit_id = ? AND d.tenant_id = ?
@@ -2099,9 +2103,11 @@ def desnag_address(inspection_id):
     defect = query_db("""
         SELECT d.id, d.defect_type, d.original_comment, d.status,
                d.addressed_cycle_number, it.item_description,
-               ct.category_name, at2.area_name
+               ct.category_name, at2.area_name,
+               pit.item_description as parent_description
         FROM defect d
         JOIN item_template it ON d.item_template_id = it.id
+        LEFT JOIN item_template pit ON it.parent_item_id = pit.id
         JOIN category_template ct ON it.category_id = ct.id
         JOIN area_template at2 ON ct.area_id = at2.id
         WHERE d.id = ? AND d.tenant_id = ?
@@ -2153,9 +2159,11 @@ def desnag_undo(inspection_id):
     defect_row = query_db("""
         SELECT d.id, d.defect_type, d.original_comment, d.status,
                d.addressed_cycle_number, it.item_description,
-               ct.category_name, at2.area_name
+               ct.category_name, at2.area_name,
+               pit.item_description as parent_description
         FROM defect d
         JOIN item_template it ON d.item_template_id = it.id
+        LEFT JOIN item_template pit ON it.parent_item_id = pit.id
         JOIN category_template ct ON it.category_id = ct.id
         JOIN area_template at2 ON ct.area_id = at2.id
         WHERE d.id = ? AND d.tenant_id = ?
