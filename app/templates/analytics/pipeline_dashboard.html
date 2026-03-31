@@ -163,22 +163,6 @@
     {% endif %}
 
 
-            <!-- ========== DEFECT POOL CHART ========== -->
-    {% if trend_points %}
-    <div style="margin-bottom: 2rem;">
-        <h2 style="font-family: 'DM Sans', sans-serif; font-weight: 600; font-size: 1.1rem; color: #1A1A1A; margin-bottom: 0.75rem;">Defect Pool</h2>
-        <div style="position: relative; height: 300px; width: 100%;">
-            <canvas id="defectPoolChart"></canvas>
-        </div>
-        <div style="display: flex; gap: 16px; margin-top: 6px;">
-            <div style="display: flex; align-items: center; gap: 4px;">
-                <div style="width: 16px; height: 3px; background: #C8963E; border-radius: 1px;"></div>
-                <span style="font-size: 0.7rem; color: #6B6B6B;">Open Defects</span>
-            </div>
-        </div>
-    </div>
-    {% endif %}
-
     <!-- ========== WEEKLY LEDGER ========== -->
     <div style="margin-bottom: 2rem;">
         <h2 style="font-family: 'DM Sans', sans-serif; font-weight: 600; font-size: 1.1rem; color: #1A1A1A; margin-bottom: 0;">
@@ -221,6 +205,22 @@
         </div>
         {% endif %}
     </div>
+
+            <!-- ========== DEFECT POOL CHART ========== -->
+    {% if trend_points %}
+    <div style="margin-bottom: 2rem;">
+        <h2 style="font-family: 'DM Sans', sans-serif; font-weight: 600; font-size: 1.1rem; color: #1A1A1A; margin-bottom: 0.75rem;">Defect Pool</h2>
+        <div style="position: relative; height: 300px; width: 100%;">
+            <canvas id="defectPoolChart"></canvas>
+        </div>
+        <div style="display: flex; gap: 16px; margin-top: 6px;">
+            <div style="display: flex; align-items: center; gap: 4px;">
+                <div style="width: 16px; height: 3px; background: #C8963E; border-radius: 1px;"></div>
+                <span style="font-size: 0.7rem; color: #6B6B6B;">Open Defects</span>
+            </div>
+        </div>
+    </div>
+    {% endif %}
 
     <!-- ========== ZONE GRID ========== -->
     {% if zone_grid.blocks %}
