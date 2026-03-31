@@ -94,22 +94,6 @@
         </div>
     </div>
 
-    <!-- ========== MOVEMENTS THIS WEEK ========== -->
-    {% if movements %}
-    <div style="margin-bottom: 1.5rem; padding: 12px 16px; background: #F5F3EE; border-radius: 6px;">
-        <h3 style="font-family: 'DM Sans', sans-serif; font-weight: 600; font-size: 0.85rem; color: #1A1A1A; margin-bottom: 8px;">Movement This Week ({{ ledger_from }} &ndash; {{ ledger_to }})</h3>
-        {% for m in movements %}
-        <div style="margin-bottom: 8px;">
-            <div style="display: flex; align-items: baseline; gap: 8px; margin-bottom: 2px;">
-                <span style="display: inline-block; padding: 2px 8px; border-radius: 3px; font-size: 0.65rem; font-weight: 700; background: {{ m.colour }}20; color: {{ m.colour }}; white-space: nowrap;">{{ m.label }}</span>
-                <span style="font-size: 0.75rem; font-weight: 600; color: #1A1A1A;">{{ m.detail }}</span>
-            </div>
-            <div style="font-size: 0.7rem; color: #9A9A9A; padding-left: 8px;">{{ m.units|join(', ') }}</div>
-        </div>
-        {% endfor %}
-    </div>
-    {% endif %}
-
     <!-- ========== DE-SNAG RESULTS ========== -->
     {% if desnag %}
     <div style="margin-bottom: 2rem;">
@@ -159,32 +143,22 @@
             <span style="font-size: 0.7rem; font-weight: 700; color: #C44D3F; white-space: nowrap;">{{ desnag.total_still_open }} open</span>
             {% endif %}
         </div>
+    </div>
+    {% endif %}
 
-        <!-- Unit results table -->
-        <table style="border-collapse: collapse; width: 100%; font-size: 0.8rem;">
-            <thead>
-                <tr>
-                    <th style="padding: 6px 8px; text-align: left; border-bottom: 2px solid #E8E6E1; color: #6B6B6B; font-size: 0.7rem;">Unit</th>
-                    <th style="padding: 6px 8px; text-align: left; border-bottom: 2px solid #E8E6E1; color: #6B6B6B; font-size: 0.7rem;">Zone</th>
-                    <th style="padding: 6px 8px; text-align: right; border-bottom: 2px solid #E8E6E1; color: #6B6B6B; font-size: 0.7rem;">B/Fwd</th>
-                    <th style="padding: 6px 8px; text-align: right; border-bottom: 2px solid #E8E6E1; color: #6B6B6B; font-size: 0.7rem;">Cleared</th>
-                    <th style="padding: 6px 8px; text-align: right; border-bottom: 2px solid #E8E6E1; color: #6B6B6B; font-size: 0.7rem;">Open</th>
-                    <th style="padding: 6px 8px; text-align: right; border-bottom: 2px solid #E8E6E1; color: #6B6B6B; font-size: 0.7rem;">Rate</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for u in desnag.units %}
-                <tr>
-                    <td style="padding: 5px 8px; border-bottom: 1px solid #F0EEEA; font-weight: 600;">{{ u.unit }}</td>
-                    <td style="padding: 5px 8px; border-bottom: 1px solid #F0EEEA; color: #6B6B6B;">{{ u.zone }}</td>
-                    <td style="padding: 5px 8px; border-bottom: 1px solid #F0EEEA; text-align: right;">{{ u.bfwd }}</td>
-                    <td style="padding: 5px 8px; border-bottom: 1px solid #F0EEEA; text-align: right; color: #4A7C59;">{{ u.cleared }}</td>
-                    <td style="padding: 5px 8px; border-bottom: 1px solid #F0EEEA; text-align: right; {% if u.open > 0 %}color: #C44D3F; font-weight: 600;{% endif %}">{{ u.open }}</td>
-                    <td style="padding: 5px 8px; border-bottom: 1px solid #F0EEEA; text-align: right; font-weight: 600; color: {% if u.rate >= 95 %}#4A7C59{% elif u.rate >= 80 %}#C8963E{% else %}#C44D3F{% endif %};">{{ u.rate }}%</td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
+    <!-- ========== MOVEMENTS THIS WEEK ========== -->
+    {% if movements %}
+    <div style="margin-bottom: 1.5rem; padding: 12px 16px; background: #F5F3EE; border-radius: 6px;">
+        <h3 style="font-family: 'DM Sans', sans-serif; font-weight: 600; font-size: 0.85rem; color: #1A1A1A; margin-bottom: 8px;">Movement This Week ({{ ledger_from }} &ndash; {{ ledger_to }})</h3>
+        {% for m in movements %}
+        <div style="margin-bottom: 8px;">
+            <div style="display: flex; align-items: baseline; gap: 8px; margin-bottom: 2px;">
+                <span style="display: inline-block; padding: 2px 8px; border-radius: 3px; font-size: 0.65rem; font-weight: 700; background: {{ m.colour }}20; color: {{ m.colour }}; white-space: nowrap;">{{ m.label }}</span>
+                <span style="font-size: 0.75rem; font-weight: 600; color: #1A1A1A;">{{ m.detail }}</span>
+            </div>
+            <div style="font-size: 0.7rem; color: #9A9A9A; padding-left: 8px;">{{ m.units|join(', ') }}</div>
+        </div>
+        {% endfor %}
     </div>
     {% endif %}
 
