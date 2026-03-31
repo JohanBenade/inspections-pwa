@@ -115,7 +115,7 @@ def _get_batch_pipeline(tenant_id):
             JOIN unit u ON bu.unit_id = u.id
             LEFT JOIN inspection i ON i.unit_id = bu.unit_id
                 AND i.cycle_id = bu.cycle_id AND i.tenant_id = bu.tenant_id
-            WHERE bu.batch_id = ? AND bu.tenant_id = ? AND bu.removed_at IS NULL
+            WHERE bu.batch_id = ? AND bu.tenant_id = ? AND bu.status != 'removed'
             GROUP BY bu.cycle_id, u.block, u.floor
             ORDER BY u.block, u.floor, cycle_number
         """, [batch['id'], tenant_id])
@@ -135,11 +135,11 @@ def _get_batch_pipeline(tenant_id):
                     COUNT(DISTINCT CASE WHEN i.status IN ('pending_followup', 'certified', 'closed') THEN i.id END) as signed_count,
                     (SELECT COUNT(*) FROM defect d WHERE d.raised_cycle_id = ?
                      AND d.status = 'open' AND d.tenant_id = ?
-                     AND d.unit_id IN (SELECT unit_id FROM batch_unit WHERE batch_id = ? AND removed_at IS NULL)) as defect_count
+                     AND d.unit_id IN (SELECT unit_id FROM batch_unit WHERE batch_id = ? AND status != 'removed')) as defect_count
                 FROM inspection i
                 JOIN batch_unit bu ON bu.unit_id = i.unit_id AND bu.cycle_id = i.cycle_id
                 WHERE i.cycle_id = ? AND i.tenant_id = ?
-                AND bu.batch_id = ? AND bu.removed_at IS NULL
+                AND bu.batch_id = ? AND bu.status != 'removed'
             """, [zone['cycle_id'], tenant_id, batch['id'], zone['cycle_id'], tenant_id, batch['id']], one=True)
 
             if cs:
@@ -297,7 +297,7 @@ def _build_review_data(tenant_id, cycle_id):
         SELECT ib.approved_at, ib.pushed_at
         FROM batch_unit bu
         JOIN inspection_batch ib ON bu.batch_id = ib.id
-        WHERE bu.cycle_id = ? AND bu.tenant_id = ? AND bu.removed_at IS NULL
+        WHERE bu.cycle_id = ? AND bu.tenant_id = ? AND bu.status != 'removed'
         LIMIT 1
     """, [cycle_id, tenant_id], one=True)
     if batch_row:
@@ -537,7 +537,7 @@ def set_batch_milestone(batch_id):
         SELECT bu.id as bu_id, i.id as insp_id
         FROM batch_unit bu
         LEFT JOIN inspection i ON i.unit_id = bu.unit_id AND i.cycle_id = bu.cycle_id
-        WHERE bu.batch_id = ? AND bu.tenant_id = ? AND bu.removed_at IS NULL
+        WHERE bu.batch_id = ? AND bu.tenant_id = ? AND bu.status != 'removed'
     """, [batch_id, tenant_id])
 
     for u in units:
@@ -692,7 +692,7 @@ def _update_batch_reviewed_milestone(db, tenant_id, cycle_id, now):
     """If all units in the batch containing this cycle are reviewed, write reviewed_at."""
     batch_row = query_db("""
         SELECT bu.batch_id FROM batch_unit bu
-        WHERE bu.cycle_id = ? AND bu.tenant_id = ? AND bu.removed_at IS NULL
+        WHERE bu.cycle_id = ? AND bu.tenant_id = ? AND bu.status != 'removed'
         LIMIT 1
     """, [cycle_id, tenant_id], one=True)
     if not batch_row:
@@ -705,7 +705,7 @@ def _update_batch_reviewed_milestone(db, tenant_id, cycle_id, now):
         FROM batch_unit bu
         LEFT JOIN inspection i ON bu.unit_id = i.unit_id
             AND bu.cycle_id = i.cycle_id AND i.tenant_id = bu.tenant_id
-        WHERE bu.batch_id = ? AND bu.tenant_id = ? AND bu.removed_at IS NULL
+        WHERE bu.batch_id = ? AND bu.tenant_id = ? AND bu.status != 'removed'
     """, [batch_id, tenant_id], one=True)
     # Batch sign-off status is managed by batch_sign_off route
     # Check if batch is already approved and update status accordingly
@@ -916,7 +916,7 @@ def batch_sign_off(batch_id):
             SELECT i.id FROM inspection i
             JOIN batch_unit bu ON bu.unit_id = i.unit_id
                 AND bu.cycle_id = i.cycle_id AND bu.tenant_id = i.tenant_id
-            WHERE bu.batch_id = ? AND bu.removed_at IS NULL
+            WHERE bu.batch_id = ? AND bu.status != 'removed'
             AND i.status = 'reviewed' AND i.tenant_id = ?
         )
     """, [now, batch_id, tenant_id])
@@ -960,7 +960,7 @@ def batch_push_pdfs(batch_id):
         JOIN unit u ON bu.unit_id = u.id
         LEFT JOIN inspection i ON i.unit_id = u.id AND i.cycle_id = bu.cycle_id
             AND i.tenant_id = bu.tenant_id
-        WHERE bu.batch_id = ? AND bu.tenant_id = ? AND bu.removed_at IS NULL
+        WHERE bu.batch_id = ? AND bu.tenant_id = ? AND bu.status != 'removed'
         AND i.id IS NOT NULL
         ORDER BY u.block, u.floor, u.unit_number
     """, [batch_id, tenant_id]) or []]
@@ -1955,7 +1955,7 @@ def _get_tracker_defects(batch_id, tenant_id):
         )
         AND EXISTS (
             SELECT 1 FROM batch_unit bu2
-            WHERE bu2.batch_id = ? AND bu2.removed_at IS NULL
+            WHERE bu2.batch_id = ? AND bu2.status != 'removed'
             AND bu2.unit_id = d.unit_id
             AND bu2.cycle_id = d.raised_cycle_id
         )
