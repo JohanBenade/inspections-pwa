@@ -458,6 +458,30 @@
 <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0/dist/chartjs-plugin-datalabels.min.js"></script>
 <script>
 Chart.register(ChartDataLabels);
+var deltaPlugin = {
+    id: 'deltaLabels',
+    afterDatasetsDraw: function(chart) {
+        var meta = chart.getDatasetMeta(0);
+        var ctx2 = chart.ctx;
+        ctx2.save();
+        ctx2.font = '600 9px DM Sans, sans-serif';
+        ctx2.textAlign = 'center';
+        for (var i = 1; i < meta.data.length; i++) {
+            var prev = meta.data[i-1];
+            var curr = meta.data[i];
+            var prevVal = chart.data.datasets[0].data[i-1];
+            var currVal = chart.data.datasets[0].data[i];
+            var delta = currVal - prevVal;
+            if (delta === 0) continue;
+            var midX = (prev.x + curr.x) / 2;
+            var midY = (prev.y + curr.y) / 2 + 18;
+            var label = (delta > 0 ? '+' : '') + delta.toLocaleString();
+            ctx2.fillStyle = delta > 0 ? '#C44D3F' : '#4A7C59';
+            ctx2.fillText(label, midX, midY);
+        }
+        ctx2.restore();
+    }
+};
 var ctx = document.getElementById('defectPoolChart').getContext('2d');
 new Chart(ctx, {
     type: 'line',
@@ -482,12 +506,14 @@ new Chart(ctx, {
             }
         }]
     },
+    plugins: [deltaPlugin],
     options: {
         responsive: true,
         maintainAspectRatio: false,
         plugins: {
             legend: { display: false },
-            datalabels: { display: true }
+            datalabels: { display: true },
+            deltaLabels: true
         },
         scales: {
             y: { beginAtZero: true, grace: '15%', ticks: { font: { size: 11 } }, grid: { color: '#F0EEEA' } },
