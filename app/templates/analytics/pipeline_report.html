@@ -317,6 +317,10 @@ body {
                 <div style="font-size: 16px; font-weight: 700; color: #1A1A1A; margin-top: 2px;">{{ desnag.count }}</div>
             </div>
             <div style="background: #F5F3EE; padding: 10px 12px; border-radius: 4px; text-align: center;">
+                <div style="font-size: 8px; font-weight: 600; letter-spacing: 1px; text-transform: uppercase; color: #9A9A9A;">Units Clear</div>
+                <div style="font-size: 16px; font-weight: 700; color: #4A7C59; margin-top: 2px;">{{ desnag.fully_cleared }} <span style="font-size: 11px; color: #9A9A9A;">of {{ desnag.count }}</span></div>
+            </div>
+            <div style="background: #F5F3EE; padding: 10px 12px; border-radius: 4px; text-align: center;">
                 <div style="font-size: 8px; font-weight: 600; letter-spacing: 1px; text-transform: uppercase; color: #9A9A9A;">Defect Fix Rate</div>
                 <div style="font-size: 16px; font-weight: 700; color: {% if desnag.clearance_rate >= 90 %}#4A7C59{% elif desnag.clearance_rate >= 70 %}#C8963E{% else %}#C44D3F{% endif %}; margin-top: 2px;">{{ desnag.clearance_rate }}%</div>
             </div>
@@ -327,10 +331,6 @@ body {
             <div style="background: #F5F3EE; padding: 10px 12px; border-radius: 4px; text-align: center;">
                 <div style="font-size: 8px; font-weight: 600; letter-spacing: 1px; text-transform: uppercase; color: #9A9A9A;">Defects Remaining</div>
                 <div style="font-size: 16px; font-weight: 700; color: {% if desnag.total_still_open == 0 %}#4A7C59{% else %}#C44D3F{% endif %}; margin-top: 2px;">{{ desnag.total_still_open }}</div>
-            </div>
-            <div style="background: #F5F3EE; padding: 10px 12px; border-radius: 4px; text-align: center;">
-                <div style="font-size: 8px; font-weight: 600; letter-spacing: 1px; text-transform: uppercase; color: #9A9A9A;">Units Clear</div>
-                <div style="font-size: 16px; font-weight: 700; color: #4A7C59; margin-top: 2px;">{{ desnag.fully_cleared }} <span style="font-size: 11px; color: #9A9A9A;">of {{ desnag.count }}</span></div>
             </div>
             <div style="background: #F5F3EE; padding: 10px 12px; border-radius: 4px; text-align: center;">
                 <div style="font-size: 8px; font-weight: 600; letter-spacing: 1px; text-transform: uppercase; color: #9A9A9A;">New Defects (C2+)</div>

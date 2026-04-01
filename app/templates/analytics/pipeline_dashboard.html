@@ -106,6 +106,10 @@
                 <div style="font-family: 'DM Sans', sans-serif; font-size: 1.2rem; font-weight: 600; color: #1A1A1A; margin-top: 2px;">{{ desnag.count }}</div>
             </div>
             <div style="background: #EBE6DE; padding: 12px 14px; border-radius: 6px; text-align: center;">
+                <div style="font-size: 0.65rem; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: #6B6B6B;">Units Clear</div>
+                <div style="font-family: 'DM Sans', sans-serif; font-size: 1.2rem; font-weight: 600; color: #4A7C59; margin-top: 2px;">{{ desnag.fully_cleared }} <span style="font-size: 0.8rem; color: #9A9A9A;">of {{ desnag.count }}</span></div>
+            </div>
+            <div style="background: #EBE6DE; padding: 12px 14px; border-radius: 6px; text-align: center;">
                 <div style="font-size: 0.65rem; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: #6B6B6B;">Defect Fix Rate</div>
                 <div style="font-family: 'DM Sans', sans-serif; font-size: 1.2rem; font-weight: 600; color: {% if desnag.clearance_rate >= 90 %}#4A7C59{% elif desnag.clearance_rate >= 70 %}#C8963E{% else %}#C44D3F{% endif %}; margin-top: 2px;">{{ desnag.clearance_rate }}%</div>
             </div>
@@ -116,10 +120,6 @@
             <div style="background: #EBE6DE; padding: 12px 14px; border-radius: 6px; text-align: center;">
                 <div style="font-size: 0.65rem; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: #6B6B6B;">Defects Remaining</div>
                 <div style="font-family: 'DM Sans', sans-serif; font-size: 1.2rem; font-weight: 600; color: {% if desnag.total_still_open == 0 %}#4A7C59{% else %}#C44D3F{% endif %}; margin-top: 2px;">{{ desnag.total_still_open }}</div>
-            </div>
-            <div style="background: #EBE6DE; padding: 12px 14px; border-radius: 6px; text-align: center;">
-                <div style="font-size: 0.65rem; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: #6B6B6B;">Units Clear</div>
-                <div style="font-family: 'DM Sans', sans-serif; font-size: 1.2rem; font-weight: 600; color: #4A7C59; margin-top: 2px;">{{ desnag.fully_cleared }} <span style="font-size: 0.8rem; color: #9A9A9A;">of {{ desnag.count }}</span></div>
             </div>
             <div style="background: #EBE6DE; padding: 12px 14px; border-radius: 6px; text-align: center;">
                 <div style="font-size: 0.65rem; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: #6B6B6B;">New Defects (C2+)</div>
