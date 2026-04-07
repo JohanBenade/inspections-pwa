@@ -4728,11 +4728,12 @@ def _build_pipeline_report_data(live=False, cutoff_sast=None):
     active_batch_rows = query_db("""
         SELECT ib.id, ib.name, bu.unit_id
         FROM inspection_batch ib
-        JOIN batch_unit bu ON bu.batch_id = ib.id AND bu.removed_at IS NULL
+        JOIN batch_unit bu ON bu.batch_id = ib.id AND bu.status != 'removed'
         JOIN unit u ON bu.unit_id = u.id
         WHERE ib.tenant_id = ?
+        AND ib.status = 'complete'
         AND u.unit_number NOT LIKE 'TEST%'
-        ORDER BY ib.created_at DESC
+        ORDER BY ib.closed_at DESC
         LIMIT 1
     """, [tenant_id])
 
