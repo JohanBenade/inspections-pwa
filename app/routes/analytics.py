@@ -4448,7 +4448,7 @@ def _build_audit_data_dict():
         FROM inspection i
         JOIN unit_real u ON i.unit_id = u.id
         LEFT JOIN defect d ON d.unit_id = u.id AND d.raised_cycle_id = i.cycle_id
-            AND d.status = 'open' AND d.tenant_id = u.tenant_id
+            AND d.tenant_id = u.tenant_id
         WHERE i.tenant_id = ? AND i.cycle_number = 1
             AND i.status IN ('reviewed','approved','certified','pending_followup')
             AND u.unit_number NOT LIKE 'TEST%'
@@ -4468,7 +4468,7 @@ def _build_audit_data_dict():
         FROM inspection i
         JOIN unit_real u ON i.unit_id = u.id
         LEFT JOIN defect d ON d.unit_id = u.id AND d.raised_cycle_id = i.cycle_id
-            AND d.status = 'open' AND d.tenant_id = u.tenant_id
+            AND d.tenant_id = u.tenant_id
         WHERE i.tenant_id = ? AND i.cycle_number = 1
             AND i.status IN ('reviewed','approved','certified','pending_followup')
             AND i.inspector_name IS NOT NULL
