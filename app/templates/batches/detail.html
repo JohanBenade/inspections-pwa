@@ -69,9 +69,9 @@
     <table class="w-full text-sm">
         <thead class="bg-gray-50 border-b border-gray-200">
             <tr>
-                <th class="px-4 py-3 text-left font-medium text-gray-600">Unit</th>
-                <th class="px-4 py-3 text-left font-medium text-gray-600 hidden sm:table-cell">Block / Floor</th>
-                <th class="px-4 py-3 text-left font-medium text-gray-600">Round</th>
+                <th class="px-4 py-3 text-left font-medium text-gray-600 cursor-pointer select-none" data-sort="unit" onclick="sortTable(this, event)">Unit <span class="sort-arrow text-gray-400"></span></th>
+                <th class="px-4 py-3 text-left font-medium text-gray-600 hidden sm:table-cell cursor-pointer select-none" data-sort="block" onclick="sortTable(this, event)">Block / Floor <span class="sort-arrow text-gray-400"></span></th>
+                <th class="px-4 py-3 text-left font-medium text-gray-600 cursor-pointer select-none" data-sort="round" onclick="sortTable(this, event)">Round <span class="sort-arrow text-gray-400"></span></th>
                 <th class="px-2 py-3 text-right font-medium text-gray-500 text-xs hidden lg:table-cell">Excluded</th>
                 <th class="px-2 py-3 text-right font-medium text-gray-500 text-xs hidden lg:table-cell">Scope</th>
                 <th class="px-2 py-3 text-right font-medium text-gray-500 text-xs hidden lg:table-cell">B/fwd</th>
@@ -86,7 +86,7 @@
         </thead>
         <tbody class="divide-y divide-gray-100">
             {% for u in units %}
-            <tr id="row-{{ u.bu_id }}" class="hover:bg-gray-50">
+            <tr id="row-{{ u.bu_id }}" class="hover:bg-gray-50" data-unit="{{ u.unit_number }}" data-block="{{ u.block }}{{ u.floor }}" data-round="{{ u.cycle_number }}">
                 <td class="px-4 py-3 font-medium text-gray-800">
                     {{ u.unit_number }}
                     <span class="sm:hidden text-xs text-gray-400 block">
@@ -240,5 +240,59 @@
 })();
 </script>
 
+
+<script>
+(function(){
+    var sorts = [];
+    window.sortTable = function(th, evt) {
+        var key = th.dataset.sort;
+        var tbody = document.querySelector('table tbody');
+        var rows = Array.from(tbody.querySelectorAll('tr[data-unit]'));
+        if (!evt.shiftKey) {
+            // Primary sort - reset
+            var existing = sorts.find(function(s){return s.key===key});
+            if (existing) {
+                existing.dir = existing.dir === 'asc' ? 'desc' : 'asc';
+                sorts = [existing];
+            } else {
+                sorts = [{key:key, dir:'asc'}];
+            }
+        } else {
+            // Secondary sort
+            var idx = sorts.findIndex(function(s){return s.key===key});
+            if (idx >= 0) {
+                sorts[idx].dir = sorts[idx].dir === 'asc' ? 'desc' : 'asc';
+            } else {
+                sorts.push({key:key, dir:'asc'});
+            }
+        }
+        rows.sort(function(a,b){
+            for (var i=0; i<sorts.length; i++) {
+                var s = sorts[i];
+                var av = a.dataset[s.key] || '';
+                var bv = b.dataset[s.key] || '';
+                var cmp;
+                if (s.key === 'unit' || s.key === 'round') {
+                    cmp = parseInt(av,10) - parseInt(bv,10);
+                } else {
+                    cmp = av.localeCompare(bv);
+                }
+                if (s.dir === 'desc') cmp = -cmp;
+                if (cmp !== 0) return cmp;
+            }
+            return 0;
+        });
+        rows.forEach(function(r){tbody.appendChild(r)});
+        // Update arrows
+        document.querySelectorAll('.sort-arrow').forEach(function(el){el.textContent=''});
+        sorts.forEach(function(s,i){
+            var arrow = s.dir === 'asc' ? '\u25B2' : '\u25BC';
+            var prefix = sorts.length > 1 ? (i+1)+'' : '';
+            var el = document.querySelector('[data-sort="'+s.key+'"] .sort-arrow');
+            if (el) el.textContent = prefix + arrow;
+        });
+    };
+})();
+</script>
     <a href="{{ url_for('batches.list_batches') }}"
 {% endblock %}
