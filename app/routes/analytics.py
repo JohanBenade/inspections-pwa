@@ -4458,6 +4458,58 @@ def inspector_audit():
     return render_template('analytics/inspector_audit.html', **data)
 
 
+@analytics_bp.route('/audit/units')
+@require_manager
+def inspector_audit_units():
+    """Unit-centric audit trail - who inspected what, by cycle."""
+    tenant_id = session['tenant_id']
+    floor_labels = {0: 'Ground', 1: '1st Floor', 2: '2nd Floor', 3: '3rd Floor'}
+
+    rows = [dict(r) for r in query_db("""
+        SELECT u.id as unit_id, u.unit_number, u.block, u.floor,
+               i.cycle_number, i.inspection_date, i.inspector_name, i.status
+        FROM unit_real u
+        LEFT JOIN inspection i ON i.unit_id = u.id AND i.tenant_id = u.tenant_id
+            AND i.status IN ('reviewed','approved','certified','pending_followup')
+        WHERE u.tenant_id = ?
+        ORDER BY u.block, u.floor, CAST(u.unit_number AS INTEGER), i.cycle_number
+    """, [tenant_id])]
+
+    # Build unit map: {unit_id: {unit_number, block, floor, c1: {date, inspector}, c2: {...}, c3: {...}}}
+    from collections import OrderedDict
+    units = OrderedDict()
+    for r in rows:
+        uid = r['unit_id']
+        if uid not in units:
+            floor_val = r['floor']
+            units[uid] = {
+                'unit_number': r['unit_number'],
+                'block': r['block'],
+                'floor': floor_val,
+                'zone': '{} {}'.format(r['block'], floor_labels.get(floor_val, 'Floor ' + str(floor_val))),
+                'c1_date': None, 'c1_inspector': None,
+                'c2_date': None, 'c2_inspector': None,
+                'c3_date': None, 'c3_inspector': None,
+            }
+        cn = r.get('cycle_number')
+        if cn and r['inspection_date']:
+            prefix = 'c{}'.format(min(cn, 3))
+            units[uid][prefix + '_date'] = r['inspection_date']
+            units[uid][prefix + '_inspector'] = r['inspector_name']
+
+    # Group by zone (block + floor)
+    zones = OrderedDict()
+    for uid, u in units.items():
+        z = u['zone']
+        if z not in zones:
+            zones[z] = []
+        zones[z].append(u)
+
+    return render_template('analytics/inspector_audit_units.html',
+        zones=zones,
+        total_units=len(units))
+
+
 @analytics_bp.route('/audit/view')
 @require_manager
 def inspector_audit_view():
