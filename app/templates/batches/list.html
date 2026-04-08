@@ -38,8 +38,22 @@
                 <span class="px-2.5 py-1 text-xs font-semibold rounded-full bg-blue-100 text-blue-700">In Progress</span>
                 {% elif batch.status == 'review' %}
                 <span class="px-2.5 py-1 text-xs font-semibold rounded-full bg-purple-100 text-purple-700">Review</span>
+                {% elif batch.status == 'received' %}
+                <span class="px-2.5 py-1 text-xs font-semibold rounded-full bg-blue-50 text-blue-600">Received</span>
+                {% elif batch.status == 'inspected' %}
+                <span class="px-2.5 py-1 text-xs font-semibold rounded-full bg-indigo-100 text-indigo-700">Inspected</span>
+                {% elif batch.status == 'submitted' %}
+                <span class="px-2.5 py-1 text-xs font-semibold rounded-full bg-purple-100 text-purple-700">Submitted</span>
+                {% elif batch.status == 'reviewed' %}
+                <span class="px-2.5 py-1 text-xs font-semibold rounded-full bg-indigo-100 text-indigo-700">Reviewed</span>
+                {% elif batch.status == 'approved' %}
+                <span class="px-2.5 py-1 text-xs font-semibold rounded-full bg-teal-100 text-teal-700">Approved</span>
+                {% elif batch.status == 'signed_off' %}
+                <span class="px-2.5 py-1 text-xs font-semibold rounded-full bg-emerald-100 text-emerald-700">Signed Off</span>
                 {% elif batch.status == 'complete' %}
                 <span class="px-2.5 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-700">Complete</span>
+                {% else %}
+                <span class="px-2.5 py-1 text-xs font-semibold rounded-full bg-gray-100 text-gray-500">{{ batch.status }}</span>
                 {% endif %}
             </div>
         </div>
