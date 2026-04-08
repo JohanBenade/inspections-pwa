@@ -154,8 +154,10 @@ def list_batches():
     batches_raw = query_db("""
         SELECT ib.id, ib.name, ib.status, ib.notes, ib.created_at,
             COUNT(bu.id) AS total_units,
-            SUM(CASE WHEN i.status IN ('submitted','reviewed','pending_followup','approved','certified','closed')
-                THEN 1 ELSE 0 END) AS completed,
+            SUM(CASE WHEN i.status = 'submitted' THEN 1 ELSE 0 END) AS submitted,
+            SUM(CASE WHEN i.status = 'reviewed' THEN 1 ELSE 0 END) AS reviewed,
+            SUM(CASE WHEN i.status IN ('pending_followup','approved','certified','closed')
+                THEN 1 ELSE 0 END) AS signed,
             SUM(CASE WHEN i.status = 'in_progress' THEN 1 ELSE 0 END) AS in_progress,
             SUM(CASE WHEN i.status IS NULL OR i.status = 'not_started' THEN 1 ELSE 0 END) AS pending
         FROM inspection_batch ib

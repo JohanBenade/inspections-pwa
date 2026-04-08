@@ -59,8 +59,14 @@
         </div>
         <div class="flex items-center space-x-4 text-sm text-gray-500">
             <span>{{ batch.total_units }} unit{{ 's' if batch.total_units != 1 }}</span>
-            {% if batch.completed > 0 %}
-            <span class="text-green-600">{{ batch.completed }} done</span>
+            {% if batch.signed > 0 %}
+            <span class="text-green-600">{{ batch.signed }} signed</span>
+            {% endif %}
+            {% if batch.reviewed > 0 %}
+            <span class="text-indigo-600">{{ batch.reviewed }} reviewed</span>
+            {% endif %}
+            {% if batch.submitted > 0 %}
+            <span class="text-purple-600">{{ batch.submitted }} submitted</span>
             {% endif %}
             {% if batch.in_progress > 0 %}
             <span class="text-blue-600">{{ batch.in_progress }} active</span>
@@ -70,7 +76,7 @@
             {% endif %}
         </div>
         {% if batch.total_units > 0 %}
-        {% set pct = ((batch.completed / batch.total_units * 100) | round | int) %}
+        {% set pct = (((batch.signed + batch.reviewed + batch.submitted) / batch.total_units * 100) | round | int) %}
         <div class="mt-2">
             <div class="w-full bg-gray-200 rounded-full h-2">
                 <div class="h-2 rounded-full transition-all duration-300
