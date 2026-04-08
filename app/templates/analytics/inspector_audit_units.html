@@ -8,7 +8,13 @@
     </div>
 
     <h1 style="font-family: var(--font-display, Georgia, serif); font-size: 2.25rem; font-weight: 700; letter-spacing: -0.01em; color: #0A0A0A; margin: 0 0 0.3rem 0;">Unit Inspection Register</h1>
-    <p style="font-size: 0.85rem; color: #9A9A9A; margin: 0 0 1.5rem 0;">Power Park Student Housing — Phase 3 — {{ total_units }} Units</p>
+    <p style="font-size: 0.85rem; color: #9A9A9A; margin: 0 0 1rem 0;">Power Park Student Housing — Phase 3 — {{ total_units }} Units</p>
+
+    <div style="margin-bottom: 1rem;">
+        <input type="text" id="unit-search" placeholder="Search unit number..." autocomplete="off"
+            style="padding: 0.45rem 0.7rem; font-size: 0.85rem; border: 1px solid #D1D1D1; border-radius: 6px; width: 160px; outline: none;"
+            onfocus="this.style.borderColor='#0A0A0A'" onblur="this.style.borderColor='#D1D1D1'">
+    </div>
 
     <div style="overflow-x: auto;">
     <table style="width: 100%; border-collapse: collapse; font-size: 0.82rem; min-width: 700px;">
@@ -48,4 +54,34 @@
     </div>
 
 </div>
+
+<script>
+document.getElementById('unit-search').addEventListener('input', function() {
+    const q = this.value.trim();
+    const rows = document.querySelectorAll('tbody tr');
+    rows.forEach(function(tr) {
+        const unitCell = tr.querySelector('td:first-child');
+        if (tr.querySelector('td[colspan]')) {
+            // zone header - hide/show based on whether any child units match
+            return;
+        }
+        tr.style.display = unitCell.textContent.trim().indexOf(q) !== -1 ? '' : 'none';
+    });
+    // Show/hide zone headers based on visible children
+    let currentHeader = null;
+    let hasVisible = false;
+    rows.forEach(function(tr) {
+        if (tr.querySelector('td[colspan]')) {
+            if (currentHeader !== null) {
+            }
+            currentHeader = tr;
+            hasVisible = false;
+        } else if (tr.style.display !== 'none') {
+            hasVisible = true;
+        }
+    });
+    if (currentHeader !== null) {
+    }
+});
+</script>
 {% endblock %}
