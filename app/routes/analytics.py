@@ -4439,48 +4439,72 @@ def _build_audit_data_dict():
     elif to_date:
         period_label = f'Until {to_date}'
 
-    # Zone-adjusted scoring
-    # Step 1: zone averages from filtered data
-    from collections import defaultdict
-    zone_units = defaultdict(list)
-    for r in rows:
-        zone_key = (r['block'], r['floor'])
-        zone_units[zone_key].append(r['defect_count'])
-    zone_avgs = {}
-    for zk, counts in zone_units.items():
-        zone_avgs[zk] = sum(counts) / len(counts) if counts else 0
+    # Zone-adjusted scoring — EXACT copy of analytics dashboard logic (lines 528-580)
+    # Step 1: zone averages from ALL completed C1 inspections (not filtered by date)
+    zone_cards = [dict(r) for r in query_db("""
+        SELECT u.block, u.floor,
+            COUNT(DISTINCT u.id) as inspected,
+            ROUND(1.0 * COUNT(d.id) / COUNT(DISTINCT u.id), 1) as avg_defects
+        FROM inspection i
+        JOIN unit_real u ON i.unit_id = u.id
+        LEFT JOIN defect d ON d.unit_id = u.id AND d.raised_cycle_id = i.cycle_id
+            AND d.status = 'open' AND d.tenant_id = u.tenant_id
+        WHERE i.tenant_id = ? AND i.cycle_number = 1
+            AND i.status IN ('reviewed','approved','certified','pending_followup')
+            AND u.unit_number NOT LIKE 'TEST%'
+        GROUP BY u.block, u.floor
+        HAVING inspected > 0
+    """, [tenant_id])]
 
-    # Step 2: per-inspector zone-adjusted variance
-    insp_variances = defaultdict(list)
-    for r in rows:
+    zone_avgs = {}
+    for c in zone_cards:
+        zone_avgs[(c['block'], c['floor'])] = c['avg_defects']
+
+    # Step 2: per-inspector raw data (C1 only, open defects only — same as analytics)
+    inspector_raw = [dict(r) for r in query_db("""
+        SELECT i.inspector_name,
+            u.unit_number, u.block, u.floor,
+            COUNT(d.id) as defect_count
+        FROM inspection i
+        JOIN unit_real u ON i.unit_id = u.id
+        LEFT JOIN defect d ON d.unit_id = u.id AND d.raised_cycle_id = i.cycle_id
+            AND d.status = 'open' AND d.tenant_id = u.tenant_id
+        WHERE i.tenant_id = ? AND i.cycle_number = 1
+            AND i.status IN ('reviewed','approved','certified','pending_followup')
+            AND i.inspector_name IS NOT NULL
+            AND u.unit_number NOT LIKE 'TEST%'
+        GROUP BY i.inspector_name, u.unit_number, u.block, u.floor
+        ORDER BY i.inspector_name
+    """, [tenant_id])]
+
+    # Step 3: compute zone-adjusted scores (exact analytics logic)
+    from collections import defaultdict
+    insp_data = defaultdict(lambda: {'units': 0, 'total_defects': 0, 'variances': []})
+    for r in inspector_raw:
         name = r['inspector_name']
         zone_key = (r['block'], r['floor'])
-        za = zone_avgs.get(zone_key, 0)
-        variance_pct = round((r['defect_count'] - za) / za * 100, 1) if za > 0 else 0
-        insp_variances[name].append(variance_pct)
+        zone_avg = zone_avgs.get(zone_key, 0)
+        variance_pct = round((r['defect_count'] - zone_avg) / zone_avg * 100, 1) if zone_avg > 0 else 0
+        insp_data[name]['units'] += 1
+        insp_data[name]['total_defects'] += r['defect_count']
+        insp_data[name]['variances'].append(variance_pct)
 
     import statistics as _stats
-    # Build per-inspector defect totals
-    insp_defect_totals = defaultdict(int)
-    for r in rows:
-        insp_defect_totals[r['inspector_name']] += r['defect_count']
-
-    zone_scores = []
-    for name, variances in insp_variances.items():
-        avg_var = round(sum(variances) / len(variances), 1) if variances else 0
-        unit_count = len(variances)
-        consistency = round(_stats.stdev(variances), 1) if len(variances) > 1 else 0
-        raw_avg = round(insp_defect_totals[name] / unit_count, 1) if unit_count > 0 else 0
-        zone_scores.append({
+    inspector_cards = []
+    for name, d in insp_data.items():
+        avg_variance = round(sum(d['variances']) / len(d['variances']), 1) if d['variances'] else 0
+        consistency = round(_stats.stdev(d['variances']), 1) if len(d['variances']) > 1 else 0
+        raw_avg = round(d['total_defects'] / d['units'], 1) if d['units'] > 0 else 0
+        inspector_cards.append({
             'name': name,
-            'zone_score': avg_var,
-            'units': unit_count,
-            'total_defects': insp_defect_totals[name],
+            'units': d['units'],
+            'total_defects': d['total_defects'],
             'raw_avg': raw_avg,
+            'zone_score': avg_variance,
             'consistency': consistency,
-            'colour': '#C44D3F' if abs(avg_var) > 30 else '#C8963E' if abs(avg_var) > 15 else '#4A7C59',
+            'colour': '#C44D3F' if abs(avg_variance) > 30 else '#C8963E' if abs(avg_variance) > 15 else '#4A7C59',
         })
-    zone_scores.sort(key=lambda x: x['zone_score'], reverse=True)
+    inspector_cards.sort(key=lambda x: x['zone_score'], reverse=True)
 
     return dict(
         inspectors=inspectors,
@@ -4490,7 +4514,7 @@ def _build_audit_data_dict():
         from_date=from_date,
         to_date=to_date,
         period_label=period_label,
-        inspector_cards=zone_scores,
+        inspector_cards=inspector_cards,
     )
 
 
