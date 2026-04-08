@@ -4460,15 +4460,25 @@ def _build_audit_data_dict():
         insp_variances[name].append(variance_pct)
 
     import statistics as _stats
+    # Build per-inspector defect totals
+    insp_defect_totals = defaultdict(int)
+    for r in rows:
+        insp_defect_totals[r['inspector_name']] += r['defect_count']
+
     zone_scores = []
     for name, variances in insp_variances.items():
         avg_var = round(sum(variances) / len(variances), 1) if variances else 0
         unit_count = len(variances)
+        consistency = round(_stats.stdev(variances), 1) if len(variances) > 1 else 0
+        raw_avg = round(insp_defect_totals[name] / unit_count, 1) if unit_count > 0 else 0
         zone_scores.append({
             'name': name,
             'zone_score': avg_var,
             'unit_count': unit_count,
-            'colour': '#C44D3F' if avg_var > 0 else '#C8963E',
+            'total_defects': insp_defect_totals[name],
+            'raw_avg': raw_avg,
+            'consistency': consistency,
+            'colour': '#C44D3F' if abs(avg_var) > 30 else '#C8963E' if abs(avg_var) > 15 else '#4A7C59',
         })
     zone_scores.sort(key=lambda x: x['zone_score'], reverse=True)
 

@@ -57,6 +57,33 @@
         {% if period_label %}<span style="font-size: 0.85rem; color: #C8963E;">{{ period_label }}</span>{% endif %}
     </div>
 
+    <!-- Inspector Performance Cards -->
+    {% if zone_scores %}
+    <div style="margin-bottom: 1.5rem;">
+        <h2 style="font-size: 1.1rem; font-weight: 700; color: #0A0A0A; margin-bottom: 0.2rem;">Inspector Performance</h2>
+        <p style="font-size: 0.78rem; color: #6B6B6B; margin: 0 0 1rem 0;">Zone-adjusted scores compare each inspector against the average for the specific zones they worked. Internal use only.</p>
+        <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 0.8rem;">
+            {% for s in zone_scores %}
+            <div style="background: white; border-radius: 8px; padding: 0.9rem 1rem; border: 1px solid #E8E6E1; position: relative; overflow: hidden;">
+                <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+                    <div>
+                        <div style="font-weight: 700; font-size: 1rem; color: #0A0A0A;">{{ s.name }}</div>
+                        <div style="font-size: 0.78rem; color: #6B6B6B; margin-top: 0.15rem;">{{ s.unit_count }} units &middot; {{ s.total_defects }} defects</div>
+                    </div>
+                    <div style="text-align: right;">
+                        <div style="font-size: 1.6rem; font-weight: 800; color: {{ s.colour }};">{% if s.zone_score > 0 %}+{% endif %}{{ s.zone_score }}%</div>
+                        <div style="font-size: 0.72rem; color: #9A9A9A;">vs zone avg</div>
+                    </div>
+                </div>
+                <div style="font-size: 0.82rem; color: #6B6B6B; margin-top: 0.4rem;">{{ s.raw_avg }} avg/unit</div>
+                <div style="margin-top: 0.5rem; height: 4px; background: #F0F0F0; border-radius: 2px; overflow: hidden;">
+                    <div style="height: 100%; width: {{ [((s.zone_score + 60) / 1.2)|round|int, 100]|min }}%; background: {{ s.colour }}; border-radius: 2px;"></div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+
     <!-- Zone-Adjusted Ranking -->
     {% if zone_scores %}
     <div style="margin-bottom: 2rem;">
