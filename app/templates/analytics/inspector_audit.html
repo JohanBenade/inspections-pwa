@@ -57,6 +57,41 @@
         {% if period_label %}<span style="font-size: 0.85rem; color: #C8963E;">{{ period_label }}</span>{% endif %}
     </div>
 
+    <!-- Zone-Adjusted Ranking -->
+    {% if zone_scores %}
+    <div style="margin-bottom: 2rem;">
+        <h2 style="font-size: 1.1rem; font-weight: 700; color: #0A0A0A; margin-bottom: 0.3rem;">Zone-Adjusted Ranking</h2>
+        <p style="font-size: 0.78rem; color: #6B6B6B; margin: 0 0 1rem 0;">How many defects each inspector finds compared to the average for the zones they worked. Positive = more thorough. Negative = finding fewer than expected.</p>
+        {% for s in zone_scores %}
+        <div style="display: flex; align-items: center; margin-bottom: 0.4rem; font-size: 0.82rem;">
+            <div style="width: 140px; text-align: right; padding-right: 0.8rem; font-weight: 600; color: #1A1A1A; flex-shrink: 0;">{{ s.name }}</div>
+            <div style="flex: 1; position: relative; height: 26px; background: #F5F3EE; border-radius: 4px; overflow: visible;">
+                {% if s.zone_score >= 0 %}
+                <div style="position: absolute; left: 50%; top: 0; height: 100%; width: {{ [s.zone_score / 1.2, 50]|min }}%; background: {{ s.colour }}; border-radius: 0 4px 4px 0; display: flex; align-items: center; justify-content: center;">
+                    <span style="color: white; font-size: 0.75rem; font-weight: 700;">+{{ s.zone_score }}%</span>
+                </div>
+                {% else %}
+                <div style="position: absolute; right: 50%; top: 0; height: 100%; width: {{ [(-s.zone_score) / 1.2, 50]|min }}%; background: {{ s.colour }}; border-radius: 4px 0 0 4px; display: flex; align-items: center; justify-content: center;">
+                    <span style="color: white; font-size: 0.75rem; font-weight: 700;">{{ s.zone_score }}%</span>
+                </div>
+                {% endif %}
+                <div style="position: absolute; left: 50%; top: 0; width: 1px; height: 100%; background: #9A9A9A;"></div>
+            </div>
+            <div style="width: 60px; text-align: right; padding-left: 0.5rem; font-size: 0.78rem; color: #6B6B6B; flex-shrink: 0;">{{ s.unit_count }} units</div>
+        </div>
+        {% endfor %}
+        <div style="display: flex; font-size: 0.72rem; color: #9A9A9A; margin-top: 0.3rem;">
+            <div style="width: 140px;"></div>
+            <div style="flex: 1; display: flex; justify-content: space-between;">
+                <span>&larr; fewer defects</span>
+                <span>zone avg</span>
+                <span>more defects &rarr;</span>
+            </div>
+            <div style="width: 60px;"></div>
+        </div>
+    </div>
+    {% endif %}
+
     <!-- Per-Inspector Tables -->
     {% for insp in inspectors %}
     <div style="margin-bottom: 2rem;">

@@ -4439,6 +4439,39 @@ def _build_audit_data_dict():
     elif to_date:
         period_label = f'Until {to_date}'
 
+    # Zone-adjusted scoring
+    # Step 1: zone averages from filtered data
+    from collections import defaultdict
+    zone_units = defaultdict(list)
+    for r in rows:
+        zone_key = (r['block'], r['floor'])
+        zone_units[zone_key].append(r['defect_count'])
+    zone_avgs = {}
+    for zk, counts in zone_units.items():
+        zone_avgs[zk] = sum(counts) / len(counts) if counts else 0
+
+    # Step 2: per-inspector zone-adjusted variance
+    insp_variances = defaultdict(list)
+    for r in rows:
+        name = r['inspector_name']
+        zone_key = (r['block'], r['floor'])
+        za = zone_avgs.get(zone_key, 0)
+        variance_pct = round((r['defect_count'] - za) / za * 100, 1) if za > 0 else 0
+        insp_variances[name].append(variance_pct)
+
+    import statistics as _stats
+    zone_scores = []
+    for name, variances in insp_variances.items():
+        avg_var = round(sum(variances) / len(variances), 1) if variances else 0
+        unit_count = len(variances)
+        zone_scores.append({
+            'name': name,
+            'zone_score': avg_var,
+            'unit_count': unit_count,
+            'colour': '#C44D3F' if avg_var > 0 else '#C8963E',
+        })
+    zone_scores.sort(key=lambda x: x['zone_score'], reverse=True)
+
     return dict(
         inspectors=inspectors,
         total_units=total_units,
@@ -4447,6 +4480,7 @@ def _build_audit_data_dict():
         from_date=from_date,
         to_date=to_date,
         period_label=period_label,
+        zone_scores=zone_scores,
     )
 
 
