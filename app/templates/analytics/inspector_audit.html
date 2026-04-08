@@ -57,70 +57,91 @@
         {% if period_label %}<span style="font-size: 0.85rem; color: #C8963E;">{{ period_label }}</span>{% endif %}
     </div>
 
-    <!-- Inspector Performance Cards -->
-    {% if zone_scores %}
+    <!-- Inspector Performance -->
+    {% if inspector_cards %}
     <div style="margin-bottom: 1.5rem;">
-        <h2 style="font-size: 1.1rem; font-weight: 700; color: #0A0A0A; margin-bottom: 0.2rem;">Inspector Performance</h2>
-        <p style="font-size: 0.78rem; color: #6B6B6B; margin: 0 0 1rem 0;">Zone-adjusted scores compare each inspector against the average for the specific zones they worked. Internal use only.</p>
-        <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 0.8rem;">
-            {% for s in zone_scores %}
-            <div style="background: white; border-radius: 8px; padding: 0.9rem 1rem; border: 1px solid #E8E6E1; position: relative; overflow: hidden;">
-                <div style="display: flex; justify-content: space-between; align-items: flex-start;">
-                    <div>
-                        <div style="font-weight: 700; font-size: 1rem; color: #0A0A0A;">{{ s.name }}</div>
-                        <div style="font-size: 0.78rem; color: #6B6B6B; margin-top: 0.15rem;">{{ s.unit_count }} units &middot; {{ s.total_defects }} defects</div>
-                    </div>
-                    <div style="text-align: right;">
-                        <div style="font-size: 1.6rem; font-weight: 800; color: {{ s.colour }};">{% if s.zone_score > 0 %}+{% endif %}{{ s.zone_score }}%</div>
-                        <div style="font-size: 0.72rem; color: #9A9A9A;">vs zone avg</div>
-                    </div>
-                </div>
-                <div style="font-size: 0.82rem; color: #6B6B6B; margin-top: 0.4rem;">{{ s.raw_avg }} avg/unit</div>
-                <div style="margin-top: 0.5rem; height: 4px; background: #F0F0F0; border-radius: 2px; overflow: hidden;">
-                    <div style="height: 100%; width: {{ [((s.zone_score + 60) / 1.2)|round|int, 100]|min }}%; background: {{ s.colour }}; border-radius: 2px;"></div>
-                </div>
+    <p style="color: #9A9A9A; font-size: 0.8rem; margin-bottom: 1rem;">Zone-adjusted scores compare each inspector against the average for the specific zones they worked. Internal use only.</p>
+
+    <div style="display: flex; flex-wrap: wrap; gap: 0.75rem; margin-bottom: 1.5rem;">
+    {% for insp in inspector_cards %}
+    <div style="flex: 1 1 280px; max-width: 400px; background: #F5F3EE; border-radius: 10px; padding: 1rem; border-left: 4px solid {{ insp.colour }};">
+        <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 0.5rem;">
+            <div>
+                <div style="font-weight: 700; font-size: 0.95rem; color: #1A1A1A;">{{ insp.name }}</div>
+                <div style="font-size: 0.75rem; color: #9A9A9A;">{{ insp.units }} units &middot; {{ insp.total_defects }} defects</div>
             </div>
-            {% endfor %}
+            <div style="text-align: right;">
+                <div style="font-size: 1.4rem; font-weight: 800; color: {{ insp.colour }};">
+                    {% if insp.zone_score > 0 %}+{% endif %}{{ insp.zone_score }}%
+                </div>
+                <div style="font-size: 0.65rem; color: #9A9A9A;">vs zone avg</div>
+            </div>
+        </div>
+        <div style="display: flex; gap: 1rem; font-size: 0.75rem; color: #6B6B6B;">
+            <div><span style="font-weight: 600;">{{ insp.raw_avg }}</span> avg/unit</div>
+        </div>
+        <!-- Zone score bar -->
+        <div style="margin-top: 0.5rem; position: relative; height: 6px; background: #e5e5e5; border-radius: 3px; overflow: visible;">
+            <div style="position: absolute; left: 50%; top: 0; width: 1px; height: 6px; background: #6B6B6B;"></div>
+            {% if insp.zone_score >= 0 %}
+            <div style="position: absolute; left: 50%; top: 0; height: 6px; width: {{ [insp.zone_score * 0.5, 50]|min }}%; background: {{ insp.colour }}; border-radius: 0 3px 3px 0;"></div>
+            {% else %}
+            <div style="position: absolute; right: 50%; top: 0; height: 6px; width: {{ [insp.zone_score|abs * 0.5, 50]|min }}%; background: {{ insp.colour }}; border-radius: 3px 0 0 3px;"></div>
+            {% endif %}
         </div>
     </div>
+    {% endfor %}
+    </div>
 
-    {% endif %}
+    <!-- Callout -->
+    {% set top = inspector_cards[0] %}
+    {% set bottom = inspector_cards[-1] %}
+    <div style="border-left: 4px solid #3D6B8E; background: rgba(61,107,142,0.12); border-radius: 0 8px 8px 0; padding: 0.75rem 1rem; font-size: 0.82rem; color: #1A1A1A; margin-bottom: 1.5rem;">
+        <strong>{{ top.name }}</strong> finds {{ top.zone_score|abs }}% {{ 'more' if top.zone_score > 0 else 'fewer' }} defects than zone averages ({{ top.units }} units).
+        <strong>{{ bottom.name }}</strong> finds {{ bottom.zone_score|abs }}% {{ 'more' if bottom.zone_score > 0 else 'fewer' }} ({{ bottom.units }} units).
+        Consistency score measures how steady an inspector is across units &mdash; lower is more reliable.
+    </div>
 
-    {% if zone_scores %}
-    <div style="margin-bottom: 2rem;">
-        <h2 style="font-size: 1.1rem; font-weight: 700; color: #0A0A0A; margin-bottom: 0.3rem;">Zone-Adjusted Ranking</h2>
-        <p style="font-size: 0.78rem; color: #6B6B6B; margin: 0 0 1rem 0;">How many defects each inspector finds compared to the average for the zones they worked. Positive = more thorough. Negative = finding fewer than expected.</p>
-        {% for s in zone_scores %}
-        <div style="display: flex; align-items: center; margin-bottom: 0.4rem; font-size: 0.82rem;">
-            <div style="width: 140px; text-align: right; padding-right: 0.8rem; font-weight: 600; color: #1A1A1A; flex-shrink: 0;">{{ s.name }}</div>
-            <div style="flex: 1; position: relative; height: 26px; background: #F5F3EE; border-radius: 4px; overflow: visible;">
-                {% if s.zone_score >= 0 %}
-                <div style="position: absolute; left: 50%; top: 0; height: 100%; width: {{ [s.zone_score / 1.2, 50]|min }}%; background: {{ s.colour }}; border-radius: 0 4px 4px 0; display: flex; align-items: center; justify-content: center;">
-                    <span style="color: white; font-size: 0.75rem; font-weight: 700;">+{{ s.zone_score }}%</span>
+    <!-- Zone-Adjusted Ranking Chart -->
+    <div style="background: #F5F3EE; border-radius: 10px; padding: 1rem; margin-bottom: 1.5rem;">
+        <div style="font-weight: 700; font-size: 0.9rem; color: #1A1A1A; margin-bottom: 0.75rem;">Zone-Adjusted Ranking</div>
+        <p style="font-size: 0.72rem; color: #9A9A9A; margin-bottom: 0.75rem;">How many defects each inspector finds compared to the average for the zones they worked. Positive = more thorough. Negative = finding fewer than expected.</p>
+        {% for insp in inspector_cards %}
+        <div style="display: flex; align-items: center; margin-bottom: 0.5rem; padding: 2px 0; border-radius: 4px;">
+            <div style="width: 130px; font-size: 0.78rem; font-weight: 600; color: #1A1A1A; text-align: right; padding-right: 0.5rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{{ insp.name }}</div>
+            <div style="flex: 1; position: relative; height: 26px; background: #e9e7e2; border-radius: 4px; overflow: visible;">
+                <div style="position: absolute; left: 50%; top: 0; width: 1px; height: 26px; background: #6B6B6B; z-index: 2;"></div>
+                {% if insp.zone_score >= 0 %}
+                <div style="position: absolute; left: 50%; top: 3px; height: 20px; width: {{ [insp.zone_score * 0.4, 48]|min }}%; background: {{ insp.colour }}; border-radius: 0 4px 4px 0; z-index: 1; display: flex; align-items: center; justify-content: flex-end; padding-right: 4px;">
+                    <span style="font-size: 0.68rem; font-weight: 700; color: white;">{% if insp.zone_score > 5 %}+{{ insp.zone_score }}%{% endif %}</span>
                 </div>
+                {% if insp.zone_score <= 5 %}<div style="position: absolute; left: calc(50% + {{ [insp.zone_score * 0.4, 48]|min }}% + 4px); top: 3px; height: 20px; display: flex; align-items: center; z-index: 3;"><span style="font-size: 0.7rem; font-weight: 700; color: {{ insp.colour }};">+{{ insp.zone_score }}%</span></div>{% endif %}
                 {% else %}
-                <div style="position: absolute; right: 50%; top: 0; height: 100%; width: {{ [(-s.zone_score) / 1.2, 50]|min }}%; background: {{ s.colour }}; border-radius: 4px 0 0 4px; display: flex; align-items: center; justify-content: center;">
-                    <span style="color: white; font-size: 0.75rem; font-weight: 700;">{{ s.zone_score }}%</span>
+                <div style="position: absolute; right: 50%; top: 3px; height: 20px; width: {{ [insp.zone_score|abs * 0.4, 48]|min }}%; background: {{ insp.colour }}; border-radius: 4px 0 0 4px; z-index: 1; display: flex; align-items: center; padding-left: 4px;">
+                    <span style="font-size: 0.68rem; font-weight: 700; color: white;">{% if insp.zone_score|abs > 5 %}{{ insp.zone_score }}%{% endif %}</span>
                 </div>
+                {% if insp.zone_score|abs <= 5 %}<div style="position: absolute; right: calc(50% + {{ [insp.zone_score|abs * 0.4, 48]|min }}% + 4px); top: 3px; height: 20px; display: flex; align-items: center; z-index: 3;"><span style="font-size: 0.7rem; font-weight: 700; color: {{ insp.colour }};">{{ insp.zone_score }}%</span></div>{% endif %}
                 {% endif %}
-                <div style="position: absolute; left: 50%; top: 0; width: 1px; height: 100%; background: #9A9A9A;"></div>
             </div>
-            <div style="width: 60px; text-align: right; padding-left: 0.5rem; font-size: 0.78rem; color: #6B6B6B; flex-shrink: 0;">{{ s.unit_count }} units</div>
+            <div style="width: 70px; text-align: right; padding-left: 0.5rem;">
+                <span style="font-size: 0.82rem; font-weight: 700; color: #1A1A1A;">{{ insp.units }}</span>
+                <span style="font-size: 0.7rem; color: #6B6B6B;"> units</span>
+            </div>
         </div>
         {% endfor %}
-        <div style="display: flex; font-size: 0.72rem; color: #9A9A9A; margin-top: 0.3rem;">
-            <div style="width: 140px;"></div>
-            <div style="flex: 1; display: flex; justify-content: space-between;">
+        <div style="display: flex; font-size: 0.65rem; color: #9A9A9A; margin-top: 0.3rem;">
+            <div style="width: 130px;"></div>
+            <div style="flex: 1; display: flex; justify-content: space-between; padding: 0 2px;">
                 <span>&larr; fewer defects</span>
                 <span>zone avg</span>
                 <span>more defects &rarr;</span>
             </div>
-            <div style="width: 60px;"></div>
+            <div style="width: 70px;"></div>
         </div>
     </div>
     {% endif %}
 
-    <!-- Per-Inspector Tables -->
+        <!-- Per-Inspector Tables -->
     {% for insp in inspectors %}
     <div style="margin-bottom: 2rem;">
         <h2 style="font-size: 1.1rem; font-weight: 700; color: #0A0A0A; margin-bottom: 0.5rem; padding-bottom: 0.3rem; border-bottom: 2px solid {{ insp.colour }};">
