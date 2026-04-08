@@ -73,20 +73,20 @@
                 <th class="px-4 py-3 text-left font-medium text-gray-600 hidden sm:table-cell cursor-pointer select-none" data-sort="block" onclick="sortTable(this, event)">Block / Floor <span class="sort-arrow text-gray-400"></span></th>
                 <th class="px-4 py-3 text-left font-medium text-gray-600 cursor-pointer select-none" data-sort="round" onclick="sortTable(this, event)">Round <span class="sort-arrow text-gray-400"></span></th>
                 <th class="px-2 py-3 text-right font-medium text-gray-500 text-xs hidden lg:table-cell">Excluded</th>
-                <th class="px-2 py-3 text-right font-medium text-gray-500 text-xs hidden lg:table-cell">Scope</th>
+                <th class="px-2 py-3 text-right font-medium text-gray-500 text-xs hidden lg:table-cell cursor-pointer select-none" data-sort="scope" onclick="sortTable(this, event)">Scope <span class="sort-arrow text-gray-400"></span></th>
                 <th class="px-2 py-3 text-right font-medium text-gray-500 text-xs hidden lg:table-cell">B/fwd</th>
                 <th class="px-2 py-3 text-right font-medium text-gray-500 text-xs hidden lg:table-cell">Cleared</th>
                 <th class="px-2 py-3 text-right font-medium text-gray-500 text-xs hidden lg:table-cell">New</th>
                 <th class="px-2 py-3 text-right font-medium text-gray-500 text-xs hidden lg:table-cell">Open</th>
                 <th class="px-4 py-3 text-left font-medium text-gray-600">Status</th>
-                <th class="px-4 py-3 text-left font-medium text-gray-600">Inspector</th>
+                <th class="px-4 py-3 text-left font-medium text-gray-600 cursor-pointer select-none" data-sort="inspector" onclick="sortTable(this, event)">Inspector <span class="sort-arrow text-gray-400"></span></th>
                 <th class="px-4 py-3 text-left font-medium text-gray-600 hidden md:table-cell">Excl. List</th>
                 <th class="px-4 py-3 w-8"></th>
             </tr>
         </thead>
         <tbody class="divide-y divide-gray-100">
             {% for u in units %}
-            <tr id="row-{{ u.bu_id }}" class="hover:bg-gray-50" data-unit="{{ u.unit_number }}" data-block="{{ u.block }}{{ u.floor }}" data-round="{{ u.cycle_number }}">
+            <tr id="row-{{ u.bu_id }}" class="hover:bg-gray-50" data-unit="{{ u.unit_number }}" data-block="{{ u.block }}{{ u.floor }}" data-round="{{ u.cycle_number }}" data-scope="{{ u.checkpoints }}" data-inspector="{{ u.inspector_name or '' }}">
                 <td class="px-4 py-3 font-medium text-gray-800">
                     {{ u.unit_number }}
                     <span class="sm:hidden text-xs text-gray-400 block">
@@ -272,7 +272,7 @@
                 var av = a.dataset[s.key] || '';
                 var bv = b.dataset[s.key] || '';
                 var cmp;
-                if (s.key === 'unit' || s.key === 'round') {
+                if (s.key === 'unit' || s.key === 'round' || s.key === 'scope') {
                     cmp = parseInt(av,10) - parseInt(bv,10);
                 } else {
                     cmp = av.localeCompare(bv);
