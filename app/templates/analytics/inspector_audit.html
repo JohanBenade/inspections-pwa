@@ -31,35 +31,10 @@
     <div style="text-align: center; padding: 3rem; color: #9A9A9A;">No inspection data found for the selected period.</div>
     {% else %}
 
-    <!-- Summary Cards -->
-    <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 1rem; margin-bottom: 2rem;">
-        {% for insp in inspectors %}
-        <div style="background: white; border-radius: 8px; padding: 1rem; border-left: 3px solid {{ insp.colour }}; box-shadow: 0 1px 3px rgba(0,0,0,0.08);">
-            <div style="font-weight: 700; font-size: 1rem; color: #0A0A0A;">{{ insp.name }}</div>
-            <div style="font-size: 0.82rem; color: #6B6B6B; margin-top: 0.3rem;">
-                {{ insp.unit_count }} units &middot; {{ insp.total_defects }} defects &middot; {{ insp.avg_defects }} avg/unit
-            </div>
-            {% if insp.avg_duration %}
-            <div style="font-size: 0.78rem; color: #9A9A9A; margin-top: 0.2rem;">Avg duration: {{ insp.avg_duration }}</div>
-            {% endif %}
-            <div style="font-size: 0.78rem; color: #9A9A9A; margin-top: 0.2rem;">
-                {{ insp.date_range }}
-            </div>
-        </div>
-        {% endfor %}
-    </div>
-
-    <!-- Totals Bar -->
-    <div style="background: #0A0A0A; color: white; border-radius: 8px; padding: 0.8rem 1.2rem; margin-bottom: 2rem; display: flex; justify-content: space-between; flex-wrap: wrap; gap: 0.5rem;">
-        <span style="font-size: 0.85rem; font-weight: 600;">Total: {{ total_units }} units</span>
-        <span style="font-size: 0.85rem;">{{ total_defects }} defects</span>
-        <span style="font-size: 0.85rem;">{{ inspector_count }} inspectors</span>
-        {% if period_label %}<span style="font-size: 0.85rem; color: #C8963E;">{{ period_label }}</span>{% endif %}
-    </div>
-
     <!-- Inspector Performance -->
     {% if inspector_cards %}
     <div style="margin-bottom: 1.5rem;">
+    <h2 style="font-size: 1.25rem; font-weight: 700; color: #0A0A0A; margin-bottom: 0.3rem;">Inspector Performance</h2>
     <p style="color: #9A9A9A; font-size: 0.8rem; margin-bottom: 1rem;">Zone-adjusted scores compare each inspector against the average for the specific zones they worked. Internal use only.</p>
 
     <div style="display: flex; flex-wrap: wrap; gap: 0.75rem; margin-bottom: 1.5rem;">
