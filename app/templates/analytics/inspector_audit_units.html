@@ -10,42 +10,42 @@
     <h1 style="font-family: var(--font-display, Georgia, serif); font-size: 2.25rem; font-weight: 700; letter-spacing: -0.01em; color: #0A0A0A; margin: 0 0 0.3rem 0;">Unit Inspection Register</h1>
     <p style="font-size: 0.85rem; color: #9A9A9A; margin: 0 0 1.5rem 0;">Power Park Student Housing — Phase 3 — {{ total_units }} Units</p>
 
-    {% for zone, zone_units in zones.items() %}
-    <div style="margin-bottom: 2rem;">
-        <div style="display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 0.4rem; border-bottom: 2px solid #E5E5E5; padding-bottom: 0.3rem;">
-            <h2 style="font-size: 1rem; font-weight: 700; color: #0A0A0A; margin: 0;">{{ zone }}</h2>
-            <span style="font-size: 0.78rem; color: #9A9A9A;">{{ zone_units|length }} unit{{ 's' if zone_units|length != 1 }}</span>
-        </div>
-        <div style="overflow-x: auto;">
-        <table style="width: 100%; border-collapse: collapse; font-size: 0.82rem; min-width: 700px;">
-            <thead>
-                <tr style="border-bottom: 1px solid #E5E5E5;">
-                    <th style="text-align: left; padding: 0.4rem 0.3rem; color: #6B6B6B; font-weight: 600; width: 60px;">Unit</th>
-                    <th style="text-align: left; padding: 0.4rem 0.3rem; color: #6B6B6B; font-weight: 600;">C1 Date</th>
-                    <th style="text-align: left; padding: 0.4rem 0.3rem; color: #6B6B6B; font-weight: 600;">Inspector</th>
-                    <th style="text-align: left; padding: 0.4rem 0.3rem; color: #6B6B6B; font-weight: 600;">1st De-snag</th>
-                    <th style="text-align: left; padding: 0.4rem 0.3rem; color: #6B6B6B; font-weight: 600;">Inspector</th>
-                    <th style="text-align: left; padding: 0.4rem 0.3rem; color: #6B6B6B; font-weight: 600;">2nd De-snag</th>
-                    <th style="text-align: left; padding: 0.4rem 0.3rem; color: #6B6B6B; font-weight: 600;">Inspector</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for u in zone_units %}
-                <tr style="border-bottom: 1px solid #F0F0F0; {% if loop.index is odd %}background: #FAFAFA;{% endif %}">
-                    <td style="padding: 0.4rem 0.3rem; font-weight: 600;">{{ u.unit_number }}</td>
-                    <td style="padding: 0.4rem 0.3rem; color: {% if u.c1_date %}#1A1A1A{% else %}#D1D1D1{% endif %};">{{ u.c1_date or '—' }}</td>
-                    <td style="padding: 0.4rem 0.3rem; color: {% if u.c1_inspector %}#1A1A1A{% else %}#D1D1D1{% endif %};">{{ u.c1_inspector or '—' }}</td>
-                    <td style="padding: 0.4rem 0.3rem; color: {% if u.c2_date %}#1A1A1A{% else %}#D1D1D1{% endif %};">{{ u.c2_date or '—' }}</td>
-                    <td style="padding: 0.4rem 0.3rem; color: {% if u.c2_inspector %}#1A1A1A{% else %}#D1D1D1{% endif %};">{{ u.c2_inspector or '—' }}</td>
-                    <td style="padding: 0.4rem 0.3rem; color: {% if u.c3_date %}#1A1A1A{% else %}#D1D1D1{% endif %};">{{ u.c3_date or '—' }}</td>
-                    <td style="padding: 0.4rem 0.3rem; color: {% if u.c3_inspector %}#1A1A1A{% else %}#D1D1D1{% endif %};">{{ u.c3_inspector or '—' }}</td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
-        </div>
+    <div style="overflow-x: auto;">
+    <table style="width: 100%; border-collapse: collapse; font-size: 0.82rem; min-width: 700px;">
+        <thead>
+            <tr style="border-bottom: 2px solid #E5E5E5;">
+                <th style="text-align: left; padding: 0.4rem 0.3rem; color: #6B6B6B; font-weight: 600; width: 60px;">Unit</th>
+                <th style="text-align: left; padding: 0.4rem 0.3rem; color: #6B6B6B; font-weight: 600;">C1 Date</th>
+                <th style="text-align: left; padding: 0.4rem 0.3rem; color: #6B6B6B; font-weight: 600;">Inspector</th>
+                <th style="text-align: left; padding: 0.4rem 0.3rem; color: #6B6B6B; font-weight: 600;">1st De-snag</th>
+                <th style="text-align: left; padding: 0.4rem 0.3rem; color: #6B6B6B; font-weight: 600;">Inspector</th>
+                <th style="text-align: left; padding: 0.4rem 0.3rem; color: #6B6B6B; font-weight: 600;">2nd De-snag</th>
+                <th style="text-align: left; padding: 0.4rem 0.3rem; color: #6B6B6B; font-weight: 600;">Inspector</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for zone, zone_units in zones.items() %}
+            <tr>
+                <td colspan="7" style="padding: 0.8rem 0.3rem 0.3rem; font-size: 1rem; font-weight: 700; color: #0A0A0A; border-bottom: 2px solid #E5E5E5;">
+                    {{ zone }}
+                    <span style="font-size: 0.78rem; font-weight: 400; color: #9A9A9A; margin-left: 0.5rem;">{{ zone_units|length }} unit{{ 's' if zone_units|length != 1 }}</span>
+                </td>
+            </tr>
+            {% for u in zone_units %}
+            <tr style="border-bottom: 1px solid #F0F0F0; {% if loop.index is odd %}background: #FAFAFA;{% endif %}">
+                <td style="padding: 0.4rem 0.3rem; font-weight: 600;">{{ u.unit_number }}</td>
+                <td style="padding: 0.4rem 0.3rem; color: {% if u.c1_date %}#1A1A1A{% else %}#D1D1D1{% endif %};">{{ u.c1_date or '—' }}</td>
+                <td style="padding: 0.4rem 0.3rem; color: {% if u.c1_inspector %}#1A1A1A{% else %}#D1D1D1{% endif %};">{{ u.c1_inspector or '—' }}</td>
+                <td style="padding: 0.4rem 0.3rem; color: {% if u.c2_date %}#1A1A1A{% else %}#D1D1D1{% endif %};">{{ u.c2_date or '—' }}</td>
+                <td style="padding: 0.4rem 0.3rem; color: {% if u.c2_inspector %}#1A1A1A{% else %}#D1D1D1{% endif %};">{{ u.c2_inspector or '—' }}</td>
+                <td style="padding: 0.4rem 0.3rem; color: {% if u.c3_date %}#1A1A1A{% else %}#D1D1D1{% endif %};">{{ u.c3_date or '—' }}</td>
+                <td style="padding: 0.4rem 0.3rem; color: {% if u.c3_inspector %}#1A1A1A{% else %}#D1D1D1{% endif %};">{{ u.c3_inspector or '—' }}</td>
+            </tr>
+            {% endfor %}
+            {% endfor %}
+        </tbody>
+    </table>
     </div>
-    {% endfor %}
 
 </div>
 {% endblock %}
