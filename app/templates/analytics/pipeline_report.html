@@ -344,7 +344,7 @@ body {
         <div style="margin-bottom: 14px; display: flex; align-items: center; gap: 8px;">
             <div style="flex: 1; display: flex; height: 22px; border-radius: 3px; overflow: hidden; font-size: 9px; font-weight: 700;">
                 {% if desnag.total_cleared > 0 %}
-                <div style="width: {{ green_pct }}%; background: #4A7C59; color: #fff; display: flex; align-items: center; justify-content: center; white-space: nowrap;">{{ desnag.total_cleared }} fixed</div>
+                <div style="width: {{ green_pct }}%; background: #4A7C59; color: #fff; display: flex; align-items: center; justify-content: center; white-space: nowrap;">{{ "{:,}".format(desnag.total_cleared) }} fixed</div>
                 {% endif %}
                 {% if desnag.total_still_open > 0 %}
                 <div style="width: {{ 100 - green_pct }}%; background: #C44D3F;"></div>
