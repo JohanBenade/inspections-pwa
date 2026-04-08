@@ -167,16 +167,7 @@ def list_batches():
     """, [tenant_id])
     batches = [dict(r) for r in batches_raw]
 
-    # Derive batch status from inspection progress
-    for b in batches:
-        if b["total_units"] == 0:
-            b["status"] = "open"
-        elif b["completed"] == b["total_units"]:
-            b["status"] = "complete"
-        elif b["in_progress"] > 0 or b["completed"] > 0:
-            b["status"] = "in_progress"
-        else:
-            b["status"] = "open"
+    # Status comes from DB (managed by approval flow)
 
     return render_template('batches/list.html', batches=batches)
 
