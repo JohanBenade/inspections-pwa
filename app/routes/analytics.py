@@ -4420,7 +4420,7 @@ def _build_audit_data_dict():
 
         inspectors.append({
             'name': name,
-            'unit_count': unit_count,
+            'units': unit_count,
             'total_defects': defects,
             'avg_defects': avg,
             'avg_duration': avg_dur,
@@ -4474,7 +4474,7 @@ def _build_audit_data_dict():
         zone_scores.append({
             'name': name,
             'zone_score': avg_var,
-            'unit_count': unit_count,
+            'units': unit_count,
             'total_defects': insp_defect_totals[name],
             'raw_avg': raw_avg,
             'consistency': consistency,
@@ -4490,7 +4490,7 @@ def _build_audit_data_dict():
         from_date=from_date,
         to_date=to_date,
         period_label=period_label,
-        zone_scores=zone_scores,
+        inspector_cards=zone_scores,
     )
 
 
