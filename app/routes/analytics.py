@@ -4279,7 +4279,6 @@ def _build_audit_data_dict():
     tenant_id = session['tenant_id']
     from_date = request.args.get('from_date', '')
     to_date = request.args.get('to_date', '')
-    batch_id = request.args.get('batch_id', '')
 
     # Build date filter
     date_filter = ''
@@ -4290,9 +4289,6 @@ def _build_audit_data_dict():
     if to_date:
         date_filter += ' AND i.inspection_date <= ?'
         params.append(to_date)
-    if batch_id:
-        date_filter += ' AND i.cycle_id IN (SELECT cycle_id FROM batch_unit WHERE batch_id = ?)'
-        params.append(batch_id)
 
     # Get all inspections with unit and defect data
     rows = [dict(r) for r in query_db("""
@@ -4510,11 +4506,6 @@ def _build_audit_data_dict():
         })
     inspector_cards.sort(key=lambda x: x['zone_score'], reverse=True)
 
-    # Batch list for filter dropdown
-    batches = [dict(r) for r in query_db(
-        "SELECT id, name FROM inspection_batch WHERE tenant_id = ? ORDER BY created_at DESC",
-        [tenant_id])]
-
     return dict(
         inspectors=inspectors,
         total_units=total_units,
@@ -4522,8 +4513,6 @@ def _build_audit_data_dict():
         inspector_count=len(inspectors),
         from_date=from_date,
         to_date=to_date,
-        batch_id=batch_id,
-        batches=batches,
         period_label=period_label,
         inspector_cards=inspector_cards,
     )

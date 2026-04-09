@@ -16,19 +16,12 @@
     <!-- Date Range Filter -->
     <div class="no-print" style="background: #F5F3EE; border-radius: 8px; padding: 1rem; margin-bottom: 1.5rem;">
         <form method="GET" style="display: flex; align-items: center; gap: 1rem; flex-wrap: wrap;">
-            <label style="font-size: 0.82rem; font-weight: 600; color: #1A1A1A;">Batch:</label>
-            <select name="batch_id" style="padding: 0.4rem 0.6rem; border: 1px solid #ccc; border-radius: 4px; font-size: 0.85rem; min-width: 200px;">
-                <option value="">All batches</option>
-                {% for b in batches %}
-                <option value="{{ b.id }}" {{ 'selected' if batch_id == b.id else '' }}>{{ b.name }}</option>
-                {% endfor %}
-            </select>
             <label style="font-size: 0.82rem; font-weight: 600; color: #1A1A1A;">Period:</label>
             <input type="date" name="from_date" value="{{ from_date or '' }}" style="padding: 0.4rem 0.6rem; border: 1px solid #ccc; border-radius: 4px; font-size: 0.85rem;">
             <span style="font-size: 0.82rem; color: #6B6B6B;">to</span>
             <input type="date" name="to_date" value="{{ to_date or '' }}" style="padding: 0.4rem 0.6rem; border: 1px solid #ccc; border-radius: 4px; font-size: 0.85rem;">
             <button type="submit" style="padding: 0.4rem 1rem; background: #1A1A1A; color: white; border: none; border-radius: 4px; font-size: 0.82rem; font-weight: 600; cursor: pointer;">Filter</button>
-            {% if from_date or to_date or batch_id %}
+            {% if from_date or to_date %}
             <a href="{{ url_for('analytics.inspector_audit') }}" style="font-size: 0.82rem; color: #6B6B6B;">Clear</a>
             {% endif %}
         </form>
