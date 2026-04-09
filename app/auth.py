@@ -16,8 +16,9 @@ from flask import session, redirect, url_for, abort
 ROLE_HIERARCHY = {
     'inspector': 1,
     'team_lead': 2,
-    'manager': 3,
-    'admin': 4
+    'office_admin': 3,
+    'manager': 4,
+    'admin': 5
 }
 
 
@@ -167,6 +168,18 @@ def require_team_lead(f):
         if 'user_id' not in session:
             return redirect(url_for('login'))
         if get_role_level(session.get('role', 'inspector')) < get_role_level('team_lead'):
+            abort(403)
+        return f(*args, **kwargs)
+    return decorated
+
+
+def require_office_admin(f):
+    """Require office_admin or higher (office_admin, manager, admin)."""
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        if 'user_id' not in session:
+            return redirect(url_for('login'))
+        if get_role_level(session.get('role', 'inspector')) < get_role_level('office_admin'):
             abort(403)
         return f(*args, **kwargs)
     return decorated

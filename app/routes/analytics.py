@@ -4,7 +4,7 @@ Provides data-driven view of defect patterns across all units in a cycle.
 Access: Manager + Admin only.
 """
 from flask import Blueprint, render_template, session, request, make_response
-from app.auth import require_manager
+from app.auth import require_manager, require_office_admin
 import math
 from app.services.db import query_db
 
@@ -4519,7 +4519,7 @@ def _build_audit_data_dict():
 
 
 @analytics_bp.route('/audit')
-@require_manager
+@require_office_admin
 def inspector_audit():
     """Inspector Audit Trail - payment verification page."""
     data = _build_audit_data_dict()
@@ -4527,7 +4527,7 @@ def inspector_audit():
 
 
 @analytics_bp.route('/audit/units')
-@require_manager
+@require_office_admin
 def inspector_audit_units():
     """Unit-centric audit trail - who inspected what, by cycle."""
     tenant_id = session['tenant_id']
@@ -4579,7 +4579,7 @@ def inspector_audit_units():
 
 
 @analytics_bp.route('/audit/view')
-@require_manager
+@require_office_admin
 def inspector_audit_view():
     """Standalone HTML view for audit trail PDF."""
     data = _build_audit_data_dict()
@@ -4589,7 +4589,7 @@ def inspector_audit_view():
 
 
 @analytics_bp.route('/audit/pdf')
-@require_manager
+@require_office_admin
 def inspector_audit_pdf():
     """Download audit trail as PDF."""
     data = _build_audit_data_dict()
