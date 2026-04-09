@@ -84,6 +84,9 @@
                         <a href="{{ url_for('certification.my_inspections') }}" class="text-sm text-gray-300 hover:text-white">My Inspections</a>
                         <a href="{{ url_for('approvals.cleanup') }}" class="text-sm text-gray-300 hover:text-white">Defects Cleanup</a>
                         {% endif %}
+                        {% if current_user.role == 'office_admin' %}
+                        <a href="{{ url_for('analytics.inspector_audit') }}" class="text-sm text-gray-300 hover:text-white">Inspector Log</a>
+                        {% endif %}
                         {% if current_user.role in ['manager', 'admin'] %}
                         <a href="{{ url_for('approvals.pipeline') }}" class="text-sm text-gray-300 hover:text-white">Approvals</a>
                         <a href="{{ url_for('analytics.pipeline_dashboard') }}" class="text-sm text-gray-300 hover:text-white">Pipeline</a>
@@ -175,6 +178,18 @@
                           d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
                 </svg>
                 <span class="text-xs mt-1">Inspect</span>
+            </a>
+            {% endif %}
+
+            {% if current_user.role == 'office_admin' %}
+            <!-- Inspector Log - office_admin -->
+            <a href="{{ url_for('analytics.inspector_audit') }}" 
+               class="flex flex-col items-center text-gray-600 hover:text-primary tap-target">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
+                          d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                </svg>
+                <span class="text-xs mt-1">Inspector Log</span>
             </a>
             {% endif %}
 
