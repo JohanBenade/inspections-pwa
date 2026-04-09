@@ -86,6 +86,7 @@
                         {% endif %}
                         {% if current_user.role == 'office_admin' %}
                         <a href="{{ url_for('analytics.inspector_audit') }}" class="text-sm text-gray-300 hover:text-white">Inspector Log</a>
+                        <a href="{{ url_for('analytics.inspector_audit_units') }}" class="text-sm text-gray-300 hover:text-white">Unit Register</a>
                         {% endif %}
                         {% if current_user.role in ['manager', 'admin'] %}
                         <a href="{{ url_for('approvals.pipeline') }}" class="text-sm text-gray-300 hover:text-white">Approvals</a>
@@ -190,6 +191,15 @@
                           d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
                 </svg>
                 <span class="text-xs mt-1">Inspector Log</span>
+            </a>
+            <!-- Unit Register - office_admin -->
+            <a href="{{ url_for('analytics.inspector_audit_units') }}" 
+               class="flex flex-col items-center text-gray-600 hover:text-primary tap-target">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
+                          d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/>
+                </svg>
+                <span class="text-xs mt-1">Unit Register</span>
             </a>
             {% endif %}
 
