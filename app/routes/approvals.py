@@ -759,6 +759,12 @@ def mark_reviewed(cycle_id):
         WHERE id = ?
     """, [now, inspection_id])
 
+    # Update batch_unit status to match
+    db.execute("""
+        UPDATE batch_unit SET status = 'reviewed'
+        WHERE unit_id = ? AND cycle_id = ? AND tenant_id = ? AND status != 'removed'
+    """, [insp['unit_id'], cycle_id, tenant_id])
+
     log_audit(db, tenant_id, 'inspection', inspection_id, 'reviewed',
               old_value=insp['status'], new_value='reviewed',
               user_id=session['user_id'], user_name=session['user_name'],
@@ -804,6 +810,12 @@ def bulk_reviewed(cycle_id):
             UPDATE inspection SET status = 'reviewed', updated_at = ?
             WHERE id = ?
         """, [now, unit['inspection_id']])
+
+        # Update batch_unit status to match
+        db.execute("""
+            UPDATE batch_unit SET status = 'reviewed'
+            WHERE unit_id = ? AND cycle_id = ? AND tenant_id = ? AND status != 'removed'
+        """, [unit['unit_id'], cycle_id, tenant_id])
 
         log_audit(db, tenant_id, 'inspection', unit['inspection_id'],
                   'reviewed',
