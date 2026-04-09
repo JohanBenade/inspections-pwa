@@ -6,6 +6,7 @@ Role Hierarchy (highest to lowest):
 - admin: Full access to everything
 - manager: Approve, certify, close cycles, PDF
 - team_lead: Create cycles, assign units, review, inspect
+- office_admin: Inspector + Inspector Log access (explicit, not level-based)
 - inspector: Mark items, submit assigned units only
 """
 from functools import wraps
@@ -15,8 +16,8 @@ from flask import session, redirect, url_for, abort
 # Role hierarchy - higher index = more permissions
 ROLE_HIERARCHY = {
     'inspector': 1,
+    'office_admin': 1,
     'team_lead': 2,
-    'office_admin': 3,
     'manager': 4,
     'admin': 5
 }
@@ -174,12 +175,12 @@ def require_team_lead(f):
 
 
 def require_office_admin(f):
-    """Require office_admin or higher (office_admin, manager, admin)."""
+    """Require office_admin, manager, or admin (explicit check, not level-based)."""
     @wraps(f)
     def decorated(*args, **kwargs):
         if 'user_id' not in session:
             return redirect(url_for('login'))
-        if get_role_level(session.get('role', 'inspector')) < get_role_level('office_admin'):
+        if session.get('role', 'inspector') not in ('office_admin', 'manager', 'admin'):
             abort(403)
         return f(*args, **kwargs)
     return decorated

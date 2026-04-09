@@ -90,7 +90,7 @@ def create_app():
         role = session.get('role', 'inspector')
         
         # Inspectors get their own home page with assigned units only
-        if role == 'inspector':
+        if role in ('inspector', 'office_admin'):
             from app.services.db import query_db
             tenant_id = session['tenant_id']
             user_id = session['user_id']
