@@ -272,12 +272,20 @@
                 var av = a.dataset[s.key] || '';
                 var bv = b.dataset[s.key] || '';
                 var cmp;
-                if (s.key === 'unit' || s.key === 'round' || s.key === 'scope') {
+                if (s.key === 'inspector') {
+                    var ae = (av === '' || av === 'zzz');
+                    var be = (bv === '' || bv === 'zzz');
+                    if (ae && !be) return 1;
+                    if (!ae && be) return -1;
+                    if (ae && be) { cmp = 0; }
+                    else { cmp = av.localeCompare(bv); if (s.dir === 'desc') cmp = -cmp; }
+                } else if (s.key === 'unit' || s.key === 'round' || s.key === 'scope') {
                     cmp = parseInt(av,10) - parseInt(bv,10);
+                    if (s.dir === 'desc') cmp = -cmp;
                 } else {
                     cmp = av.localeCompare(bv);
+                    if (s.dir === 'desc') cmp = -cmp;
                 }
-                if (s.dir === 'desc') cmp = -cmp;
                 if (cmp !== 0) return cmp;
             }
             return 0;
