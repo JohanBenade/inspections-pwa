@@ -251,34 +251,33 @@
             <div style="background: #FAECE7; border-radius: 8px; padding: 10px 8px; text-align: center; min-height: 100px;">
                 <div style="font-size: 0.9rem; font-weight: 500; color: #712B13;">{{ zd.total_units }} units</div>
                 <div style="font-size: 0.65rem; color: #993C1D; margin-top: 4px;">{{ zd.c1_inspected }} inspected</div>
-                <div style="margin-top: 6px; font-size: 1.15rem; font-weight: 600; color: #993C1D;">{{ zd.avg }}</div>
-                <div style="font-size: 0.6rem; color: #D85A30;">avg defects / unit</div>
-                <div style="font-size: 0.65rem; color: #F0997B; margin-top: 2px;">{{ '{:,}'.format(zd.cnt) }} open</div>
+                <div style="margin-top: 8px; font-size: 1rem; font-weight: 500; font-family: 'DM Sans', sans-serif; color: #993C1D;">{{ '{:,}'.format(zd.cnt) }}</div>
+                <div style="font-size: 0.65rem; color: #D85A30;">open defects</div>
             </div>
             {% elif zd.stage == 'desnag' %}
             <div style="background: #FAEEDA; border-radius: 8px; padding: 10px 8px; text-align: center; min-height: 100px;">
                 <div style="font-size: 0.9rem; font-weight: 500; color: #633806;">{{ zd.total_units }} units</div>
                 <div style="font-size: 0.65rem; color: #854F0B; margin-top: 4px;">{{ zd.c1_inspected }} inspected &middot; {{ zd.c2_units }} de-snagged</div>
-                <div style="margin-top: 6px; font-size: 1.15rem; font-weight: 600; color: #854F0B;">{{ zd.avg }}</div>
-                <div style="font-size: 0.6rem; color: #BA7517;">avg defects / unit</div>
+                <div style="margin-top: 8px; font-size: 1rem; font-weight: 500; font-family: 'DM Sans', sans-serif; color: #854F0B;">{{ '{:,}'.format(zd.cnt) }}</div>
+                <div style="font-size: 0.65rem; color: #BA7517;">open defects</div>
                 <div style="margin-top: 6px;">
                     <div style="height: 4px; border-radius: 2px; background: #FAC775; overflow: hidden;">
                         <div style="width: {{ zd.clearance_pct }}%; height: 100%; border-radius: 2px; background: #BA7517;"></div>
                     </div>
-                    <div style="font-size: 0.55rem; color: #854F0B; margin-top: 2px;">{{ '{:,}'.format(zd.cleared) }} / {{ '{:,}'.format(zd.raised) }} cleared &middot; {{ '{:,}'.format(zd.cnt) }} open</div>
+                    <div style="font-size: 0.55rem; color: #854F0B; margin-top: 2px;">{{ '{:,}'.format(zd.cleared) }} / {{ '{:,}'.format(zd.raised) }} cleared</div>
                 </div>
             </div>
             {% elif zd.stage == 'near_complete' %}
             <div style="background: #EAF3DE; border-radius: 8px; padding: 10px 8px; text-align: center; min-height: 100px;">
                 <div style="font-size: 0.9rem; font-weight: 500; color: #27500A;">{{ zd.total_units }} units</div>
                 <div style="font-size: 0.65rem; color: #3B6D11; margin-top: 4px;">{{ zd.c1_inspected }} inspected &middot; {{ zd.c2_units }} de-snagged</div>
-                <div style="margin-top: 6px; font-size: 1.15rem; font-weight: 600; color: #3B6D11;">{{ zd.avg }}</div>
-                <div style="font-size: 0.6rem; color: #639922;">avg defects / unit</div>
+                <div style="margin-top: 8px; font-size: 1rem; font-weight: 500; font-family: 'DM Sans', sans-serif; color: #3B6D11;">{{ '{:,}'.format(zd.cnt) }}</div>
+                <div style="font-size: 0.65rem; color: #639922;">open defects</div>
                 <div style="margin-top: 6px;">
                     <div style="height: 4px; border-radius: 2px; background: #C0DD97; overflow: hidden;">
                         <div style="width: {{ zd.clearance_pct }}%; height: 100%; border-radius: 2px; background: #639922;"></div>
                     </div>
-                    <div style="font-size: 0.55rem; color: #3B6D11; margin-top: 2px;">{{ '{:,}'.format(zd.cleared) }} / {{ '{:,}'.format(zd.raised) }} cleared &middot; {{ '{:,}'.format(zd.cnt) }} open</div>
+                    <div style="font-size: 0.55rem; color: #3B6D11; margin-top: 2px;">{{ '{:,}'.format(zd.cleared) }} / {{ '{:,}'.format(zd.raised) }} cleared</div>
                 </div>
             </div>
             {% endif %}
