@@ -86,7 +86,7 @@
         </thead>
         <tbody class="divide-y divide-gray-100">
             {% for u in units %}
-            <tr id="row-{{ u.bu_id }}" class="hover:bg-gray-50" data-unit="{{ u.unit_number }}" data-block="{{ u.block }}{{ u.floor }}" data-round="{{ u.cycle_number }}" data-scope="{{ u.checkpoints }}" data-inspector="{{ u.inspector_name or '' }}">
+            <tr id="row-{{ u.bu_id }}" class="hover:bg-gray-50" data-unit="{{ u.unit_number }}" data-block="{{ u.block }}{{ u.floor }}" data-round="{{ u.cycle_number }}" data-scope="{{ u.checkpoints }}" data-inspector="{{ u.inspector_name or 'zzz' }}">
                 <td class="px-4 py-3 font-medium text-gray-800">
                     {{ u.unit_number }}
                     <span class="sm:hidden text-xs text-gray-400 block">
