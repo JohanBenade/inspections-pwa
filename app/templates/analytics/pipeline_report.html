@@ -518,37 +518,69 @@ body {
         </div>
 
         {% if zone_grid.blocks %}
-        <table style="width: 100%; border-collapse: collapse; font-size: 11px; table-layout: fixed;">
-            <thead>
-                <tr>
-                    <th style="text-align: left; padding: 6px 10px; font-size: 9px; font-weight: 600; color: #9A9A9A; letter-spacing: 1.2px; text-transform: uppercase; border-bottom: 2px solid #E8E6E1; width: 100px;">Block</th>
-                    {% for fl in zone_grid.floors %}
-                    <th style="text-align: center; padding: 6px 10px; font-size: 9px; font-weight: 600; color: #9A9A9A; letter-spacing: 1.2px; text-transform: uppercase; border-bottom: 2px solid #E8E6E1;">{{ floor_labels.get(fl, fl) }}</th>
-                    {% endfor %}
-                </tr>
-            </thead>
-            <tbody>
-                {% for block in zone_grid.blocks %}
-                <tr>
-                    <td style="padding: 5px 10px; border-bottom: 1px solid #F0EEEA; font-weight: 600;">{{ block }}</td>
-                    {% for fl in zone_grid.floors %}
-                    {% set zd = zone_grid.data.get((block, fl), None) %}
-                    <td style="text-align: center; padding: 8px 6px; border-bottom: 1px solid #F0EEEA; line-height: 1.4;
-                        {% if zd is not none %}
-                            {% if zd.avg > zone_grid.project_avg * 1.5 %}background: #FCEAE8;
-                            {% elif zd.avg > zone_grid.project_avg %}background: #FFF4E5;
-                            {% else %}background: #EEF5EF;
-                            {% endif %}
-                        {% else %}color: #BFBDB8;
-                        {% endif %}
-                    ">{% if zd is not none %}<span style="font-size: 14px; font-weight: 700; {% if zd.avg > zone_grid.project_avg * 1.5 %}color: #C44D3F;{% elif zd.avg > zone_grid.project_avg %}color: #8A6420;{% else %}color: #2D5A3A;{% endif %}">{{ zd.avg }}</span> <span style="font-size: 8px; color: #9A9A9A;">avg/unit</span><br><span style="font-size: 9px; color: #6B6B6B;">{{ zd.cnt }} defects</span><br><span style="font-size: 9px; color: #9A9A9A;">{{ zd.units }} units</span>{% else %}<span style="color: #BFBDB8;">&mdash;</span><br><span style="font-size: 8px; color: #BFBDB8;">No data</span>{% endif %}</td>
-                    {% endfor %}
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
-        <div style="margin-top: 6px; font-size: 9px; color: #9A9A9A;">
-            Traffic light vs project average ({{ zone_grid.project_avg }} defects/unit). Red &gt; 1.5x avg. Amber &gt; avg. Green &le; avg.
+        <div style="display: grid; grid-template-columns: 60px repeat({{ zone_grid.floors|length }}, 1fr); gap: 4px;">
+            <div></div>
+            {% for fl in zone_grid.floors %}
+            <div style="text-align: center; font-size: 8px; font-weight: 600; color: #9A9A9A; letter-spacing: 0.8px; text-transform: uppercase; padding-bottom: 3px;">{{ floor_labels.get(fl, fl) }}</div>
+            {% endfor %}
+
+            {% for block in zone_grid.blocks %}
+            <div style="display: flex; align-items: center; font-size: 9px; font-weight: 600; color: #1A1A1A;">{{ block }}</div>
+            {% for fl in zone_grid.floors %}
+            {% set zd = zone_grid.data.get((block, fl), None) %}
+            {% if zd is none %}
+            <div style="background: #F5F3EE; border-radius: 5px; padding: 7px 5px; text-align: center; min-height: 70px; display: flex; align-items: center; justify-content: center;">
+                <span style="font-size: 8px; color: #BFBDB8;">&mdash;</span>
+            </div>
+            {% elif zd.stage == 'not_inspected' %}
+            <div style="background: #F1EFE8; border-radius: 5px; padding: 7px 5px; text-align: center; min-height: 70px;">
+                <div style="font-size: 10px; font-weight: 600; color: #5F5E5A;">{{ zd.total_units }} units</div>
+                <div style="font-size: 7px; color: #888780; margin-top: 2px;">not inspected</div>
+            </div>
+            {% elif zd.stage == 'awaiting' %}
+            <div style="background: #FAECE7; border-radius: 5px; padding: 7px 5px; text-align: center; min-height: 70px;">
+                <div style="font-size: 10px; font-weight: 600; color: #712B13;">{{ zd.total_units }} units</div>
+                <div style="font-size: 7px; color: #993C1D; margin-top: 2px;">{{ zd.c1_inspected }} inspected</div>
+                <div style="margin-top: 4px; font-size: 13px; font-weight: 700; color: #993C1D;">{{ zd.avg }}</div>
+                <div style="font-size: 7px; color: #D85A30;">avg defects / unit</div>
+                <div style="font-size: 8px; color: #F0997B; margin-top: 1px;">{{ '{:,}'.format(zd.cnt) }} open</div>
+            </div>
+            {% elif zd.stage == 'desnag' %}
+            <div style="background: #FAEEDA; border-radius: 5px; padding: 7px 5px; text-align: center; min-height: 70px;">
+                <div style="font-size: 10px; font-weight: 600; color: #633806;">{{ zd.total_units }} units</div>
+                <div style="font-size: 7px; color: #854F0B; margin-top: 2px;">{{ zd.c1_inspected }} insp &middot; {{ zd.c2_units }} de-snagged</div>
+                <div style="margin-top: 4px; font-size: 13px; font-weight: 700; color: #854F0B;">{{ zd.avg }}</div>
+                <div style="font-size: 7px; color: #BA7517;">avg defects / unit</div>
+                <div style="margin-top: 4px;">
+                    <div style="height: 3px; border-radius: 2px; background: #FAC775; overflow: hidden;">
+                        <div style="width: {{ zd.clearance_pct }}%; height: 100%; border-radius: 2px; background: #BA7517;"></div>
+                    </div>
+                    <div style="font-size: 6.5px; color: #854F0B; margin-top: 1px;">{{ '{:,}'.format(zd.cleared) }} / {{ '{:,}'.format(zd.raised) }} cleared &middot; {{ '{:,}'.format(zd.cnt) }} open</div>
+                </div>
+            </div>
+            {% elif zd.stage == 'near_complete' %}
+            <div style="background: #EAF3DE; border-radius: 5px; padding: 7px 5px; text-align: center; min-height: 70px;">
+                <div style="font-size: 10px; font-weight: 600; color: #27500A;">{{ zd.total_units }} units</div>
+                <div style="font-size: 7px; color: #3B6D11; margin-top: 2px;">{{ zd.c1_inspected }} insp &middot; {{ zd.c2_units }} de-snagged</div>
+                <div style="margin-top: 4px; font-size: 13px; font-weight: 700; color: #3B6D11;">{{ zd.avg }}</div>
+                <div style="font-size: 7px; color: #639922;">avg defects / unit</div>
+                <div style="margin-top: 4px;">
+                    <div style="height: 3px; border-radius: 2px; background: #C0DD97; overflow: hidden;">
+                        <div style="width: {{ zd.clearance_pct }}%; height: 100%; border-radius: 2px; background: #639922;"></div>
+                    </div>
+                    <div style="font-size: 6.5px; color: #3B6D11; margin-top: 1px;">{{ '{:,}'.format(zd.cleared) }} / {{ '{:,}'.format(zd.raised) }} cleared &middot; {{ '{:,}'.format(zd.cnt) }} open</div>
+                </div>
+            </div>
+            {% endif %}
+            {% endfor %}
+            {% endfor %}
+        </div>
+        <!-- Legend -->
+        <div style="margin-top: 5px; display: flex; flex-wrap: wrap; gap: 10px; font-size: 7px; color: #9A9A9A;">
+            <span><span style="display: inline-block; width: 6px; height: 6px; border-radius: 1px; background: #F1EFE8; margin-right: 2px; vertical-align: middle;"></span>Not inspected</span>
+            <span><span style="display: inline-block; width: 6px; height: 6px; border-radius: 1px; background: #FAECE7; margin-right: 2px; vertical-align: middle;"></span>Awaiting rectification</span>
+            <span><span style="display: inline-block; width: 6px; height: 6px; border-radius: 1px; background: #FAEEDA; margin-right: 2px; vertical-align: middle;"></span>De-snag underway</span>
+            <span><span style="display: inline-block; width: 6px; height: 6px; border-radius: 1px; background: #EAF3DE; margin-right: 2px; vertical-align: middle;"></span>De-snag near complete</span>
         </div>
         {% else %}
         <div class="trend-placeholder">No zone data available</div>

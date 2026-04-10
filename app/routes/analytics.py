@@ -4982,48 +4982,139 @@ def _build_pipeline_report_data(live=False, cutoff_sast=None):
 
     # --- PAGE 3: WHERE'S THE PROBLEM ---
 
-    # Zone grid: block x floor open defect counts
-    zone_rows = query_db("""
+    # Zone grid: block x floor — enriched with C1/C2/clearance data
+
+    # Total units per zone (all units, not just inspected)
+    zone_total_units_rows = query_db("""
+        SELECT u.block, u.floor, COUNT(DISTINCT u.id) as total_units
+        FROM unit_real u
+        WHERE u.tenant_id = ? AND u.unit_number NOT LIKE 'TEST%%'
+        GROUP BY u.block, u.floor
+    """, [tenant_id])
+    zone_total_units = {}
+    for r in zone_total_units_rows:
+        zone_total_units[(r['block'], r['floor'])] = r['total_units']
+
+    # C1 inspected units per zone
+    zone_c1_rows = query_db("""
+        SELECT u.block, u.floor, COUNT(DISTINCT i.unit_id) as c1_inspected
+        FROM inspection i
+        JOIN unit_real u ON i.unit_id = u.id
+        WHERE i.tenant_id = ? AND i.cycle_number = 1
+        AND i.status IN ('reviewed','approved','certified','pending_followup')
+        AND i.submitted_at <= ?
+        AND i.cycle_id NOT LIKE 'test-%%'
+        GROUP BY u.block, u.floor
+    """, [tenant_id, snapshot_str])
+    zone_c1 = {}
+    for r in zone_c1_rows:
+        zone_c1[(r['block'], r['floor'])] = r['c1_inspected']
+
+    # C2+ units per zone (units with any C2+ inspection)
+    zone_c2_rows = query_db("""
+        SELECT u.block, u.floor, COUNT(DISTINCT i.unit_id) as c2_units
+        FROM inspection i
+        JOIN unit_real u ON i.unit_id = u.id
+        WHERE i.tenant_id = ? AND i.cycle_number >= 2
+        AND i.submitted_at <= ?
+        AND i.cycle_id NOT LIKE 'test-%%'
+        GROUP BY u.block, u.floor
+    """, [tenant_id, snapshot_str])
+    zone_c2 = {}
+    for r in zone_c2_rows:
+        zone_c2[(r['block'], r['floor'])] = r['c2_units']
+
+    # Total raised defects per zone (all time up to snapshot, from completed inspections)
+    zone_raised_rows = query_db("""
+        SELECT u.block, u.floor, COUNT(*) as raised
+        FROM defect d
+        JOIN unit_real u ON d.unit_id = u.id
+        WHERE d.tenant_id = ? AND d.created_at <= ?
+        AND d.raised_cycle_id NOT LIKE 'test-%%'
+        AND EXISTS (SELECT 1 FROM inspection i2 WHERE i2.unit_id = d.unit_id AND i2.cycle_id = d.raised_cycle_id
+                    AND i2.status IN ('reviewed','approved','certified','pending_followup'))
+        GROUP BY u.block, u.floor
+    """, [tenant_id, snapshot_str])
+    zone_raised = {}
+    for r in zone_raised_rows:
+        zone_raised[(r['block'], r['floor'])] = r['raised']
+
+    # Cleared defects per zone (as of snapshot)
+    zone_cleared_rows = query_db("""
+        SELECT u.block, u.floor, COUNT(*) as cleared
+        FROM defect d
+        JOIN unit_real u ON d.unit_id = u.id
+        WHERE d.tenant_id = ? AND d.status = 'cleared' AND d.cleared_at <= ?
+        AND d.raised_cycle_id NOT LIKE 'test-%%'
+        AND EXISTS (SELECT 1 FROM inspection i2 WHERE i2.unit_id = d.unit_id AND i2.cycle_id = d.raised_cycle_id
+                    AND i2.status IN ('reviewed','approved','certified','pending_followup'))
+        GROUP BY u.block, u.floor
+    """, [tenant_id, snapshot_str])
+    zone_cleared = {}
+    for r in zone_cleared_rows:
+        zone_cleared[(r['block'], r['floor'])] = r['cleared']
+
+    # Open defects per zone (as of snapshot)
+    zone_open_rows = query_db("""
         SELECT u.block, u.floor, COUNT(*) as cnt
         FROM defect d
         JOIN unit_real u ON d.unit_id = u.id
         WHERE d.tenant_id = ? AND d.created_at <= ?
         AND (d.status = 'open' OR (d.status = 'cleared' AND d.cleared_at > ?))
         AND d.raised_cycle_id NOT LIKE 'test-%%'
-        AND EXISTS (SELECT 1 FROM inspection i2 WHERE i2.unit_id = d.unit_id AND i2.cycle_id = d.raised_cycle_id AND i2.status IN ('reviewed','approved','certified','pending_followup'))
+        AND EXISTS (SELECT 1 FROM inspection i2 WHERE i2.unit_id = d.unit_id AND i2.cycle_id = d.raised_cycle_id
+                    AND i2.status IN ('reviewed','approved','certified','pending_followup'))
         GROUP BY u.block, u.floor
-        ORDER BY u.block, u.floor
     """, [tenant_id, snapshot_str, snapshot_str])
+    zone_open = {}
+    for r in zone_open_rows:
+        zone_open[(r['block'], r['floor'])] = r['cnt']
 
-    # Units inspected per zone (as of snapshot)
-    zone_unit_rows = query_db("""
-        SELECT u.block, u.floor, COUNT(DISTINCT i.unit_id) as units
-        FROM inspection i
-        JOIN unit_real u ON i.unit_id = u.id
-        WHERE i.tenant_id = ? AND i.submitted_at <= ?
-        AND i.status IN ('reviewed','approved','certified','pending_followup')
-        GROUP BY u.block, u.floor
-    """, [tenant_id, snapshot_str])
-    zone_units = {}
-    for r in zone_unit_rows:
-        zone_units[(r['block'], r['floor'])] = r['units']
-
-    # Build zone grid structure
-    blocks_set = sorted(set(r['block'] for r in zone_rows))
-    floors_set = sorted(set(r['floor'] for r in zone_rows))
+    # Build enriched zone grid
+    all_blocks = sorted(set(k[0] for k in zone_total_units))
+    all_floors = sorted(set(k[1] for k in zone_total_units))
     zone_map = {}
-    for r in zone_rows:
-        key = (r['block'], r['floor'])
-        units = zone_units.get(key, 0)
-        avg = round(r['cnt'] / units, 1) if units > 0 else 0
-        zone_map[key] = {'cnt': r['cnt'], 'units': units, 'avg': avg}
+    for key in zone_total_units:
+        total = zone_total_units[key]
+        c1 = zone_c1.get(key, 0)
+        c2 = zone_c2.get(key, 0)
+        raised = zone_raised.get(key, 0)
+        cleared = zone_cleared.get(key, 0)
+        opn = zone_open.get(key, 0)
+        avg = round(raised / c1, 1) if c1 > 0 else 0
+        clearance_pct = round(cleared / raised * 100) if raised > 0 else 0
 
-    zone_avgs = [v['avg'] for v in zone_map.values() if v['avg'] > 0]
-    project_avg = round(sum(v['cnt'] for v in zone_map.values()) / sum(v['units'] for v in zone_map.values()), 1) if zone_map and sum(v['units'] for v in zone_map.values()) > 0 else 0
+        # Stage logic
+        if c1 == 0:
+            stage = 'not_inspected'
+        elif c2 > 0 and clearance_pct >= 80:
+            stage = 'near_complete'
+        elif c2 > 0:
+            stage = 'desnag'
+        else:
+            stage = 'awaiting'
+
+        zone_map[key] = {
+            'total_units': total,
+            'c1_inspected': c1,
+            'c2_units': c2,
+            'raised': raised,
+            'cleared': cleared,
+            'cnt': opn,
+            'avg': avg,
+            'clearance_pct': clearance_pct,
+            'stage': stage,
+            'units': c1,
+        }
+
+    project_avg = round(
+        sum(v['raised'] for v in zone_map.values()) /
+        sum(v['c1_inspected'] for v in zone_map.values()), 1
+    ) if sum(v['c1_inspected'] for v in zone_map.values()) > 0 else 0
 
     zone_grid = {
-        'blocks': blocks_set,
-        'floors': floors_set,
+        'blocks': all_blocks,
+        'floors': all_floors,
         'data': zone_map,
         'project_avg': project_avg,
     }
