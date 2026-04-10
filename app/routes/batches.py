@@ -407,7 +407,7 @@ def detail(batch_id):
 
     inspectors_raw = query_db("""
         SELECT id, name FROM inspector
-        WHERE tenant_id = ? AND role IN ('inspector', 'team_lead') AND active = 1
+        WHERE tenant_id = ? AND role IN ('inspector', 'team_lead', 'office_admin') AND active = 1
         ORDER BY name
     """, [tenant_id])
     inspectors = [dict(r) for r in inspectors_raw]
