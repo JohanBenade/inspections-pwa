@@ -273,8 +273,8 @@
                 var bv = b.dataset[s.key] || '';
                 var cmp;
                 if (s.key === 'inspector') {
-                    var ae = (av === '' || av === 'zzz');
-                    var be = (bv === '' || bv === 'zzz');
+                    var ae = (av === '' || av === 'zzz' || av === 'TBD');
+                    var be = (bv === '' || bv === 'zzz' || bv === 'TBD');
                     if (ae && !be) return 1;
                     if (!ae && be) return -1;
                     if (ae && be) { cmp = 0; }
