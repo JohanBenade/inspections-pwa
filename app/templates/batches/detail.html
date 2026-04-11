@@ -273,7 +273,7 @@
                 var bv = b.dataset[s.key] || '';
                 var cmp;
                 if (s.key === 'status') {
-                    var so = {not_started:0, in_progress:1, submitted:2, reviewed:3, pending_followup:4, approved:4, certified:5, closed:5, signed:5};
+                    var so = {in_progress:1, submitted:2, reviewed:3, pending_followup:4, approved:4, certified:5, closed:5, signed:5};
                     cmp = (so[av]||99) - (so[bv]||99);
                     if (s.dir === 'desc') cmp = -cmp;
                 } else if (s.key === 'inspector') {
