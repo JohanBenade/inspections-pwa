@@ -5082,7 +5082,7 @@ def _build_pipeline_report_data(live=False, cutoff_sast=None):
         cleared = zone_cleared.get(key, 0)
         opn = zone_open.get(key, 0)
         avg = round(raised / c1, 1) if c1 > 0 else 0
-        clearance_pct = round(cleared / raised * 100) if raised > 0 else 0
+        clearance_pct = round(cleared / raised * 100, 1) if raised > 0 else 0
 
         # Stage logic
         if c1 == 0:
