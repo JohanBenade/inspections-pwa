@@ -95,13 +95,13 @@
 <div class="main-area">
 <div class="unit-panel">
     {# === ACTIVE CARDS === #}
-    {% set active_count = units|selectattr('insp_status', 'equalto', 'in_progress')|list|length %}
+    {% set active_count = (units|selectattr('insp_status', 'equalto', 'in_progress')|list + units|selectattr('insp_status', 'equalto', 'paused')|list)|length %}
     {% if active_count %}
     <div class="section-header">In Progress ({{ active_count }})</div>
     {% endif %}
     <div class="active-grid">
     {% for u in units %}
-    {% if u.insp_status == 'in_progress' %}
+    {% if u.insp_status in ['in_progress', 'paused'] %}
     <!-- IN PROGRESS CARD -->
     <div class="unit-card active {% if u.is_idle %}idle-unit{% endif %}"
          {% if u.last_activity %}data-last-activity="{{ u.last_activity }}"{% endif %}>
@@ -109,6 +109,7 @@
             <div class="unit-header-left">
                 <span class="unit-number">{{ u.unit_number }}</span>
                 <span class="progress-badge">{{ u.pct }}%</span>
+                {% if u.is_paused %}<span style="background:#FEF3C7;color:#92400E;font-size:0.7rem;font-weight:600;padding:2px 8px;border-radius:9999px;display:inline-flex;align-items:center;gap:3px;" title="Inspection paused">&#9208; Paused</span>{% endif %}
                 <span class="unit-meta">{{ u.block }} {{ u.floor_label }} &middot; C{{ u.cycle_number }}</span>
             </div>
             <div style="flex: 1;">

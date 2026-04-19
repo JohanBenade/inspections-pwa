@@ -1312,7 +1312,7 @@ def _build_live_monitor_data(batch_id, tenant_id):
 
     total_units = len(units)
     units_complete = sum(1 for u in units if u['insp_status'] in ('submitted', 'reviewed', 'approved'))
-    units_in_progress = sum(1 for u in units if u['insp_status'] == 'in_progress')
+    units_in_progress = sum(1 for u in units if u['insp_status'] in ('in_progress', 'paused'))
     units_not_started = sum(1 for u in units if u['insp_status'] == 'not_started')
 
     # --- Collect all inspection_ids for batch queries ---
