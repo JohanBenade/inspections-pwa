@@ -928,7 +928,18 @@ def update_item(inspection_id, item_id):
     # Lock: no edits after sign-off
     if inspection['status'] in ('pending_followup', 'approved', 'certified'):
         abort(403)
-    
+
+    # Auto-resume if inspection is paused
+    if inspection['status'] == 'paused':
+        _resume_inspection_inline(db, inspection, tenant_id)
+        log_audit(db, tenant_id, 'inspection', inspection_id, 'inspection_resumed',
+                  old_value='paused', new_value='in_progress',
+                  user_id=session['user_id'], user_name=session['user_name'])
+        inspection = query_db(
+            "SELECT * FROM inspection WHERE id = ? AND tenant_id = ?",
+            [inspection_id, tenant_id], one=True
+        )
+
     template = query_db(
         "SELECT * FROM item_template WHERE id = ?",
         [item['item_template_id']], one=True
@@ -1165,6 +1176,18 @@ def remove_defect(inspection_id, item_id, defect_id):
     inspection = query_db("SELECT * FROM inspection WHERE id = ? AND tenant_id = ?", [inspection_id, tenant_id], one=True)
     if not inspection:
         abort(404)
+
+    # Auto-resume if inspection is paused
+    if inspection['status'] == 'paused':
+        _resume_inspection_inline(db, inspection, tenant_id)
+        log_audit(db, tenant_id, 'inspection', inspection_id, 'inspection_resumed',
+                  old_value='paused', new_value='in_progress',
+                  user_id=session['user_id'], user_name=session['user_name'])
+        inspection = query_db(
+            "SELECT * FROM inspection WHERE id = ? AND tenant_id = ?",
+            [inspection_id, tenant_id], one=True
+        )
+
     db.execute("DELETE FROM inspection_defect WHERE id = ? AND inspection_item_id = ? AND tenant_id = ?", [defect_id, item_id, tenant_id])
     db.commit()
     if area_id:
@@ -1190,6 +1213,17 @@ def clear_prior_defect(inspection_id, defect_id):
     """, [inspection_id, tenant_id], one=True)
     if not inspection:
         abort(404)
+
+    # Auto-resume if inspection is paused
+    if inspection['status'] == 'paused':
+        _resume_inspection_inline(db, inspection, tenant_id)
+        log_audit(db, tenant_id, 'inspection', inspection_id, 'inspection_resumed',
+                  old_value='paused', new_value='in_progress',
+                  user_id=session['user_id'], user_name=session['user_name'])
+        inspection = query_db(
+            "SELECT * FROM inspection WHERE id = ? AND tenant_id = ?",
+            [inspection_id, tenant_id], one=True
+        )
 
     defect = query_db(
         "SELECT * FROM defect WHERE id = ? AND tenant_id = ?",
@@ -1244,6 +1278,17 @@ def reopen_prior_defect(inspection_id, defect_id):
     if not inspection:
         abort(404)
 
+    # Auto-resume if inspection is paused
+    if inspection['status'] == 'paused':
+        _resume_inspection_inline(db, inspection, tenant_id)
+        log_audit(db, tenant_id, 'inspection', inspection_id, 'inspection_resumed',
+                  old_value='paused', new_value='in_progress',
+                  user_id=session['user_id'], user_name=session['user_name'])
+        inspection = query_db(
+            "SELECT * FROM inspection WHERE id = ? AND tenant_id = ?",
+            [inspection_id, tenant_id], one=True
+        )
+
     defect = query_db(
         "SELECT * FROM defect WHERE id = ? AND tenant_id = ?",
         [defect_id, tenant_id], one=True
@@ -1297,6 +1342,17 @@ def confirm_defects_remain(inspection_id, item_id):
     if not inspection:
         abort(404)
 
+    # Auto-resume if inspection is paused
+    if inspection['status'] == 'paused':
+        _resume_inspection_inline(db, inspection, tenant_id)
+        log_audit(db, tenant_id, 'inspection', inspection_id, 'inspection_resumed',
+                  old_value='paused', new_value='in_progress',
+                  user_id=session['user_id'], user_name=session['user_name'])
+        inspection = query_db(
+            "SELECT * FROM inspection WHERE id = ? AND tenant_id = ?",
+            [inspection_id, tenant_id], one=True
+        )
+
     item = query_db(
         "SELECT * FROM inspection_item WHERE id = ? AND inspection_id = ?",
         [item_id, inspection_id], one=True
@@ -1337,6 +1393,17 @@ def delete_current_defect(inspection_id, defect_id):
     """, [inspection_id, tenant_id], one=True)
     if not inspection:
         abort(404)
+
+    # Auto-resume if inspection is paused
+    if inspection['status'] == 'paused':
+        _resume_inspection_inline(db, inspection, tenant_id)
+        log_audit(db, tenant_id, 'inspection', inspection_id, 'inspection_resumed',
+                  old_value='paused', new_value='in_progress',
+                  user_id=session['user_id'], user_name=session['user_name'])
+        inspection = query_db(
+            "SELECT * FROM inspection WHERE id = ? AND tenant_id = ?",
+            [inspection_id, tenant_id], one=True
+        )
 
     defect = query_db(
         "SELECT * FROM defect WHERE id = ? AND tenant_id = ? AND raised_cycle_id = ?",
@@ -1936,6 +2003,17 @@ def category_cascade_ni(inspection_id, category_id):
     # Lock: no edits after sign-off
     if inspection['status'] in ('pending_followup', 'approved', 'certified'):
         abort(403)
+
+    # Auto-resume if inspection is paused
+    if inspection['status'] == 'paused':
+        _resume_inspection_inline(db, inspection, tenant_id)
+        log_audit(db, tenant_id, 'inspection', inspection_id, 'inspection_resumed',
+                  old_value='paused', new_value='in_progress',
+                  user_id=session['user_id'], user_name=session['user_name'])
+        inspection = query_db(
+            "SELECT * FROM inspection WHERE id = ? AND tenant_id = ?",
+            [inspection_id, tenant_id], one=True
+        )
 
     now = datetime.now(timezone.utc).isoformat()
 
