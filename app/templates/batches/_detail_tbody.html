@@ -9,7 +9,7 @@
     <td class="px-4 py-3 font-medium text-gray-800 whitespace-nowrap">{{ u.unit_number }}</td>
 
     <td class="px-4 py-3 text-sm text-gray-600 whitespace-nowrap">
-        Block {{ u.block }} &middot; {{ floor_labels.get(u.floor, u.floor) }}
+        {{ u.block }} &middot; {{ floor_labels.get(u.floor, u.floor) }}
         {% if u.cycle_number and u.cycle_number > 1 %}
         &middot; <span class="px-1.5 py-0.5 text-xs font-semibold rounded bg-amber-100 text-amber-700">C{{ u.cycle_number }}</span>
         {% else %}
