@@ -1,5 +1,5 @@
 <tr id="row-{{ bu.bu_id }}" class="bg-amber-50">
-    <td colspan="14" class="px-4 py-4">
+    <td colspan="7" class="px-4 py-4">
         <form method="POST" action="{{ url_for('batches.reset_unit', batch_id=batch_id) }}">
             <input type="hidden" name="bu_id" value="{{ bu.bu_id }}">
 
