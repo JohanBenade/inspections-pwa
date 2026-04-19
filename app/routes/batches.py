@@ -1927,5 +1927,11 @@ def reset_unit(batch_id):
 
     db.commit()
 
-    flash('Unit {} reset (outcome {}).'.format(bu['unit_number'], outcome), 'success')
+    messages = {
+        'A': 'Unit {un} unassigned and markings cleared.',
+        'B': 'Unit {un} paused.',
+        'C': 'Unit {un} reassigned to {nm}.',
+        'D': 'Unit {un} handed to {nm}.',
+    }
+    flash(messages[outcome].format(un=bu['unit_number'], nm=new_inspector_name or ''), 'success')
     return redirect(url_for('batches.detail', batch_id=batch_id))
