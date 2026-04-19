@@ -390,6 +390,23 @@ def detail(batch_id):
         cn = u.get('cycle_number') or 1
         u['checkpoints'] = u['defect_bfwd'] if cn > 1 else u['checkpoints_c1']
 
+    # --- Items marked (for live Inspecting progress) ---
+    inspection_ids = [u.get('inspection_id') for u in units if u.get('inspection_id')]
+    items_map = {}
+    if inspection_ids:
+        ii_ph = ','.join(['?'] * len(inspection_ids))
+        ii_rows = query_db(f"""
+            SELECT inspection_id,
+                   SUM(CASE WHEN status NOT IN ('pending', 'skipped') THEN 1 ELSE 0 END) AS items_marked
+            FROM inspection_item
+            WHERE inspection_id IN ({ii_ph})
+            GROUP BY inspection_id
+        """, inspection_ids)
+        items_map = {r['inspection_id']: (r['items_marked'] or 0) for r in ii_rows}
+
+    for u in units:
+        u['items_marked'] = items_map.get(u.get('inspection_id'), 0)
+
     # Removed units (separate section)
     removed_raw = query_db("""
         SELECT bu.id AS bu_id, bu.removed_at, bu.removed_by, bu.removed_reason,
@@ -420,12 +437,134 @@ def detail(batch_id):
         [tenant_id])
     excl_lists = [dict(r) for r in excl_lists]
 
+    refreshed_at = datetime.now().strftime('%H:%M:%S')
     return render_template('batches/detail.html',
                            batch=batch, units=units, inspectors=inspectors,
                            floor_labels=FLOOR_LABELS, cycle_ids=cycle_ids,
                            excl_lists=excl_lists,
-                           removed_units=removed_units)
+                           removed_units=removed_units,
+                           refreshed_at=refreshed_at)
 
+
+
+@batches_bp.route('/<batch_id>/data')
+@require_team_lead
+def detail_data(batch_id):
+    """HTMX partial: refreshable tbody + timestamp for batch detail."""
+    tenant_id = session['tenant_id']
+
+    batch_check = query_db(
+        "SELECT id FROM inspection_batch WHERE id = ? AND tenant_id = ?",
+        [batch_id, tenant_id], one=True)
+    if not batch_check:
+        abort(404)
+
+    units_raw = query_db("""
+        SELECT bu.id AS bu_id, COALESCE(i.status, 'not_started') AS bu_status,
+            COALESCE(bu.inspector_id, i.inspector_id) AS inspector_id,
+            bu.cycle_id, u.id AS unit_id, u.unit_number, u.block, u.floor,
+            (SELECT cycle_number FROM inspection_cycle WHERE id = bu.cycle_id) AS cycle_number,
+            i.id AS inspection_id, i.status AS inspection_status,
+            COALESCE(insp.name, i.inspector_name) AS inspector_name,
+            bu.exclusion_list_id
+        FROM batch_unit bu
+        JOIN unit u ON bu.unit_id = u.id
+        LEFT JOIN inspection i ON i.unit_id = u.id AND i.cycle_id = bu.cycle_id
+        LEFT JOIN inspector insp ON bu.inspector_id = insp.id
+        WHERE bu.batch_id = ? AND bu.tenant_id = ?
+        AND bu.status != 'removed'
+        ORDER BY u.block, u.floor, u.unit_number
+    """, [batch_id, tenant_id])
+    units = [dict(r) for r in units_raw]
+
+    excl_count_map = {}
+    if units:
+        el_ids = list(set(u['exclusion_list_id'] for u in units if u.get('exclusion_list_id')))
+        if el_ids:
+            el_ph = ','.join(['?'] * len(el_ids))
+            el_rows = query_db(f"""
+                SELECT exclusion_list_id, COUNT(*) as cnt
+                FROM exclusion_list_item
+                WHERE exclusion_list_id IN ({el_ph})
+                GROUP BY exclusion_list_id
+            """, el_ids)
+            excl_count_map = {r['exclusion_list_id']: r['cnt'] for r in el_rows}
+
+    for u in units:
+        el_count = excl_count_map.get(u.get('exclusion_list_id'), 0)
+        ground_only_skips = 3 if (u.get('floor') or 0) > 0 else 0
+        u['excl_count'] = el_count + ground_only_skips
+        u['checkpoints_c1'] = 509 - u['excl_count']
+
+    if units:
+        d_unit_ids = list(set(u['unit_id'] for u in units))
+        d_ph = ','.join(['?'] * len(d_unit_ids))
+        d_rows = query_db(f"""
+            SELECT unit_id, raised_cycle_number, cleared_cycle_number, status, COUNT(*) as cnt
+            FROM defect
+            WHERE tenant_id = ? AND unit_id IN ({d_ph})
+            GROUP BY unit_id, raised_cycle_number, cleared_cycle_number, status
+        """, [tenant_id] + d_unit_ids)
+        d_cn_map = {u['unit_id']: (u.get('cycle_number') or 1) for u in units}
+        d_map = {}
+        for dr in d_rows:
+            d_uid = dr['unit_id']
+            d_cn = d_cn_map.get(d_uid, 1)
+            if d_uid not in d_map:
+                d_map[d_uid] = {'defect_bfwd': 0, 'defect_cleared': 0, 'defect_new': 0, 'defect_open': 0}
+            d_rcn = dr['raised_cycle_number'] or 1
+            d_ccn = dr['cleared_cycle_number']
+            if d_rcn < d_cn:
+                d_map[d_uid]['defect_bfwd'] += dr['cnt']
+            if d_rcn == d_cn:
+                d_map[d_uid]['defect_new'] += dr['cnt']
+            if d_ccn == d_cn:
+                d_map[d_uid]['defect_cleared'] += dr['cnt']
+            if dr['status'] == 'open':
+                d_map[d_uid]['defect_open'] += dr['cnt']
+        for u in units:
+            u.update(d_map.get(u['unit_id'], {'defect_bfwd': 0, 'defect_cleared': 0, 'defect_new': 0, 'defect_open': 0}))
+
+    for u in units:
+        cn = u.get('cycle_number') or 1
+        u['checkpoints'] = u['defect_bfwd'] if cn > 1 else u['checkpoints_c1']
+
+    inspection_ids = [u.get('inspection_id') for u in units if u.get('inspection_id')]
+    items_map = {}
+    if inspection_ids:
+        ii_ph = ','.join(['?'] * len(inspection_ids))
+        ii_rows = query_db(f"""
+            SELECT inspection_id,
+                   SUM(CASE WHEN status NOT IN ('pending', 'skipped') THEN 1 ELSE 0 END) AS items_marked
+            FROM inspection_item
+            WHERE inspection_id IN ({ii_ph})
+            GROUP BY inspection_id
+        """, inspection_ids)
+        items_map = {r['inspection_id']: (r['items_marked'] or 0) for r in ii_rows}
+    for u in units:
+        u['items_marked'] = items_map.get(u.get('inspection_id'), 0)
+
+    inspectors_raw = query_db("""
+        SELECT id, name FROM inspector
+        WHERE tenant_id = ? AND role IN ('inspector', 'team_lead', 'office_admin') AND active = 1
+        ORDER BY name
+    """, [tenant_id])
+    inspectors = [dict(r) for r in inspectors_raw]
+
+    excl_lists = query_db(
+        "SELECT id, name, item_count FROM exclusion_list WHERE tenant_id = ? AND is_active = 1 ORDER BY created_at DESC",
+        [tenant_id])
+    excl_lists = [dict(r) for r in excl_lists]
+
+    refreshed_at = datetime.now().strftime('%H:%M:%S')
+
+    return render_template('batches/_detail_tbody.html',
+                           batch={'id': batch_id},
+                           units=units,
+                           inspectors=inspectors,
+                           excl_lists=excl_lists,
+                           floor_labels=FLOOR_LABELS,
+                           refreshed_at=refreshed_at)
 
 
 @batches_bp.route('/<batch_id>/assign-exclusion-list', methods=['POST'])
