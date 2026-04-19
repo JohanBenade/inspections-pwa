@@ -389,7 +389,7 @@ def detail(batch_id):
                 d_map[d_uid]['defect_cleared'] += dr['cnt']
             if dr['status'] == 'open':
                 d_map[d_uid]['defect_open'] += dr['cnt']
-            if dr.get('addressed_cycle_number') == d_cn:
+            if dr['addressed_cycle_number'] == d_cn:
                 d_map[d_uid]['defect_addressed'] += dr['cnt']
 
         for u in units:
@@ -541,7 +541,7 @@ def detail_data(batch_id):
                 d_map[d_uid]['defect_cleared'] += dr['cnt']
             if dr['status'] == 'open':
                 d_map[d_uid]['defect_open'] += dr['cnt']
-            if dr.get('addressed_cycle_number') == d_cn:
+            if dr['addressed_cycle_number'] == d_cn:
                 d_map[d_uid]['defect_addressed'] += dr['cnt']
         for u in units:
             u.update(d_map.get(u['unit_id'], {'defect_bfwd': 0, 'defect_cleared': 0, 'defect_new': 0, 'defect_open': 0, 'defect_addressed': 0}))
