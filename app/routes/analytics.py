@@ -4293,6 +4293,7 @@ def _build_audit_data_dict():
     # Get all inspections with unit and defect data
     rows = [dict(r) for r in query_db("""
         SELECT i.inspector_name, i.inspection_date, i.started_at, i.submitted_at,
+               i.paused_at, i.total_paused_seconds,
                i.status AS insp_status, i.id AS inspection_id, i.cycle_number,
                u.id AS unit_id, u.unit_number, u.block, u.floor,
                COUNT(d.id) AS defect_count
@@ -4320,10 +4321,20 @@ def _build_audit_data_dict():
         'certified': ('Certified', '#D1FAE5', '#065F46'),
     }
 
-    def calc_duration(started, submitted):
-        """Calculate duration string from timestamps."""
-        if not started or not submitted:
+    def calc_duration(started, submitted, total_paused_seconds=0, paused_at=None):
+        """Calculate duration string from timestamps.
+
+        Pause-aware: if paused_at is provided (inspection currently paused),
+        the end time is capped at paused_at. total_paused_seconds is subtracted
+        from the elapsed seconds.
+        """
+        if not started:
             return 'N/A'
+        # If currently paused, use paused_at as the effective end
+        effective_end = paused_at if paused_at else submitted
+        if not effective_end:
+            return 'N/A'
+        submitted = effective_end  # downstream parsing uses this variable
         try:
             from datetime import datetime
             # Handle various timestamp formats
@@ -4342,7 +4353,10 @@ def _build_audit_data_dict():
             if not s or not e:
                 return 'N/A'
             diff = e - s
-            total_mins = int(diff.total_seconds() / 60)
+            total_secs = diff.total_seconds() - (total_paused_seconds or 0)
+            if total_secs < 0:
+                total_secs = 0
+            total_mins = int(total_secs / 60)
             if total_mins < 2:
                 return 'N/A'  # Import artifacts where started==submitted
             if total_mins < 60:

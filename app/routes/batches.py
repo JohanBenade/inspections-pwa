@@ -320,6 +320,7 @@ def detail(batch_id):
             bu.cycle_id, u.id AS unit_id, u.unit_number, u.block, u.floor,
             (SELECT cycle_number FROM inspection_cycle WHERE id = bu.cycle_id) AS cycle_number,
             i.id AS inspection_id, i.status AS inspection_status, i.started_at, i.submitted_at,
+            i.paused_at, i.total_paused_seconds,
             COALESCE(insp.name, i.inspector_name) AS inspector_name,
             bu.exclusion_list_id
         FROM batch_unit bu
@@ -352,7 +353,12 @@ def detail(batch_id):
         u['excl_count'] = el_count + ground_only_skips
         u['checkpoints_c1'] = 509 - u['excl_count']
         u['started_iso'] = u.get('started_at')
-        u['duration_minutes'] = _minutes_between(u.get('started_at'), u.get('submitted_at'))
+        u['is_paused'] = (u.get('inspection_status') == 'paused')
+        u['paused_at_iso'] = u.get('paused_at') if u['is_paused'] else None
+        u['duration_minutes'] = _minutes_between(
+            u.get('started_at'), u.get('submitted_at'),
+            total_paused_seconds=u.get('total_paused_seconds') or 0,
+            paused_at_iso=u['paused_at_iso'])
 
     # --- Defect ledger columns (B/fwd, Cleared, New, Open) ---
     if units:
@@ -468,6 +474,7 @@ def detail_data(batch_id):
             bu.cycle_id, u.id AS unit_id, u.unit_number, u.block, u.floor,
             (SELECT cycle_number FROM inspection_cycle WHERE id = bu.cycle_id) AS cycle_number,
             i.id AS inspection_id, i.status AS inspection_status, i.started_at, i.submitted_at,
+            i.paused_at, i.total_paused_seconds,
             COALESCE(insp.name, i.inspector_name) AS inspector_name,
             bu.exclusion_list_id
         FROM batch_unit bu
@@ -499,7 +506,12 @@ def detail_data(batch_id):
         u['excl_count'] = el_count + ground_only_skips
         u['checkpoints_c1'] = 509 - u['excl_count']
         u['started_iso'] = u.get('started_at')
-        u['duration_minutes'] = _minutes_between(u.get('started_at'), u.get('submitted_at'))
+        u['is_paused'] = (u.get('inspection_status') == 'paused')
+        u['paused_at_iso'] = u.get('paused_at') if u['is_paused'] else None
+        u['duration_minutes'] = _minutes_between(
+            u.get('started_at'), u.get('submitted_at'),
+            total_paused_seconds=u.get('total_paused_seconds') or 0,
+            paused_at_iso=u['paused_at_iso'])
 
     if units:
         d_unit_ids = list(set(u['unit_id'] for u in units))
@@ -1232,13 +1244,28 @@ def _parse_iso(ts):
         return None
 
 
-def _minutes_between(start_iso, end_iso):
-    """Calculate whole minutes between two ISO timestamp strings."""
+def _minutes_between(start_iso, end_iso, total_paused_seconds=0, paused_at_iso=None):
+    """Calculate whole minutes between two ISO timestamp strings.
+
+    If paused_at_iso is provided (inspection currently paused), the end time is
+    capped at paused_at instead of end_iso. total_paused_seconds (accumulated
+    pause time across all prior pauses) is subtracted from the elapsed seconds.
+
+    Backward compatible: callers that don't pass the new kwargs get identical
+    behaviour to the pre-pause implementation.
+    """
     start = _parse_iso(start_iso)
-    end = _parse_iso(end_iso)
-    if not start or not end:
+    if not start:
         return None
-    secs = (end - start).total_seconds()
+    if paused_at_iso:
+        end = _parse_iso(paused_at_iso)
+    else:
+        end = _parse_iso(end_iso)
+    if not end:
+        return None
+    secs = (end - start).total_seconds() - (total_paused_seconds or 0)
+    if secs < 0:
+        secs = 0
     return max(1, int(secs / 60))
 
 
@@ -1270,6 +1297,7 @@ def _build_live_monitor_data(batch_id, tenant_id):
                COALESCE(i.status, 'not_started') AS insp_status,
                i.id AS inspection_id,
                i.started_at, i.submitted_at,
+               i.paused_at, i.total_paused_seconds,
                (SELECT cycle_number FROM inspection_cycle WHERE id = bu.cycle_id) AS cycle_number,
                COALESCE(insp.name, i.inspector_name) AS inspector_name
         FROM batch_unit bu
@@ -1553,7 +1581,12 @@ def _build_live_monitor_data(batch_id, tenant_id):
         u['ended_iso'] = timing.get('ended') or u.get('submitted_at')
         u['start_time'] = _format_local_hhmm(u['started_iso'])
         u['end_time'] = _format_local_hhmm(u['ended_iso'])
-        u['duration_minutes'] = _minutes_between(u['started_iso'], u['ended_iso'])
+        u['is_paused'] = (u.get('insp_status') == 'paused')
+        u['paused_at_iso'] = u.get('paused_at') if u['is_paused'] else None
+        u['duration_minutes'] = _minutes_between(
+            u['started_iso'], u['ended_iso'],
+            total_paused_seconds=u.get('total_paused_seconds') or 0,
+            paused_at_iso=u['paused_at_iso'])
 
         # Last activity + idle detection
         u['last_activity'] = last_activity_map.get(u['inspection_id'])
