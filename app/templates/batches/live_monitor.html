@@ -404,9 +404,10 @@ function updateUnitTimers() {
         if (isNaN(started.getTime())) return;
         var diff = Math.floor((Date.now() - started.getTime()) / 1000);
         if (diff < 0) diff = 0;
-        var m = Math.floor(diff / 60);
+        var h = Math.floor(diff / 3600);
+        var m = Math.floor((diff % 3600) / 60);
         var s = diff % 60;
-        el.textContent = m + 'm ' + String(s).padStart(2,'0') + 's';
+        el.textContent = h + ':' + String(m).padStart(2,'0') + ':' + String(s).padStart(2,'0');
     });
 }
 setInterval(updateUnitTimers, 1000);
