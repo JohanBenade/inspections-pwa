@@ -1605,3 +1605,292 @@ def live_monitor_data(batch_id):
     return resp
 
 
+
+# ============================================================
+# B1 — Reset / Reassign Unit
+# Allows team lead / admin to reset a unit's inspection progress
+# and/or reassign it to a different inspector.
+# 4 options via action + markings radios:
+#   A: Unassign + Reset        -> batch_unit.status='pending', delete inspection
+#   B: Unassign + Keep         -> batch_unit.status='paused',  inspection.status='paused'
+#   C: Reassign + Reset        -> batch_unit.status='pending', delete inspection, set inspector
+#   D: Reassign + Keep         -> batch_unit.status='inspecting', inspection.status='in_progress', set inspector
+# ============================================================
+
+def _get_reset_target_inspectors(tenant_id):
+    """Inspectors eligible for reassignment: inspector, team_lead, admin roles."""
+    return query_db("""
+        SELECT id, name, role
+        FROM inspector
+        WHERE tenant_id = ?
+          AND role IN ('inspector', 'team_lead', 'admin')
+        ORDER BY
+            CASE role
+                WHEN 'team_lead' THEN 1
+                WHEN 'admin' THEN 2
+                WHEN 'inspector' THEN 3
+            END,
+            name
+    """, [tenant_id])
+
+
+def _get_unit_defect_counts(unit_id, cycle_id, cycle_number, tenant_id):
+    """Count defects that would be affected by a reset on this inspection cycle.
+    Returns dict: {'raised_this_cycle': N, 'cleared_this_cycle': N}"""
+    raised = query_db("""
+        SELECT COUNT(*) AS c FROM defect
+        WHERE unit_id = ? AND raised_cycle_id = ? AND tenant_id = ?
+    """, [unit_id, cycle_id, tenant_id], one=True)
+    cleared = query_db("""
+        SELECT COUNT(*) AS c FROM defect
+        WHERE unit_id = ? AND cleared_cycle_id = ? AND tenant_id = ?
+    """, [unit_id, cycle_id, tenant_id], one=True)
+    return {
+        'raised_this_cycle': raised['c'] if raised else 0,
+        'cleared_this_cycle': cleared['c'] if cleared else 0,
+    }
+
+
+@batches_bp.route('/<batch_id>/reset-confirm/<bu_id>')
+@require_team_lead
+def reset_confirm(batch_id, bu_id):
+    """HTMX partial: modal row for reset/reassign."""
+    tenant_id = session['tenant_id']
+
+    bu = query_db("""
+        SELECT bu.id AS bu_id, bu.status AS bu_status,
+               bu.inspector_id, bu.unit_id, bu.cycle_id,
+               u.unit_number, u.block, u.floor,
+               ic.cycle_number
+        FROM batch_unit bu
+        JOIN unit u ON bu.unit_id = u.id
+        LEFT JOIN inspection_cycle ic ON bu.cycle_id = ic.id
+        WHERE bu.id = ? AND bu.batch_id = ? AND bu.tenant_id = ?
+    """, [bu_id, batch_id, tenant_id], one=True)
+    if not bu:
+        abort(404)
+    bu = dict(bu)
+
+    # Current inspection (if any)
+    insp = query_db("""
+        SELECT id, status, inspector_id, inspector_name
+        FROM inspection
+        WHERE unit_id = ? AND cycle_id = ? AND tenant_id = ?
+    """, [bu['unit_id'], bu['cycle_id'], tenant_id], one=True)
+    insp = dict(insp) if insp else None
+
+    # Defect counts
+    defect_counts = _get_unit_defect_counts(
+        bu['unit_id'], bu['cycle_id'], bu['cycle_number'], tenant_id)
+
+    # Eligible inspectors for reassign
+    inspectors = _get_reset_target_inspectors(tenant_id)
+    inspectors = [dict(i) for i in inspectors]
+
+    return render_template('batches/_reset_confirm.html',
+                           batch_id=batch_id, bu=bu, insp=insp,
+                           defect_counts=defect_counts,
+                           inspectors=inspectors)
+
+
+@batches_bp.route('/<batch_id>/reset-unit', methods=['POST'])
+@require_team_lead
+def reset_unit(batch_id):
+    """Execute reset/reassign action.
+    Form fields:
+      bu_id                  (required)
+      action                 (required) 'unassign' | 'reassign'
+      new_inspector_id       (required if action=reassign)
+      markings               (required) 'reset' | 'keep'
+      reason                 (required, >=3 chars)
+      confirm_destructive    (required if reset chosen AND defects exist, value='yes')
+    """
+    tenant_id = session['tenant_id']
+    user_id = session['user_id']
+    user_name = session['user_name']
+    db = get_db()
+    now = datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S')
+
+    bu_id = request.form.get('bu_id', '').strip()
+    action = request.form.get('action', '').strip()
+    new_inspector_id = request.form.get('new_inspector_id', '').strip() or None
+    markings = request.form.get('markings', '').strip()
+    reason = request.form.get('reason', '').strip()
+    confirm_destructive = request.form.get('confirm_destructive', '').strip() == 'yes'
+
+    # --- Validate ---
+    if not bu_id or action not in ('unassign', 'reassign') or markings not in ('reset', 'keep'):
+        return 'Missing or invalid fields.', 400
+    if not reason or len(reason) < 3:
+        return 'Reason is required (min 3 characters).', 400
+    if action == 'reassign' and not new_inspector_id:
+        return 'Inspector required for reassign.', 400
+
+    bu = query_db("""
+        SELECT bu.*, u.unit_number, ic.cycle_number
+        FROM batch_unit bu
+        JOIN unit u ON bu.unit_id = u.id
+        LEFT JOIN inspection_cycle ic ON bu.cycle_id = ic.id
+        WHERE bu.id = ? AND bu.batch_id = ? AND bu.tenant_id = ?
+    """, [bu_id, batch_id, tenant_id], one=True)
+    if not bu:
+        abort(404)
+    bu = dict(bu)
+
+    # --- Preconditions ---
+    allowed_bu_statuses = ('pending', 'not_started', 'assigned', 'in_progress', 'inspecting', 'paused')
+    if bu['status'] not in allowed_bu_statuses:
+        return 'Cannot reset a unit that is already submitted, reviewed, approved, or signed off.', 400
+    if bu.get('removed_at'):
+        return 'Cannot reset a removed unit.', 400
+
+    # Validate new inspector if reassigning
+    if action == 'reassign':
+        insp_row = query_db("""
+            SELECT id, name, role FROM inspector
+            WHERE id = ? AND tenant_id = ?
+              AND role IN ('inspector', 'team_lead', 'admin')
+        """, [new_inspector_id, tenant_id], one=True)
+        if not insp_row:
+            return 'Invalid inspector.', 400
+        insp_row = dict(insp_row)
+        new_inspector_name = insp_row['name']
+    else:
+        new_inspector_name = None
+
+    # Current inspection (if any)
+    insp = query_db("""
+        SELECT id, status, inspector_id, inspector_name
+        FROM inspection
+        WHERE unit_id = ? AND cycle_id = ? AND tenant_id = ?
+    """, [bu['unit_id'], bu['cycle_id'], tenant_id], one=True)
+    insp = dict(insp) if insp else None
+
+    # Defect counts
+    defect_counts = _get_unit_defect_counts(
+        bu['unit_id'], bu['cycle_id'], bu['cycle_number'], tenant_id)
+    has_destructive_defects = (markings == 'reset' and
+        (defect_counts['raised_this_cycle'] > 0 or defect_counts['cleared_this_cycle'] > 0))
+
+    if has_destructive_defects and not confirm_destructive:
+        return 'Destructive action requires explicit confirmation.', 400
+
+    # --- Execute ---
+    # Determine outcome
+    if action == 'unassign' and markings == 'reset':
+        outcome = 'A'
+        new_bu_status = 'pending'
+        new_bu_inspector = None
+        delete_inspection = True
+        set_inspection_paused = False
+    elif action == 'unassign' and markings == 'keep':
+        outcome = 'B'
+        new_bu_status = 'paused'
+        new_bu_inspector = None
+        delete_inspection = False
+        set_inspection_paused = True
+    elif action == 'reassign' and markings == 'reset':
+        outcome = 'C'
+        new_bu_status = 'pending'
+        new_bu_inspector = new_inspector_id
+        delete_inspection = True
+        set_inspection_paused = False
+    else:  # reassign + keep
+        outcome = 'D'
+        new_bu_status = 'inspecting'
+        new_bu_inspector = new_inspector_id
+        delete_inspection = False
+        set_inspection_paused = False
+
+    # Collect before-state for audit
+    before_state = {
+        'bu_status': bu['status'],
+        'bu_inspector_id': bu.get('inspector_id'),
+        'inspection_id': insp['id'] if insp else None,
+        'inspection_status': insp['status'] if insp else None,
+        'inspection_inspector_id': insp['inspector_id'] if insp else None,
+        'defects_raised_this_cycle': defect_counts['raised_this_cycle'],
+        'defects_cleared_this_cycle': defect_counts['cleared_this_cycle'],
+    }
+
+    # Handle defects on reset
+    if markings == 'reset':
+        # Reopen defects cleared during this cycle (de-snag rollback)
+        db.execute("""
+            UPDATE defect
+            SET status = 'open',
+                cleared_cycle_id = NULL,
+                cleared_cycle_number = NULL,
+                cleared_at = NULL,
+                clearance_note = NULL,
+                addressed_cycle_number = NULL,
+                updated_at = ?
+            WHERE unit_id = ? AND cleared_cycle_id = ? AND tenant_id = ?
+        """, [now, bu['unit_id'], bu['cycle_id'], tenant_id])
+        # Delete defects raised during this cycle (C1 rollback)
+        db.execute("""
+            DELETE FROM defect
+            WHERE unit_id = ? AND raised_cycle_id = ? AND tenant_id = ?
+        """, [bu['unit_id'], bu['cycle_id'], tenant_id])
+
+    # Handle inspection record
+    if delete_inspection and insp:
+        db.execute("DELETE FROM inspection_item WHERE inspection_id = ?", [insp['id']])
+        db.execute("DELETE FROM inspection WHERE id = ?", [insp['id']])
+    elif set_inspection_paused and insp:
+        db.execute("""
+            UPDATE inspection
+            SET status = 'paused',
+                inspector_id = '',
+                inspector_name = '',
+                updated_at = ?
+            WHERE id = ?
+        """, [now, insp['id']])
+    elif outcome == 'D' and insp:
+        # Reassign + keep: swap inspector on inspection record
+        db.execute("""
+            UPDATE inspection
+            SET status = 'in_progress',
+                inspector_id = ?,
+                inspector_name = ?,
+                updated_at = ?
+            WHERE id = ?
+        """, [new_inspector_id, new_inspector_name, now, insp['id']])
+
+    # Update batch_unit
+    db.execute("""
+        UPDATE batch_unit
+        SET status = ?, inspector_id = ?
+        WHERE id = ?
+    """, [new_bu_status, new_bu_inspector, bu_id])
+
+    # Audit log
+    after_state = {
+        'bu_status': new_bu_status,
+        'bu_inspector_id': new_bu_inspector,
+        'outcome': outcome,
+        'new_inspector_name': new_inspector_name,
+    }
+    import json
+    metadata = json.dumps({
+        'batch_id': batch_id,
+        'unit_number': bu['unit_number'],
+        'cycle_number': bu['cycle_number'],
+        'outcome': outcome,
+        'action': action,
+        'markings': markings,
+        'reason': reason,
+        'before': before_state,
+        'after': after_state,
+    })
+    log_audit(db, tenant_id, 'batch_unit', bu_id,
+              'reset_' + outcome.lower(),
+              old_value=bu['status'],
+              new_value=new_bu_status,
+              user_id=user_id, user_name=user_name,
+              metadata=metadata)
+
+    db.commit()
+
+    flash('Unit {} reset (outcome {}).'.format(bu['unit_number'], outcome), 'success')
+    return redirect(url_for('batches.detail', batch_id=batch_id))
