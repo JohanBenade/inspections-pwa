@@ -267,5 +267,14 @@ window.revertInline = function(el) {
     cell.querySelector('.inline-edit-control').classList.add('hidden');
     cell.querySelector('.inline-edit-label').classList.remove('hidden');
 };
+
+// Escape closes open confirm modal (reset or remove) by clicking its Cancel link
+document.addEventListener('keydown', function(e) {
+    if (e.key !== 'Escape') return;
+    var openModal = document.querySelector('#detail-tbody tr.bg-amber-50, #detail-tbody tr.bg-red-50');
+    if (!openModal) return;
+    var cancel = openModal.querySelector('a[href*="batches"]');
+    if (cancel) cancel.click();
+});
 </script>
 {% endblock %}
