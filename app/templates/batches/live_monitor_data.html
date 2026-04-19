@@ -120,7 +120,11 @@
                 {% if u.start_time %}
                 <div class="unit-timing">
                     <span class="timing-item">Start <span class="timing-value">{{ u.start_time }}</span></span>
+                    {% if u.is_paused and u.duration_minutes %}
+                    <span class="timing-item">Duration <span class="timing-value" style="color: #C8963E;" title="Paused">&#9208; {{ u.duration_minutes // 60 }}:{{ '%02d' % (u.duration_minutes % 60) }}</span></span>
+                    {% else %}
                     <span class="timing-item">Duration <span class="timing-value unit-elapsed {% if u.is_idle %}idle-timer{% endif %}" data-unit-started="{{ u.started_iso }}">--:--</span></span>
+                    {% endif %}
                 </div>
                 {% endif %}
             </div>

@@ -398,6 +398,8 @@ updateBatchElapsed();
 /* === Unit Elapsed Timers (in-progress units) === */
 function updateUnitTimers() {
     document.querySelectorAll('[data-unit-started]').forEach(function(el) {
+        // Defensive: skip if this element or any ancestor is marked paused
+        if (el.closest('[data-paused]')) return;
         var ts = el.getAttribute('data-unit-started');
         if (!ts) return;
         var started = new Date(ts);

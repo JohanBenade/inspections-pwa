@@ -283,6 +283,9 @@ window.revertInline = function(el) {
 // Live tick for Inspecting units' Duration cell (H:MM format)
 function updateUnitTimers() {
     document.querySelectorAll('.unit-elapsed[data-unit-started]').forEach(function(el) {
+        // Skip rows whose cell is marked paused (frozen time, no tick)
+        var cell = el.closest('td[data-paused]');
+        if (cell) return;
         var ts = el.getAttribute('data-unit-started');
         if (!ts) return;
         var started = new Date(ts);

@@ -59,8 +59,10 @@
         {% endif %}
     </td>
 
-    <td class="px-4 py-3 whitespace-nowrap text-xs tabular-nums" data-duration="{{ u.duration_minutes or 0 }}">
-        {% if u.bu_status == 'in_progress' and u.started_iso %}
+    <td class="px-4 py-3 whitespace-nowrap text-xs tabular-nums" data-duration="{{ u.duration_minutes or 0 }}"{% if u.bu_status == 'paused' %} data-paused="1"{% endif %}>
+        {% if u.bu_status == 'paused' and u.duration_minutes %}
+        <span class="text-yellow-700 font-medium" title="Paused">&#9208; {{ u.duration_minutes // 60 }}:{{ '%02d' % (u.duration_minutes % 60) }}</span>
+        {% elif u.bu_status == 'in_progress' and u.started_iso %}
         <span class="unit-elapsed text-blue-700 font-medium" data-unit-started="{{ u.started_iso }}">&ndash;:&ndash;&ndash;</span>
         {% elif u.duration_minutes and u.bu_status in ('submitted', 'reviewed', 'pending_followup', 'approved', 'certified', 'closed', 'signed') %}
         <span class="text-gray-700">{{ u.duration_minutes // 60 }}:{{ '%02d' % (u.duration_minutes % 60) }}</span>
