@@ -1854,6 +1854,24 @@ def reset_unit(batch_id):
     if delete_inspection and insp:
         db.execute("DELETE FROM inspection_item WHERE inspection_id = ?", [insp['id']])
         db.execute("DELETE FROM inspection WHERE id = ?", [insp['id']])
+        # Outcome C (reassign + reset): create fresh inspection for new inspector
+        # so the unit appears on their /my-inspections home page.
+        # Outcome A (unassign + reset): no inspector yet, so no inspection row
+        # is created here — the existing assignment dropdown will create one
+        # when an inspector is next assigned.
+        if outcome == 'C':
+            import uuid
+            new_insp_id = uuid.uuid4().hex[:8]
+            today = now.split(' ')[0]
+            db.execute("""INSERT INTO inspection
+                (id, tenant_id, unit_id, cycle_id, inspector_id, inspector_name,
+                 status, inspection_date, cycle_number, exclusion_list_id,
+                 created_at, updated_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                [new_insp_id, tenant_id, bu['unit_id'], bu['cycle_id'],
+                 new_inspector_id, new_inspector_name,
+                 'not_started', today, bu['cycle_number'],
+                 bu.get('exclusion_list_id'), now, now])
     elif set_inspection_paused and insp:
         db.execute("""
             UPDATE inspection
