@@ -1161,6 +1161,7 @@ def remove_unit(batch_id):
 
     # Clean up not_started inspection + CUA
     if insp and insp['status'] == 'not_started':
+        db.execute("DELETE FROM inspection_defect WHERE inspection_id = ?", [insp['id']])
         db.execute("DELETE FROM inspection_item WHERE inspection_id = ?", [insp['id']])
         db.execute("DELETE FROM inspection WHERE id = ?", [insp['id']])
         db.execute(
@@ -2034,6 +2035,7 @@ def reset_unit(batch_id):
 
     # Handle inspection record
     if delete_inspection and insp:
+        db.execute("DELETE FROM inspection_defect WHERE inspection_id = ?", [insp['id']])
         db.execute("DELETE FROM inspection_item WHERE inspection_id = ?", [insp['id']])
         db.execute("DELETE FROM inspection WHERE id = ?", [insp['id']])
         # Outcome C (reassign + reset): create fresh inspection for new inspector
