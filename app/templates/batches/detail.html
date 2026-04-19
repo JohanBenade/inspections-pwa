@@ -17,31 +17,27 @@
         </p>
     </div>
     {%- set s = batch.status -%}
-
     <div class="flex items-center gap-2">
-    <a href="{{ url_for('batches.edit_batch', batch_id=batch.id) }}" class="px-3 py-1.5 text-xs font-semibold rounded bg-blue-50 text-blue-600 border border-blue-200 hover:bg-blue-100">Edit</a>
-    <a href="{{ url_for('batches.live_monitor', batch_id=batch.id) }}" class="px-3 py-1.5 text-xs font-semibold rounded bg-gray-800 text-amber-400 hover:bg-gray-700">Live Monitor</a>
-    <a href="{{ url_for('approvals.defects_tracker', batch_id=batch.id) }}" class="px-3 py-1.5 text-xs font-semibold rounded bg-gray-800 text-emerald-400 hover:bg-gray-700">Defects Tracker</a>
-
-
-
-    {%- if s == 'open' %}
-    <span class="px-2.5 py-1 text-xs font-semibold rounded-full bg-gray-100 text-gray-600">Open</span>
-    {%- elif s == 'in_progress' %}
-    <span class="px-2.5 py-1 text-xs font-semibold rounded-full bg-blue-100 text-blue-700">In Progress</span>
-    {%- elif s == 'submitted' %}
-    <span class="px-2.5 py-1 text-xs font-semibold rounded-full bg-purple-100 text-purple-700">Submitted</span>
-    {%- elif s == 'review' %}
-    <span class="px-2.5 py-1 text-xs font-semibold rounded-full bg-purple-100 text-purple-700">Review</span>
-    {%- elif s == 'approved' %}
-    <span class="px-2.5 py-1 text-xs font-semibold rounded-full bg-indigo-100 text-indigo-700">Approved</span>
-    {%- elif s == 'signed_off' %}
-    <span class="px-2.5 py-1 text-xs font-semibold rounded-full bg-teal-100 text-teal-700">Signed Off</span>
-    {%- elif s == 'pushed' %}
-    <span class="px-2.5 py-1 text-xs font-semibold rounded-full bg-emerald-100 text-emerald-700">Pushed</span>
-    {%- elif s == 'complete' %}
-    <span class="px-2.5 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-700">Complete</span>
-    {%- endif %}
+        <a href="{{ url_for('batches.edit_batch', batch_id=batch.id) }}" class="px-3 py-1.5 text-xs font-semibold rounded bg-blue-50 text-blue-600 border border-blue-200 hover:bg-blue-100">Edit</a>
+        <a href="{{ url_for('batches.live_monitor', batch_id=batch.id) }}" class="px-3 py-1.5 text-xs font-semibold rounded bg-gray-800 text-amber-400 hover:bg-gray-700">Live Monitor</a>
+        <a href="{{ url_for('approvals.defects_tracker', batch_id=batch.id) }}" class="px-3 py-1.5 text-xs font-semibold rounded bg-gray-800 text-emerald-400 hover:bg-gray-700">Defects Tracker</a>
+        {%- if s == 'open' %}
+        <span class="px-2.5 py-1 text-xs font-semibold rounded-full bg-gray-100 text-gray-600">Open</span>
+        {%- elif s == 'in_progress' %}
+        <span class="px-2.5 py-1 text-xs font-semibold rounded-full bg-blue-100 text-blue-700">In Progress</span>
+        {%- elif s == 'submitted' %}
+        <span class="px-2.5 py-1 text-xs font-semibold rounded-full bg-purple-100 text-purple-700">Submitted</span>
+        {%- elif s == 'review' %}
+        <span class="px-2.5 py-1 text-xs font-semibold rounded-full bg-purple-100 text-purple-700">Review</span>
+        {%- elif s == 'approved' %}
+        <span class="px-2.5 py-1 text-xs font-semibold rounded-full bg-indigo-100 text-indigo-700">Approved</span>
+        {%- elif s == 'signed_off' %}
+        <span class="px-2.5 py-1 text-xs font-semibold rounded-full bg-teal-100 text-teal-700">Signed Off</span>
+        {%- elif s == 'pushed' %}
+        <span class="px-2.5 py-1 text-xs font-semibold rounded-full bg-emerald-100 text-emerald-700">Pushed</span>
+        {%- elif s == 'complete' %}
+        <span class="px-2.5 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-700">Complete</span>
+        {%- endif %}
     </div>
 </div>
 
@@ -65,128 +61,38 @@
     </form>
 </div>
 
+<div class="flex items-center justify-end gap-3 mb-2">
+    <button type="button"
+            class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded bg-gray-100 text-gray-700 border border-gray-200 hover:bg-gray-200"
+            hx-get="{{ url_for('batches.detail_data', batch_id=batch.id) }}"
+            hx-target="#detail-tbody"
+            hx-swap="innerHTML"
+            hx-indicator="#refresh-indicator">
+        <span>&#8635;</span>
+        <span>Refresh</span>
+    </button>
+    <span class="text-xs text-gray-400">Updated <span id="refreshed-at">{{ refreshed_at }}</span></span>
+    <span id="refresh-indicator" class="htmx-indicator text-xs text-gray-500">Loading&hellip;</span>
+</div>
+
 <div class="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
     <table class="w-full text-sm">
         <thead class="bg-gray-50 border-b border-gray-200">
             <tr>
                 <th class="px-4 py-3 text-left font-medium text-gray-600 cursor-pointer select-none" data-sort="unit" onclick="sortTable(this, event)">Unit <span class="sort-arrow text-gray-400"></span></th>
-                <th class="px-4 py-3 text-left font-medium text-gray-600 hidden sm:table-cell cursor-pointer select-none" data-sort="block" onclick="sortTable(this, event)">Block / Floor <span class="sort-arrow text-gray-400"></span></th>
-                <th class="px-4 py-3 text-left font-medium text-gray-600 cursor-pointer select-none" data-sort="round" onclick="sortTable(this, event)">Round <span class="sort-arrow text-gray-400"></span></th>
-                <th class="px-2 py-3 text-right font-medium text-gray-500 text-xs hidden lg:table-cell">Excluded</th>
-                <th class="px-2 py-3 text-right font-medium text-gray-500 text-xs hidden lg:table-cell cursor-pointer select-none" data-sort="scope" onclick="sortTable(this, event)">Scope <span class="sort-arrow text-gray-400"></span></th>
-                <th class="px-2 py-3 text-right font-medium text-gray-500 text-xs hidden lg:table-cell">B/fwd</th>
-                <th class="px-2 py-3 text-right font-medium text-gray-500 text-xs hidden lg:table-cell">Cleared</th>
-                <th class="px-2 py-3 text-right font-medium text-gray-500 text-xs hidden lg:table-cell">New</th>
-                <th class="px-2 py-3 text-right font-medium text-gray-500 text-xs hidden lg:table-cell">Open</th>
+                <th class="px-4 py-3 text-left font-medium text-gray-600 cursor-pointer select-none" data-sort="block" onclick="sortTable(this, event)">Location <span class="sort-arrow text-gray-400"></span></th>
+                <th class="px-4 py-3 text-left font-medium text-gray-600">Progress</th>
                 <th class="px-4 py-3 text-left font-medium text-gray-600 cursor-pointer select-none" data-sort="status" onclick="sortTable(this, event)">Status <span class="sort-arrow text-gray-400"></span></th>
                 <th class="px-4 py-3 text-left font-medium text-gray-600 cursor-pointer select-none" data-sort="inspector" onclick="sortTable(this, event)">Inspector <span class="sort-arrow text-gray-400"></span></th>
-                <th class="px-4 py-3 text-left font-medium text-gray-600 hidden md:table-cell">Excl. List</th>
+                <th class="px-4 py-3 text-left font-medium text-gray-600">Excl. List</th>
                 <th class="px-4 py-3 w-8"></th>
             </tr>
         </thead>
-        <tbody class="divide-y divide-gray-100">
-            {% for u in units %}
-            <tr id="row-{{ u.bu_id }}" class="hover:bg-gray-50" data-unit="{{ u.unit_number }}" data-block="{{ u.block }}{{ u.floor }}" data-round="{{ u.cycle_number }}" data-scope="{{ u.checkpoints }}" data-inspector="{{ u.inspector_name or 'zzz' }}" data-status="{{ u.bu_status }}">
-                <td class="px-4 py-3 font-medium text-gray-800">
-                    {{ u.unit_number }}
-                    <span class="sm:hidden text-xs text-gray-400 block">
-                        {{ u.block }} {{ floor_labels.get(u.floor, u.floor) }}
-                    </span>
-                </td>
-                <td class="px-4 py-3 text-gray-500 hidden sm:table-cell">
-                    {{ u.block }} {{ floor_labels.get(u.floor, u.floor) }}
-                </td>
-                <td class="px-4 py-3">
-                    {% if u.cycle_number and u.cycle_number > 1 %}
-                    <span class="px-2 py-0.5 text-xs font-semibold rounded-full bg-amber-100 text-amber-700">
-                        C{{ u.cycle_number }}
-                    </span>
-                    {% else %}
-                    <span class="text-gray-500">C{{ u.cycle_number }}</span>
-                    {% endif %}
-                </td>
-                <td class="px-2 py-3 text-right text-xs tabular-nums hidden lg:table-cell {% if not u.excl_count %}text-gray-300{% endif %}">{% if u.floor and u.floor > 0 and u.excl_count %}{{ u.excl_count - 3 }}+3{% else %}{{ u.excl_count }}{% endif %}</td>
-                <td class="px-2 py-3 text-right text-xs tabular-nums hidden lg:table-cell">{{ u.checkpoints }}</td>
-                <td class="px-2 py-3 text-right text-xs tabular-nums hidden lg:table-cell {% if not u.defect_bfwd %}text-gray-300{% endif %}">{{ u.defect_bfwd }}</td>
-                <td class="px-2 py-3 text-right text-xs tabular-nums hidden lg:table-cell {% if u.defect_cleared %}text-green-600{% else %}text-gray-300{% endif %}">{{ u.defect_cleared }}</td>
-                <td class="px-2 py-3 text-right text-xs tabular-nums hidden lg:table-cell {% if not u.defect_new %}text-gray-300{% endif %}">{{ u.defect_new }}</td>
-                <td class="px-2 py-3 text-right text-xs tabular-nums hidden lg:table-cell font-medium {% if u.defect_open %}text-red-600{% elif (u.defect_bfwd + u.defect_new) %}text-green-600{% else %}text-gray-300{% endif %}">{{ u.defect_open }}</td>
-                <td class="px-4 py-3" id="unit-status-{{ u.bu_id }}">
-                    {% if u.bu_status == "not_started" and u.inspector_id and u.inspector_id != "TBD" %}
-                    <span class="text-xs text-blue-600">Assigned</span>
-                    {% elif u.bu_status == "not_started" %}
-                    <span class="text-xs text-gray-400">Pending</span>
-                    {% elif u.bu_status == "in_progress" %}
-                    <span class="text-xs text-blue-700 font-medium">Inspecting</span>
-                    {% elif u.bu_status == "submitted" %}
-                    <span class="text-xs text-purple-600">Submitted</span>
-                    {% elif u.bu_status == "reviewed" %}
-                    <span class="text-xs text-indigo-600">Reviewed</span>
-                    {% elif u.bu_status in ("pending_followup", "approved") %}
-                    <span class="text-xs text-green-600">Approved</span>
-                    {% elif u.bu_status in ("certified", "closed") %}
-                    <span class="text-xs text-green-700 font-medium">Certified</span>
-                    {% else %}
-                    <span class="text-xs text-gray-400">{{ u.bu_status }}</span>
-                    {% endif %}
-                </td>
-                <td class="px-4 py-3" id="assign-{{ u.bu_id }}">
-                    <select name="inspector_id"
-                            class="text-xs border border-gray-200 rounded px-2 py-1.5 w-full max-w-[160px] tap-target"
-                            hx-post="{{ url_for('batches.assign_inspector', batch_id=batch.id) }}"
-                            hx-vals='{"bu_id": "{{ u.bu_id }}"}'
-                            hx-target="#status-{{ u.bu_id }}"
-                            hx-swap="innerHTML">
-                        <option value="">-- Select --</option>
-                        {% for insp in inspectors %}
-                        <option value="{{ insp.id }}"
-                            {% if u.inspector_id == insp.id %}selected{% endif %}>
-                            {{ insp.name }}
-                        </option>
-                        {% endfor %}
-                    </select>
-                    <span id="status-{{ u.bu_id }}" class="ml-1"></span>
-                </td>
-                <td class="px-4 py-3 hidden md:table-cell" id="excl-assign-{{ u.bu_id }}">
-                    <select class="text-xs border border-gray-200 rounded px-2 py-1.5 w-full max-w-[180px]"
-                            hx-post="{{ url_for('batches.assign_exclusion_list', batch_id=batch.id) }}"
-                            hx-vals='{"bu_id": "{{ u.bu_id }}"}'
-                            hx-target="#excl-status-{{ u.bu_id }}"
-                            hx-swap="innerHTML"
-                            name="exclusion_list_id">
-                        <option value="">-- None --</option>
-                        {% for el in excl_lists %}
-                        <option value="{{ el.id }}" {% if u.exclusion_list_id == el.id %}selected{% endif %}>
-                            {{ el.name[:30] }}{% if el.name|length > 30 %}...{% endif %} ({{ el.item_count }})
-                        </option>
-                        {% endfor %}
-                    </select>
-                    <span id="excl-status-{{ u.bu_id }}" class="text-xs"></span>
-                </td>
-                <td class="px-4 py-2 text-center">
-                    {% if batch.status in ('open', 'in_progress') and (u.inspector_id and u.inspector_id != 'TBD' or u.bu_status in ('in_progress', 'inspecting', 'paused', 'submitted', 'reviewed')) %}
-                    <button type="button"
-                            class="text-gray-400 hover:text-gray-700 text-lg leading-none px-2 py-1 mr-1"
-                            title="Manage unit"
-                            hx-get="{{ url_for('batches.reset_confirm', batch_id=batch.id, bu_id=u.bu_id) }}"
-                            hx-target="#row-{{ u.bu_id }}"
-                            hx-swap="outerHTML">&#8943;</button>
-                    {% endif %}
-                    {% if batch.status in ('open', 'in_progress') and u.bu_status in ('not_started', 'pending', 'assigned') %}
-                    <button type="button"
-                            class="text-red-400 hover:text-red-600 text-lg leading-none px-2 py-1"
-                            title="Remove from batch"
-                            hx-get="{{ url_for('batches.remove_confirm', batch_id=batch.id, bu_id=u.bu_id) }}"
-                            hx-target="#row-{{ u.bu_id }}"
-                            hx-swap="outerHTML">&times;</button>
-                    {% endif %}
-                </td>
-            </tr>
-            {% endfor %}
+        <tbody id="detail-tbody" class="divide-y divide-gray-100">
+            {% include 'batches/_detail_tbody.html' %}
         </tbody>
     </table>
 </div>
-<p class="text-xs text-gray-400 mt-2 ml-1">* Upper floor units exclude 3 additional burglar bar items (ground only), shown as +3.</p>
 {% else %}
 <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-8 text-center">
     <p class="text-gray-400">No units in this batch.</p>
@@ -214,14 +120,14 @@
 <div class="mt-6 bg-white rounded-lg shadow-sm border border-gray-200 p-4">
     <h3 class="text-sm font-semibold text-gray-700 mb-3">Add Units</h3>
     <form method="POST" action="{{ url_for('batches.add_units', batch_id=batch.id) }}" class="space-y-3">
-        <textarea name="units" rows="2"
-                  id="add-unit-input"
+        <textarea name="units" rows="2" id="add-unit-input"
                   class="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm font-mono focus:ring-2 focus:ring-primary focus:border-primary"
                   placeholder="e.g. 130, 131, 132"></textarea>
         <div id="add-preview" class="hidden text-sm"></div>
         <button type="submit" class="px-4 py-2 bg-primary text-white rounded-lg text-sm font-medium hover:bg-opacity-90 tap-target">Add Units</button>
     </form>
 </div>
+
 <script>
 (function(){
     var ta = document.getElementById('add-unit-input');
@@ -248,71 +154,107 @@
 })();
 </script>
 
-
 <script>
 (function(){
     var sorts = [];
-    window.sortTable = function(th, evt) {
-        var key = th.dataset.sort;
-        var tbody = document.querySelector('table tbody');
-        var rows = Array.from(tbody.querySelectorAll('tr[data-unit]'));
-        if (!evt.shiftKey) {
-            // Primary sort - reset
-            var existing = sorts.find(function(s){return s.key===key});
-            if (existing) {
-                existing.dir = existing.dir === 'asc' ? 'desc' : 'asc';
-                sorts = [existing];
-            } else {
-                sorts = [{key:key, dir:'asc'}];
-            }
-        } else {
-            // Secondary sort
-            var idx = sorts.findIndex(function(s){return s.key===key});
-            if (idx >= 0) {
-                sorts[idx].dir = sorts[idx].dir === 'asc' ? 'desc' : 'asc';
-            } else {
-                sorts.push({key:key, dir:'asc'});
-            }
-        }
-        rows.sort(function(a,b){
-            for (var i=0; i<sorts.length; i++) {
-                var s = sorts[i];
-                var av = a.dataset[s.key] || '';
-                var bv = b.dataset[s.key] || '';
-                var cmp;
-                if (s.key === 'status') {
-                    var so = {in_progress:1, submitted:2, reviewed:3, pending_followup:4, approved:4, certified:5, closed:5, signed:5};
+    function compareRows(a, b) {
+        for (var i = 0; i < sorts.length; i++) {
+            var s = sorts[i];
+            var av = a.dataset[s.key] || '';
+            var bv = b.dataset[s.key] || '';
+            var cmp;
+            if (s.key === 'status') {
+                var aIsPending = (av === 'not_started' && (a.dataset.inspector === '' || a.dataset.inspector === 'zzz' || a.dataset.inspector === 'TBD'));
+                var bIsPending = (bv === 'not_started' && (b.dataset.inspector === '' || b.dataset.inspector === 'zzz' || b.dataset.inspector === 'TBD'));
+                if (aIsPending && !bIsPending) return 1;
+                if (!aIsPending && bIsPending) return -1;
+                if (aIsPending && bIsPending) { cmp = 0; }
+                else {
+                    var so = {not_started:0, in_progress:1, paused:1, submitted:2, reviewed:3, pending_followup:4, approved:4, certified:5, closed:5, signed:5};
                     cmp = (so[av]||99) - (so[bv]||99);
                     if (s.dir === 'desc') cmp = -cmp;
-                } else if (s.key === 'inspector') {
-                    var ae = (av === '' || av === 'zzz' || av === 'TBD');
-                    var be = (bv === '' || bv === 'zzz' || bv === 'TBD');
-                    if (ae && !be) return 1;
-                    if (!ae && be) return -1;
-                    if (ae && be) { cmp = 0; }
-                    else { cmp = av.localeCompare(bv); if (s.dir === 'desc') cmp = -cmp; }
-                } else if (s.key === 'unit' || s.key === 'round' || s.key === 'scope') {
-                    cmp = parseInt(av,10) - parseInt(bv,10);
-                    if (s.dir === 'desc') cmp = -cmp;
-                } else {
-                    cmp = av.localeCompare(bv);
-                    if (s.dir === 'desc') cmp = -cmp;
                 }
-                if (cmp !== 0) return cmp;
+            } else if (s.key === 'inspector') {
+                var ae = (av === '' || av === 'zzz' || av === 'TBD');
+                var be = (bv === '' || bv === 'zzz' || bv === 'TBD');
+                if (ae && !be) return 1;
+                if (!ae && be) return -1;
+                if (ae && be) { cmp = 0; }
+                else { cmp = av.localeCompare(bv); if (s.dir === 'desc') cmp = -cmp; }
+            } else if (s.key === 'unit' || s.key === 'round') {
+                cmp = parseInt(av, 10) - parseInt(bv, 10);
+                if (s.dir === 'desc') cmp = -cmp;
+            } else {
+                cmp = av.localeCompare(bv);
+                if (s.dir === 'desc') cmp = -cmp;
             }
-            return 0;
-        });
-        rows.forEach(function(r){tbody.appendChild(r)});
-        // Update arrows
-        document.querySelectorAll('.sort-arrow').forEach(function(el){el.textContent=''});
-        sorts.forEach(function(s,i){
+            if (cmp !== 0) return cmp;
+        }
+        return 0;
+    }
+    function applySortsToRows() {
+        var tbody = document.getElementById('detail-tbody');
+        if (!tbody || sorts.length === 0) return;
+        var rows = Array.from(tbody.querySelectorAll('tr[data-unit]'));
+        rows.sort(compareRows);
+        rows.forEach(function(r){ tbody.appendChild(r); });
+    }
+    function updateArrows() {
+        document.querySelectorAll('.sort-arrow').forEach(function(el){ el.textContent = ''; });
+        sorts.forEach(function(s, i) {
             var arrow = s.dir === 'asc' ? '\u25B2' : '\u25BC';
-            var prefix = sorts.length > 1 ? (i+1)+'' : '';
-            var el = document.querySelector('[data-sort="'+s.key+'"] .sort-arrow');
+            var prefix = sorts.length > 1 ? (i+1) + '' : '';
+            var el = document.querySelector('[data-sort="' + s.key + '"] .sort-arrow');
             if (el) el.textContent = prefix + arrow;
         });
+    }
+    window.sortTable = function(th, evt) {
+        var key = th.dataset.sort;
+        if (!evt.shiftKey) {
+            var existing = sorts.find(function(s){ return s.key === key; });
+            if (existing) { existing.dir = existing.dir === 'asc' ? 'desc' : 'asc'; sorts = [existing]; }
+            else { sorts = [{ key: key, dir: 'asc' }]; }
+        } else {
+            var idx = sorts.findIndex(function(s){ return s.key === key; });
+            if (idx >= 0) { sorts[idx].dir = sorts[idx].dir === 'asc' ? 'desc' : 'asc'; }
+            else { sorts.push({ key: key, dir: 'asc' }); }
+        }
+        applySortsToRows();
+        updateArrows();
     };
+    document.body.addEventListener('htmx:afterSwap', function(evt) {
+        if (evt.detail && evt.detail.target && evt.detail.target.id === 'detail-tbody') {
+            applySortsToRows();
+        }
+    });
 })();
 </script>
-    <a href="{{ url_for('batches.list_batches') }}"
+
+<script>
+window.editInline = function(label, evt) {
+    var cell = label.closest('.inline-edit-cell');
+    var sel = cell.querySelector('.inline-edit-control');
+    label.classList.add('hidden');
+    sel.classList.remove('hidden');
+    sel.focus();
+};
+window.commitInline = function(sel, kind) {
+    var cell = sel.closest('.inline-edit-cell');
+    var label = cell.querySelector('.inline-edit-label');
+    var text = sel.options[sel.selectedIndex].text;
+    var val = sel.value;
+    var emptyLabel = (kind === 'excl') ? '\u2014 None \u2014' : '\u2014 Select \u2014';
+    var inner = val
+        ? '<span>' + text.replace(/</g, '&lt;') + '</span>'
+        : '<span class="text-gray-400">' + emptyLabel + '</span>';
+    label.innerHTML = inner + ' <span class="text-gray-400 ml-1.5 text-xs">\u270E</span>';
+    window.revertInline(sel);
+};
+window.revertInline = function(el) {
+    var cell = el.closest('.inline-edit-cell');
+    if (!cell) return;
+    cell.querySelector('.inline-edit-control').classList.add('hidden');
+    cell.querySelector('.inline-edit-label').classList.remove('hidden');
+};
+</script>
 {% endblock %}

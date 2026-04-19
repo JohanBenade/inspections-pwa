@@ -453,11 +453,12 @@ def detail_data(batch_id):
     """HTMX partial: refreshable tbody + timestamp for batch detail."""
     tenant_id = session['tenant_id']
 
-    batch_check = query_db(
-        "SELECT id FROM inspection_batch WHERE id = ? AND tenant_id = ?",
+    batch_row = query_db(
+        "SELECT * FROM inspection_batch WHERE id = ? AND tenant_id = ?",
         [batch_id, tenant_id], one=True)
-    if not batch_check:
+    if not batch_row:
         abort(404)
+    batch = dict(batch_row)
 
     units_raw = query_db("""
         SELECT bu.id AS bu_id, COALESCE(i.status, 'not_started') AS bu_status,
@@ -559,12 +560,13 @@ def detail_data(batch_id):
     refreshed_at = datetime.now().strftime('%H:%M:%S')
 
     return render_template('batches/_detail_tbody.html',
-                           batch={'id': batch_id},
+                           batch=batch,
                            units=units,
                            inspectors=inspectors,
                            excl_lists=excl_lists,
                            floor_labels=FLOOR_LABELS,
-                           refreshed_at=refreshed_at)
+                           refreshed_at=refreshed_at,
+                           is_partial_refresh=True)
 
 
 @batches_bp.route('/<batch_id>/assign-exclusion-list', methods=['POST'])

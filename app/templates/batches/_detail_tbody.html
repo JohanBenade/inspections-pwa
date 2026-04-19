@@ -1,0 +1,161 @@
+{% for u in units %}
+<tr id="row-{{ u.bu_id }}" class="hover:bg-gray-50"
+    data-unit="{{ u.unit_number }}"
+    data-block="{{ u.block }}{{ u.floor }}"
+    data-round="{{ u.cycle_number }}"
+    data-inspector="{{ u.inspector_name or 'zzz' }}"
+    data-status="{{ u.bu_status }}">
+
+    <td class="px-4 py-3 font-medium text-gray-800 whitespace-nowrap">{{ u.unit_number }}</td>
+
+    <td class="px-4 py-3 text-sm text-gray-600 whitespace-nowrap">
+        Block {{ u.block }} &middot; {{ floor_labels.get(u.floor, u.floor) }}
+        {% if u.cycle_number and u.cycle_number > 1 %}
+        &middot; <span class="px-1.5 py-0.5 text-xs font-semibold rounded bg-amber-100 text-amber-700">C{{ u.cycle_number }}</span>
+        {% else %}
+        &middot; <span class="text-gray-400 text-xs">C{{ u.cycle_number or 1 }}</span>
+        {% endif %}
+    </td>
+
+    <td class="px-4 py-3">
+        {% set cn = u.cycle_number or 1 %}
+        {% if u.bu_status == 'not_started' %}
+            <span class="text-gray-300">&mdash;</span>
+        {% elif u.bu_status in ('in_progress', 'paused') %}
+            {% set pct = ((u.items_marked * 100 / u.checkpoints)|round|int) if u.checkpoints else 0 %}
+            <div class="flex items-center gap-2">
+                <span class="tabular-nums text-xs font-medium whitespace-nowrap">{{ u.items_marked }}/{{ u.checkpoints }}</span>
+                <div class="bg-gray-100 rounded-full h-1.5 w-16 overflow-hidden flex-shrink-0">
+                    <div class="{% if u.bu_status == 'paused' %}bg-yellow-500{% else %}bg-blue-500{% endif %} h-full rounded-full" style="width: {{ pct }}%"></div>
+                </div>
+                {% if cn > 1 and u.defect_open %}
+                <span class="text-xs text-red-600 whitespace-nowrap">&middot; {{ u.defect_open }} open</span>
+                {% elif cn == 1 and u.defect_new %}
+                <span class="text-xs text-red-600 whitespace-nowrap">&middot; {{ u.defect_new }} def</span>
+                {% endif %}
+            </div>
+        {% elif u.bu_status in ('submitted', 'reviewed', 'pending_followup', 'approved') %}
+            {% if cn > 1 %}
+            <span class="text-xs whitespace-nowrap">
+                <span class="font-medium {% if u.defect_bfwd and u.defect_cleared >= u.defect_bfwd %}text-green-600{% endif %}">{{ u.defect_cleared }}</span> of {{ u.defect_bfwd }} B/fwd cleared
+                {% if u.defect_open %} &middot; <span class="text-red-600 font-medium">{{ u.defect_open }} open</span>{% endif %}
+            </span>
+            {% else %}
+                {% if u.defect_new %}
+                <span class="text-xs text-red-600 font-medium">{{ u.defect_new }} def raised</span>
+                {% else %}
+                <span class="text-xs text-green-600">No defects</span>
+                {% endif %}
+            {% endif %}
+        {% elif u.bu_status in ('certified', 'closed', 'signed') %}
+            {% if cn > 1 %}
+            <span class="text-xs text-green-700 font-medium whitespace-nowrap">&#10003; {{ u.defect_cleared }} cleared</span>
+            {% else %}
+            <span class="text-xs text-green-700 font-medium whitespace-nowrap">&#10003; {{ u.defect_new }} def</span>
+            {% endif %}
+        {% else %}
+        <span class="text-gray-400 text-xs">{{ u.bu_status }}</span>
+        {% endif %}
+    </td>
+
+    <td class="px-4 py-3 whitespace-nowrap" id="unit-status-{{ u.bu_id }}">
+        {% if u.bu_status == "not_started" and u.inspector_id and u.inspector_id != "TBD" %}
+        <span class="text-xs text-blue-600">Assigned</span>
+        {% elif u.bu_status == "not_started" %}
+        <span class="text-xs text-gray-400">Pending</span>
+        {% elif u.bu_status == "in_progress" %}
+        <span class="text-xs text-blue-700 font-medium">Inspecting</span>
+        {% elif u.bu_status == "paused" %}
+        <span class="text-xs text-yellow-600 font-medium">Paused</span>
+        {% elif u.bu_status == "submitted" %}
+        <span class="text-xs text-purple-600">Submitted</span>
+        {% elif u.bu_status == "reviewed" %}
+        <span class="text-xs text-indigo-600">Reviewed</span>
+        {% elif u.bu_status in ("pending_followup", "approved") %}
+        <span class="text-xs text-green-600">Approved</span>
+        {% elif u.bu_status in ("certified", "closed", "signed") %}
+        <span class="text-xs text-green-700 font-medium">Certified</span>
+        {% else %}
+        <span class="text-xs text-gray-400">{{ u.bu_status }}</span>
+        {% endif %}
+    </td>
+
+    <td class="px-4 py-3" id="assign-{{ u.bu_id }}">
+        <div class="inline-edit-cell">
+            <span class="inline-edit-label cursor-pointer hover:text-gray-900 text-sm inline-flex items-center" onclick="editInline(this, event)">
+                {% if u.inspector_name and u.inspector_id and u.inspector_id != 'TBD' %}
+                <span>{{ u.inspector_name }}</span>
+                {% else %}
+                <span class="text-gray-400">&mdash; Select &mdash;</span>
+                {% endif %}
+                <span class="text-gray-400 ml-1.5 text-xs">&#9998;</span>
+            </span>
+            <select name="inspector_id"
+                    class="inline-edit-control hidden text-xs border border-gray-300 rounded px-2 py-1.5 w-full max-w-[200px]"
+                    hx-post="{{ url_for('batches.assign_inspector', batch_id=batch.id) }}"
+                    hx-vals='{"bu_id": "{{ u.bu_id }}"}'
+                    hx-target="#status-{{ u.bu_id }}"
+                    hx-swap="innerHTML"
+                    onchange="commitInline(this, 'inspector')"
+                    onblur="revertInline(this)">
+                <option value="">-- Select --</option>
+                {% for insp in inspectors %}
+                <option value="{{ insp.id }}" {% if u.inspector_id == insp.id %}selected{% endif %}>{{ insp.name }}</option>
+                {% endfor %}
+            </select>
+            <span id="status-{{ u.bu_id }}" class="ml-1 text-xs"></span>
+        </div>
+    </td>
+
+    <td class="px-4 py-3" id="excl-assign-{{ u.bu_id }}">
+        <div class="inline-edit-cell">
+            {% set current_excl = excl_lists|selectattr('id', 'equalto', u.exclusion_list_id)|first %}
+            <span class="inline-edit-label cursor-pointer hover:text-gray-900 text-sm inline-flex items-center" onclick="editInline(this, event)">
+                {% if current_excl %}
+                <span>{{ current_excl.name[:25] }}{% if current_excl.name|length > 25 %}&hellip;{% endif %}</span>
+                {% else %}
+                <span class="text-gray-400">&mdash; None &mdash;</span>
+                {% endif %}
+                <span class="text-gray-400 ml-1.5 text-xs">&#9998;</span>
+            </span>
+            <select name="exclusion_list_id"
+                    class="inline-edit-control hidden text-xs border border-gray-300 rounded px-2 py-1.5 w-full max-w-[220px]"
+                    hx-post="{{ url_for('batches.assign_exclusion_list', batch_id=batch.id) }}"
+                    hx-vals='{"bu_id": "{{ u.bu_id }}"}'
+                    hx-target="#excl-status-{{ u.bu_id }}"
+                    hx-swap="innerHTML"
+                    onchange="commitInline(this, 'excl')"
+                    onblur="revertInline(this)">
+                <option value="">-- None --</option>
+                {% for el in excl_lists %}
+                <option value="{{ el.id }}" {% if u.exclusion_list_id == el.id %}selected{% endif %}>{{ el.name[:30] }}{% if el.name|length > 30 %}...{% endif %} ({{ el.item_count }})</option>
+                {% endfor %}
+            </select>
+            <span id="excl-status-{{ u.bu_id }}" class="text-xs"></span>
+        </div>
+    </td>
+
+    <td class="px-2 py-2 text-center whitespace-nowrap">
+        {% if batch.status in ('open', 'in_progress') and (u.inspector_id and u.inspector_id != 'TBD' or u.bu_status in ('in_progress', 'inspecting', 'paused', 'submitted', 'reviewed')) %}
+        <button type="button"
+                class="text-gray-400 hover:text-gray-700 text-lg leading-none px-1 py-1"
+                title="Manage unit"
+                hx-get="{{ url_for('batches.reset_confirm', batch_id=batch.id, bu_id=u.bu_id) }}"
+                hx-target="#row-{{ u.bu_id }}"
+                hx-swap="outerHTML">&#8943;</button>
+        {% endif %}
+        {% if batch.status in ('open', 'in_progress') and u.bu_status in ('not_started', 'pending', 'assigned') %}
+        <button type="button"
+                class="text-red-400 hover:text-red-600 text-lg leading-none px-1 py-1"
+                title="Remove from batch"
+                hx-get="{{ url_for('batches.remove_confirm', batch_id=batch.id, bu_id=u.bu_id) }}"
+                hx-target="#row-{{ u.bu_id }}"
+                hx-swap="outerHTML">&times;</button>
+        {% endif %}
+    </td>
+</tr>
+{% endfor %}
+
+{% if is_partial_refresh %}
+<span id="refreshed-at" hx-swap-oob="true">{{ refreshed_at }}</span>
+{% endif %}
