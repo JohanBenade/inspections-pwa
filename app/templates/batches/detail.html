@@ -7,6 +7,17 @@
 </div>
 {% endblock %}
 
+{% block extra_head %}
+<style>
+  /* When a confirm modal is open (reset/remove), dim + disable sibling rows */
+  #detail-tbody:has(tr.bg-amber-50, tr.bg-red-50) > tr:not(.bg-amber-50):not(.bg-red-50) {
+    opacity: 0.4;
+    pointer-events: none;
+    transition: opacity 0.15s ease-out;
+  }
+</style>
+{% endblock %}
+
 {% block content %}
 <div class="flex justify-between items-start mb-6">
     <div>
