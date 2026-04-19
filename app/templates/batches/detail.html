@@ -164,7 +164,7 @@
                     <span id="excl-status-{{ u.bu_id }}" class="text-xs"></span>
                 </td>
                 <td class="px-4 py-2 text-center">
-                    {% if batch.status in ('open', 'in_progress') and u.bu_status in ('not_started', 'pending', 'assigned', 'in_progress', 'inspecting', 'paused') %}
+                    {% if batch.status in ('open', 'in_progress') and (u.inspector_id and u.inspector_id != 'TBD' or u.bu_status in ('in_progress', 'inspecting', 'paused', 'submitted', 'reviewed')) %}
                     <button type="button"
                             class="text-gray-400 hover:text-gray-700 text-lg leading-none px-2 py-1 mr-1"
                             title="Manage unit"
