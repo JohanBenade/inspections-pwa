@@ -365,11 +365,11 @@ def detail(batch_id):
         d_unit_ids = list(set(u['unit_id'] for u in units))
         d_ph = ','.join(['?'] * len(d_unit_ids))
         d_rows = query_db(f"""
-            SELECT unit_id, raised_cycle_number, cleared_cycle_number, status,
+            SELECT unit_id, raised_cycle_number, cleared_cycle_number, addressed_cycle_number, status,
                    COUNT(*) as cnt
             FROM defect
             WHERE tenant_id = ? AND unit_id IN ({d_ph})
-            GROUP BY unit_id, raised_cycle_number, cleared_cycle_number, status
+            GROUP BY unit_id, raised_cycle_number, cleared_cycle_number, addressed_cycle_number, status
         """, [tenant_id] + d_unit_ids)
 
         d_cn_map = {u['unit_id']: (u.get('cycle_number') or 1) for u in units}
@@ -378,7 +378,7 @@ def detail(batch_id):
             d_uid = dr['unit_id']
             d_cn = d_cn_map.get(d_uid, 1)
             if d_uid not in d_map:
-                d_map[d_uid] = {'defect_bfwd': 0, 'defect_cleared': 0, 'defect_new': 0, 'defect_open': 0}
+                d_map[d_uid] = {'defect_bfwd': 0, 'defect_cleared': 0, 'defect_new': 0, 'defect_open': 0, 'defect_addressed': 0}
             d_rcn = dr['raised_cycle_number'] or 1
             d_ccn = dr['cleared_cycle_number']
             if d_rcn < d_cn:
@@ -389,9 +389,11 @@ def detail(batch_id):
                 d_map[d_uid]['defect_cleared'] += dr['cnt']
             if dr['status'] == 'open':
                 d_map[d_uid]['defect_open'] += dr['cnt']
+            if dr.get('addressed_cycle_number') == d_cn:
+                d_map[d_uid]['defect_addressed'] += dr['cnt']
 
         for u in units:
-            u.update(d_map.get(u['unit_id'], {'defect_bfwd': 0, 'defect_cleared': 0, 'defect_new': 0, 'defect_open': 0}))
+            u.update(d_map.get(u['unit_id'], {'defect_bfwd': 0, 'defect_cleared': 0, 'defect_new': 0, 'defect_open': 0, 'defect_addressed': 0}))
 
     # Set checkpoints: C1 = items after exclusions, C2+ = b/fwd defects
     for u in units:
@@ -517,10 +519,10 @@ def detail_data(batch_id):
         d_unit_ids = list(set(u['unit_id'] for u in units))
         d_ph = ','.join(['?'] * len(d_unit_ids))
         d_rows = query_db(f"""
-            SELECT unit_id, raised_cycle_number, cleared_cycle_number, status, COUNT(*) as cnt
+            SELECT unit_id, raised_cycle_number, cleared_cycle_number, addressed_cycle_number, status, COUNT(*) as cnt
             FROM defect
             WHERE tenant_id = ? AND unit_id IN ({d_ph})
-            GROUP BY unit_id, raised_cycle_number, cleared_cycle_number, status
+            GROUP BY unit_id, raised_cycle_number, cleared_cycle_number, addressed_cycle_number, status
         """, [tenant_id] + d_unit_ids)
         d_cn_map = {u['unit_id']: (u.get('cycle_number') or 1) for u in units}
         d_map = {}
@@ -528,7 +530,7 @@ def detail_data(batch_id):
             d_uid = dr['unit_id']
             d_cn = d_cn_map.get(d_uid, 1)
             if d_uid not in d_map:
-                d_map[d_uid] = {'defect_bfwd': 0, 'defect_cleared': 0, 'defect_new': 0, 'defect_open': 0}
+                d_map[d_uid] = {'defect_bfwd': 0, 'defect_cleared': 0, 'defect_new': 0, 'defect_open': 0, 'defect_addressed': 0}
             d_rcn = dr['raised_cycle_number'] or 1
             d_ccn = dr['cleared_cycle_number']
             if d_rcn < d_cn:
@@ -539,8 +541,10 @@ def detail_data(batch_id):
                 d_map[d_uid]['defect_cleared'] += dr['cnt']
             if dr['status'] == 'open':
                 d_map[d_uid]['defect_open'] += dr['cnt']
+            if dr.get('addressed_cycle_number') == d_cn:
+                d_map[d_uid]['defect_addressed'] += dr['cnt']
         for u in units:
-            u.update(d_map.get(u['unit_id'], {'defect_bfwd': 0, 'defect_cleared': 0, 'defect_new': 0, 'defect_open': 0}))
+            u.update(d_map.get(u['unit_id'], {'defect_bfwd': 0, 'defect_cleared': 0, 'defect_new': 0, 'defect_open': 0, 'defect_addressed': 0}))
 
     for u in units:
         cn = u.get('cycle_number') or 1

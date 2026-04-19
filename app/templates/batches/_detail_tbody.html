@@ -23,9 +23,16 @@
         {% if u.bu_status == 'not_started' %}
             <span class="text-gray-300">&mdash;</span>
         {% elif u.bu_status in ('in_progress', 'paused') %}
-            {% set pct = ((u.items_marked * 100 / u.checkpoints)|round|int) if u.checkpoints else 0 %}
+            {% if cn > 1 %}
+                {% set num = u.defect_addressed or 0 %}
+                {% set den = u.defect_bfwd or 0 %}
+            {% else %}
+                {% set num = u.items_marked or 0 %}
+                {% set den = u.checkpoints or 0 %}
+            {% endif %}
+            {% set pct = ((num * 100 / den)|round|int) if den else 0 %}
             <div class="flex items-center gap-2">
-                <span class="tabular-nums text-xs font-medium whitespace-nowrap">{{ u.items_marked }}/{{ u.checkpoints }}</span>
+                <span class="tabular-nums text-xs font-medium whitespace-nowrap">{{ num }}/{{ den }}</span>
                 <div class="bg-gray-100 rounded-full h-1.5 w-16 overflow-hidden flex-shrink-0">
                     <div class="{% if u.bu_status == 'paused' %}bg-yellow-500{% else %}bg-blue-500{% endif %} h-full rounded-full" style="width: {{ pct }}%"></div>
                 </div>
