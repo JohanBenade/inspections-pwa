@@ -1829,7 +1829,7 @@ def reset_confirm(batch_id, bu_id):
     if insp:
         row = query_db("""
             SELECT COUNT(*) AS c FROM inspection_item
-            WHERE inspection_id = ? AND status != 'pending'
+            WHERE inspection_id = ? AND status NOT IN ('pending','skipped')
         """, [insp['id']], one=True)
         non_pending_items = row['c'] if row else 0
 
