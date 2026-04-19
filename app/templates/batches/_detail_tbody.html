@@ -4,7 +4,8 @@
     data-block="{{ u.block }}{{ u.floor }}"
     data-round="{{ u.cycle_number }}"
     data-inspector="{{ u.inspector_name or 'zzz' }}"
-    data-status="{{ u.bu_status }}">
+    data-status="{{ u.bu_status }}"
+    data-duration="{{ u.duration_minutes or 0 }}">
 
     <td class="px-4 py-3 font-medium text-gray-800 whitespace-nowrap">{{ u.unit_number }}</td>
 
@@ -55,6 +56,16 @@
             {% endif %}
         {% else %}
         <span class="text-gray-400 text-xs">{{ u.bu_status }}</span>
+        {% endif %}
+    </td>
+
+    <td class="px-4 py-3 whitespace-nowrap text-xs tabular-nums" data-duration="{{ u.duration_minutes or 0 }}">
+        {% if u.bu_status == 'in_progress' and u.started_iso %}
+        <span class="unit-elapsed text-blue-700 font-medium" data-unit-started="{{ u.started_iso }}">&ndash;:&ndash;&ndash;</span>
+        {% elif u.duration_minutes and u.bu_status in ('submitted', 'reviewed', 'pending_followup', 'approved', 'certified', 'closed', 'signed') %}
+        <span class="text-gray-700">{{ u.duration_minutes // 60 }}:{{ '%02d' % (u.duration_minutes % 60) }}</span>
+        {% else %}
+        <span class="text-gray-300">&mdash;</span>
         {% endif %}
     </td>
 

@@ -93,6 +93,7 @@
                 <th class="px-4 py-3 text-left font-medium text-gray-600 cursor-pointer select-none" data-sort="unit" onclick="sortTable(this, event)">Unit <span class="sort-arrow text-gray-400"></span></th>
                 <th class="px-4 py-3 text-left font-medium text-gray-600 cursor-pointer select-none" data-sort="block" onclick="sortTable(this, event)">Location <span class="sort-arrow text-gray-400"></span></th>
                 <th class="px-4 py-3 text-left font-medium text-gray-600">Progress</th>
+                <th class="px-4 py-3 text-left font-medium text-gray-600 cursor-pointer select-none" data-sort="duration" onclick="sortTable(this, event)">Duration <span class="sort-arrow text-gray-400"></span></th>
                 <th class="px-4 py-3 text-left font-medium text-gray-600 cursor-pointer select-none" data-sort="status" onclick="sortTable(this, event)">Status <span class="sort-arrow text-gray-400"></span></th>
                 <th class="px-4 py-3 text-left font-medium text-gray-600 cursor-pointer select-none" data-sort="inspector" onclick="sortTable(this, event)">Inspector <span class="sort-arrow text-gray-400"></span></th>
                 <th class="px-4 py-3 text-left font-medium text-gray-600">Excl. List</th>
@@ -185,6 +186,15 @@
                     cmp = (so[av]||99) - (so[bv]||99);
                     if (s.dir === 'desc') cmp = -cmp;
                 }
+            } else if (s.key === 'duration') {
+                var av_n = parseInt(av, 10) || 0;
+                var bv_n = parseInt(bv, 10) || 0;
+                var aEmpty = av_n === 0;
+                var bEmpty = bv_n === 0;
+                if (aEmpty && !bEmpty) return 1;
+                if (!aEmpty && bEmpty) return -1;
+                if (aEmpty && bEmpty) { cmp = 0; }
+                else { cmp = av_n - bv_n; if (s.dir === 'desc') cmp = -cmp; }
             } else if (s.key === 'inspector') {
                 var ae = (av === '' || av === 'zzz' || av === 'TBD');
                 var be = (bv === '' || bv === 'zzz' || bv === 'TBD');
@@ -267,5 +277,32 @@ window.revertInline = function(el) {
     cell.querySelector('.inline-edit-control').classList.add('hidden');
     cell.querySelector('.inline-edit-label').classList.remove('hidden');
 };
+</script>
+
+<script>
+// Live tick for Inspecting units' Duration cell (H:MM format)
+function updateUnitTimers() {
+    document.querySelectorAll('.unit-elapsed[data-unit-started]').forEach(function(el) {
+        var ts = el.getAttribute('data-unit-started');
+        if (!ts) return;
+        var started = new Date(ts);
+        if (isNaN(started.getTime())) return;
+        var diffMin = Math.floor((Date.now() - started.getTime()) / 60000);
+        if (diffMin < 0) diffMin = 0;
+        var h = Math.floor(diffMin / 60);
+        var m = diffMin % 60;
+        el.textContent = h + ':' + String(m).padStart(2, '0');
+        // Mirror live minutes onto parent <tr>'s data-duration for sort correctness
+        var tr = el.closest('tr[data-duration]');
+        if (tr) tr.setAttribute('data-duration', diffMin);
+    });
+}
+setInterval(updateUnitTimers, 1000);
+updateUnitTimers();
+document.body.addEventListener('htmx:afterSwap', function(evt) {
+    if (evt.detail && evt.detail.target && evt.detail.target.id === 'detail-tbody') {
+        updateUnitTimers();
+    }
+});
 </script>
 {% endblock %}

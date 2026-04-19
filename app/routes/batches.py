@@ -319,7 +319,7 @@ def detail(batch_id):
         SELECT bu.id AS bu_id, COALESCE(i.status, 'not_started') AS bu_status, COALESCE(bu.inspector_id, i.inspector_id) AS inspector_id,
             bu.cycle_id, u.id AS unit_id, u.unit_number, u.block, u.floor,
             (SELECT cycle_number FROM inspection_cycle WHERE id = bu.cycle_id) AS cycle_number,
-            i.id AS inspection_id, i.status AS inspection_status,
+            i.id AS inspection_id, i.status AS inspection_status, i.started_at, i.submitted_at,
             COALESCE(insp.name, i.inspector_name) AS inspector_name,
             bu.exclusion_list_id
         FROM batch_unit bu
@@ -351,6 +351,8 @@ def detail(batch_id):
         ground_only_skips = 3 if (u.get('floor') or 0) > 0 else 0
         u['excl_count'] = el_count + ground_only_skips
         u['checkpoints_c1'] = 509 - u['excl_count']
+        u['started_iso'] = u.get('started_at')
+        u['duration_minutes'] = _minutes_between(u.get('started_at'), u.get('submitted_at'))
 
     # --- Defect ledger columns (B/fwd, Cleared, New, Open) ---
     if units:
@@ -465,7 +467,7 @@ def detail_data(batch_id):
             COALESCE(bu.inspector_id, i.inspector_id) AS inspector_id,
             bu.cycle_id, u.id AS unit_id, u.unit_number, u.block, u.floor,
             (SELECT cycle_number FROM inspection_cycle WHERE id = bu.cycle_id) AS cycle_number,
-            i.id AS inspection_id, i.status AS inspection_status,
+            i.id AS inspection_id, i.status AS inspection_status, i.started_at, i.submitted_at,
             COALESCE(insp.name, i.inspector_name) AS inspector_name,
             bu.exclusion_list_id
         FROM batch_unit bu
@@ -496,6 +498,8 @@ def detail_data(batch_id):
         ground_only_skips = 3 if (u.get('floor') or 0) > 0 else 0
         u['excl_count'] = el_count + ground_only_skips
         u['checkpoints_c1'] = 509 - u['excl_count']
+        u['started_iso'] = u.get('started_at')
+        u['duration_minutes'] = _minutes_between(u.get('started_at'), u.get('submitted_at'))
 
     if units:
         d_unit_ids = list(set(u['unit_id'] for u in units))
