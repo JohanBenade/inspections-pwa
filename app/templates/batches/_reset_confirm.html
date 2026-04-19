@@ -3,37 +3,48 @@
         <form method="POST" action="{{ url_for('batches.reset_unit', batch_id=batch_id) }}">
             <input type="hidden" name="bu_id" value="{{ bu.bu_id }}">
 
-            <div class="flex items-center justify-between mb-3">
-                <div>
-                    <span class="text-sm font-semibold text-amber-800">Reset Unit {{ bu.unit_number }}</span>
-                    <span class="text-xs text-amber-700 ml-2">{{ bu.block }} · C{{ bu.cycle_number }}</span>
-                    {% if insp %}
-                    <span class="text-xs text-gray-500 ml-3">Current inspector: {{ insp.inspector_name or 'None' }}</span>
-                    {% endif %}
-                </div>
-                <a href="{{ url_for('batches.detail', batch_id=batch_id) }}"
-                   class="text-xs text-gray-500 hover:text-gray-700">Cancel</a>
+            <!-- Live heading reflects current selection -->
+            <div class="mb-4 pb-3 border-b border-amber-200">
+                <h3 id="reset-heading" class="text-base font-semibold text-amber-900 mb-1"></h3>
+                <p id="reset-sub" class="text-sm text-gray-600"></p>
+                <p class="text-xs text-gray-500 mt-1">
+                    {{ bu.block }} · Floor {{ bu.floor }} · C{{ bu.cycle_number }}
+                    {% if insp %}· Current inspector: <strong>{{ insp.inspector_name or 'None' }}</strong>{% endif %}
+                </p>
             </div>
 
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-3">
+            {% if not has_inspector and not has_captured_work %}
+            <div class="mb-4 p-3 bg-blue-50 border border-blue-200 rounded text-sm text-blue-800">
+                <strong>Nothing to manage yet.</strong> This unit has no inspector and no captured work.
+                Use the Inspector dropdown on the row to assign someone. You can still reassign via this dialog
+                if you'd like to pre-assign the right person now.
+            </div>
+            {% endif %}
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-4">
                 <!-- Action -->
                 <div>
-                    <label class="block text-xs font-semibold text-gray-700 mb-1">Action</label>
-                    <div class="space-y-1.5">
-                        <label class="flex items-center gap-2 text-sm">
-                            <input type="radio" name="action" value="unassign" checked
-                                   onchange="document.getElementById('inspector-select').disabled=true;">
+                    <label class="block text-xs font-semibold uppercase tracking-wide text-gray-500 mb-2">Action</label>
+                    <div class="space-y-2">
+                        <label class="flex items-center gap-2 text-sm {% if not has_inspector %}opacity-50{% endif %}"
+                               title="{% if not has_inspector %}No inspector to unassign{% endif %}">
+                            <input type="radio" name="action" value="unassign"
+                                   {% if not has_inspector %}disabled{% endif %}
+                                   {% if has_inspector %}checked{% endif %}
+                                   class="reset-radio">
                             <span>Unassign (clear inspector)</span>
                         </label>
                         <label class="flex items-center gap-2 text-sm">
                             <input type="radio" name="action" value="reassign"
-                                   onchange="document.getElementById('inspector-select').disabled=false;">
+                                   {% if not has_inspector %}checked{% endif %}
+                                   class="reset-radio">
                             <span>Reassign to:</span>
-                            <select id="inspector-select" name="new_inspector_id" disabled
+                            <select id="inspector-select" name="new_inspector_id"
+                                    {% if has_inspector %}disabled{% endif %}
                                     class="text-sm border border-gray-300 rounded px-2 py-1 ml-1">
                                 <option value="">-- Select inspector --</option>
                                 {% for insp_opt in inspectors %}
-                                <option value="{{ insp_opt.id }}">
+                                <option value="{{ insp_opt.id }}" data-name="{{ insp_opt.name }}">
                                     {{ insp_opt.name }} ({{ insp_opt.role }})
                                 </option>
                                 {% endfor %}
@@ -44,54 +55,139 @@
 
                 <!-- Markings -->
                 <div>
-                    <label class="block text-xs font-semibold text-gray-700 mb-1">Markings</label>
-                    <div class="space-y-1.5">
+                    <label class="block text-xs font-semibold uppercase tracking-wide text-gray-500 mb-2">Progress</label>
+                    <div class="space-y-2">
                         <label class="flex items-center gap-2 text-sm">
-                            <input type="radio" name="markings" value="reset" checked>
-                            <span>Reset (wipe all progress)</span>
+                            <input type="radio" name="markings" value="reset" checked class="reset-radio">
+                            <span>{% if has_captured_work %}Delete all captured work{% else %}Start clean{% endif %}</span>
                         </label>
-                        <label class="flex items-center gap-2 text-sm">
-                            <input type="radio" name="markings" value="keep">
-                            <span>Keep (preserve progress)</span>
+                        <label class="flex items-center gap-2 text-sm {% if not has_captured_work %}opacity-50{% endif %}"
+                               title="{% if not has_captured_work %}No captured work to keep{% endif %}">
+                            <input type="radio" name="markings" value="keep"
+                                   {% if not has_captured_work %}disabled{% endif %}
+                                   class="reset-radio">
+                            <span>Keep all captured work</span>
                         </label>
                     </div>
+                    {% if has_captured_work %}
+                    <p class="text-xs text-gray-500 mt-2">
+                        {{ non_pending_items }} item{{ 's' if non_pending_items != 1 else '' }} marked
+                        {% if defect_counts.raised_this_cycle or defect_counts.cleared_this_cycle %}
+                        · {{ defect_counts.raised_this_cycle }} defect{{ 's' if defect_counts.raised_this_cycle != 1 else '' }} raised
+                        {% if defect_counts.cleared_this_cycle %}· {{ defect_counts.cleared_this_cycle }} cleared{% endif %}
+                        {% endif %}
+                    </p>
+                    {% endif %}
                 </div>
             </div>
 
             {% if defect_counts.raised_this_cycle > 0 or defect_counts.cleared_this_cycle > 0 %}
-            <div class="mb-3 p-3 bg-red-50 border border-red-200 rounded">
-                <div class="text-xs font-semibold text-red-700 mb-1">Destructive action warning</div>
-                <div class="text-xs text-red-700 mb-2">
-                    Reset will affect existing defects on this cycle:
+            <div id="defect-warning" class="mb-4 p-3 bg-red-50 border border-red-200 rounded">
+                <div class="text-sm font-semibold text-red-800 mb-1">⚠ Destructive action</div>
+                <div class="text-sm text-red-800 mb-2">
+                    This will:
                     {% if defect_counts.raised_this_cycle > 0 %}
-                    <strong>{{ defect_counts.raised_this_cycle }}</strong> raised (will be deleted){% endif %}
-                    {% if defect_counts.raised_this_cycle > 0 and defect_counts.cleared_this_cycle > 0 %}, {% endif %}
+                    permanently delete <strong>{{ defect_counts.raised_this_cycle }}</strong> raised defect{{ 's' if defect_counts.raised_this_cycle != 1 else '' }} on this cycle{% endif %}
+                    {% if defect_counts.raised_this_cycle > 0 and defect_counts.cleared_this_cycle > 0 %}, and {% endif %}
                     {% if defect_counts.cleared_this_cycle > 0 %}
-                    <strong>{{ defect_counts.cleared_this_cycle }}</strong> cleared (will be reopened){% endif %}.
-                    <br>Does not apply if you pick "Keep".
+                    reopen <strong>{{ defect_counts.cleared_this_cycle }}</strong> cleared defect{{ 's' if defect_counts.cleared_this_cycle != 1 else '' }}{% endif %}.
+                    This cannot be undone. Earlier cycles are not affected.
                 </div>
-                <label class="flex items-center gap-2 text-xs">
+                <label class="flex items-center gap-2 text-sm">
                     <input type="checkbox" name="confirm_destructive" value="yes">
-                    <span class="text-red-700 font-medium">I understand and want to proceed</span>
+                    <span class="text-red-800 font-medium">I understand and want to proceed</span>
                 </label>
             </div>
             {% endif %}
 
-            <div class="mb-3">
-                <label class="block text-xs font-semibold text-gray-700 mb-1">Reason (required)</label>
+            <div class="mb-4">
+                <label class="block text-xs font-semibold uppercase tracking-wide text-gray-500 mb-2">Reason (required)</label>
                 <input type="text" name="reason" required minlength="3"
-                       placeholder="Why is this unit being reset?"
-                       class="text-sm border border-gray-300 rounded px-2 py-1.5 w-full">
+                       placeholder="Why is this unit being changed?"
+                       class="text-sm border border-gray-300 rounded px-3 py-2 w-full">
             </div>
 
-            <div class="flex items-center gap-2">
-                <button type="submit"
-                        class="px-4 py-2 text-xs font-semibold rounded bg-amber-600 text-white hover:bg-amber-700">
-                    Confirm Reset
+            <div class="flex items-center gap-3">
+                <button type="submit" id="reset-submit"
+                        class="px-4 py-2 rounded text-white text-left leading-tight">
+                    <div id="reset-submit-primary" class="text-sm font-semibold"></div>
+                    <div id="reset-submit-secondary" class="text-xs opacity-90 mt-0.5"></div>
                 </button>
                 <a href="{{ url_for('batches.detail', batch_id=batch_id) }}"
-                   class="px-3 py-1.5 text-xs text-gray-500 hover:text-gray-700">Cancel</a>
+                   class="px-3 py-2 text-sm text-gray-600 hover:text-gray-900 border border-gray-300 rounded">Cancel</a>
             </div>
         </form>
+
+        <script>
+        (function() {
+            var row = document.getElementById('row-{{ bu.bu_id }}');
+            if (!row) return;
+            var heading = row.querySelector('#reset-heading');
+            var sub = row.querySelector('#reset-sub');
+            var submitBtn = row.querySelector('#reset-submit');
+            var primary = row.querySelector('#reset-submit-primary');
+            var secondary = row.querySelector('#reset-submit-secondary');
+            var inspectorSelect = row.querySelector('#inspector-select');
+            var unitNumber = '{{ bu.unit_number }}';
+
+            function selectedName() {
+                if (!inspectorSelect) return '';
+                var opt = inspectorSelect.options[inspectorSelect.selectedIndex];
+                return opt && opt.value ? opt.getAttribute('data-name') : '';
+            }
+
+            function update() {
+                var actionEl = row.querySelector('input[name="action"]:checked');
+                var markingsEl = row.querySelector('input[name="markings"]:checked');
+                if (!actionEl || !markingsEl) return;
+                var action = actionEl.value;
+                var markings = markingsEl.value;
+                var name = selectedName();
+                var destructive = (markings === 'reset');
+
+                if (inspectorSelect) {
+                    inspectorSelect.disabled = (action !== 'reassign');
+                }
+
+                var h = '', s = '', pLine = '', sLine = '';
+                if (action === 'unassign' && markings === 'reset') {
+                    h = 'Unassign Unit ' + unitNumber + ' and delete this inspection?';
+                    s = "The inspector's marks and any defects raised this cycle will be deleted. Earlier cycles are not affected.";
+                    pLine = 'Unassign Unit ' + unitNumber;
+                    sLine = 'Deletes the current inspection';
+                } else if (action === 'unassign' && markings === 'keep') {
+                    h = 'Pause Unit ' + unitNumber + '?';
+                    s = 'The inspector is cleared but all captured work is kept. You can resume by assigning someone later.';
+                    pLine = 'Pause Unit ' + unitNumber;
+                    sLine = 'Keeps all captured work';
+                } else if (action === 'reassign' && markings === 'reset') {
+                    var to = name ? ' to ' + name : '';
+                    h = 'Reassign Unit ' + unitNumber + to + ' and start over?';
+                    s = "The previous inspector's marks and defects will be deleted. " + (name || 'The new inspector') + ' starts from a clean unit.';
+                    pLine = 'Reassign Unit ' + unitNumber + to;
+                    sLine = 'Deletes the current inspection';
+                } else {
+                    var to2 = name ? ' to ' + name : '';
+                    h = 'Hand Unit ' + unitNumber + to2 + ' over?';
+                    s = 'All existing progress is kept and shown as ' + (name || 'the new inspector') + "'s.";
+                    pLine = 'Hand over' + (name ? ' to ' + name : '');
+                    sLine = 'Keeps all captured work';
+                }
+                heading.textContent = h;
+                sub.textContent = s;
+                primary.textContent = pLine;
+                secondary.textContent = sLine;
+
+                submitBtn.className = 'px-4 py-2 rounded text-white text-left leading-tight ' +
+                    (destructive ? 'bg-red-600 hover:bg-red-700' : 'bg-amber-600 hover:bg-amber-700');
+            }
+
+            row.querySelectorAll('.reset-radio').forEach(function(el) {
+                el.addEventListener('change', update);
+            });
+            if (inspectorSelect) inspectorSelect.addEventListener('change', update);
+            update();
+        })();
+        </script>
     </td>
 </tr>

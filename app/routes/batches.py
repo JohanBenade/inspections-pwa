@@ -1683,6 +1683,20 @@ def reset_confirm(batch_id, bu_id):
     defect_counts = _get_unit_defect_counts(
         bu['unit_id'], bu['cycle_id'], bu['cycle_number'], tenant_id)
 
+    # Non-pending item count (what would be "kept" or "reset")
+    non_pending_items = 0
+    if insp:
+        row = query_db("""
+            SELECT COUNT(*) AS c FROM inspection_item
+            WHERE inspection_id = ? AND status != 'pending'
+        """, [insp['id']], one=True)
+        non_pending_items = row['c'] if row else 0
+
+    has_inspector = bool(bu.get('inspector_id'))
+    has_captured_work = (non_pending_items > 0 or
+                         defect_counts['raised_this_cycle'] > 0 or
+                         defect_counts['cleared_this_cycle'] > 0)
+
     # Eligible inspectors for reassign
     inspectors = _get_reset_target_inspectors(tenant_id)
     inspectors = [dict(i) for i in inspectors]
@@ -1690,6 +1704,9 @@ def reset_confirm(batch_id, bu_id):
     return render_template('batches/_reset_confirm.html',
                            batch_id=batch_id, bu=bu, insp=insp,
                            defect_counts=defect_counts,
+                           non_pending_items=non_pending_items,
+                           has_inspector=has_inspector,
+                           has_captured_work=has_captured_work,
                            inspectors=inspectors)
 
 
