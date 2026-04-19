@@ -1,0 +1,97 @@
+<tr id="row-{{ bu.bu_id }}" class="bg-amber-50">
+    <td colspan="14" class="px-4 py-4">
+        <form method="POST" action="{{ url_for('batches.reset_unit', batch_id=batch_id) }}">
+            <input type="hidden" name="bu_id" value="{{ bu.bu_id }}">
+
+            <div class="flex items-center justify-between mb-3">
+                <div>
+                    <span class="text-sm font-semibold text-amber-800">Reset Unit {{ bu.unit_number }}</span>
+                    <span class="text-xs text-amber-700 ml-2">{{ bu.block }} · C{{ bu.cycle_number }}</span>
+                    {% if insp %}
+                    <span class="text-xs text-gray-500 ml-3">Current inspector: {{ insp.inspector_name or 'None' }}</span>
+                    {% endif %}
+                </div>
+                <a href="{{ url_for('batches.detail', batch_id=batch_id) }}"
+                   class="text-xs text-gray-500 hover:text-gray-700">Cancel</a>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-3">
+                <!-- Action -->
+                <div>
+                    <label class="block text-xs font-semibold text-gray-700 mb-1">Action</label>
+                    <div class="space-y-1.5">
+                        <label class="flex items-center gap-2 text-sm">
+                            <input type="radio" name="action" value="unassign" checked
+                                   onchange="document.getElementById('inspector-select').disabled=true;">
+                            <span>Unassign (clear inspector)</span>
+                        </label>
+                        <label class="flex items-center gap-2 text-sm">
+                            <input type="radio" name="action" value="reassign"
+                                   onchange="document.getElementById('inspector-select').disabled=false;">
+                            <span>Reassign to:</span>
+                            <select id="inspector-select" name="new_inspector_id" disabled
+                                    class="text-sm border border-gray-300 rounded px-2 py-1 ml-1">
+                                <option value="">-- Select inspector --</option>
+                                {% for insp_opt in inspectors %}
+                                <option value="{{ insp_opt.id }}">
+                                    {{ insp_opt.name }} ({{ insp_opt.role }})
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </label>
+                    </div>
+                </div>
+
+                <!-- Markings -->
+                <div>
+                    <label class="block text-xs font-semibold text-gray-700 mb-1">Markings</label>
+                    <div class="space-y-1.5">
+                        <label class="flex items-center gap-2 text-sm">
+                            <input type="radio" name="markings" value="reset" checked>
+                            <span>Reset (wipe all progress)</span>
+                        </label>
+                        <label class="flex items-center gap-2 text-sm">
+                            <input type="radio" name="markings" value="keep">
+                            <span>Keep (preserve progress)</span>
+                        </label>
+                    </div>
+                </div>
+            </div>
+
+            {% if defect_counts.raised_this_cycle > 0 or defect_counts.cleared_this_cycle > 0 %}
+            <div class="mb-3 p-3 bg-red-50 border border-red-200 rounded">
+                <div class="text-xs font-semibold text-red-700 mb-1">Destructive action warning</div>
+                <div class="text-xs text-red-700 mb-2">
+                    Reset will affect existing defects on this cycle:
+                    {% if defect_counts.raised_this_cycle > 0 %}
+                    <strong>{{ defect_counts.raised_this_cycle }}</strong> raised (will be deleted){% endif %}
+                    {% if defect_counts.raised_this_cycle > 0 and defect_counts.cleared_this_cycle > 0 %}, {% endif %}
+                    {% if defect_counts.cleared_this_cycle > 0 %}
+                    <strong>{{ defect_counts.cleared_this_cycle }}</strong> cleared (will be reopened){% endif %}.
+                    <br>Does not apply if you pick "Keep".
+                </div>
+                <label class="flex items-center gap-2 text-xs">
+                    <input type="checkbox" name="confirm_destructive" value="yes">
+                    <span class="text-red-700 font-medium">I understand and want to proceed</span>
+                </label>
+            </div>
+            {% endif %}
+
+            <div class="mb-3">
+                <label class="block text-xs font-semibold text-gray-700 mb-1">Reason (required)</label>
+                <input type="text" name="reason" required minlength="3"
+                       placeholder="Why is this unit being reset?"
+                       class="text-sm border border-gray-300 rounded px-2 py-1.5 w-full">
+            </div>
+
+            <div class="flex items-center gap-2">
+                <button type="submit"
+                        class="px-4 py-2 text-xs font-semibold rounded bg-amber-600 text-white hover:bg-amber-700">
+                    Confirm Reset
+                </button>
+                <a href="{{ url_for('batches.detail', batch_id=batch_id) }}"
+                   class="px-3 py-1.5 text-xs text-gray-500 hover:text-gray-700">Cancel</a>
+            </div>
+        </form>
+    </td>
+</tr>

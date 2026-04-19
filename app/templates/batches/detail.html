@@ -164,6 +164,14 @@
                     <span id="excl-status-{{ u.bu_id }}" class="text-xs"></span>
                 </td>
                 <td class="px-4 py-2 text-center">
+                    {% if batch.status in ('open', 'in_progress') and u.bu_status in ('not_started', 'pending', 'assigned', 'in_progress', 'inspecting', 'paused') %}
+                    <button type="button"
+                            class="text-amber-500 hover:text-amber-700 text-xs font-semibold px-2 py-1 mr-1"
+                            title="Reset / Reassign unit"
+                            hx-get="{{ url_for('batches.reset_confirm', batch_id=batch.id, bu_id=u.bu_id) }}"
+                            hx-target="#row-{{ u.bu_id }}"
+                            hx-swap="outerHTML">Reset</button>
+                    {% endif %}
                     {% if batch.status in ('open', 'in_progress') and u.bu_status in ('not_started', 'pending', 'assigned') %}
                     <button type="button"
                             class="text-red-400 hover:text-red-600 text-lg leading-none px-2 py-1"
