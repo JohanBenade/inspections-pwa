@@ -77,9 +77,9 @@ def start_inspection(unit_id):
             WHERE id = ?
         """, [now, user_id, user_name, now, inspection_id])
         db.execute("""
-            UPDATE batch_unit SET status = 'inspecting'
-            WHERE unit_id = ? AND cycle_id = ? AND tenant_id = ? AND status = 'assigned'
-        """, [unit_id, cycle_id, tenant_id])
+            UPDATE batch_unit SET inspector_id = ?, status = 'inspecting'
+            WHERE unit_id = ? AND cycle_id = ? AND tenant_id = ? AND status != 'removed'
+        """, [user_id, unit_id, cycle_id, tenant_id])
     else:
         inspection_id = generate_id()
         now = datetime.now(timezone.utc).isoformat()
@@ -100,6 +100,10 @@ def start_inspection(unit_id):
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'in_progress', ?, ?, ?, ?)
         """, [inspection_id, tenant_id, unit_id, cycle_id, cycle['cycle_number'],
               date.today().isoformat(), user_id, user_name, now, now, now, excl_list_id])
+        db.execute("""
+            UPDATE batch_unit SET inspector_id = ?, status = 'inspecting'
+            WHERE unit_id = ? AND cycle_id = ? AND tenant_id = ? AND status != 'removed'
+        """, [user_id, unit_id, cycle_id, tenant_id])
     
     # Check if this is a followup cycle
     if cycle['cycle_number'] > 1:
