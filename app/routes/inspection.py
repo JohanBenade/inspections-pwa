@@ -1614,6 +1614,116 @@ def submit_inspection(inspection_id):
         return redirect(url_for('home'))
 
 
+# ----- pause / resume -----
+
+def _can_pause_resume(inspection):
+    """Return True if session user may pause/resume this inspection."""
+    role = session.get('role', 'inspector')
+    if role in ('team_lead', 'manager', 'admin'):
+        return True
+    return inspection['inspector_id'] == session.get('user_id')
+
+
+def _resume_inspection_inline(db, inspection, tenant_id):
+    """Resume a paused inspection; accumulates pause time. Caller commits."""
+    from datetime import datetime
+    paused_at_str = inspection['paused_at']
+    if not paused_at_str:
+        return
+    try:
+        paused_at_dt = datetime.strptime(paused_at_str, '%Y-%m-%d %H:%M:%S')
+    except (ValueError, TypeError):
+        paused_at_dt = datetime.utcnow()
+    elapsed = int((datetime.utcnow() - paused_at_dt).total_seconds())
+    if elapsed < 0:
+        elapsed = 0
+    db.execute("""
+        UPDATE inspection
+        SET status = 'in_progress',
+            paused_at = NULL,
+            total_paused_seconds = COALESCE(total_paused_seconds, 0) + ?
+        WHERE id = ?
+    """, [elapsed, inspection['id']])
+    db.execute("""
+        UPDATE batch_unit SET status = 'inspecting'
+        WHERE unit_id = ? AND cycle_id = ? AND tenant_id = ?
+    """, [inspection['unit_id'], inspection['cycle_id'], tenant_id])
+
+
+@inspection_bp.route('/<inspection_id>/pause', methods=['POST'])
+@require_auth
+def pause_inspection(inspection_id):
+    tenant_id = session['tenant_id']
+    db = get_db()
+
+    inspection = query_db(
+        "SELECT * FROM inspection WHERE id = ? AND tenant_id = ?",
+        [inspection_id, tenant_id], one=True
+    )
+    if not inspection:
+        abort(404)
+
+    if not _can_pause_resume(inspection):
+        abort(403)
+
+    if inspection['status'] != 'in_progress':
+        from flask import flash
+        flash(f"Cannot pause inspection in status '{inspection['status']}'", 'error')
+        return redirect(url_for('inspection.inspect', inspection_id=inspection_id))
+
+    db.execute("""
+        UPDATE inspection
+        SET status = 'paused', paused_at = CURRENT_TIMESTAMP
+        WHERE id = ?
+    """, [inspection_id])
+    db.execute("""
+        UPDATE batch_unit SET status = 'paused'
+        WHERE unit_id = ? AND cycle_id = ? AND tenant_id = ?
+    """, [inspection['unit_id'], inspection['cycle_id'], tenant_id])
+
+    log_audit(db, tenant_id, 'inspection', inspection_id, 'inspection_paused',
+              old_value='in_progress', new_value='paused',
+              user_id=session['user_id'], user_name=session['user_name'])
+    db.commit()
+
+    role = session.get('role', 'inspector')
+    if role in ('team_lead', 'manager', 'admin'):
+        return redirect(request.referrer or url_for('home'))
+    return redirect(url_for('inspection.inspect', inspection_id=inspection_id))
+
+
+@inspection_bp.route('/<inspection_id>/resume', methods=['POST'])
+@require_auth
+def resume_inspection(inspection_id):
+    tenant_id = session['tenant_id']
+    db = get_db()
+
+    inspection = query_db(
+        "SELECT * FROM inspection WHERE id = ? AND tenant_id = ?",
+        [inspection_id, tenant_id], one=True
+    )
+    if not inspection:
+        abort(404)
+
+    if not _can_pause_resume(inspection):
+        abort(403)
+
+    if inspection['status'] != 'paused':
+        return redirect(url_for('inspection.inspect', inspection_id=inspection_id))
+
+    _resume_inspection_inline(db, inspection, tenant_id)
+
+    log_audit(db, tenant_id, 'inspection', inspection_id, 'inspection_resumed',
+              old_value='paused', new_value='in_progress',
+              user_id=session['user_id'], user_name=session['user_name'])
+    db.commit()
+
+    role = session.get('role', 'inspector')
+    if role in ('team_lead', 'manager', 'admin'):
+        return redirect(request.referrer or url_for('home'))
+    return redirect(url_for('inspection.inspect', inspection_id=inspection_id))
+
+
 @inspection_bp.route('/<inspection_id>/progress')
 @require_auth
 def get_progress(inspection_id):
