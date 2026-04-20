@@ -433,6 +433,9 @@
     {% endif %}
 </div>
 
+<!-- Audit scrubber behaviour (loads after DOM, reads #scrubber-data JSON blob) -->
+<script src="{{ url_for('static', filename='js/audit_scrubber.js') }}" defer></script>
+
 <style>
 @media print {
     .no-print, nav, .mobile-nav, header, footer, form { display: none !important; }
