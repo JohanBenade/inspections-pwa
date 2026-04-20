@@ -4310,8 +4310,13 @@ def _build_audit_data_dict():
         FROM inspection i
         JOIN unit_real u ON i.unit_id = u.id
         LEFT JOIN inspector insp ON insp.id = i.inspector_id
-        LEFT JOIN defect d ON d.unit_id = u.id AND d.raised_cycle_id = i.cycle_id
+        LEFT JOIN defect d ON d.unit_id = u.id
             AND d.tenant_id = u.tenant_id
+            AND (
+                (i.cycle_number = 1 AND d.raised_cycle_id = i.cycle_id)
+                OR
+                (i.cycle_number > 1 AND d.addressed_cycle_number = i.cycle_number)
+            )
         WHERE i.tenant_id = ?
           AND i.status IN ('reviewed','approved','certified','pending_followup')
           AND i.inspector_id IS NOT NULL
