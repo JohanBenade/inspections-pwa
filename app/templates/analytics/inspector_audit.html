@@ -50,51 +50,8 @@
         </div>
         <p style="color: #9A9A9A; font-size: 0.8rem; margin-bottom: 1rem;">Zone-adjusted scores compare each inspector against the average for the specific zones they worked. Internal use only.</p>
 
-        <!-- Cards -->
-        <div style="display: flex; flex-wrap: wrap; gap: 0.75rem; margin-bottom: 1.5rem;">
-        {% for insp in snag_cards %}
-        <div style="flex: 1 1 280px; max-width: 400px; background: #F5F3EE; border-radius: 10px; padding: 1rem; border-left: 4px solid {{ insp.colour }};">
-            <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 0.5rem;">
-                <div>
-                    <div style="font-weight: 700; font-size: 0.95rem; color: #1A1A1A;">{{ insp.name }}</div>
-                    <div style="font-size: 0.75rem; color: #9A9A9A;">{{ insp.units }} units &middot; {{ insp.total_defects }} defects raised</div>
-                </div>
-                <div style="text-align: right;">
-                    <div style="font-size: 1.4rem; font-weight: 800; color: {{ insp.colour }};">
-                        {% if insp.zone_score > 0 %}+{% endif %}{{ insp.zone_score }}%
-                    </div>
-                    <div style="font-size: 0.65rem; color: #9A9A9A;">vs zone avg</div>
-                </div>
-            </div>
-            <div style="display: flex; gap: 1rem; font-size: 0.75rem; color: #6B6B6B;">
-                <div><span style="font-weight: 600;">{{ insp.raw_avg }}</span> avg/unit</div>
-                <div>consistency: <span style="font-weight: 600;">{{ insp.consistency }}</span></div>
-            </div>
-            <div style="margin-top: 0.5rem; position: relative; height: 6px; background: #e5e5e5; border-radius: 3px; overflow: visible;">
-                <div style="position: absolute; left: 50%; top: 0; width: 1px; height: 6px; background: #6B6B6B;"></div>
-                {% if insp.zone_score >= 0 %}
-                <div style="position: absolute; left: 50%; top: 0; height: 6px; width: {{ [insp.zone_score * 0.5, 50]|min }}%; background: {{ insp.colour }}; border-radius: 0 3px 3px 0;"></div>
-                {% else %}
-                <div style="position: absolute; right: 50%; top: 0; height: 6px; width: {{ [insp.zone_score|abs * 0.5, 50]|min }}%; background: {{ insp.colour }}; border-radius: 3px 0 0 3px;"></div>
-                {% endif %}
-            </div>
-        </div>
-        {% endfor %}
-        </div>
-
-        <!-- Callout -->
-        {% if snag_cards|length >= 2 %}
-        {% set top = snag_cards[0] %}
-        {% set bottom = snag_cards[-1] %}
-        <div style="border-left: 4px solid #3D6B8E; background: rgba(61,107,142,0.12); border-radius: 0 8px 8px 0; padding: 0.75rem 1rem; font-size: 0.82rem; color: #1A1A1A; margin-bottom: 1.5rem;">
-            <strong>{{ top.name }}</strong> finds {{ top.zone_score|abs }}% {{ 'more' if top.zone_score > 0 else 'fewer' }} defects than zone averages ({{ top.units }} units).
-            <strong>{{ bottom.name }}</strong> finds {{ bottom.zone_score|abs }}% {{ 'more' if bottom.zone_score > 0 else 'fewer' }} ({{ bottom.units }} units).
-            Consistency score measures how steady an inspector is across units &mdash; lower is more reliable.
-        </div>
-        {% endif %}
-
-        <!-- Zone-Adjusted Ranking Chart -->
-        <div style="background: #F5F3EE; border-radius: 10px; padding: 1rem;">
+        <!-- Zone-Adjusted Ranking Chart (promoted to top - this is the headline insight) -->
+        <div style="background: #F5F3EE; border-radius: 10px; padding: 1rem; margin-bottom: 1rem;">
             <div style="font-weight: 700; font-size: 0.9rem; color: #1A1A1A; margin-bottom: 0.75rem;">Zone-Adjusted Ranking</div>
             <p style="font-size: 0.72rem; color: #9A9A9A; margin-bottom: 0.75rem;">How many defects each inspector finds compared to the average for the zones they worked. Positive = more thorough. Negative = finding fewer than expected.</p>
             {% for insp in snag_cards %}
@@ -129,6 +86,50 @@
                 </div>
                 <div style="width: 70px;"></div>
             </div>
+        </div>
+
+        <!-- Callout (interprets the chart above) -->
+        {% if snag_cards|length >= 2 %}
+        {% set top = snag_cards[0] %}
+        {% set bottom = snag_cards[-1] %}
+        <div style="border-left: 4px solid #3D6B8E; background: rgba(61,107,142,0.12); border-radius: 0 8px 8px 0; padding: 0.75rem 1rem; font-size: 0.82rem; color: #1A1A1A; margin: 1rem 0;">
+            <strong>{{ top.name }}</strong> finds {{ top.zone_score|abs }}% {{ 'more' if top.zone_score > 0 else 'fewer' }} defects than zone averages ({{ top.units }} units).
+            <strong>{{ bottom.name }}</strong> finds {{ bottom.zone_score|abs }}% {{ 'more' if bottom.zone_score > 0 else 'fewer' }} ({{ bottom.units }} units).
+            Consistency score measures how steady an inspector is across units &mdash; lower is more reliable.
+        </div>
+        {% endif %}
+
+        <!-- Per-inspector cards (supporting detail) -->
+        <div style="font-size: 0.82rem; font-weight: 600; color: #6B6B6B; margin-bottom: 0.5rem; text-transform: uppercase; letter-spacing: 0.4px;">Per Inspector</div>
+        <div style="display: flex; flex-wrap: wrap; gap: 0.75rem; margin-bottom: 1.5rem;">
+        {% for insp in snag_cards %}
+        <div style="flex: 1 1 280px; max-width: 400px; background: #F5F3EE; border-radius: 10px; padding: 1rem; border-left: 4px solid {{ insp.colour }};">
+            <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 0.5rem;">
+                <div>
+                    <div style="font-weight: 700; font-size: 0.95rem; color: #1A1A1A;">{{ insp.name }}</div>
+                    <div style="font-size: 0.75rem; color: #9A9A9A;">{{ insp.units }} units &middot; {{ insp.total_defects }} defects raised</div>
+                </div>
+                <div style="text-align: right;">
+                    <div style="font-size: 1.4rem; font-weight: 800; color: {{ insp.colour }};">
+                        {% if insp.zone_score > 0 %}+{% endif %}{{ insp.zone_score }}%
+                    </div>
+                    <div style="font-size: 0.65rem; color: #9A9A9A;">vs zone avg</div>
+                </div>
+            </div>
+            <div style="display: flex; gap: 1rem; font-size: 0.75rem; color: #6B6B6B;">
+                <div><span style="font-weight: 600;">{{ insp.raw_avg }}</span> avg/unit</div>
+                <div>consistency: <span style="font-weight: 600;">{{ insp.consistency }}</span></div>
+            </div>
+            <div style="margin-top: 0.5rem; position: relative; height: 6px; background: #e5e5e5; border-radius: 3px; overflow: visible;">
+                <div style="position: absolute; left: 50%; top: 0; width: 1px; height: 6px; background: #6B6B6B;"></div>
+                {% if insp.zone_score >= 0 %}
+                <div style="position: absolute; left: 50%; top: 0; height: 6px; width: {{ [insp.zone_score * 0.5, 50]|min }}%; background: {{ insp.colour }}; border-radius: 0 3px 3px 0;"></div>
+                {% else %}
+                <div style="position: absolute; right: 50%; top: 0; height: 6px; width: {{ [insp.zone_score|abs * 0.5, 50]|min }}%; background: {{ insp.colour }}; border-radius: 3px 0 0 3px;"></div>
+                {% endif %}
+            </div>
+        </div>
+        {% endfor %}
         </div>
     </div>
     {% endif %}
