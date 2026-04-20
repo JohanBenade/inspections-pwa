@@ -4547,6 +4547,177 @@ def _build_audit_data_dict():
         })
     desnag_cards.sort(key=lambda x: x['units'], reverse=True)
 
+    # --------------------------------------------------------------
+    # SCRUBBER DATA: per-batch zone-adjusted variance for each inspector.
+    # Uses the SAME global zone_avgs benchmark as the lifetime scoring
+    # so batch scores are directly comparable to lifetime scores and
+    # to each other. Only the Zone-Adjusted Ranking chart consumes this.
+    # --------------------------------------------------------------
+    inspector_raw_with_batch = [dict(r) for r in query_db('''
+        SELECT i.inspector_id,
+            COALESCE(insp.name, 'Unknown (' || i.inspector_id || ')') AS inspector_display,
+            u.block, u.floor,
+            COUNT(d.id) as defect_count,
+            ib.name AS batch_name,
+            ib.status AS batch_status
+        FROM inspection i
+        JOIN unit_real u ON i.unit_id = u.id
+        JOIN batch_unit bu ON bu.unit_id = i.unit_id
+            AND bu.cycle_id = i.cycle_id
+            AND bu.tenant_id = i.tenant_id
+        JOIN inspection_batch ib ON ib.id = bu.batch_id
+        LEFT JOIN inspector insp ON insp.id = i.inspector_id
+        LEFT JOIN defect d ON d.unit_id = u.id
+            AND d.raised_cycle_id = i.cycle_id
+            AND d.tenant_id = u.tenant_id
+        WHERE i.tenant_id = ? AND i.cycle_number = 1
+            AND i.status IN ('reviewed','approved','certified','pending_followup')
+            AND i.inspector_id IS NOT NULL
+            AND u.unit_number NOT LIKE 'TEST%'
+            AND (insp.role IN ('inspector','team_lead') OR insp.id IS NULL)
+        GROUP BY i.id
+        ORDER BY ib.name, inspector_display
+    ''', [tenant_id])]
+
+    # Partition by batch -> per-inspector unit list with variances against GLOBAL zone avg.
+    from collections import defaultdict as _dd
+    per_batch = _dd(lambda: _dd(lambda: {'name': '', 'variances': [], 'units': 0, 'total_defects': 0}))
+    batch_meta = {}  # batch_name -> {status, inspections}
+
+    for r in inspector_raw_with_batch:
+        bname = r['batch_name']
+        iid = r['inspector_id']
+        zone_avg = zone_avgs.get((r['block'], r['floor']), 0)
+        variance_pct = round((r['defect_count'] - zone_avg) / zone_avg * 100, 1) if zone_avg > 0 else 0
+        per_batch[bname][iid]['name'] = r['inspector_display']
+        per_batch[bname][iid]['variances'].append(variance_pct)
+        per_batch[bname][iid]['units'] += 1
+        per_batch[bname][iid]['total_defects'] += r['defect_count']
+        if bname not in batch_meta:
+            batch_meta[bname] = {'status': r['batch_status'], 'inspections': 0}
+        batch_meta[bname]['inspections'] += 1
+
+    def _parse_batch_name(bname):
+        # e.g. "SR-012 10 Apr 2026" -> ("SR-012", "10 Apr 2026")
+        parts = bname.split(' ', 1)
+        return (parts[0], parts[1] if len(parts) > 1 else '')
+
+    def _score_colour(v):
+        av = abs(v)
+        if av > 30: return '#C44D3F'
+        if av > 15: return '#C8963E'
+        return '#4A7C59'
+
+    def _callout_html(inspectors_sorted, context_label):
+        # inspectors_sorted is descending by zone_score. Picks top and bottom for narrative.
+        if len(inspectors_sorted) < 2:
+            if len(inspectors_sorted) == 1:
+                i0 = inspectors_sorted[0]
+                return f'<strong>{i0["name"]}</strong> was the only inspector on {context_label} ({i0["units"]} units). Variance shown against global zone averages.'
+            return ''
+        top = inspectors_sorted[0]
+        bottom = inspectors_sorted[-1]
+        top_dir = 'more' if top['zone_score'] > 0 else 'fewer'
+        bottom_dir = 'more' if bottom['zone_score'] > 0 else 'fewer'
+        return (f'<strong>{top["name"]}</strong> finds {abs(top["zone_score"])}% {top_dir} defects than zone averages '
+                f'({top["units"]} units). <strong>{bottom["name"]}</strong> finds {abs(bottom["zone_score"])}% {bottom_dir} '
+                f'({bottom["units"]} units). Consistency score measures how steady an inspector is across units &mdash; lower is more reliable.')
+
+    # Build batches_data entries.
+    batches_data = {}
+
+    # "All time" entry = the existing lifetime snag_cards.
+    all_inspectors = [
+        {
+            'inspector_id': c['inspector_id'],
+            'name': c['name'],
+            'zone_score': c['zone_score'],
+            'units': c['units'],
+            'raw_avg': c['raw_avg'],
+            'consistency': c['consistency'],
+            'colour': c['colour'],
+        }
+        for c in snag_cards
+    ]
+    batches_data['all'] = {
+        'key': 'all',
+        'label': 'All time',
+        'short': 'All',
+        'date': '',
+        'status': '',
+        'unit_count': snag_total_units,
+        'inspections': snag_total_units,
+        'inspectors': all_inspectors,
+        'title': 'Zone-Adjusted Ranking \u2014 All time',
+        'subtitle': 'Cumulative view across all batches. Positive = more thorough. Negative = finding fewer than expected.',
+        'callout_html': _callout_html(all_inspectors, 'all batches'),
+    }
+
+    # Per-batch entries.
+    for bname in sorted(per_batch.keys()):
+        short, datepart = _parse_batch_name(bname)
+        meta = batch_meta.get(bname, {'status': 'complete', 'inspections': 0})
+        batch_inspectors = []
+        for iid, d in per_batch[bname].items():
+            avg_variance = round(sum(d['variances']) / len(d['variances']), 1) if d['variances'] else 0
+            consistency = round(_stats.stdev(d['variances']), 1) if len(d['variances']) > 1 else 0
+            raw_avg = round(d['total_defects'] / d['units'], 1) if d['units'] > 0 else 0
+            batch_inspectors.append({
+                'inspector_id': iid,
+                'name': d['name'],
+                'zone_score': avg_variance,
+                'units': d['units'],
+                'raw_avg': raw_avg,
+                'consistency': consistency,
+                'colour': _score_colour(avg_variance),
+            })
+        batch_inspectors.sort(key=lambda x: x['zone_score'], reverse=True)
+
+        insp_count = len(batch_inspectors)
+        if meta['status'] == 'open':
+            subtitle = f'In progress \u2014 {insp_count} inspector{"s" if insp_count != 1 else ""}, {meta["inspections"]} units inspected so far. Numbers will shift as more come in.'
+        else:
+            single_worker_note = ''
+            single_worker_count = sum(1 for x in batch_inspectors if x['units'] == 1)
+            if single_worker_count > 0 and len(batch_inspectors) > 1:
+                single_worker_note = f' ({single_worker_count} inspector{"s" if single_worker_count != 1 else ""} worked only one unit \u2014 variance is noisier for these.)'
+            subtitle = f'{insp_count} inspector{"s" if insp_count != 1 else ""} worked this batch across {meta["inspections"]} units.{single_worker_note}'
+
+        batches_data[bname] = {
+            'key': bname,
+            'label': bname,
+            'short': short,
+            'date': datepart,
+            'status': meta['status'],
+            'unit_count': meta['inspections'],
+            'inspections': meta['inspections'],
+            'inspectors': batch_inspectors,
+            'title': f'Zone-Adjusted Ranking \u2014 {short} \u00b7 {datepart}' if datepart else f'Zone-Adjusted Ranking \u2014 {short}',
+            'subtitle': subtitle,
+            'callout_html': _callout_html(batch_inspectors, short),
+        }
+
+    # batches_list: ordered list of scrubber nodes. "All" first, then batches chronologically by SR number.
+    batches_list = [{
+        'key': 'all',
+        'label': 'All time',
+        'short': 'All',
+        'date': '',
+        'status': '',
+        'unit_count': snag_total_units,
+    }]
+    for bname in sorted(per_batch.keys()):
+        short, datepart = _parse_batch_name(bname)
+        meta = batch_meta.get(bname, {'status': 'complete', 'inspections': 0})
+        batches_list.append({
+            'key': bname,
+            'label': bname,
+            'short': short,
+            'date': datepart,
+            'status': meta['status'],
+            'unit_count': meta['inspections'],
+        })
+
     period_label = ''
     if from_date and to_date:
         period_label = f'{from_date} to {to_date}'
@@ -4561,6 +4732,8 @@ def _build_audit_data_dict():
         desnag_cards=desnag_cards,
         snag_totals={'inspectors': snag_inspector_count, 'units': snag_total_units, 'defects': snag_total_defects},
         desnag_totals={'inspectors': desnag_inspector_count, 'units': desnag_total_units, 'defects': desnag_total_defects},
+        batches_data=batches_data,
+        batches_list=batches_list,
         from_date=from_date,
         to_date=to_date,
         period_label=period_label,
