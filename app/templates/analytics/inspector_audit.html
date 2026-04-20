@@ -45,7 +45,7 @@
             <div style="font-size: 0.78rem; color: #6B6B6B;">
                 {{ snag_totals.inspectors }} inspector{{ 's' if snag_totals.inspectors != 1 else '' }}
                 &middot; {{ snag_totals.units }} units
-                &middot; {{ snag_totals.defects }} defects
+                &middot; {{ snag_totals.defects }} defects raised
             </div>
         </div>
         <p style="color: #9A9A9A; font-size: 0.8rem; margin-bottom: 1rem;">Zone-adjusted scores compare each inspector against the average for the specific zones they worked. Internal use only.</p>
@@ -57,7 +57,7 @@
             <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 0.5rem;">
                 <div>
                     <div style="font-weight: 700; font-size: 0.95rem; color: #1A1A1A;">{{ insp.name }}</div>
-                    <div style="font-size: 0.75rem; color: #9A9A9A;">{{ insp.units }} units &middot; {{ insp.total_defects }} defects</div>
+                    <div style="font-size: 0.75rem; color: #9A9A9A;">{{ insp.units }} units &middot; {{ insp.total_defects }} defects raised</div>
                 </div>
                 <div style="text-align: right;">
                     <div style="font-size: 1.4rem; font-weight: 800; color: {{ insp.colour }};">
