@@ -50,13 +50,210 @@
         </div>
         <p style="color: #9A9A9A; font-size: 0.8rem; margin-bottom: 1rem;">Zone-adjusted scores compare each inspector against the average for the specific zones they worked. Internal use only.</p>
 
+        <!-- ============================================================ -->
+        <!-- BATCH SCRUBBER - chart-only filter for Zone-Adjusted Ranking -->
+        <!-- ============================================================ -->
+        <style>
+            .scrubber-wrap {
+                background: #F5F3EE;
+                border-radius: 10px;
+                padding: 1.25rem 1.5rem 1.75rem 1.5rem;
+                margin-bottom: 1rem;
+                position: relative;
+            }
+            .scrubber-header {
+                display: flex;
+                justify-content: space-between;
+                align-items: baseline;
+                margin-bottom: 1rem;
+            }
+            .scrubber-header-title {
+                font-size: 0.78rem;
+                font-weight: 600;
+                color: #6B6B6B;
+                text-transform: uppercase;
+                letter-spacing: 0.4px;
+            }
+            .scrubber-header-hint {
+                font-size: 0.7rem;
+                color: #9A9A9A;
+            }
+            .scrubber-track-wrap {
+                position: relative;
+                height: 80px;
+                margin: 0 20px;
+            }
+            .scrubber-track {
+                position: absolute;
+                top: 40px;
+                left: 0;
+                right: 0;
+                height: 3px;
+                background: #D5D0C4;
+                border-radius: 2px;
+            }
+            .scrubber-track-fill {
+                position: absolute;
+                top: 40px;
+                left: 0;
+                height: 3px;
+                background: #C8963E;
+                border-radius: 2px;
+                transition: width 300ms cubic-bezier(0.4, 0, 0.2, 1);
+                pointer-events: none;
+            }
+            .scrubber-node {
+                position: absolute;
+                top: 34px;
+                width: 15px;
+                height: 15px;
+                margin-left: -7.5px;
+                border-radius: 50%;
+                background: #FAFAF8;
+                border: 2px solid #C8963E;
+                cursor: pointer;
+                z-index: 2;
+                transition: transform 200ms ease, box-shadow 200ms ease;
+            }
+            .scrubber-node.open {
+                background: #FAFAF8;
+                border-style: dashed;
+                border-color: #C8963E;
+            }
+            .scrubber-node.complete {
+                background: #C8963E;
+            }
+            .scrubber-node.all {
+                background: #1A1A1A;
+                border-color: #1A1A1A;
+                width: 18px;
+                height: 18px;
+                top: 32px;
+                margin-left: -9px;
+            }
+            .scrubber-node:hover {
+                transform: scale(1.2);
+                box-shadow: 0 0 0 4px rgba(200, 150, 62, 0.15);
+            }
+            .scrubber-node.all:hover {
+                box-shadow: 0 0 0 4px rgba(26, 26, 26, 0.15);
+            }
+            .scrubber-thumb {
+                position: absolute;
+                top: 28px;
+                width: 26px;
+                height: 26px;
+                margin-left: -13px;
+                background: #C8963E;
+                border: 3px solid #FAFAF8;
+                border-radius: 50%;
+                box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+                cursor: grab;
+                z-index: 10;
+                transition: left 400ms cubic-bezier(0.4, 0, 0.2, 1), background 300ms ease;
+            }
+            .scrubber-thumb.all {
+                background: #1A1A1A;
+            }
+            .scrubber-thumb.dragging {
+                cursor: grabbing;
+                transition: none;
+                transform: scale(1.1);
+                box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+            }
+            .scrubber-label {
+                position: absolute;
+                font-size: 0.65rem;
+                color: #6B6B6B;
+                font-weight: 600;
+                white-space: nowrap;
+                transform: translateX(-50%);
+                pointer-events: none;
+            }
+            .scrubber-label.above { top: 0; }
+            .scrubber-label.below { top: 58px; }
+            .scrubber-label.all {
+                color: #1A1A1A;
+                font-weight: 700;
+            }
+            .scrubber-label-date {
+                font-size: 0.58rem;
+                color: #9A9A9A;
+                font-weight: 400;
+                display: block;
+                margin-top: 1px;
+            }
+            .scrubber-divider {
+                position: absolute;
+                top: 34px;
+                height: 15px;
+                width: 1px;
+                background: #D5D0C4;
+                pointer-events: none;
+            }
+            .scrubber-tooltip {
+                position: absolute;
+                bottom: 100%;
+                left: 50%;
+                transform: translateX(-50%) translateY(-8px);
+                background: #0A0A0A;
+                color: #FAFAF8;
+                padding: 6px 10px;
+                border-radius: 4px;
+                font-size: 0.72rem;
+                white-space: nowrap;
+                opacity: 0;
+                pointer-events: none;
+                transition: opacity 200ms ease;
+                z-index: 20;
+            }
+            .scrubber-thumb:hover .scrubber-tooltip,
+            .scrubber-thumb.dragging .scrubber-tooltip {
+                opacity: 1;
+            }
+            .scrubber-tooltip::after {
+                content: '';
+                position: absolute;
+                top: 100%;
+                left: 50%;
+                transform: translateX(-50%);
+                border: 4px solid transparent;
+                border-top-color: #0A0A0A;
+            }
+            @media (max-width: 700px) {
+                .scrubber-label { font-size: 0.55rem; }
+                .scrubber-label-date { display: none; }
+                .scrubber-header-hint { display: none; }
+            }
+        </style>
+
+        <div class="scrubber-wrap" id="batch-scrubber">
+            <div class="scrubber-header">
+                <div class="scrubber-header-title">Batch Scrubber</div>
+                <div class="scrubber-header-hint">Drag or click to filter the chart below &middot; arrow keys supported</div>
+            </div>
+            <div class="scrubber-track-wrap" id="scrubber-track-wrap" tabindex="0" role="slider" aria-label="Select batch to view on chart">
+                <div class="scrubber-track"></div>
+                <div class="scrubber-track-fill" id="scrubber-track-fill" style="width: 0%;"></div>
+                <!-- Nodes + labels injected by JS (Commit 3) from batches_list -->
+                <div class="scrubber-thumb all" id="scrubber-thumb" style="left: 0%;">
+                    <div class="scrubber-tooltip" id="scrubber-tooltip">All time</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- JSON payload consumed by audit_scrubber.js (Commits 3 & 4) -->
+        <script type="application/json" id="scrubber-data">
+            {{ {"batches_list": batches_list, "batches_data": batches_data} | tojson }}
+        </script>
+
         <!-- Zone-Adjusted Ranking Chart (promoted to top - this is the headline insight) -->
-        <div style="background: #F5F3EE; border-radius: 10px; padding: 1rem; margin-bottom: 1rem;">
-            <div style="font-weight: 700; font-size: 0.9rem; color: #1A1A1A; margin-bottom: 0.75rem;">Zone-Adjusted Ranking</div>
-            <p style="font-size: 0.72rem; color: #9A9A9A; margin-bottom: 0.75rem;">How many defects each inspector finds compared to the average for the zones they worked. Positive = more thorough. Negative = finding fewer than expected.</p>
+        <div id="zone-chart-panel" style="background: #F5F3EE; border-radius: 10px; padding: 1rem; margin-bottom: 1rem;">
+            <div id="zone-chart-title" style="font-weight: 700; font-size: 0.9rem; color: #1A1A1A; margin-bottom: 0.75rem;">Zone-Adjusted Ranking</div>
+            <p id="zone-chart-subtitle" style="font-size: 0.72rem; color: #9A9A9A; margin-bottom: 0.75rem;">How many defects each inspector finds compared to the average for the zones they worked. Positive = more thorough. Negative = finding fewer than expected.</p>
             {% for insp in snag_cards %}
-            <div style="display: flex; align-items: center; margin-bottom: 0.5rem; padding: 2px 0; border-radius: 4px;">
-                <div style="width: 130px; font-size: 0.78rem; font-weight: 600; color: #1A1A1A; text-align: right; padding-right: 0.5rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{{ insp.name }}</div>
+            <div class="scrubber-bar-row" data-inspector="{{ insp.inspector_id }}" data-score="{{ insp.zone_score }}" data-units="{{ insp.units }}" style="display: flex; align-items: center; margin-bottom: 0.5rem; padding: 2px 0; border-radius: 4px; transition: opacity 300ms ease;">
+                <div class="scrubber-bar-name" style="width: 130px; font-size: 0.78rem; font-weight: 600; color: #1A1A1A; text-align: right; padding-right: 0.5rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{{ insp.name }}</div>
                 <div style="flex: 1; position: relative; height: 26px; background: #e9e7e2; border-radius: 4px; overflow: visible;">
                     <div style="position: absolute; left: 50%; top: 0; width: 1px; height: 26px; background: #6B6B6B; z-index: 2;"></div>
                     {% if insp.zone_score >= 0 %}
@@ -92,7 +289,7 @@
         {% if snag_cards|length >= 2 %}
         {% set top = snag_cards[0] %}
         {% set bottom = snag_cards[-1] %}
-        <div style="border-left: 4px solid #3D6B8E; background: rgba(61,107,142,0.12); border-radius: 0 8px 8px 0; padding: 0.75rem 1rem; font-size: 0.82rem; color: #1A1A1A; margin: 1rem 0;">
+        <div id="zone-chart-callout" style="border-left: 4px solid #3D6B8E; background: rgba(61,107,142,0.12); border-radius: 0 8px 8px 0; padding: 0.75rem 1rem; font-size: 0.82rem; color: #1A1A1A; margin: 1rem 0;">
             <strong>{{ top.name }}</strong> finds {{ top.zone_score|abs }}% {{ 'more' if top.zone_score > 0 else 'fewer' }} defects than zone averages ({{ top.units }} units).
             <strong>{{ bottom.name }}</strong> finds {{ bottom.zone_score|abs }}% {{ 'more' if bottom.zone_score > 0 else 'fewer' }} ({{ bottom.units }} units).
             Consistency score measures how steady an inspector is across units &mdash; lower is more reliable.
