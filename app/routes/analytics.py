@@ -4460,6 +4460,9 @@ def _build_audit_data_dict():
             },
         })
 
+    # Sort detail_groups by total units descending (payroll-heaviest first).
+    detail_groups.sort(key=lambda g: g['snag']['unit_count'] + g['desnag']['unit_count'], reverse=True)
+
     snag_total_units = sum(g['snag']['unit_count'] for g in detail_groups)
     snag_total_defects = sum(g['snag']['total_defects'] for g in detail_groups)
     snag_inspector_count = sum(1 for g in detail_groups if g['snag']['unit_count'] > 0)
