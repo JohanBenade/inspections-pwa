@@ -4275,7 +4275,13 @@ def inspector_detail(inspector_name):
 
 
 def _build_audit_data_dict():
-    """Shared data builder for inspector audit trail."""
+    """Shared data builder for inspector audit trail.
+
+    Returns split C1 (snag) and C2+ (desnag) data structures.
+    Groups by inspector_id (stable identity), resolves display name via
+    LEFT JOIN to inspector table (single source of truth for names).
+    Orphan inspector_ids render as "Unknown (<id>)" so data issues stay visible.
+    """
     tenant_id = session['tenant_id']
     from_date = request.args.get('from_date', '')
     to_date = request.args.get('to_date', '')
@@ -4290,28 +4296,33 @@ def _build_audit_data_dict():
         date_filter += ' AND i.inspection_date <= ?'
         params.append(to_date)
 
-    # Get all inspections with unit and defect data
+    # Fetch ALL inspections (C1 + C2+) in one query, with resolved inspector display name.
+    # Role gate: only inspector/team_lead roles OR orphan IDs (insp.id IS NULL).
+    # This excludes admins/managers that might appear on inspection rows by accident.
     rows = [dict(r) for r in query_db("""
-        SELECT i.inspector_name, i.inspection_date, i.started_at, i.submitted_at,
+        SELECT i.inspector_id,
+               COALESCE(insp.name, 'Unknown (' || i.inspector_id || ')') AS inspector_display,
+               i.inspection_date, i.started_at, i.submitted_at,
                i.paused_at, i.total_paused_seconds,
                i.status AS insp_status, i.id AS inspection_id, i.cycle_number,
                u.id AS unit_id, u.unit_number, u.block, u.floor,
                COUNT(d.id) AS defect_count
         FROM inspection i
         JOIN unit_real u ON i.unit_id = u.id
+        LEFT JOIN inspector insp ON insp.id = i.inspector_id
         LEFT JOIN defect d ON d.unit_id = u.id AND d.raised_cycle_id = i.cycle_id
             AND d.tenant_id = u.tenant_id
-        WHERE i.tenant_id = ? AND i.status IN ('reviewed','approved','certified','pending_followup')
-            AND i.inspector_name IS NOT NULL AND u.unit_number NOT LIKE 'TEST%%'
-            {date_filter}
+        WHERE i.tenant_id = ?
+          AND i.status IN ('reviewed','approved','certified','pending_followup')
+          AND i.inspector_id IS NOT NULL
+          AND u.unit_number NOT LIKE 'TEST%%'
+          AND (insp.role IN ('inspector','team_lead') OR insp.id IS NULL)
+          {date_filter}
         GROUP BY i.id
-        ORDER BY i.inspector_name, i.inspection_date DESC, u.unit_number
+        ORDER BY inspector_display, i.inspection_date DESC, u.unit_number
     """.format(date_filter=date_filter), params)]
 
-    # Floor labels
     floor_labels = {0: 'Ground', 1: '1st Floor', 2: '2nd Floor', 3: '3rd Floor'}
-
-    # Status display mapping
     status_map = {
         'in_progress': ('In Progress', '#FEF3C7', '#92400E'),
         'submitted': ('Submitted', '#DBEAFE', '#1E40AF'),
@@ -4322,22 +4333,14 @@ def _build_audit_data_dict():
     }
 
     def calc_duration(started, submitted, total_paused_seconds=0, paused_at=None):
-        """Calculate duration string from timestamps.
-
-        Pause-aware: if paused_at is provided (inspection currently paused),
-        the end time is capped at paused_at. total_paused_seconds is subtracted
-        from the elapsed seconds.
-        """
         if not started:
             return 'N/A'
-        # If currently paused, use paused_at as the effective end
         effective_end = paused_at if paused_at else submitted
         if not effective_end:
             return 'N/A'
-        submitted = effective_end  # downstream parsing uses this variable
+        submitted = effective_end
         try:
             from datetime import datetime
-            # Handle various timestamp formats
             for fmt in ('%Y-%m-%dT%H:%M:%S.%f%z', '%Y-%m-%dT%H:%M:%S.%f', '%Y-%m-%dT%H:%M:%S%z', '%Y-%m-%dT%H:%M:%S', '%Y-%m-%d %H:%M:%S'):
                 try:
                     s = datetime.strptime(started.replace('+00:00', '').replace('Z', ''), fmt.replace('%z', ''))
@@ -4358,7 +4361,7 @@ def _build_audit_data_dict():
                 total_secs = 0
             total_mins = int(total_secs / 60)
             if total_mins < 2:
-                return 'N/A'  # Import artifacts where started==submitted
+                return 'N/A'
             if total_mins < 60:
                 return f'{total_mins}m'
             hours = total_mins // 60
@@ -4367,94 +4370,99 @@ def _build_audit_data_dict():
         except Exception:
             return 'N/A'
 
-    # Group by inspector
-    from collections import OrderedDict
-    inspector_groups = OrderedDict()
-    for r in rows:
-        name = r['inspector_name']
-        if name not in inspector_groups:
-            inspector_groups[name] = []
-        floor_val = r['floor']
-        zone = '{} {}'.format(r['block'], floor_labels.get(floor_val, 'Floor ' + str(floor_val)))
-        status_info = status_map.get(r['insp_status'], ('Unknown', '#F3F4F6', '#6B7280'))
-        duration = 'N/A'  # All imports until mobile inspections
+    from collections import OrderedDict, defaultdict
 
-        inspector_groups[name].append({
+    groups = OrderedDict()
+    for r in rows:
+        iid = r['inspector_id']
+        if iid not in groups:
+            groups[iid] = {
+                'inspector_id': iid,
+                'name': r['inspector_display'],
+                'snag': [],
+                'desnag': [],
+            }
+        zone = '{} {}'.format(r['block'], floor_labels.get(r['floor'], 'Floor ' + str(r['floor'])))
+        status_info = status_map.get(r['insp_status'], ('Unknown', '#F3F4F6', '#6B7280'))
+        duration = calc_duration(r['started_at'], r['submitted_at'], r['total_paused_seconds'], r['paused_at'])
+        entry = {
             'unit_id': r['unit_id'],
             'unit_number': r['unit_number'],
             'zone': zone,
             'inspection_date': r['inspection_date'] or 'N/A',
             'cycle': 'C{}'.format(r['cycle_number']),
+            'cycle_number': r['cycle_number'],
             'duration': duration,
             'defect_count': r['defect_count'],
             'status_label': status_info[0],
             'status_bg': status_info[1],
             'status_colour': status_info[2],
-        })
+        }
+        if r['cycle_number'] == 1:
+            groups[iid]['snag'].append(entry)
+        else:
+            groups[iid]['desnag'].append(entry)
 
-    # Build inspector summary cards
     colours = ['#C8963E', '#3D6B8E', '#4A7C59', '#C44D3F', '#7B6B8D', '#5A8A7A', '#B07D4B']
-    inspectors = []
-    total_units = 0
-    total_defects = 0
-    for i, (name, units) in enumerate(inspector_groups.items()):
-        unit_count = len(units)
-        defects = sum(u['defect_count'] for u in units)
-        avg = round(defects / unit_count, 1) if unit_count else 0
-        durations = [u['duration'] for u in units if u['duration'] != 'N/A']
+
+    def avg_dur_label(units):
+        durs = [u['duration'] for u in units if u['duration'] != 'N/A']
+        if not durs:
+            return None
+        total_mins = 0
+        count = 0
+        for d in durs:
+            if 'h' in d:
+                parts = d.replace('h', '').replace('m', '').split()
+                total_mins += int(parts[0]) * 60 + (int(parts[1]) if len(parts) > 1 else 0)
+            elif 'm' in d:
+                total_mins += int(d.replace('m', ''))
+            count += 1
+        if not count:
+            return None
+        am = total_mins // count
+        return f'{am // 60}h {am % 60}m' if am >= 60 else f'{am}m'
+
+    def date_range_label(units):
         dates = [u['inspection_date'] for u in units if u['inspection_date'] != 'N/A']
+        if not dates:
+            return ''
+        s = sorted(dates)
+        return s[0] if s[0] == s[-1] else f'{s[0]} to {s[-1]}'
+
+    detail_groups = []
+    for i, (iid, g) in enumerate(groups.items()):
         colour = colours[i % len(colours)]
-
-        # Avg duration
-        avg_dur = None
-        if durations:
-            total_mins = 0
-            count = 0
-            for d in durations:
-                if 'h' in d:
-                    parts = d.replace('h', '').replace('m', '').split()
-                    total_mins += int(parts[0]) * 60 + (int(parts[1]) if len(parts) > 1 else 0)
-                elif 'm' in d:
-                    total_mins += int(d.replace('m', ''))
-                count += 1
-            if count:
-                am = total_mins // count
-                if am >= 60:
-                    avg_dur = f'{am // 60}h {am % 60}m'
-                else:
-                    avg_dur = f'{am}m'
-
-        date_range = ''
-        if dates:
-            sorted_dates = sorted(dates)
-            if sorted_dates[0] == sorted_dates[-1]:
-                date_range = sorted_dates[0]
-            else:
-                date_range = f'{sorted_dates[0]} to {sorted_dates[-1]}'
-
-        inspectors.append({
-            'name': name,
-            'units': unit_count,
-            'total_defects': defects,
-            'avg_defects': avg,
-            'avg_duration': avg_dur,
-            'date_range': date_range,
+        snag_units = g['snag']
+        desnag_units = g['desnag']
+        detail_groups.append({
+            'inspector_id': iid,
+            'name': g['name'],
             'colour': colour,
-            'units': units,
+            'snag': {
+                'units': snag_units,
+                'unit_count': len(snag_units),
+                'total_defects': sum(u['defect_count'] for u in snag_units),
+                'avg_duration': avg_dur_label(snag_units),
+                'date_range': date_range_label(snag_units),
+            },
+            'desnag': {
+                'units': desnag_units,
+                'unit_count': len(desnag_units),
+                'total_defects': sum(u['defect_count'] for u in desnag_units),
+                'avg_duration': avg_dur_label(desnag_units),
+                'date_range': date_range_label(desnag_units),
+            },
         })
-        total_units += unit_count
-        total_defects += defects
 
-    period_label = ''
-    if from_date and to_date:
-        period_label = f'{from_date} to {to_date}'
-    elif from_date:
-        period_label = f'From {from_date}'
-    elif to_date:
-        period_label = f'Until {to_date}'
+    snag_total_units = sum(g['snag']['unit_count'] for g in detail_groups)
+    snag_total_defects = sum(g['snag']['total_defects'] for g in detail_groups)
+    snag_inspector_count = sum(1 for g in detail_groups if g['snag']['unit_count'] > 0)
+    desnag_total_units = sum(g['desnag']['unit_count'] for g in detail_groups)
+    desnag_total_defects = sum(g['desnag']['total_defects'] for g in detail_groups)
+    desnag_inspector_count = sum(1 for g in detail_groups if g['desnag']['unit_count'] > 0)
 
-    # Zone-adjusted scoring — EXACT copy of analytics dashboard logic (lines 528-580)
-    # Step 1: zone averages from ALL completed C1 inspections (not filtered by date)
+    # C1 zone-adjusted scoring
     zone_cards = [dict(r) for r in query_db("""
         SELECT u.block, u.floor,
             COUNT(DISTINCT u.id) as inspected,
@@ -4469,48 +4477,46 @@ def _build_audit_data_dict():
         GROUP BY u.block, u.floor
         HAVING inspected > 0
     """, [tenant_id])]
+    zone_avgs = {(c['block'], c['floor']): c['avg_defects'] for c in zone_cards}
 
-    zone_avgs = {}
-    for c in zone_cards:
-        zone_avgs[(c['block'], c['floor'])] = c['avg_defects']
-
-    # Step 2: per-inspector raw data (C1 only, open defects only — same as analytics)
     inspector_raw = [dict(r) for r in query_db("""
-        SELECT i.inspector_name,
+        SELECT i.inspector_id,
+            COALESCE(insp.name, 'Unknown (' || i.inspector_id || ')') AS inspector_display,
             u.unit_number, u.block, u.floor,
             COUNT(d.id) as defect_count
         FROM inspection i
         JOIN unit_real u ON i.unit_id = u.id
+        LEFT JOIN inspector insp ON insp.id = i.inspector_id
         LEFT JOIN defect d ON d.unit_id = u.id AND d.raised_cycle_id = i.cycle_id
             AND d.tenant_id = u.tenant_id
         WHERE i.tenant_id = ? AND i.cycle_number = 1
             AND i.status IN ('reviewed','approved','certified','pending_followup')
-            AND i.inspector_name IS NOT NULL
+            AND i.inspector_id IS NOT NULL
             AND u.unit_number NOT LIKE 'TEST%'
-        GROUP BY i.inspector_name, u.unit_number, u.block, u.floor
-        ORDER BY i.inspector_name
+            AND (insp.role IN ('inspector','team_lead') OR insp.id IS NULL)
+        GROUP BY i.inspector_id, u.unit_number, u.block, u.floor
+        ORDER BY inspector_display
     """, [tenant_id])]
 
-    # Step 3: compute zone-adjusted scores (exact analytics logic)
-    from collections import defaultdict
-    insp_data = defaultdict(lambda: {'units': 0, 'total_defects': 0, 'variances': []})
-    for r in inspector_raw:
-        name = r['inspector_name']
-        zone_key = (r['block'], r['floor'])
-        zone_avg = zone_avgs.get(zone_key, 0)
-        variance_pct = round((r['defect_count'] - zone_avg) / zone_avg * 100, 1) if zone_avg > 0 else 0
-        insp_data[name]['units'] += 1
-        insp_data[name]['total_defects'] += r['defect_count']
-        insp_data[name]['variances'].append(variance_pct)
-
     import statistics as _stats
-    inspector_cards = []
-    for name, d in insp_data.items():
+    insp_data = defaultdict(lambda: {'name': '', 'units': 0, 'total_defects': 0, 'variances': []})
+    for r in inspector_raw:
+        iid = r['inspector_id']
+        zone_avg = zone_avgs.get((r['block'], r['floor']), 0)
+        variance_pct = round((r['defect_count'] - zone_avg) / zone_avg * 100, 1) if zone_avg > 0 else 0
+        insp_data[iid]['name'] = r['inspector_display']
+        insp_data[iid]['units'] += 1
+        insp_data[iid]['total_defects'] += r['defect_count']
+        insp_data[iid]['variances'].append(variance_pct)
+
+    snag_cards = []
+    for iid, d in insp_data.items():
         avg_variance = round(sum(d['variances']) / len(d['variances']), 1) if d['variances'] else 0
         consistency = round(_stats.stdev(d['variances']), 1) if len(d['variances']) > 1 else 0
         raw_avg = round(d['total_defects'] / d['units'], 1) if d['units'] > 0 else 0
-        inspector_cards.append({
-            'name': name,
+        snag_cards.append({
+            'inspector_id': iid,
+            'name': d['name'],
             'units': d['units'],
             'total_defects': d['total_defects'],
             'raw_avg': raw_avg,
@@ -4518,17 +4524,41 @@ def _build_audit_data_dict():
             'consistency': consistency,
             'colour': '#C44D3F' if abs(avg_variance) > 30 else '#C8963E' if abs(avg_variance) > 15 else '#4A7C59',
         })
-    inspector_cards.sort(key=lambda x: x['zone_score'], reverse=True)
+    snag_cards.sort(key=lambda x: x['zone_score'], reverse=True)
+
+    desnag_cards = []
+    for g in detail_groups:
+        if g['desnag']['unit_count'] == 0:
+            continue
+        units = g['desnag']['unit_count']
+        defects = g['desnag']['total_defects']
+        desnag_cards.append({
+            'inspector_id': g['inspector_id'],
+            'name': g['name'],
+            'units': units,
+            'total_defects': defects,
+            'raw_avg': round(defects / units, 1) if units else 0,
+            'colour': '#6B6B6B',
+        })
+    desnag_cards.sort(key=lambda x: x['units'], reverse=True)
+
+    period_label = ''
+    if from_date and to_date:
+        period_label = f'{from_date} to {to_date}'
+    elif from_date:
+        period_label = f'From {from_date}'
+    elif to_date:
+        period_label = f'Until {to_date}'
 
     return dict(
-        inspectors=inspectors,
-        total_units=total_units,
-        total_defects=total_defects,
-        inspector_count=len(inspectors),
+        detail_groups=detail_groups,
+        snag_cards=snag_cards,
+        desnag_cards=desnag_cards,
+        snag_totals={'inspectors': snag_inspector_count, 'units': snag_total_units, 'defects': snag_total_defects},
+        desnag_totals={'inspectors': desnag_inspector_count, 'units': desnag_total_units, 'defects': desnag_total_defects},
         from_date=from_date,
         to_date=to_date,
         period_label=period_label,
-        inspector_cards=inspector_cards,
     )
 
 

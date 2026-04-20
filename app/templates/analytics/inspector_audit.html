@@ -31,140 +31,242 @@
         </form>
     </div>
 
-    {% if not inspectors %}
+    {% if not detail_groups %}
     <div style="text-align: center; padding: 3rem; color: #9A9A9A;">No inspection data found for the selected period.</div>
     {% else %}
 
-    <!-- Inspector Performance -->
-    {% if inspector_cards %}
-    <div style="margin-bottom: 1.5rem;">
-    <h2 style="font-size: 1.25rem; font-weight: 700; color: #0A0A0A; margin-bottom: 0.3rem;">Inspector Performance</h2>
-    <p style="color: #9A9A9A; font-size: 0.8rem; margin-bottom: 1rem;">Zone-adjusted scores compare each inspector against the average for the specific zones they worked. Internal use only.</p>
-
-    <div style="display: flex; flex-wrap: wrap; gap: 0.75rem; margin-bottom: 1.5rem;">
-    {% for insp in inspector_cards %}
-    <div style="flex: 1 1 280px; max-width: 400px; background: #F5F3EE; border-radius: 10px; padding: 1rem; border-left: 4px solid {{ insp.colour }};">
-        <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 0.5rem;">
-            <div>
-                <div style="font-weight: 700; font-size: 0.95rem; color: #1A1A1A;">{{ insp.name }}</div>
-                <div style="font-size: 0.75rem; color: #9A9A9A;">{{ insp.units }} units &middot; {{ insp.total_defects }} defects</div>
+    <!-- ============================================================ -->
+    <!-- SNAG (C1) SECTION                                              -->
+    <!-- ============================================================ -->
+    {% if snag_cards %}
+    <div style="margin-bottom: 2rem;">
+        <div style="display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 0.3rem;">
+            <h2 style="font-size: 1.25rem; font-weight: 700; color: #0A0A0A; margin: 0;">Snag Inspections (C1)</h2>
+            <div style="font-size: 0.78rem; color: #6B6B6B;">
+                {{ snag_totals.inspectors }} inspector{{ 's' if snag_totals.inspectors != 1 else '' }}
+                &middot; {{ snag_totals.units }} units
+                &middot; {{ snag_totals.defects }} defects
             </div>
-            <div style="text-align: right;">
-                <div style="font-size: 1.4rem; font-weight: 800; color: {{ insp.colour }};">
-                    {% if insp.zone_score > 0 %}+{% endif %}{{ insp.zone_score }}%
+        </div>
+        <p style="color: #9A9A9A; font-size: 0.8rem; margin-bottom: 1rem;">Zone-adjusted scores compare each inspector against the average for the specific zones they worked. Internal use only.</p>
+
+        <!-- Cards -->
+        <div style="display: flex; flex-wrap: wrap; gap: 0.75rem; margin-bottom: 1.5rem;">
+        {% for insp in snag_cards %}
+        <div style="flex: 1 1 280px; max-width: 400px; background: #F5F3EE; border-radius: 10px; padding: 1rem; border-left: 4px solid {{ insp.colour }};">
+            <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 0.5rem;">
+                <div>
+                    <div style="font-weight: 700; font-size: 0.95rem; color: #1A1A1A;">{{ insp.name }}</div>
+                    <div style="font-size: 0.75rem; color: #9A9A9A;">{{ insp.units }} units &middot; {{ insp.total_defects }} defects</div>
                 </div>
-                <div style="font-size: 0.65rem; color: #9A9A9A;">vs zone avg</div>
+                <div style="text-align: right;">
+                    <div style="font-size: 1.4rem; font-weight: 800; color: {{ insp.colour }};">
+                        {% if insp.zone_score > 0 %}+{% endif %}{{ insp.zone_score }}%
+                    </div>
+                    <div style="font-size: 0.65rem; color: #9A9A9A;">vs zone avg</div>
+                </div>
             </div>
-        </div>
-        <div style="display: flex; gap: 1rem; font-size: 0.75rem; color: #6B6B6B;">
-            <div><span style="font-weight: 600;">{{ insp.raw_avg }}</span> avg/unit</div>
-            <div>consistency: <span style="font-weight: 600;">{{ insp.consistency }}</span></div>
-        </div>
-        <!-- Zone score bar -->
-        <div style="margin-top: 0.5rem; position: relative; height: 6px; background: #e5e5e5; border-radius: 3px; overflow: visible;">
-            <div style="position: absolute; left: 50%; top: 0; width: 1px; height: 6px; background: #6B6B6B;"></div>
-            {% if insp.zone_score >= 0 %}
-            <div style="position: absolute; left: 50%; top: 0; height: 6px; width: {{ [insp.zone_score * 0.5, 50]|min }}%; background: {{ insp.colour }}; border-radius: 0 3px 3px 0;"></div>
-            {% else %}
-            <div style="position: absolute; right: 50%; top: 0; height: 6px; width: {{ [insp.zone_score|abs * 0.5, 50]|min }}%; background: {{ insp.colour }}; border-radius: 3px 0 0 3px;"></div>
-            {% endif %}
-        </div>
-    </div>
-    {% endfor %}
-    </div>
-
-    <!-- Callout -->
-    {% set top = inspector_cards[0] %}
-    {% set bottom = inspector_cards[-1] %}
-    <div style="border-left: 4px solid #3D6B8E; background: rgba(61,107,142,0.12); border-radius: 0 8px 8px 0; padding: 0.75rem 1rem; font-size: 0.82rem; color: #1A1A1A; margin-bottom: 1.5rem;">
-        <strong>{{ top.name }}</strong> finds {{ top.zone_score|abs }}% {{ 'more' if top.zone_score > 0 else 'fewer' }} defects than zone averages ({{ top.units }} units).
-        <strong>{{ bottom.name }}</strong> finds {{ bottom.zone_score|abs }}% {{ 'more' if bottom.zone_score > 0 else 'fewer' }} ({{ bottom.units }} units).
-        Consistency score measures how steady an inspector is across units &mdash; lower is more reliable.
-    </div>
-
-    <!-- Zone-Adjusted Ranking Chart -->
-    <div style="background: #F5F3EE; border-radius: 10px; padding: 1rem; margin-bottom: 1.5rem;">
-        <div style="font-weight: 700; font-size: 0.9rem; color: #1A1A1A; margin-bottom: 0.75rem;">Zone-Adjusted Ranking</div>
-        <p style="font-size: 0.72rem; color: #9A9A9A; margin-bottom: 0.75rem;">How many defects each inspector finds compared to the average for the zones they worked. Positive = more thorough. Negative = finding fewer than expected.</p>
-        {% for insp in inspector_cards %}
-        <div style="display: flex; align-items: center; margin-bottom: 0.5rem; padding: 2px 0; border-radius: 4px;">
-            <div style="width: 130px; font-size: 0.78rem; font-weight: 600; color: #1A1A1A; text-align: right; padding-right: 0.5rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{{ insp.name }}</div>
-            <div style="flex: 1; position: relative; height: 26px; background: #e9e7e2; border-radius: 4px; overflow: visible;">
-                <div style="position: absolute; left: 50%; top: 0; width: 1px; height: 26px; background: #6B6B6B; z-index: 2;"></div>
+            <div style="display: flex; gap: 1rem; font-size: 0.75rem; color: #6B6B6B;">
+                <div><span style="font-weight: 600;">{{ insp.raw_avg }}</span> avg/unit</div>
+                <div>consistency: <span style="font-weight: 600;">{{ insp.consistency }}</span></div>
+            </div>
+            <div style="margin-top: 0.5rem; position: relative; height: 6px; background: #e5e5e5; border-radius: 3px; overflow: visible;">
+                <div style="position: absolute; left: 50%; top: 0; width: 1px; height: 6px; background: #6B6B6B;"></div>
                 {% if insp.zone_score >= 0 %}
-                <div style="position: absolute; left: 50%; top: 3px; height: 20px; width: {{ [insp.zone_score * 0.4, 48]|min }}%; background: {{ insp.colour }}; border-radius: 0 4px 4px 0; z-index: 1; display: flex; align-items: center; justify-content: flex-end; padding-right: 4px;">
-                    <span style="font-size: 0.68rem; font-weight: 700; color: white;">{% if insp.zone_score > 5 %}+{{ insp.zone_score }}%{% endif %}</span>
-                </div>
-                {% if insp.zone_score <= 5 %}<div style="position: absolute; left: calc(50% + {{ [insp.zone_score * 0.4, 48]|min }}% + 4px); top: 3px; height: 20px; display: flex; align-items: center; z-index: 3;"><span style="font-size: 0.7rem; font-weight: 700; color: {{ insp.colour }};">+{{ insp.zone_score }}%</span></div>{% endif %}
+                <div style="position: absolute; left: 50%; top: 0; height: 6px; width: {{ [insp.zone_score * 0.5, 50]|min }}%; background: {{ insp.colour }}; border-radius: 0 3px 3px 0;"></div>
                 {% else %}
-                <div style="position: absolute; right: 50%; top: 3px; height: 20px; width: {{ [insp.zone_score|abs * 0.4, 48]|min }}%; background: {{ insp.colour }}; border-radius: 4px 0 0 4px; z-index: 1; display: flex; align-items: center; padding-left: 4px;">
-                    <span style="font-size: 0.68rem; font-weight: 700; color: white;">{% if insp.zone_score|abs > 5 %}{{ insp.zone_score }}%{% endif %}</span>
-                </div>
-                {% if insp.zone_score|abs <= 5 %}<div style="position: absolute; right: calc(50% + {{ [insp.zone_score|abs * 0.4, 48]|min }}% + 4px); top: 3px; height: 20px; display: flex; align-items: center; z-index: 3;"><span style="font-size: 0.7rem; font-weight: 700; color: {{ insp.colour }};">{{ insp.zone_score }}%</span></div>{% endif %}
+                <div style="position: absolute; right: 50%; top: 0; height: 6px; width: {{ [insp.zone_score|abs * 0.5, 50]|min }}%; background: {{ insp.colour }}; border-radius: 3px 0 0 3px;"></div>
                 {% endif %}
-            </div>
-            <div style="width: 70px; text-align: right; padding-left: 0.5rem;">
-                <span style="font-size: 0.82rem; font-weight: 700; color: #1A1A1A;">{{ insp.units }}</span>
-                <span style="font-size: 0.7rem; color: #6B6B6B;"> units</span>
             </div>
         </div>
         {% endfor %}
-        <div style="display: flex; font-size: 0.65rem; color: #9A9A9A; margin-top: 0.3rem;">
-            <div style="width: 130px;"></div>
-            <div style="flex: 1; display: flex; justify-content: space-between; padding: 0 2px;">
-                <span>&larr; fewer defects</span>
-                <span>zone avg</span>
-                <span>more defects &rarr;</span>
+        </div>
+
+        <!-- Callout -->
+        {% if snag_cards|length >= 2 %}
+        {% set top = snag_cards[0] %}
+        {% set bottom = snag_cards[-1] %}
+        <div style="border-left: 4px solid #3D6B8E; background: rgba(61,107,142,0.12); border-radius: 0 8px 8px 0; padding: 0.75rem 1rem; font-size: 0.82rem; color: #1A1A1A; margin-bottom: 1.5rem;">
+            <strong>{{ top.name }}</strong> finds {{ top.zone_score|abs }}% {{ 'more' if top.zone_score > 0 else 'fewer' }} defects than zone averages ({{ top.units }} units).
+            <strong>{{ bottom.name }}</strong> finds {{ bottom.zone_score|abs }}% {{ 'more' if bottom.zone_score > 0 else 'fewer' }} ({{ bottom.units }} units).
+            Consistency score measures how steady an inspector is across units &mdash; lower is more reliable.
+        </div>
+        {% endif %}
+
+        <!-- Zone-Adjusted Ranking Chart -->
+        <div style="background: #F5F3EE; border-radius: 10px; padding: 1rem;">
+            <div style="font-weight: 700; font-size: 0.9rem; color: #1A1A1A; margin-bottom: 0.75rem;">Zone-Adjusted Ranking</div>
+            <p style="font-size: 0.72rem; color: #9A9A9A; margin-bottom: 0.75rem;">How many defects each inspector finds compared to the average for the zones they worked. Positive = more thorough. Negative = finding fewer than expected.</p>
+            {% for insp in snag_cards %}
+            <div style="display: flex; align-items: center; margin-bottom: 0.5rem; padding: 2px 0; border-radius: 4px;">
+                <div style="width: 130px; font-size: 0.78rem; font-weight: 600; color: #1A1A1A; text-align: right; padding-right: 0.5rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{{ insp.name }}</div>
+                <div style="flex: 1; position: relative; height: 26px; background: #e9e7e2; border-radius: 4px; overflow: visible;">
+                    <div style="position: absolute; left: 50%; top: 0; width: 1px; height: 26px; background: #6B6B6B; z-index: 2;"></div>
+                    {% if insp.zone_score >= 0 %}
+                    <div style="position: absolute; left: 50%; top: 3px; height: 20px; width: {{ [insp.zone_score * 0.4, 48]|min }}%; background: {{ insp.colour }}; border-radius: 0 4px 4px 0; z-index: 1; display: flex; align-items: center; justify-content: flex-end; padding-right: 4px;">
+                        <span style="font-size: 0.68rem; font-weight: 700; color: white;">{% if insp.zone_score > 5 %}+{{ insp.zone_score }}%{% endif %}</span>
+                    </div>
+                    {% if insp.zone_score <= 5 %}<div style="position: absolute; left: calc(50% + {{ [insp.zone_score * 0.4, 48]|min }}% + 4px); top: 3px; height: 20px; display: flex; align-items: center; z-index: 3;"><span style="font-size: 0.7rem; font-weight: 700; color: {{ insp.colour }};">+{{ insp.zone_score }}%</span></div>{% endif %}
+                    {% else %}
+                    <div style="position: absolute; right: 50%; top: 3px; height: 20px; width: {{ [insp.zone_score|abs * 0.4, 48]|min }}%; background: {{ insp.colour }}; border-radius: 4px 0 0 4px; z-index: 1; display: flex; align-items: center; padding-left: 4px;">
+                        <span style="font-size: 0.68rem; font-weight: 700; color: white;">{% if insp.zone_score|abs > 5 %}{{ insp.zone_score }}%{% endif %}</span>
+                    </div>
+                    {% if insp.zone_score|abs <= 5 %}<div style="position: absolute; right: calc(50% + {{ [insp.zone_score|abs * 0.4, 48]|min }}% + 4px); top: 3px; height: 20px; display: flex; align-items: center; z-index: 3;"><span style="font-size: 0.7rem; font-weight: 700; color: {{ insp.colour }};">{{ insp.zone_score }}%</span></div>{% endif %}
+                    {% endif %}
+                </div>
+                <div style="width: 70px; text-align: right; padding-left: 0.5rem;">
+                    <span style="font-size: 0.82rem; font-weight: 700; color: #1A1A1A;">{{ insp.units }}</span>
+                    <span style="font-size: 0.7rem; color: #6B6B6B;"> units</span>
+                </div>
             </div>
-            <div style="width: 70px;"></div>
+            {% endfor %}
+            <div style="display: flex; font-size: 0.65rem; color: #9A9A9A; margin-top: 0.3rem;">
+                <div style="width: 130px;"></div>
+                <div style="flex: 1; display: flex; justify-content: space-between; padding: 0 2px;">
+                    <span>&larr; fewer defects</span>
+                    <span>zone avg</span>
+                    <span>more defects &rarr;</span>
+                </div>
+                <div style="width: 70px;"></div>
+            </div>
         </div>
     </div>
     {% endif %}
 
-        <!-- Per-Inspector Tables -->
-    {% for insp in inspectors %}
+    <!-- ============================================================ -->
+    <!-- DE-SNAG (C2+) SECTION                                          -->
+    <!-- ============================================================ -->
+    {% if desnag_cards %}
+    <div style="margin-bottom: 2rem;">
+        <div style="display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 0.3rem;">
+            <h2 style="font-size: 1.25rem; font-weight: 700; color: #0A0A0A; margin: 0;">De-snag Inspections (C2+)</h2>
+            <div style="font-size: 0.78rem; color: #6B6B6B;">
+                {{ desnag_totals.inspectors }} inspector{{ 's' if desnag_totals.inspectors != 1 else '' }}
+                &middot; {{ desnag_totals.units }} units touched
+                &middot; {{ desnag_totals.defects }} defects addressed
+            </div>
+        </div>
+        <p style="color: #9A9A9A; font-size: 0.8rem; margin-bottom: 1rem;">Payment is per unit touched. Defect counts are informational, not performance indicators.</p>
+
+        <!-- Cards -->
+        <div style="display: flex; flex-wrap: wrap; gap: 0.75rem;">
+        {% for insp in desnag_cards %}
+        <div style="flex: 1 1 280px; max-width: 400px; background: #F5F3EE; border-radius: 10px; padding: 1rem; border-left: 4px solid #6B6B6B;">
+            <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 0.5rem;">
+                <div>
+                    <div style="font-weight: 700; font-size: 0.95rem; color: #1A1A1A;">{{ insp.name }}</div>
+                    <div style="font-size: 0.75rem; color: #9A9A9A;">{{ insp.total_defects }} defects addressed</div>
+                </div>
+                <div style="text-align: right;">
+                    <div style="font-size: 1.6rem; font-weight: 800; color: #1A1A1A;">{{ insp.units }}</div>
+                    <div style="font-size: 0.65rem; color: #9A9A9A;">units touched</div>
+                </div>
+            </div>
+            <div style="display: flex; gap: 1rem; font-size: 0.75rem; color: #6B6B6B;">
+                <div><span style="font-weight: 600;">{{ insp.raw_avg }}</span> avg defects/unit</div>
+            </div>
+        </div>
+        {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- ============================================================ -->
+    <!-- PER-INSPECTOR DETAIL                                           -->
+    <!-- ============================================================ -->
+    {% for insp in detail_groups %}
     <div style="margin-bottom: 2rem;">
         <h2 style="font-size: 1.1rem; font-weight: 700; color: #0A0A0A; margin-bottom: 0.5rem; padding-bottom: 0.3rem; border-bottom: 2px solid {{ insp.colour }};">
             {{ insp.name }}
-            <span style="font-size: 0.82rem; font-weight: 400; color: #6B6B6B; margin-left: 0.5rem;">{{ insp.unit_count }} units</span>
+            <span style="font-size: 0.82rem; font-weight: 400; color: #6B6B6B; margin-left: 0.5rem;">
+                {% if insp.snag.unit_count %}{{ insp.snag.unit_count }} snag{% endif %}
+                {% if insp.snag.unit_count and insp.desnag.unit_count %} &middot; {% endif %}
+                {% if insp.desnag.unit_count %}{{ insp.desnag.unit_count }} de-snag{% endif %}
+                {% if insp.snag.unit_count and insp.desnag.unit_count %} &middot; {{ insp.snag.unit_count + insp.desnag.unit_count }} total{% endif %}
+            </span>
         </h2>
-        <table style="width: 100%; border-collapse: collapse; font-size: 0.82rem;">
-            <thead>
-                <tr style="border-bottom: 2px solid #E5E5E5;">
-                    <th style="text-align: left; padding: 0.5rem 0.3rem; color: #6B6B6B; font-weight: 600;">Unit</th>
-                    <th style="text-align: left; padding: 0.5rem 0.3rem; color: #6B6B6B; font-weight: 600;">Zone</th>
-                    <th style="text-align: center; padding: 0.5rem 0.3rem; color: #6B6B6B; font-weight: 600;">Cycle</th>
-                    <th style="text-align: left; padding: 0.5rem 0.3rem; color: #6B6B6B; font-weight: 600;">Date</th>
-                    <th style="text-align: center; padding: 0.5rem 0.3rem; color: #6B6B6B; font-weight: 600;">Duration</th>
-                    <th style="text-align: center; padding: 0.5rem 0.3rem; color: #6B6B6B; font-weight: 600;">Defects</th>
-                    <th style="text-align: center; padding: 0.5rem 0.3rem; color: #6B6B6B; font-weight: 600;">Status</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for u in insp.units %}
-                <tr style="border-bottom: 1px solid #F0F0F0; cursor: pointer;" onclick="window.location='{{ url_for('certification.view_unit', unit_id=u.unit_id) }}?from=audit'">
-                    <td style="padding: 0.5rem 0.3rem; font-weight: 600; text-decoration: underline; text-underline-offset: 2px;">{{ u.unit_number }}</td>
-                    <td style="padding: 0.5rem 0.3rem; color: #6B6B6B;">{{ u.zone }}</td>
-                    <td style="padding: 0.5rem 0.3rem; text-align: center;">{{ u.cycle }}</td>
-                    <td style="padding: 0.5rem 0.3rem;">{{ u.inspection_date }}</td>
-                    <td style="padding: 0.5rem 0.3rem; text-align: center; color: {{ '#1A1A1A' if u.duration != 'N/A' else '#9A9A9A' }};">{{ u.duration }}</td>
-                    <td style="padding: 0.5rem 0.3rem; text-align: center; font-weight: 600;">{{ u.defect_count }}</td>
-                    <td style="padding: 0.5rem 0.3rem; text-align: center;">
-                        <span style="font-size: 0.75rem; padding: 0.15rem 0.5rem; border-radius: 9999px; background: {{ u.status_bg }}; color: {{ u.status_colour }};">{{ u.status_label }}</span>
-                    </td>
-                </tr>
-                {% endfor %}
-            </tbody>
-            <tfoot>
-                <tr style="border-top: 2px solid #E5E5E5; font-weight: 600;">
-                    <td style="padding: 0.5rem 0.3rem;" colspan="3">Subtotal</td>
-                    <td style="padding: 0.5rem 0.3rem;"></td>
-                    <td style="padding: 0.5rem 0.3rem; text-align: center;">{% if insp.avg_duration %}{{ insp.avg_duration }} avg{% else %}N/A{% endif %}</td>
-                    <td style="padding: 0.5rem 0.3rem; text-align: center;">{{ insp.total_defects }}</td>
-                    <td style="padding: 0.5rem 0.3rem; text-align: center;">{{ insp.unit_count }} units</td>
-                </tr>
-            </tfoot>
-        </table>
+
+        {% if insp.snag.unit_count > 0 %}
+        <div style="margin-bottom: 1rem;">
+            <div style="font-size: 0.85rem; font-weight: 600; color: #6B6B6B; margin-bottom: 0.4rem;">Snag (C1)</div>
+            <table style="width: 100%; border-collapse: collapse; font-size: 0.82rem;">
+                <thead>
+                    <tr style="border-bottom: 2px solid #E5E5E5;">
+                        <th style="text-align: left; padding: 0.5rem 0.3rem; color: #6B6B6B; font-weight: 600;">Unit</th>
+                        <th style="text-align: left; padding: 0.5rem 0.3rem; color: #6B6B6B; font-weight: 600;">Zone</th>
+                        <th style="text-align: left; padding: 0.5rem 0.3rem; color: #6B6B6B; font-weight: 600;">Date</th>
+                        <th style="text-align: center; padding: 0.5rem 0.3rem; color: #6B6B6B; font-weight: 600;">Duration</th>
+                        <th style="text-align: center; padding: 0.5rem 0.3rem; color: #6B6B6B; font-weight: 600;">Defects</th>
+                        <th style="text-align: center; padding: 0.5rem 0.3rem; color: #6B6B6B; font-weight: 600;">Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for u in insp.snag.units %}
+                    <tr style="border-bottom: 1px solid #F0F0F0; cursor: pointer;" onclick="window.location='{{ url_for('certification.view_unit', unit_id=u.unit_id) }}?from=audit'">
+                        <td style="padding: 0.5rem 0.3rem; font-weight: 600; text-decoration: underline; text-underline-offset: 2px;">{{ u.unit_number }}</td>
+                        <td style="padding: 0.5rem 0.3rem; color: #6B6B6B;">{{ u.zone }}</td>
+                        <td style="padding: 0.5rem 0.3rem;">{{ u.inspection_date }}</td>
+                        <td style="padding: 0.5rem 0.3rem; text-align: center; color: {{ '#1A1A1A' if u.duration != 'N/A' else '#9A9A9A' }};">{{ u.duration }}</td>
+                        <td style="padding: 0.5rem 0.3rem; text-align: center; font-weight: 600;">{{ u.defect_count }}</td>
+                        <td style="padding: 0.5rem 0.3rem; text-align: center;">
+                            <span style="font-size: 0.75rem; padding: 0.15rem 0.5rem; border-radius: 9999px; background: {{ u.status_bg }}; color: {{ u.status_colour }};">{{ u.status_label }}</span>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+                <tfoot>
+                    <tr style="border-top: 2px solid #E5E5E5; font-weight: 600;">
+                        <td style="padding: 0.5rem 0.3rem;" colspan="3">Snag subtotal</td>
+                        <td style="padding: 0.5rem 0.3rem; text-align: center;">{% if insp.snag.avg_duration %}{{ insp.snag.avg_duration }} avg{% else %}N/A{% endif %}</td>
+                        <td style="padding: 0.5rem 0.3rem; text-align: center;">{{ insp.snag.total_defects }}</td>
+                        <td style="padding: 0.5rem 0.3rem; text-align: center;">{{ insp.snag.unit_count }} units</td>
+                    </tr>
+                </tfoot>
+            </table>
+        </div>
+        {% endif %}
+
+        {% if insp.desnag.unit_count > 0 %}
+        <div>
+            <div style="font-size: 0.85rem; font-weight: 600; color: #6B6B6B; margin-bottom: 0.4rem;">De-snag (C2+)</div>
+            <table style="width: 100%; border-collapse: collapse; font-size: 0.82rem;">
+                <thead>
+                    <tr style="border-bottom: 2px solid #E5E5E5;">
+                        <th style="text-align: left; padding: 0.5rem 0.3rem; color: #6B6B6B; font-weight: 600;">Unit</th>
+                        <th style="text-align: left; padding: 0.5rem 0.3rem; color: #6B6B6B; font-weight: 600;">Zone</th>
+                        <th style="text-align: center; padding: 0.5rem 0.3rem; color: #6B6B6B; font-weight: 600;">Cycle</th>
+                        <th style="text-align: left; padding: 0.5rem 0.3rem; color: #6B6B6B; font-weight: 600;">Date</th>
+                        <th style="text-align: center; padding: 0.5rem 0.3rem; color: #6B6B6B; font-weight: 600;">Duration</th>
+                        <th style="text-align: center; padding: 0.5rem 0.3rem; color: #6B6B6B; font-weight: 600;">Defects</th>
+                        <th style="text-align: center; padding: 0.5rem 0.3rem; color: #6B6B6B; font-weight: 600;">Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for u in insp.desnag.units %}
+                    <tr style="border-bottom: 1px solid #F0F0F0; cursor: pointer;" onclick="window.location='{{ url_for('certification.view_unit', unit_id=u.unit_id) }}?from=audit'">
+                        <td style="padding: 0.5rem 0.3rem; font-weight: 600; text-decoration: underline; text-underline-offset: 2px;">{{ u.unit_number }}</td>
+                        <td style="padding: 0.5rem 0.3rem; color: #6B6B6B;">{{ u.zone }}</td>
+                        <td style="padding: 0.5rem 0.3rem; text-align: center;">{{ u.cycle }}</td>
+                        <td style="padding: 0.5rem 0.3rem;">{{ u.inspection_date }}</td>
+                        <td style="padding: 0.5rem 0.3rem; text-align: center; color: {{ '#1A1A1A' if u.duration != 'N/A' else '#9A9A9A' }};">{{ u.duration }}</td>
+                        <td style="padding: 0.5rem 0.3rem; text-align: center; font-weight: 600;">{{ u.defect_count }}</td>
+                        <td style="padding: 0.5rem 0.3rem; text-align: center;">
+                            <span style="font-size: 0.75rem; padding: 0.15rem 0.5rem; border-radius: 9999px; background: {{ u.status_bg }}; color: {{ u.status_colour }};">{{ u.status_label }}</span>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+                <tfoot>
+                    <tr style="border-top: 2px solid #E5E5E5; font-weight: 600;">
+                        <td style="padding: 0.5rem 0.3rem;" colspan="4">De-snag subtotal</td>
+                        <td style="padding: 0.5rem 0.3rem; text-align: center;">{% if insp.desnag.avg_duration %}{{ insp.desnag.avg_duration }} avg{% else %}N/A{% endif %}</td>
+                        <td style="padding: 0.5rem 0.3rem; text-align: center;">{{ insp.desnag.total_defects }}</td>
+                        <td style="padding: 0.5rem 0.3rem; text-align: center;">{{ insp.desnag.unit_count }} units</td>
+                    </tr>
+                </tfoot>
+            </table>
+        </div>
+        {% endif %}
     </div>
     {% endfor %}
 
@@ -173,34 +275,19 @@
 
 <style>
 @media print {
-    /* Hide non-print elements */
     .no-print, nav, .mobile-nav, header, footer, form { display: none !important; }
-
-    /* Base */
     body { background: white !important; font-size: 10pt; }
     div[style*="max-w-6xl"] { max-width: 100% !important; padding: 0 !important; }
-
-    /* Override ALL inline flex to block */
     div[style*="flex"] { display: block !important; }
     span[style*="flex"] { display: block !important; }
-
-    /* Override inline grid to block, cards side by side */
     div[style*="grid"] { display: block !important; }
     div[style*="grid"] > div { display: inline-block !important; width: 30% !important; vertical-align: top !important; margin: 0.5% !important; }
-
-    /* Totals bar: keep visible, override flex */
     div[style*="background: #0A0A0A"] { display: block !important; }
     div[style*="background: #0A0A0A"] > span { display: inline-block !important; margin-right: 2rem; }
-
-    /* Tables */
     table { page-break-inside: auto; width: 100% !important; }
     tr { page-break-inside: avoid; }
     div[style*="margin-bottom: 2rem"] { page-break-inside: avoid; }
-
-    /* Links */
     a { text-decoration: none !important; color: #0A0A0A !important; }
-
-    /* Page setup */
     @page { margin: 1.5cm; }
 }
 </style>
