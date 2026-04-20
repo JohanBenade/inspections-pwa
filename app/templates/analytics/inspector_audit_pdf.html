@@ -43,6 +43,13 @@
         margin-bottom: 4px;
     }
 
+    h2 {
+        font-family: 'Cormorant Garamond', serif;
+        font-size: 14pt;
+        font-weight: 600;
+        color: #0A0A0A;
+    }
+
     .subtitle {
         font-size: 10pt;
         color: #6B6B6B;
@@ -58,43 +65,111 @@
         padding-top: 60px;
     }
 
-    /* KPI cards as table */
+    /* Section header */
+    .section-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: baseline;
+        margin-top: 18px;
+        margin-bottom: 4px;
+        page-break-after: avoid;
+    }
+    .section-meta {
+        font-size: 8pt;
+        color: #6B6B6B;
+    }
+    .section-note {
+        font-size: 8pt;
+        color: #9A9A9A;
+        margin-bottom: 10px;
+    }
+
+    /* KPI split cards */
     .kpi-table {
         width: 100%;
         border-collapse: collapse;
-        margin-bottom: 20px;
+        margin-bottom: 16px;
     }
     .kpi-cell {
         background: #F5F3EE;
-        border-left: 3px solid #C8963E;
         padding: 10px 14px;
         text-align: left;
         vertical-align: top;
-        width: 25%;
         border-right: 1px solid #E5E5E5;
     }
-    .kpi-cell:last-child {
-        border-right: none;
-    }
+    .kpi-cell.snag { border-left: 3px solid #C8963E; width: 16.66%; }
+    .kpi-cell.desnag { border-left: 3px solid #6B6B6B; width: 16.66%; }
+    .kpi-cell:last-child { border-right: none; }
     .kpi-value {
         font-family: 'Cormorant Garamond', serif;
-        font-size: 20pt;
+        font-size: 18pt;
         font-weight: 700;
         color: #0A0A0A;
     }
     .kpi-label {
-        font-size: 8pt;
+        font-size: 7.5pt;
         color: #6B6B6B;
         text-transform: uppercase;
         letter-spacing: 0.5px;
     }
 
-    /* Inspector section */
+    /* Summary cards (Snag + De-snag) */
+    .cards-row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+        margin-bottom: 14px;
+    }
+    .card {
+        flex: 1 1 200px;
+        max-width: 260px;
+        background: #F5F3EE;
+        border-radius: 6px;
+        padding: 8px 10px;
+    }
+    .card.snag-card { border-left: 3px solid #C8963E; }
+    .card.desnag-card { border-left: 3px solid #6B6B6B; }
+    .card-head {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        margin-bottom: 4px;
+    }
+    .card-name {
+        font-size: 9pt;
+        font-weight: 700;
+        color: #1A1A1A;
+    }
+    .card-sub {
+        font-size: 7.5pt;
+        color: #9A9A9A;
+    }
+    .card-score-snag {
+        font-size: 13pt;
+        font-weight: 800;
+    }
+    .card-score-desnag {
+        font-size: 15pt;
+        font-weight: 800;
+        color: #1A1A1A;
+    }
+    .card-score-label {
+        font-size: 6.5pt;
+        color: #9A9A9A;
+        text-align: right;
+    }
+    .card-foot {
+        font-size: 7.5pt;
+        color: #6B6B6B;
+    }
+
+    /* Inspector detail block */
     .inspector-header {
         border-left: 4px solid #C8963E;
         padding: 6px 0 6px 12px;
         margin: 18px 0 8px 0;
         page-break-inside: avoid;
+        page-break-after: avoid;
     }
     .inspector-name {
         font-family: 'Cormorant Garamond', serif;
@@ -106,12 +181,20 @@
         font-size: 8pt;
         color: #6B6B6B;
     }
+    .sub-section-label {
+        font-size: 8.5pt;
+        font-weight: 600;
+        color: #6B6B6B;
+        margin: 8px 0 4px 0;
+        text-transform: uppercase;
+        letter-spacing: 0.4px;
+    }
 
-    /* Data tables with fixed column widths */
+    /* Data tables */
     .data-table {
         width: 100%;
         border-collapse: collapse;
-        margin-bottom: 12px;
+        margin-bottom: 10px;
         page-break-inside: auto;
         table-layout: fixed;
     }
@@ -137,15 +220,21 @@
     .data-table tr:nth-child(even) td {
         background: rgba(245, 243, 238, 0.5);
     }
+    .data-table tfoot td {
+        background: #F5F3EE !important;
+        font-weight: 600;
+        border-top: 2px solid #0A0A0A;
+        border-bottom: none;
+    }
 
-    /* Fixed column widths */
-    .col-unit { width: 7%; }
-    .col-zone { width: 22%; }
+    /* Fixed column widths - snag (no cycle column) */
+    .col-unit { width: 8%; }
+    .col-zone { width: 24%; }
     .col-date { width: 14%; }
     .col-cycle { width: 8%; }
-    .col-duration { width: 12%; }
-    .col-defects { width: 10%; }
-    .col-status { width: 12%; }
+    .col-duration { width: 14%; }
+    .col-defects { width: 12%; }
+    .col-status { width: 16%; }
 
     .text-right { text-align: right; }
     .text-center { text-align: center; }
@@ -213,42 +302,133 @@
 </div>
 <div class="header-line"></div>
 
-<!-- KPI Cards -->
+<!-- KPI Cards - split Snag / De-snag -->
 <table class="kpi-table"><tr>
-    <td class="kpi-cell">
-        <div class="kpi-value">{{ inspector_count }}</div>
-        <div class="kpi-label">Inspectors</div>
+    <td class="kpi-cell snag">
+        <div class="kpi-value">{{ snag_totals.inspectors }}</div>
+        <div class="kpi-label">Snag Inspectors</div>
     </td>
-    <td class="kpi-cell">
-        <div class="kpi-value">{{ total_units }}</div>
-        <div class="kpi-label">Units Inspected</div>
+    <td class="kpi-cell snag">
+        <div class="kpi-value">{{ snag_totals.units }}</div>
+        <div class="kpi-label">Snag Units</div>
     </td>
-    <td class="kpi-cell">
-        <div class="kpi-value">{{ total_defects }}</div>
-        <div class="kpi-label">Total Defects</div>
+    <td class="kpi-cell snag">
+        <div class="kpi-value">{{ snag_totals.defects }}</div>
+        <div class="kpi-label">Defects Raised</div>
     </td>
-    <td class="kpi-cell">
-        <div class="kpi-value">{{ (total_defects / total_units)|round(1) if total_units else 0 }}</div>
-        <div class="kpi-label">Avg Defects / Unit</div>
+    <td class="kpi-cell desnag">
+        <div class="kpi-value">{{ desnag_totals.inspectors }}</div>
+        <div class="kpi-label">De-snag Inspectors</div>
+    </td>
+    <td class="kpi-cell desnag">
+        <div class="kpi-value">{{ desnag_totals.units }}</div>
+        <div class="kpi-label">Units Touched</div>
+    </td>
+    <td class="kpi-cell desnag">
+        <div class="kpi-value">{{ desnag_totals.defects }}</div>
+        <div class="kpi-label">Defects Addressed</div>
     </td>
 </tr></table>
 
-<!-- Inspector Sections -->
-{% for inspector in inspectors %}
-<div class="inspector-header" style="border-left-color: {{ inspector.colour }};">
-    <div class="inspector-name">{{ inspector.name }}</div>
+{% if not detail_groups %}
+<div style="text-align: center; padding: 3rem; color: #9A9A9A;">No inspection data found for the selected period.</div>
+{% else %}
+
+<!-- ================================================================ -->
+<!-- SNAG (C1) SUMMARY                                                   -->
+<!-- ================================================================ -->
+{% if snag_cards %}
+<div class="section-header">
+    <h2>Snag Inspections (C1)</h2>
+    <div class="section-meta">
+        {{ snag_totals.inspectors }} inspector{{ 's' if snag_totals.inspectors != 1 else '' }}
+        &middot; {{ snag_totals.units }} units
+        &middot; {{ snag_totals.defects }} defects raised
+    </div>
+</div>
+<div class="section-note">Zone-adjusted scores compare each inspector against the average for the specific zones they worked. Internal use only.</div>
+
+<div class="cards-row">
+{% for insp in snag_cards %}
+<div class="card snag-card" style="border-left-color: {{ insp.colour }};">
+    <div class="card-head">
+        <div>
+            <div class="card-name">{{ insp.name }}</div>
+            <div class="card-sub">{{ insp.units }} units &middot; {{ insp.total_defects }} defects raised</div>
+        </div>
+        <div>
+            <div class="card-score-snag" style="color: {{ insp.colour }};">
+                {% if insp.zone_score > 0 %}+{% endif %}{{ insp.zone_score }}%
+            </div>
+            <div class="card-score-label">vs zone avg</div>
+        </div>
+    </div>
+    <div class="card-foot">
+        <span style="font-weight: 600;">{{ insp.raw_avg }}</span> avg/unit
+        &middot; consistency: <span style="font-weight: 600;">{{ insp.consistency }}</span>
+    </div>
+</div>
+{% endfor %}
+</div>
+{% endif %}
+
+<!-- ================================================================ -->
+<!-- DE-SNAG (C2+) SUMMARY                                               -->
+<!-- ================================================================ -->
+{% if desnag_cards %}
+<div class="section-header">
+    <h2>De-snag Inspections (C2+)</h2>
+    <div class="section-meta">
+        {{ desnag_totals.inspectors }} inspector{{ 's' if desnag_totals.inspectors != 1 else '' }}
+        &middot; {{ desnag_totals.units }} units touched
+        &middot; {{ desnag_totals.defects }} defects addressed
+    </div>
+</div>
+<div class="section-note">Payment is per unit touched. Defect counts are informational, not performance indicators.</div>
+
+<div class="cards-row">
+{% for insp in desnag_cards %}
+<div class="card desnag-card">
+    <div class="card-head">
+        <div>
+            <div class="card-name">{{ insp.name }}</div>
+            <div class="card-sub">{{ insp.total_defects }} defects addressed</div>
+        </div>
+        <div>
+            <div class="card-score-desnag">{{ insp.units }}</div>
+            <div class="card-score-label">units touched</div>
+        </div>
+    </div>
+    <div class="card-foot">
+        <span style="font-weight: 600;">{{ insp.raw_avg }}</span> avg defects/unit
+    </div>
+</div>
+{% endfor %}
+</div>
+{% endif %}
+
+<!-- ================================================================ -->
+<!-- PER-INSPECTOR DETAIL                                                -->
+<!-- ================================================================ -->
+{% for insp in detail_groups %}
+<div style="page-break-inside: auto;">
+<div class="inspector-header" style="border-left-color: {{ insp.colour }};">
+    <div class="inspector-name">{{ insp.name }}</div>
     <div class="inspector-stats">
-        {{ inspector.unit_count }} units | {{ inspector.total_defects }} defects | Avg {{ inspector.avg_defects }}/unit
-        {% if inspector.date_range %} | {{ inspector.date_range }}{% endif %}
+        {% if insp.snag.unit_count %}{{ insp.snag.unit_count }} snag{% endif %}
+        {% if insp.snag.unit_count and insp.desnag.unit_count %} &middot; {% endif %}
+        {% if insp.desnag.unit_count %}{{ insp.desnag.unit_count }} de-snag{% endif %}
+        {% if insp.snag.unit_count and insp.desnag.unit_count %} &middot; {{ insp.snag.unit_count + insp.desnag.unit_count }} total{% endif %}
     </div>
 </div>
 
+{% if insp.snag.unit_count > 0 %}
+<div class="sub-section-label">Snag (C1) &mdash; {{ insp.snag.unit_count }} units, {{ insp.snag.total_defects }} defects raised{% if insp.snag.date_range %} &middot; {{ insp.snag.date_range }}{% endif %}</div>
 <table class="data-table">
     <colgroup>
         <col class="col-unit">
         <col class="col-zone">
         <col class="col-date">
-        <col class="col-cycle">
         <col class="col-duration">
         <col class="col-defects">
         <col class="col-status">
@@ -258,31 +438,92 @@
             <th>Unit</th>
             <th>Zone</th>
             <th>Date</th>
-            <th>Cycle</th>
             <th>Duration</th>
             <th class="text-right">Defects</th>
             <th class="text-center">Status</th>
         </tr>
     </thead>
     <tbody>
-        {% for unit in inspector.units %}
+        {% for u in insp.snag.units %}
         <tr>
-            <td><strong>{{ unit.unit_number }}</strong></td>
-            <td>{{ unit.zone }}</td>
-            <td>{{ unit.inspection_date }}</td>
-            <td>{{ unit.cycle }}</td>
-            <td>{{ unit.duration }}</td>
-            <td class="text-right"><strong>{{ unit.defect_count }}</strong></td>
+            <td><strong>{{ u.unit_number }}</strong></td>
+            <td>{{ u.zone }}</td>
+            <td>{{ u.inspection_date }}</td>
+            <td>{{ u.duration }}</td>
+            <td class="text-right"><strong>{{ u.defect_count }}</strong></td>
             <td class="text-center">
-                <span class="status-badge" style="background: {{ unit.status_bg }}; color: {{ unit.status_colour }};">
-                    {{ unit.status_label }}
+                <span class="status-badge" style="background: {{ u.status_bg }}; color: {{ u.status_colour }};">
+                    {{ u.status_label }}
                 </span>
             </td>
         </tr>
         {% endfor %}
     </tbody>
+    <tfoot>
+        <tr>
+            <td colspan="3">Snag subtotal</td>
+            <td>{% if insp.snag.avg_duration %}{{ insp.snag.avg_duration }} avg{% else %}N/A{% endif %}</td>
+            <td class="text-right">{{ insp.snag.total_defects }}</td>
+            <td class="text-center">{{ insp.snag.unit_count }} units</td>
+        </tr>
+    </tfoot>
 </table>
+{% endif %}
+
+{% if insp.desnag.unit_count > 0 %}
+<div class="sub-section-label">De-snag (C2+) &mdash; {{ insp.desnag.unit_count }} units, {{ insp.desnag.total_defects }} defects addressed{% if insp.desnag.date_range %} &middot; {{ insp.desnag.date_range }}{% endif %}</div>
+<table class="data-table">
+    <colgroup>
+        <col class="col-unit">
+        <col class="col-zone">
+        <col class="col-cycle">
+        <col class="col-date">
+        <col class="col-duration">
+        <col class="col-defects">
+        <col class="col-status">
+    </colgroup>
+    <thead>
+        <tr>
+            <th>Unit</th>
+            <th>Zone</th>
+            <th class="text-center">Cycle</th>
+            <th>Date</th>
+            <th>Duration</th>
+            <th class="text-right">Defects</th>
+            <th class="text-center">Status</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for u in insp.desnag.units %}
+        <tr>
+            <td><strong>{{ u.unit_number }}</strong></td>
+            <td>{{ u.zone }}</td>
+            <td class="text-center">{{ u.cycle }}</td>
+            <td>{{ u.inspection_date }}</td>
+            <td>{{ u.duration }}</td>
+            <td class="text-right"><strong>{{ u.defect_count }}</strong></td>
+            <td class="text-center">
+                <span class="status-badge" style="background: {{ u.status_bg }}; color: {{ u.status_colour }};">
+                    {{ u.status_label }}
+                </span>
+            </td>
+        </tr>
+        {% endfor %}
+    </tbody>
+    <tfoot>
+        <tr>
+            <td colspan="4">De-snag subtotal</td>
+            <td>{% if insp.desnag.avg_duration %}{{ insp.desnag.avg_duration }} avg{% else %}N/A{% endif %}</td>
+            <td class="text-right">{{ insp.desnag.total_defects }}</td>
+            <td class="text-center">{{ insp.desnag.unit_count }} units</td>
+        </tr>
+    </tfoot>
+</table>
+{% endif %}
+</div>
 {% endfor %}
+
+{% endif %}
 
 </div>
 </body>
