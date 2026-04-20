@@ -186,6 +186,13 @@
                 border: 3px solid transparent;
                 border-top-color: #0A0A0A;
             }
+            /* Replace default blue focus rectangle with subtle gold glow on the thumb */
+            #scrubber-track-wrap:focus {
+                outline: none;
+            }
+            #scrubber-track-wrap:focus-visible .scrubber-thumb {
+                box-shadow: 0 0 0 4px rgba(200, 150, 62, 0.25), 0 2px 6px rgba(0,0,0,0.2);
+            }
             @media (max-width: 700px) {
                 .scrubber-label { font-size: 0.55rem; }
                 .scrubber-hint { display: none; }
