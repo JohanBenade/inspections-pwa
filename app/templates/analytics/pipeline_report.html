@@ -363,7 +363,7 @@ body {
     <div class="section">
         <div class="section-header">
             <span class="section-number">03</span>
-            <span class="section-title">{% if mode == 'live' %}Last batch: {{ last_batch_name }} &mdash; Units reviewed or higher to date{% else %}Movement This Fortnight ({{ ledger_from }} &ndash; {{ ledger_to }}){% endif %}</span>
+            <span class="section-title">{% if mode == 'live' %}Last batch: {{ last_batch_name }} &mdash; Units reviewed to date{% else %}Movement This Fortnight ({{ ledger_from }} &ndash; {{ ledger_to }}){% endif %}</span>
         </div>
         {% for m in movements %}
         <div style="margin-bottom: 8px;">
@@ -379,7 +379,7 @@ body {
     <div class="section">
         <div class="section-header">
             <span class="section-number">03</span>
-            <span class="section-title">{% if mode == 'live' %}Last batch: {{ last_batch_name }} &mdash; Units reviewed or higher to date{% else %}Movement This Fortnight ({{ ledger_from }} &ndash; {{ ledger_to }}){% endif %}</span>
+            <span class="section-title">{% if mode == 'live' %}Last batch: {{ last_batch_name }} &mdash; Units reviewed to date{% else %}Movement This Fortnight ({{ ledger_from }} &ndash; {{ ledger_to }}){% endif %}</span>
         </div>
         <div style="font-size: 10px; color: #9A9A9A;">No stage changes.</div>
     </div>
