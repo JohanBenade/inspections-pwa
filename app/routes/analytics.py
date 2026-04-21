@@ -4871,11 +4871,10 @@ def login_status():
 # PIPELINE REPORT (Project Overview - unified remediation pipeline)
 # ============================================================
 
-def _build_pipeline_report_data(live=False, cutoff_sast=None):
+def _build_pipeline_report_data(live=False):
     """Build data for the Pipeline Report / Dashboard.
     live=True: current state (dashboard).
-    live=False: weekly snapshot.
-    cutoff_sast: optional datetime (SAST) for custom snapshot cutoff.
+    live=False: weekly snapshot (anchor = last Tuesday 00:00 SAST).
     """
     tenant_id = session.get('tenant_id', 'MONOGRAPH')
 
@@ -4891,15 +4890,6 @@ def _build_pipeline_report_data(live=False, cutoff_sast=None):
         prev_week_str = prev_week_utc.strftime('%Y-%m-%d %H:%M:%S')
         snapshot_label = 'Live'
         snapshot_date = _now_sast.strftime('%d %B %Y')
-    elif cutoff_sast:
-        # Custom cutoff mode: user-specified SAST datetime
-        snapshot_sast = cutoff_sast
-        snapshot_utc = snapshot_sast - _td(hours=2)
-        snapshot_str = snapshot_utc.strftime('%Y-%m-%d %H:%M:%S')
-        prev_week_utc = snapshot_utc - _td(days=7)
-        prev_week_str = prev_week_utc.strftime('%Y-%m-%d %H:%M:%S')
-        snapshot_label = snapshot_sast.strftime('Snapshot at %d %b %Y %H:%M')
-        snapshot_date = snapshot_sast.strftime('%d %B %Y')
     else:
         # Default snapshot: Monday midnight SAST (= Tuesday 00:00 SAST)
         _days_since_mon = (_now_sast.weekday() - 1) % 7
@@ -5781,14 +5771,7 @@ def pipeline_report_pdf():
     from app.services.pdf_playwright import html_to_pdf
     import datetime, base64, os as _os
     from flask import current_app
-    cutoff_param = request.args.get('cutoff', '')
-    cutoff_sast = None
-    if cutoff_param:
-        try:
-            cutoff_sast = datetime.datetime.strptime(cutoff_param, '%Y-%m-%dT%H:%M')
-        except ValueError:
-            pass
-    data = _build_pipeline_report_data(cutoff_sast=cutoff_sast)
+    data = _build_pipeline_report_data()
     data['is_pdf'] = True
     data['report_date'] = datetime.datetime.now().strftime('%d %B %Y')
     logo_path = _os.path.join(current_app.static_folder, 'monograph_logo.jpg')
@@ -5815,18 +5798,8 @@ def pipeline_report_pdf():
 @require_manager
 def pipeline_dashboard():
     """Pipeline Dashboard - mirror of Pipeline PDF with live/snapshot toggle."""
-    from datetime import datetime as _dt
     mode = request.args.get('mode', 'live')
-    cutoff_param = request.args.get('cutoff', '')
-    cutoff_sast = None
-    if cutoff_param:
-        try:
-            cutoff_sast = _dt.strptime(cutoff_param, '%Y-%m-%dT%H:%M')
-            mode = 'snapshot'
-        except ValueError:
-            pass
     is_live = (mode == 'live')
-    data = _build_pipeline_report_data(live=is_live, cutoff_sast=cutoff_sast)
+    data = _build_pipeline_report_data(live=is_live)
     data['mode'] = 'live' if is_live else 'snapshot'
-    data['cutoff_value'] = cutoff_param
     return render_template('analytics/pipeline_dashboard.html', **data)
