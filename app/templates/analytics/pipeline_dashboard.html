@@ -10,12 +10,12 @@
         <h1 style="font-family: 'DM Sans', sans-serif; font-weight: 700; font-size: 2.25rem; letter-spacing: -0.01em; color: #1A1A1A; margin: 0.25rem 0 0 0;">
             Pipeline Dashboard
         </h1>
-        <div style="font-family: 'DM Sans', sans-serif; font-weight: 600; font-size: 1.25rem; letter-spacing: -0.005em; margin-top: 0.5rem; {% if mode == 'live' %}color: #4A7C59;{% else %}color: #C8963E;{% endif %}">
-            {{ snapshot_label }}
-        </div>
         <p style="color: #9A9A9A; font-size: 0.85rem; margin-top: 0.35rem;">
             Power Park Student Housing &ndash; Phase 3 &middot; {{ kpi.total_units }} units
         </p>
+        <div style="font-family: 'DM Sans', sans-serif; font-weight: 600; font-size: 0.8rem; margin-top: 0.25rem; {% if mode == 'live' %}color: #4A7C59;{% else %}color: #C8963E;{% endif %}">
+            {{ snapshot_label }}
+        </div>
         <div style="margin-top: 1rem; display: flex; gap: 0.5rem; flex-wrap: wrap; align-items: center;">
             <!-- Toggle -->
             <div style="display: inline-flex; border: 1px solid #E8E6E1; border-radius: 4px; overflow: hidden; margin-right: 0.5rem;">

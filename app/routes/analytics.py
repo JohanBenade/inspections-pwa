@@ -4909,10 +4909,19 @@ def _build_pipeline_report_data(live=False):
     """, [tenant_id])
     total_units = len(all_units)
 
-    # Last batch (most recent by created_at) - used for Live-mode batch-scoped movements
+    # Last batch with inspection activity - used for Live-mode batch-scoped movements
+    # Uses newest batch that has at least one reviewed-or-higher inspection
     last_batch_row = query_db("""
-        SELECT id, name FROM inspection_batch
-        WHERE tenant_id = ? ORDER BY created_at DESC LIMIT 1
+        SELECT ib.id, ib.name FROM inspection_batch ib
+        WHERE ib.tenant_id = ?
+          AND EXISTS (
+            SELECT 1 FROM batch_unit bu
+            JOIN inspection i ON i.unit_id = bu.unit_id AND i.cycle_id = bu.cycle_id
+              AND i.tenant_id = bu.tenant_id
+            WHERE bu.batch_id = ib.id AND bu.status != 'removed'
+              AND i.status IN ('reviewed','approved','certified','pending_followup')
+          )
+        ORDER BY ib.created_at DESC LIMIT 1
     """, [tenant_id], one=True)
     last_batch_id = last_batch_row['id'] if last_batch_row else None
     last_batch_name = last_batch_row['name'] if last_batch_row else None
