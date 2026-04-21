@@ -4882,24 +4882,25 @@ def _build_pipeline_report_data(live=False):
     _now_sast = _dt.utcnow() + _td(hours=2)
 
     if live:
-        # Live mode: snapshot = now, ledger = rolling 7 days
+        # Live mode: snapshot = now, ledger = rolling 14 days (matches fortnight cadence)
         snapshot_sast = _now_sast
         snapshot_utc = _dt.utcnow()
         snapshot_str = snapshot_utc.strftime('%Y-%m-%d %H:%M:%S')
-        prev_week_utc = snapshot_utc - _td(days=7)
+        prev_week_utc = snapshot_utc - _td(days=14)
         prev_week_str = prev_week_utc.strftime('%Y-%m-%d %H:%M:%S')
         snapshot_label = 'Live'
-        snapshot_date = _now_sast.strftime('%d %B %Y')
+        snapshot_date = _now_sast.strftime('%A %d %B %Y')
     else:
-        # Default snapshot: Monday midnight SAST (= Tuesday 00:00 SAST)
-        _days_since_mon = (_now_sast.weekday() - 1) % 7
-        snapshot_sast = _now_sast.replace(hour=0, minute=0, second=0, microsecond=0) - _td(days=_days_since_mon)
+        # Default snapshot: last Tuesday 00:00 SAST (= end of last Monday)
+        # Ledger window = fortnight (14 days) ending at snapshot, matching bi-weekly meeting cadence
+        _days_since_tue = (_now_sast.weekday() - 1) % 7
+        snapshot_sast = _now_sast.replace(hour=0, minute=0, second=0, microsecond=0) - _td(days=_days_since_tue)
         snapshot_utc = snapshot_sast - _td(hours=2)
         snapshot_str = snapshot_utc.strftime('%Y-%m-%d %H:%M:%S')
-        prev_week_utc = snapshot_utc - _td(days=7)
+        prev_week_utc = snapshot_utc - _td(days=14)
         prev_week_str = prev_week_utc.strftime('%Y-%m-%d %H:%M:%S')
-        snapshot_label = (snapshot_sast - _td(days=1)).strftime('Week ending %d %b %Y')
-        snapshot_date = (snapshot_sast - _td(days=1)).strftime('%d %B %Y')
+        snapshot_label = (snapshot_sast - _td(days=1)).strftime('Fortnight ending %A %d %B %Y')
+        snapshot_date = (snapshot_sast - _td(days=1)).strftime('%A %d %B %Y')
 
     # All real units
     all_units = query_db("""
