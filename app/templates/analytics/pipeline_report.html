@@ -363,7 +363,7 @@ body {
     <div class="section">
         <div class="section-header">
             <span class="section-number">03</span>
-            <span class="section-title">Movement This Week ({{ ledger_from }} &ndash; {{ ledger_to }})</span>
+            <span class="section-title">{% if mode == 'live' %}Last batch: {{ last_batch_name }} &mdash; Units reviewed or higher to date{% else %}Movement This Fortnight ({{ ledger_from }} &ndash; {{ ledger_to }}){% endif %}</span>
         </div>
         {% for m in movements %}
         <div style="margin-bottom: 8px;">
@@ -379,18 +379,19 @@ body {
     <div class="section">
         <div class="section-header">
             <span class="section-number">03</span>
-            <span class="section-title">Movement This Week ({{ ledger_from }} &ndash; {{ ledger_to }})</span>
+            <span class="section-title">{% if mode == 'live' %}Last batch: {{ last_batch_name }} &mdash; Units reviewed or higher to date{% else %}Movement This Fortnight ({{ ledger_from }} &ndash; {{ ledger_to }}){% endif %}</span>
         </div>
-        <div style="font-size: 10px; color: #9A9A9A;">No stage changes this week.</div>
+        <div style="font-size: 10px; color: #9A9A9A;">No stage changes.</div>
     </div>
     {% endif %}
 
 
-    <!-- SECTION 06: WEEKLY LEDGER -->
+    <!-- SECTION 04: FORTNIGHT MOVEMENT (Snapshot mode only) -->
+    {% if mode != 'live' %}
     <div class="section">
         <div class="section-header">
             <span class="section-number">04</span>
-            <span class="section-title">Weekly Ledger ({{ ledger_from }} &ndash; {{ ledger_to }})</span>
+            <span class="section-title">Fortnight Movement ({{ ledger_from }} &ndash; {{ ledger_to }})</span>
         </div>
 
         <table class="movement-table" style="max-width: 500px;">
@@ -430,6 +431,7 @@ body {
         </div>
         {% endif %}
     </div>
+    {% endif %}
 
 
         <!-- ============ PAGE 2: DEFECT POOL ============ -->

@@ -4891,16 +4891,29 @@ def _build_pipeline_report_data(live=False):
         snapshot_label = 'Live'
         snapshot_date = _now_sast.strftime('%A %d %B %Y')
     else:
-        # Default snapshot: last Tuesday 00:00 SAST (= end of last Monday)
-        # Ledger window = fortnight (14 days) ending at snapshot, matching bi-weekly meeting cadence
-        _days_since_tue = (_now_sast.weekday() - 1) % 7
-        snapshot_sast = _now_sast.replace(hour=0, minute=0, second=0, microsecond=0) - _td(days=_days_since_tue)
+        # Snapshot mode: anchor to bi-weekly meeting cadence.
+        # Meetings: every 14 days on Wednesday, anchor = Wed 15 April 2026.
+        # Rollover at Thursday 00:00 SAST after each meeting Wed.
+        # Window freezes at Monday 23:59:59 SAST preceding the upcoming meeting Wed.
+        _MEETING_ANCHOR = _dt(2026, 4, 15)
+        _today_midnight = _dt(_now_sast.year, _now_sast.month, _now_sast.day)
+        _days_from_anchor = (_today_midnight - _MEETING_ANCHOR).days
+        if _days_from_anchor < 0:
+            _cycle_index = 0
+        elif _days_from_anchor % 14 == 0:
+            _cycle_index = _days_from_anchor // 14
+        else:
+            _cycle_index = (_days_from_anchor // 14) + 1
+        meeting_wed = _MEETING_ANCHOR + _td(days=14 * _cycle_index)
+        snapshot_mon = meeting_wed - _td(days=2)
+        # Snapshot moment = Tuesday 00:00 SAST (= Monday 23:59:59 frozen)
+        snapshot_sast = snapshot_mon + _td(days=1)
         snapshot_utc = snapshot_sast - _td(hours=2)
         snapshot_str = snapshot_utc.strftime('%Y-%m-%d %H:%M:%S')
         prev_week_utc = snapshot_utc - _td(days=14)
         prev_week_str = prev_week_utc.strftime('%Y-%m-%d %H:%M:%S')
-        snapshot_label = (snapshot_sast - _td(days=1)).strftime('Fortnight ending %A %d %B %Y')
-        snapshot_date = (snapshot_sast - _td(days=1)).strftime('%A %d %B %Y')
+        snapshot_label = 'Fortnight ending Monday {}'.format(snapshot_mon.strftime('%d %B %Y'))
+        snapshot_date = snapshot_mon.strftime('%A %d %B %Y')
 
     # All real units
     all_units = query_db("""
@@ -5784,7 +5797,7 @@ def _build_pipeline_report_data(live=False):
         'q3': q3,
         'snapshot_label': snapshot_label,
         'snapshot_date': snapshot_date,
-        'ledger_from': (snapshot_utc - _td(days=7) + _td(hours=2)).strftime('%d %b'),
+        'ledger_from': (snapshot_utc - _td(days=14) + _td(hours=2)).strftime('%d %b'),
         'ledger_to': (snapshot_utc + _td(hours=2) - _td(days=1)).strftime('%d %b %Y'),
         'kpi': kpi,
         'pipeline': pipeline,
