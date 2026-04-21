@@ -4925,10 +4925,10 @@ def _build_pipeline_report_data(live=False):
         SELECT i.unit_id, MAX(i.cycle_number) as max_cycle
         FROM inspection i
         JOIN unit_real u ON i.unit_id = u.id
-        WHERE i.tenant_id = ? AND i.submitted_at <= ?
+        WHERE i.tenant_id = ?
         AND i.status IN ('reviewed', 'approved', 'pending_followup')
         GROUP BY i.unit_id
-    """, [tenant_id, snapshot_str])
+    """, [tenant_id])
     unit_max_completed = {r['unit_id']: r['max_cycle'] for r in completed_rows}
 
     # Any C2+ inspection (any status = under verification)
@@ -4936,9 +4936,9 @@ def _build_pipeline_report_data(live=False):
         SELECT DISTINCT i.unit_id
         FROM inspection i
         JOIN unit_real u ON i.unit_id = u.id
-        WHERE i.tenant_id = ? AND i.created_at <= ?
+        WHERE i.tenant_id = ?
         AND i.cycle_number >= 2
-    """, [tenant_id, snapshot_str])
+    """, [tenant_id])
     c2_plus_ids = set(r['unit_id'] for r in c2_rows)
 
     # Open defects per unit (as of snapshot)
@@ -4946,12 +4946,11 @@ def _build_pipeline_report_data(live=False):
         SELECT d.unit_id, COUNT(*) as cnt
         FROM defect d
         JOIN unit_real u ON d.unit_id = u.id
-        WHERE d.tenant_id = ? AND d.created_at <= ?
-        AND (d.status = 'open' OR (d.status = 'cleared' AND d.cleared_at > ?))
+        WHERE d.tenant_id = ? AND d.status = 'open'
         AND d.raised_cycle_id NOT LIKE 'test-%%'
         AND EXISTS (SELECT 1 FROM inspection i2 WHERE i2.unit_id = d.unit_id AND i2.cycle_id = d.raised_cycle_id AND i2.status IN ('reviewed','approved','certified','pending_followup'))
         GROUP BY d.unit_id
-    """, [tenant_id, snapshot_str, snapshot_str])
+    """, [tenant_id])
     unit_open = {r['unit_id']: r['cnt'] for r in open_rows}
 
     # Headline metrics
@@ -5218,10 +5217,9 @@ def _build_pipeline_report_data(live=False):
         JOIN unit_real u ON i.unit_id = u.id
         WHERE i.tenant_id = ? AND i.cycle_number = 1
         AND i.status IN ('reviewed','approved','certified','pending_followup')
-        AND i.submitted_at <= ?
         AND i.cycle_id NOT LIKE 'test-%%'
         GROUP BY u.block, u.floor
-    """, [tenant_id, snapshot_str])
+    """, [tenant_id])
     zone_c1 = {}
     for r in zone_c1_rows:
         zone_c1[(r['block'], r['floor'])] = r['c1_inspected']
@@ -5232,10 +5230,9 @@ def _build_pipeline_report_data(live=False):
         FROM inspection i
         JOIN unit_real u ON i.unit_id = u.id
         WHERE i.tenant_id = ? AND i.cycle_number >= 2
-        AND i.submitted_at <= ?
         AND i.cycle_id NOT LIKE 'test-%%'
         GROUP BY u.block, u.floor
-    """, [tenant_id, snapshot_str])
+    """, [tenant_id])
     zone_c2 = {}
     for r in zone_c2_rows:
         zone_c2[(r['block'], r['floor'])] = r['c2_units']
@@ -5245,12 +5242,12 @@ def _build_pipeline_report_data(live=False):
         SELECT u.block, u.floor, COUNT(*) as raised
         FROM defect d
         JOIN unit_real u ON d.unit_id = u.id
-        WHERE d.tenant_id = ? AND d.created_at <= ?
+        WHERE d.tenant_id = ?
         AND d.raised_cycle_id NOT LIKE 'test-%%'
         AND EXISTS (SELECT 1 FROM inspection i2 WHERE i2.unit_id = d.unit_id AND i2.cycle_id = d.raised_cycle_id
                     AND i2.status IN ('reviewed','approved','certified','pending_followup'))
         GROUP BY u.block, u.floor
-    """, [tenant_id, snapshot_str])
+    """, [tenant_id])
     zone_raised = {}
     for r in zone_raised_rows:
         zone_raised[(r['block'], r['floor'])] = r['raised']
@@ -5260,12 +5257,12 @@ def _build_pipeline_report_data(live=False):
         SELECT u.block, u.floor, COUNT(*) as cleared
         FROM defect d
         JOIN unit_real u ON d.unit_id = u.id
-        WHERE d.tenant_id = ? AND d.status = 'cleared' AND d.cleared_at <= ?
+        WHERE d.tenant_id = ? AND d.status = 'cleared'
         AND d.raised_cycle_id NOT LIKE 'test-%%'
         AND EXISTS (SELECT 1 FROM inspection i2 WHERE i2.unit_id = d.unit_id AND i2.cycle_id = d.raised_cycle_id
                     AND i2.status IN ('reviewed','approved','certified','pending_followup'))
         GROUP BY u.block, u.floor
-    """, [tenant_id, snapshot_str])
+    """, [tenant_id])
     zone_cleared = {}
     for r in zone_cleared_rows:
         zone_cleared[(r['block'], r['floor'])] = r['cleared']
@@ -5275,13 +5272,12 @@ def _build_pipeline_report_data(live=False):
         SELECT u.block, u.floor, COUNT(*) as cnt
         FROM defect d
         JOIN unit_real u ON d.unit_id = u.id
-        WHERE d.tenant_id = ? AND d.created_at <= ?
-        AND (d.status = 'open' OR (d.status = 'cleared' AND d.cleared_at > ?))
+        WHERE d.tenant_id = ? AND d.status = 'open'
         AND d.raised_cycle_id NOT LIKE 'test-%%'
         AND EXISTS (SELECT 1 FROM inspection i2 WHERE i2.unit_id = d.unit_id AND i2.cycle_id = d.raised_cycle_id
                     AND i2.status IN ('reviewed','approved','certified','pending_followup'))
         GROUP BY u.block, u.floor
-    """, [tenant_id, snapshot_str, snapshot_str])
+    """, [tenant_id])
     zone_open = {}
     for r in zone_open_rows:
         zone_open[(r['block'], r['floor'])] = r['cnt']
@@ -5346,13 +5342,12 @@ def _build_pipeline_report_data(live=False):
         JOIN item_template it ON d.item_template_id = it.id
         JOIN category_template ct ON it.category_id = ct.id
         JOIN area_template at2 ON ct.area_id = at2.id
-        WHERE d.tenant_id = ? AND d.created_at <= ?
-        AND (d.status = 'open' OR (d.status = 'cleared' AND d.cleared_at > ?))
+        WHERE d.tenant_id = ? AND d.status = 'open'
         AND d.raised_cycle_id NOT LIKE 'test-%%'
         AND EXISTS (SELECT 1 FROM inspection i2 WHERE i2.unit_id = d.unit_id AND i2.cycle_id = d.raised_cycle_id AND i2.status IN ('reviewed','approved','certified','pending_followup'))
         GROUP BY at2.area_name
         ORDER BY cnt DESC
-    """, [tenant_id, snapshot_str, snapshot_str])
+    """, [tenant_id])
 
     total_open = ledger['open']
     areas = []
@@ -5371,13 +5366,12 @@ def _build_pipeline_report_data(live=False):
         JOIN unit_real u ON d.unit_id = u.id
         JOIN item_template it ON d.item_template_id = it.id
         JOIN category_template ct ON it.category_id = ct.id
-        WHERE d.tenant_id = ? AND d.created_at <= ?
-        AND (d.status = 'open' OR (d.status = 'cleared' AND d.cleared_at > ?))
+        WHERE d.tenant_id = ? AND d.status = 'open'
         AND d.raised_cycle_id NOT LIKE 'test-%%'
         AND EXISTS (SELECT 1 FROM inspection i2 WHERE i2.unit_id = d.unit_id AND i2.cycle_id = d.raised_cycle_id AND i2.status IN ('reviewed','approved','certified','pending_followup'))
         GROUP BY ct.category_name
         ORDER BY cnt DESC
-    """, [tenant_id, snapshot_str, snapshot_str])
+    """, [tenant_id])
 
     trades = []
     for r in trade_rows:
@@ -5400,15 +5394,14 @@ def _build_pipeline_report_data(live=False):
             JOIN item_template it ON d.item_template_id = it.id
             JOIN category_template ct ON it.category_id = ct.id
             JOIN area_template at2 ON ct.area_id = at2.id
-            WHERE d.tenant_id = ? AND d.created_at <= ?
-            AND (d.status = 'open' OR (d.status = 'cleared' AND d.cleared_at > ?))
+            WHERE d.tenant_id = ? AND d.status = 'open'
             AND d.raised_cycle_id NOT LIKE 'test-%%'
             AND EXISTS (SELECT 1 FROM inspection i2 WHERE i2.unit_id = d.unit_id AND i2.cycle_id = d.raised_cycle_id AND i2.status IN ('reviewed','approved','certified','pending_followup'))
             AND at2.area_name = ?
             GROUP BY d.original_comment
             ORDER BY count DESC
             LIMIT 3
-        """, [tenant_id, snapshot_str, snapshot_str, area_name])]
+        """, [tenant_id, area_name])]
         max_dd = area_defects[0]['count'] if area_defects else 1
         for d in area_defects:
             d['bar_pct'] = round(d['count'] / max_dd * 100)
@@ -5439,15 +5432,14 @@ def _build_pipeline_report_data(live=False):
             COUNT(DISTINCT d.unit_id) AS unit_count
         FROM defect d
         JOIN unit_real u ON d.unit_id = u.id
-        WHERE d.tenant_id = ? AND d.created_at <= ?
-        AND (d.status = 'open' OR (d.status = 'cleared' AND d.cleared_at > ?))
+        WHERE d.tenant_id = ? AND d.status = 'open'
         AND d.raised_cycle_id NOT LIKE 'test-%%'
         AND EXISTS (SELECT 1 FROM inspection i2 WHERE i2.unit_id = d.unit_id AND i2.cycle_id = d.raised_cycle_id AND i2.status IN ('reviewed','approved','certified','pending_followup'))
         GROUP BY d.original_comment
         HAVING unit_count >= 3
         ORDER BY cnt DESC
         LIMIT 10
-    """, [tenant_id, snapshot_str, snapshot_str])
+    """, [tenant_id])
     recurring = [dict(r) for r in recurring_raw]
 
     if recurring:
@@ -5459,14 +5451,13 @@ def _build_pipeline_report_data(live=False):
             JOIN unit_real u ON d.unit_id = u.id
             JOIN item_template it ON d.item_template_id = it.id
             JOIN category_template ct ON it.category_id = ct.id
-            WHERE d.tenant_id = ? AND d.created_at <= ?
-            AND (d.status = 'open' OR (d.status = 'cleared' AND d.cleared_at > ?))
+            WHERE d.tenant_id = ? AND d.status = 'open'
             AND d.raised_cycle_id NOT LIKE 'test-%%'
             AND d.original_comment IN ({})
             AND EXISTS (SELECT 1 FROM inspection i2 WHERE i2.unit_id = d.unit_id AND i2.cycle_id = d.raised_cycle_id AND i2.status IN ('reviewed','approved','certified','pending_followup'))
             GROUP BY d.original_comment, ct.category_name
             ORDER BY d.original_comment, cat_cnt DESC
-        """.format(placeholders), [tenant_id, snapshot_str, snapshot_str] + top_comments)
+        """.format(placeholders), [tenant_id] + top_comments)
         from collections import defaultdict
         cat_map = defaultdict(list)
         for row in cat_raw:
@@ -5484,11 +5475,10 @@ def _build_pipeline_report_data(live=False):
         JOIN unit_real u ON i.unit_id = u.id
         WHERE i.tenant_id = ? AND i.cycle_number >= 2
         AND i.status IN ('reviewed','approved','certified','pending_followup')
-        AND i.submitted_at <= ?
         AND i.cycle_id NOT LIKE 'test-%%'
         GROUP BY u.id
         ORDER BY u.unit_number
-    """, [tenant_id, snapshot_str])
+    """, [tenant_id])
 
     if desnag_unit_rows:
         desnag_units = []
@@ -5503,14 +5493,13 @@ def _build_pipeline_report_data(live=False):
             mc = row['max_cycle']
             counts = query_db("""
                 SELECT
-                    SUM(CASE WHEN d.raised_cycle_number < ? AND d.created_at <= ? THEN 1 ELSE 0 END) as bfwd,
-                    SUM(CASE WHEN d.status = 'cleared' AND d.cleared_cycle_number >= 2
-                         AND d.cleared_at <= ? THEN 1 ELSE 0 END) as cleared,
-                    SUM(CASE WHEN d.raised_cycle_number >= 2 AND d.created_at <= ? THEN 1 ELSE 0 END) as regressions
+                    SUM(CASE WHEN d.raised_cycle_number < ? THEN 1 ELSE 0 END) as bfwd,
+                    SUM(CASE WHEN d.status = 'cleared' AND d.cleared_cycle_number >= 2 THEN 1 ELSE 0 END) as cleared,
+                    SUM(CASE WHEN d.raised_cycle_number >= 2 THEN 1 ELSE 0 END) as regressions
                 FROM defect d
                 WHERE d.unit_id = ? AND d.tenant_id = ?
                 AND d.raised_cycle_id NOT LIKE 'test-%%'
-            """, [mc, snapshot_str, snapshot_str, snapshot_str, uid, tenant_id], one=True)
+            """, [mc, uid, tenant_id], one=True)
 
             bfwd = counts['bfwd'] or 0
             cleared = counts['cleared'] or 0
@@ -5544,13 +5533,11 @@ def _build_pipeline_report_data(live=False):
             FROM defect d
             JOIN unit_real u ON d.unit_id = u.id
             WHERE d.tenant_id = ? AND d.raised_cycle_number = 1
-            AND d.created_at <= ?
             AND d.raised_cycle_id NOT LIKE 'test-%%'
             AND EXISTS (SELECT 1 FROM inspection i2 WHERE i2.unit_id = d.unit_id
                         AND i2.cycle_number = 1 AND i2.tenant_id = d.tenant_id
-                        AND i2.status IN ('reviewed','approved','certified','pending_followup')
-                        AND i2.submitted_at <= ?)
-        """, [tenant_id, snapshot_str, snapshot_str], one=True)
+                        AND i2.status IN ('reviewed','approved','certified','pending_followup'))
+        """, [tenant_id], one=True)
         desnag_eligible = desnag_eligible_row['cnt'] if desnag_eligible_row else 0
 
         overall_rate = round(total_cleared / total_bfwd * 100, 1) if total_bfwd > 0 else 0
@@ -5579,13 +5566,12 @@ def _build_pipeline_report_data(live=False):
                SUM(CASE WHEN d.raised_cycle_number >= 2 THEN 1 ELSE 0 END) as new_c2
         FROM defect d
         JOIN unit_real u ON d.unit_id = u.id
-        WHERE d.tenant_id = ? AND d.created_at <= ?
-        AND (d.status = 'open' OR (d.status = 'cleared' AND d.cleared_at > ?))
+        WHERE d.tenant_id = ? AND d.status = 'open'
         AND d.raised_cycle_id NOT LIKE 'test-%%'
         AND EXISTS (SELECT 1 FROM inspection i2 WHERE i2.unit_id = d.unit_id AND i2.cycle_id = d.raised_cycle_id AND i2.status IN ('reviewed','approved','certified','pending_followup'))
         GROUP BY u.id
         ORDER BY open_count DESC
-    """, [tenant_id, snapshot_str, snapshot_str])
+    """, [tenant_id])
 
     stuck_units = []
     total_stuck_defects = 0
