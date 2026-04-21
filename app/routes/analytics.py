@@ -4909,6 +4909,14 @@ def _build_pipeline_report_data(live=False):
     """, [tenant_id])
     total_units = len(all_units)
 
+    # Last batch (most recent by created_at) - used for Live-mode batch-scoped movements
+    last_batch_row = query_db("""
+        SELECT id, name FROM inspection_batch
+        WHERE tenant_id = ? ORDER BY created_at DESC LIMIT 1
+    """, [tenant_id], one=True)
+    last_batch_id = last_batch_row['id'] if last_batch_row else None
+    last_batch_name = last_batch_row['name'] if last_batch_row else None
+
     # Units in active batches (non-removed)
     in_batch_rows = query_db("""
         SELECT DISTINCT bu.unit_id
@@ -4968,18 +4976,33 @@ def _build_pipeline_report_data(live=False):
     # --- MOVEMENTS THIS WEEK ---
     movements = []
 
-    # 1. C1 inspections completed this week (grouped by zone, with defect counts)
-    c1_done_rows = query_db("""
-        SELECT u.unit_number, u.block, u.floor, i.unit_id,
-            (SELECT COUNT(*) FROM defect d WHERE d.unit_id = i.unit_id AND d.status IN ('open','cleared')
-             AND d.raised_cycle_id = i.cycle_id) as defect_count
-        FROM inspection i
-        JOIN unit_real u ON i.unit_id = u.id
-        WHERE i.tenant_id = ? AND i.cycle_number = 1
-        AND i.submitted_at > ? AND i.submitted_at <= ?
-        AND i.status IN ('reviewed','approved','certified','pending_followup')
-        ORDER BY u.block, u.floor, u.unit_number
-    """, [tenant_id, prev_week_str, snapshot_str])
+    # 1. C1 inspections completed (Live: batch-scope, Snapshot: fortnight window)
+    if live and last_batch_id:
+        c1_done_rows = query_db("""
+            SELECT u.unit_number, u.block, u.floor, i.unit_id,
+                (SELECT COUNT(*) FROM defect d WHERE d.unit_id = i.unit_id AND d.status IN ('open','cleared')
+                 AND d.raised_cycle_id = i.cycle_id) as defect_count
+            FROM inspection i
+            JOIN unit_real u ON i.unit_id = u.id
+            JOIN batch_unit bu ON bu.unit_id = i.unit_id AND bu.cycle_id = i.cycle_id
+                AND bu.tenant_id = i.tenant_id AND bu.batch_id = ?
+                AND bu.status != 'removed'
+            WHERE i.tenant_id = ? AND i.cycle_number = 1
+            AND i.status IN ('reviewed','approved','certified','pending_followup')
+            ORDER BY u.block, u.floor, u.unit_number
+        """, [last_batch_id, tenant_id])
+    else:
+        c1_done_rows = query_db("""
+            SELECT u.unit_number, u.block, u.floor, i.unit_id,
+                (SELECT COUNT(*) FROM defect d WHERE d.unit_id = i.unit_id AND d.status IN ('open','cleared')
+                 AND d.raised_cycle_id = i.cycle_id) as defect_count
+            FROM inspection i
+            JOIN unit_real u ON i.unit_id = u.id
+            WHERE i.tenant_id = ? AND i.cycle_number = 1
+            AND i.submitted_at > ? AND i.submitted_at <= ?
+            AND i.status IN ('reviewed','approved','certified','pending_followup')
+            ORDER BY u.block, u.floor, u.unit_number
+        """, [tenant_id, prev_week_str, snapshot_str])
     if c1_done_rows:
         from collections import OrderedDict
         zone_groups = OrderedDict()
@@ -4997,20 +5020,37 @@ def _build_pipeline_report_data(live=False):
                 'colour': '#C8963E',
             })
 
-    # 2. C2+ de-snag reviewed this week (grouped by zone, with cleared/open counts)
-    c2_done_rows = query_db("""
-        SELECT u.unit_number, u.block, u.floor, i.unit_id, i.cycle_id,
-            (SELECT COUNT(*) FROM defect d WHERE d.unit_id = i.unit_id
-             AND d.status = 'cleared' AND d.cleared_cycle_id = i.cycle_id) as cleared,
-            (SELECT COUNT(*) FROM defect d WHERE d.unit_id = i.unit_id
-             AND d.status = 'open') as still_open
-        FROM inspection i
-        JOIN unit_real u ON i.unit_id = u.id
-        WHERE i.tenant_id = ? AND i.cycle_number >= 2
-        AND i.submitted_at > ? AND i.submitted_at <= ?
-        AND i.status IN ('reviewed','approved','certified','pending_followup')
-        ORDER BY u.block, u.floor, u.unit_number
-    """, [tenant_id, prev_week_str, snapshot_str])
+    # 2. C2+ de-snag reviewed (Live: batch-scope, Snapshot: fortnight window)
+    if live and last_batch_id:
+        c2_done_rows = query_db("""
+            SELECT u.unit_number, u.block, u.floor, i.unit_id, i.cycle_id,
+                (SELECT COUNT(*) FROM defect d WHERE d.unit_id = i.unit_id
+                 AND d.status = 'cleared' AND d.cleared_cycle_id = i.cycle_id) as cleared,
+                (SELECT COUNT(*) FROM defect d WHERE d.unit_id = i.unit_id
+                 AND d.status = 'open') as still_open
+            FROM inspection i
+            JOIN unit_real u ON i.unit_id = u.id
+            JOIN batch_unit bu ON bu.unit_id = i.unit_id AND bu.cycle_id = i.cycle_id
+                AND bu.tenant_id = i.tenant_id AND bu.batch_id = ?
+                AND bu.status != 'removed'
+            WHERE i.tenant_id = ? AND i.cycle_number >= 2
+            AND i.status IN ('reviewed','approved','certified','pending_followup')
+            ORDER BY u.block, u.floor, u.unit_number
+        """, [last_batch_id, tenant_id])
+    else:
+        c2_done_rows = query_db("""
+            SELECT u.unit_number, u.block, u.floor, i.unit_id, i.cycle_id,
+                (SELECT COUNT(*) FROM defect d WHERE d.unit_id = i.unit_id
+                 AND d.status = 'cleared' AND d.cleared_cycle_id = i.cycle_id) as cleared,
+                (SELECT COUNT(*) FROM defect d WHERE d.unit_id = i.unit_id
+                 AND d.status = 'open') as still_open
+            FROM inspection i
+            JOIN unit_real u ON i.unit_id = u.id
+            WHERE i.tenant_id = ? AND i.cycle_number >= 2
+            AND i.submitted_at > ? AND i.submitted_at <= ?
+            AND i.status IN ('reviewed','approved','certified','pending_followup')
+            ORDER BY u.block, u.floor, u.unit_number
+        """, [tenant_id, prev_week_str, snapshot_str])
     if c2_done_rows:
         from collections import OrderedDict
         zone_groups = OrderedDict()
@@ -5029,13 +5069,24 @@ def _build_pipeline_report_data(live=False):
                 'colour': '#3D6B8E',
             })
 
-    # 3. Units certified this week
-    cert_rows = query_db("""
-        SELECT u.unit_number
-        FROM unit_real u
-        WHERE u.tenant_id = ? AND u.certified_at > ? AND u.certified_at <= ?
-        ORDER BY u.unit_number
-    """, [tenant_id, prev_week_str, snapshot_str])
+    # 3. Units certified (Live: units in last batch that are certified; Snapshot: fortnight window)
+    if live and last_batch_id:
+        cert_rows = query_db("""
+            SELECT DISTINCT u.unit_number
+            FROM unit_real u
+            JOIN batch_unit bu ON bu.unit_id = u.id
+                AND bu.tenant_id = u.tenant_id AND bu.batch_id = ?
+                AND bu.status != 'removed'
+            WHERE u.tenant_id = ? AND u.certified_at IS NOT NULL
+            ORDER BY u.unit_number
+        """, [last_batch_id, tenant_id])
+    else:
+        cert_rows = query_db("""
+            SELECT u.unit_number
+            FROM unit_real u
+            WHERE u.tenant_id = ? AND u.certified_at > ? AND u.certified_at <= ?
+            ORDER BY u.unit_number
+        """, [tenant_id, prev_week_str, snapshot_str])
     if cert_rows:
         movements.append({
             'label': 'Certified',
@@ -5730,6 +5781,8 @@ def _build_pipeline_report_data(live=False):
         'pipeline': pipeline,
         'pool_trend': pool_trend,
         'desnag': desnag,
+        'last_batch_id': last_batch_id,
+        'last_batch_name': last_batch_name,
     }
 
 
