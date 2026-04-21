@@ -4891,22 +4891,20 @@ def _build_pipeline_report_data(live=False):
         snapshot_label = 'Live'
         snapshot_date = _now_sast.strftime('%A %d %B %Y')
     else:
-        # Snapshot mode: anchor to bi-weekly meeting cadence.
-        # Meetings: every 14 days on Wednesday, anchor = Wed 15 April 2026.
-        # Rollover at Thursday 00:00 SAST after each meeting Wed.
-        # Window freezes at Monday 23:59:59 SAST preceding the upcoming meeting Wed.
-        _MEETING_ANCHOR = _dt(2026, 4, 15)
+        # Snapshot mode: show most recently COMPLETED fortnight cycle.
+        # Cycles align with bi-weekly meeting cadence; each cycle ends Mon 23:59 SAST.
+        # Rollover at Tue 00:00 SAST (the day after a cycle ends).
+        # On the cycle-end Monday itself, still show the PREVIOUS cycle (not yet complete).
+        # Anchor: Mon 13 April 2026 = end of first cycle (discussed at Wed 15 Apr meeting).
+        _CYCLE_END_ANCHOR = _dt(2026, 4, 13)
         _today_midnight = _dt(_now_sast.year, _now_sast.month, _now_sast.day)
-        _days_from_anchor = (_today_midnight - _MEETING_ANCHOR).days
-        if _days_from_anchor < 0:
+        _days_since_anchor = (_today_midnight - _CYCLE_END_ANCHOR).days
+        if _days_since_anchor <= 0:
             _cycle_index = 0
-        elif _days_from_anchor % 14 == 0:
-            _cycle_index = _days_from_anchor // 14
         else:
-            _cycle_index = (_days_from_anchor // 14) + 1
-        meeting_wed = _MEETING_ANCHOR + _td(days=14 * _cycle_index)
-        snapshot_mon = meeting_wed - _td(days=2)
-        # Snapshot moment = Tuesday 00:00 SAST (= Monday 23:59:59 frozen)
+            _cycle_index = (_days_since_anchor - 1) // 14
+        snapshot_mon = _CYCLE_END_ANCHOR + _td(days=14 * _cycle_index)
+        # Snapshot moment = Tue 00:00 SAST (= Mon 23:59:59 frozen)
         snapshot_sast = snapshot_mon + _td(days=1)
         snapshot_utc = snapshot_sast - _td(hours=2)
         snapshot_str = snapshot_utc.strftime('%Y-%m-%d %H:%M:%S')
