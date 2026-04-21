@@ -96,20 +96,24 @@
     <div style="margin-bottom: 2rem;">
         <h2 style="font-family: 'DM Sans', sans-serif; font-weight: 600; font-size: 1.1rem; color: #1A1A1A; margin-bottom: 0.75rem;">De-snag Results</h2>
 
-        <!-- Metric cards -->
-        <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 16px;">
+        <!-- Row 1: Unit metrics -->
+        <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 10px;">
             <div style="background: #EBE6DE; padding: 12px 14px; border-radius: 6px; text-align: center;">
                 <div style="font-size: 0.65rem; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: #6B6B6B;">Units Verified</div>
                 <div style="font-family: 'DM Sans', sans-serif; font-size: 1.2rem; font-weight: 600; color: #1A1A1A; margin-top: 2px;">{{ desnag.count }}</div>
             </div>
             <div style="background: #EBE6DE; padding: 12px 14px; border-radius: 6px; text-align: center;">
                 <div style="font-size: 0.65rem; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: #6B6B6B;">Units Clear</div>
-                <div style="font-family: 'DM Sans', sans-serif; font-size: 1.2rem; font-weight: 600; color: #4A7C59; margin-top: 2px;">{{ desnag.fully_cleared }} <span style="font-size: 0.8rem; color: #9A9A9A;">of {{ desnag.count }}</span></div>
+                <div style="font-family: 'DM Sans', sans-serif; font-size: 1.2rem; font-weight: 600; color: #4A7C59; margin-top: 2px;">{{ desnag.fully_cleared }}</div>
             </div>
             <div style="background: #EBE6DE; padding: 12px 14px; border-radius: 6px; text-align: center;">
-                <div style="font-size: 0.65rem; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: #6B6B6B;">Defect Fix Rate</div>
-                <div style="font-family: 'DM Sans', sans-serif; font-size: 1.2rem; font-weight: 600; color: {% if desnag.clearance_rate >= 90 %}#4A7C59{% elif desnag.clearance_rate >= 70 %}#C8963E{% else %}#C44D3F{% endif %}; margin-top: 2px;">{{ desnag.clearance_rate }}%</div>
+                <div style="font-size: 0.65rem; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: #6B6B6B;">Unit Clearance</div>
+                <div style="font-family: 'DM Sans', sans-serif; font-size: 1.2rem; font-weight: 600; color: {% if desnag.unit_clearance_rate >= 90 %}#4A7C59{% elif desnag.unit_clearance_rate >= 70 %}#C8963E{% else %}#C44D3F{% endif %}; margin-top: 2px;">{{ desnag.unit_clearance_rate }}%</div>
             </div>
+        </div>
+
+        <!-- Row 2: Defect metrics -->
+        <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 14px;">
             <div style="background: #EBE6DE; padding: 12px 14px; border-radius: 6px; text-align: center;">
                 <div style="font-size: 0.65rem; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: #6B6B6B;">Defects Fixed</div>
                 <div style="font-family: 'DM Sans', sans-serif; font-size: 1.2rem; font-weight: 600; color: #4A7C59; margin-top: 2px;">{{ '{:,}'.format(desnag.total_cleared) }}</div>
@@ -119,26 +123,50 @@
                 <div style="font-family: 'DM Sans', sans-serif; font-size: 1.2rem; font-weight: 600; color: {% if desnag.total_still_open == 0 %}#4A7C59{% else %}#C44D3F{% endif %}; margin-top: 2px;">{{ desnag.total_still_open }}</div>
             </div>
             <div style="background: #EBE6DE; padding: 12px 14px; border-radius: 6px; text-align: center;">
-                <div style="font-size: 0.65rem; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: #6B6B6B;">New Defects (C2+)</div>
-                <div style="font-family: 'DM Sans', sans-serif; font-size: 1.2rem; font-weight: 600; color: {% if desnag.total_regressions == 0 %}#4A7C59{% else %}#C44D3F{% endif %}; margin-top: 2px;">{{ desnag.total_regressions }}</div>
+                <div style="font-size: 0.65rem; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: #6B6B6B;">Defect Fix Rate</div>
+                <div style="font-family: 'DM Sans', sans-serif; font-size: 1.2rem; font-weight: 600; color: {% if desnag.clearance_rate >= 90 %}#4A7C59{% elif desnag.clearance_rate >= 70 %}#C8963E{% else %}#C44D3F{% endif %}; margin-top: 2px;">{{ desnag.clearance_rate }}%</div>
             </div>
         </div>
 
-        <!-- Clearance bar -->
-        {% set bar_total = desnag.total_cleared + desnag.total_still_open %}
-        {% set green_pct = (desnag.total_cleared / bar_total * 100)|round(1) if bar_total > 0 else 0 %}
-        <div style="margin-bottom: 16px; display: flex; align-items: center; gap: 10px;">
-            <div style="flex: 1; display: flex; height: 28px; border-radius: 4px; overflow: hidden; font-size: 0.7rem; font-weight: 700;">
-                {% if desnag.total_cleared > 0 %}
-                <div style="width: {{ green_pct }}%; background: #4A7C59; color: #fff; display: flex; align-items: center; justify-content: center; white-space: nowrap;">{{ "{:,}".format(desnag.total_cleared) }} fixed</div>
+        <!-- Dual progress bars -->
+        {% set u_open = desnag.count - desnag.fully_cleared %}
+        {% set u_green_pct = (desnag.fully_cleared / desnag.count * 100)|round(1) if desnag.count > 0 else 0 %}
+        {% set d_bar_total = desnag.total_cleared + desnag.total_still_open %}
+        {% set d_green_pct = (desnag.total_cleared / d_bar_total * 100)|round(1) if d_bar_total > 0 else 0 %}
+
+        <div style="margin-bottom: 8px; display: flex; align-items: center; gap: 10px;">
+            <span style="width: 60px; font-size: 0.7rem; font-weight: 600; color: #6B6B6B; text-transform: uppercase; letter-spacing: 0.05em;">Units</span>
+            <div style="flex: 1; display: flex; height: 24px; border-radius: 4px; overflow: hidden; font-size: 0.7rem; font-weight: 700;">
+                {% if desnag.fully_cleared > 0 %}
+                <div style="width: {{ u_green_pct }}%; background: #4A7C59; color: #fff; display: flex; align-items: center; justify-content: center; white-space: nowrap;">{{ desnag.fully_cleared }} clear</div>
                 {% endif %}
-                {% if desnag.total_still_open > 0 %}
-                <div style="width: {{ 100 - green_pct }}%; background: #C44D3F;"></div>
+                {% if u_open > 0 %}
+                <div style="width: {{ 100 - u_green_pct }}%; background: #C44D3F;"></div>
                 {% endif %}
             </div>
-            {% if desnag.total_still_open > 0 %}
-            <span style="font-size: 0.7rem; font-weight: 700; color: #C44D3F; white-space: nowrap;">{{ desnag.total_still_open }} open</span>
-            {% endif %}
+            <span style="min-width: 90px; font-size: 0.7rem; font-weight: 700; color: {% if u_open > 0 %}#C44D3F{% else %}#4A7C59{% endif %}; white-space: nowrap; text-align: right;">{% if u_open > 0 %}{{ u_open }} open &middot; {% endif %}{{ desnag.unit_clearance_rate }}%</span>
+        </div>
+
+        <div style="margin-bottom: 16px; display: flex; align-items: center; gap: 10px;">
+            <span style="width: 60px; font-size: 0.7rem; font-weight: 600; color: #6B6B6B; text-transform: uppercase; letter-spacing: 0.05em;">Defects</span>
+            <div style="flex: 1; display: flex; height: 24px; border-radius: 4px; overflow: hidden; font-size: 0.7rem; font-weight: 700;">
+                {% if desnag.total_cleared > 0 %}
+                <div style="width: {{ d_green_pct }}%; background: #4A7C59; color: #fff; display: flex; align-items: center; justify-content: center; white-space: nowrap;">{{ "{:,}".format(desnag.total_cleared) }} fixed</div>
+                {% endif %}
+                {% if desnag.total_still_open > 0 %}
+                <div style="width: {{ 100 - d_green_pct }}%; background: #C44D3F;"></div>
+                {% endif %}
+            </div>
+            <span style="min-width: 90px; font-size: 0.7rem; font-weight: 700; color: {% if desnag.total_still_open > 0 %}#C44D3F{% else %}#4A7C59{% endif %}; white-space: nowrap; text-align: right;">{% if desnag.total_still_open > 0 %}{{ desnag.total_still_open }} open &middot; {% endif %}{{ desnag.clearance_rate }}%</span>
+        </div>
+
+        <!-- Row 3: New defects (C2+) callout -->
+        <div style="background: {% if desnag.total_regressions == 0 %}#D9E6DA{% else %}#F5E2DF{% endif %}; padding: 12px 16px; border-radius: 6px; display: flex; align-items: center; justify-content: space-between; gap: 12px;">
+            <div>
+                <div style="font-size: 0.65rem; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: #6B6B6B;">New Defects (C2+)</div>
+                <div style="font-size: 0.7rem; color: #6B6B6B; margin-top: 2px;">Raised during de-snag inspections</div>
+            </div>
+            <div style="font-family: 'DM Sans', sans-serif; font-size: 1.8rem; font-weight: 700; color: {% if desnag.total_regressions == 0 %}#4A7C59{% else %}#C44D3F{% endif %};">{{ desnag.total_regressions }}</div>
         </div>
     </div>
     {% endif %}

@@ -5625,6 +5625,7 @@ def _build_pipeline_report_data(live=False):
         desnag_eligible = desnag_eligible_row['cnt'] if desnag_eligible_row else 0
 
         overall_rate = round(total_cleared / total_bfwd * 100, 1) if total_bfwd > 0 else 0
+        unit_rate = round(fully_cleared_count / len(desnag_units) * 100, 1) if len(desnag_units) > 0 else 0
 
         desnag = {
             'units': desnag_units,
@@ -5636,6 +5637,7 @@ def _build_pipeline_report_data(live=False):
             'total_regressions': total_regressions,
             'fully_cleared': fully_cleared_count,
             'clearance_rate': overall_rate,
+            'unit_clearance_rate': unit_rate,
         }
 
 
