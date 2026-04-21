@@ -144,7 +144,7 @@
                 <div style="width: {{ 100 - u_green_pct }}%; background: #C44D3F;"></div>
                 {% endif %}
             </div>
-            <span style="min-width: 90px; font-size: 0.7rem; font-weight: 700; color: {% if u_open > 0 %}#C44D3F{% else %}#4A7C59{% endif %}; white-space: nowrap; text-align: right;">{% if u_open > 0 %}{{ u_open }} open{% else %}All clear{% endif %}</span>
+            <span style="font-size: 0.7rem; font-weight: 700; color: {% if u_open > 0 %}#C44D3F{% else %}#4A7C59{% endif %}; white-space: nowrap; text-align: right;">{% if u_open > 0 %}{{ u_open }} open{% else %}All clear{% endif %}</span>
         </div>
 
         <div style="margin-bottom: 16px; display: flex; align-items: center; gap: 10px;">
@@ -157,7 +157,7 @@
                 <div style="width: {{ 100 - d_green_pct }}%; background: #C44D3F;"></div>
                 {% endif %}
             </div>
-            <span style="min-width: 90px; font-size: 0.7rem; font-weight: 700; color: {% if desnag.total_still_open > 0 %}#C44D3F{% else %}#4A7C59{% endif %}; white-space: nowrap; text-align: right;">{% if desnag.total_still_open > 0 %}{{ desnag.total_still_open }} open{% else %}All clear{% endif %}</span>
+            <span style="font-size: 0.7rem; font-weight: 700; color: {% if desnag.total_still_open > 0 %}#C44D3F{% else %}#4A7C59{% endif %}; white-space: nowrap; text-align: right;">{% if desnag.total_still_open > 0 %}{{ desnag.total_still_open }} open{% else %}All clear{% endif %}</span>
         </div>
 
         <!-- Row 3: New defects (C2+) callout -->
