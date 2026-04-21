@@ -5197,7 +5197,7 @@ def _build_pipeline_report_data(live=False):
             days_until_mon = 0  # same day is fine
         first_mon = (start + _td(days=days_until_mon)).replace(hour=23, minute=59, second=59)
         
-        today = _dt.now()
+        today = snapshot_sast
         mon = first_mon
         while mon <= today:
             mon_str = mon.strftime('%Y-%m-%d %H:%M:%S')
