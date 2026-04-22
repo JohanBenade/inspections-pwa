@@ -338,14 +338,14 @@
             {% for zone in zones %}
                 {% for u in zone.units %}
                     {% if u.insp_status in ['reviewed','approved','certified','pending_followup'] %}
-                        {% set _ = reviewed_units.append({'unit_number': u.unit_number, 'defect_count': u.defect_count, 'zone_label': zone.label, 'cycle_number': zone.cycle_number}) %}
+                        {% set _ = reviewed_units.append({'unit_number': u.unit_number, 'defect_count': u.defect_count, 'defect_rate': u.defect_rate, 'zone_label': zone.label, 'cycle_number': zone.cycle_number}) %}
                     {% endif %}
                 {% endfor %}
             {% endfor %}
             {% set sorted_units = reviewed_units | sort(attribute='defect_count', reverse=True) %}
             {% set max_count = sorted_units[0].defect_count if sorted_units else 1 %}
             {% for u in sorted_units %}
-            {% set uc = '#C44D3F' if u.defect_count > q3 else '#C8963E' if u.defect_count > q1 else '#4A7C59' %}
+            {% set uc = '#C44D3F' if u.defect_rate >= 27 else '#C8963E' if u.defect_rate >= 15 else '#4A7C59' %}
             {% set unit_pct = (u.defect_count / kpis.total_defects * 100)|round(1) if kpis.total_defects > 0 else 0 %}
             <div class="area-row">
                 <span class="area-label" style="min-width: 130px;">
@@ -361,12 +361,10 @@
             </div>
             {% endfor %}
             <div style="font-size: 0.7rem; color: #9A9A9A; margin-top: 0.5rem; padding-top: 0.4rem; border-top: 1px solid #f0f0f0;">
-                <span style="font-size: 0.65rem; color: #9A9A9A;">Units ranked by defect count quartile &mdash;</span>&ensp;
-                <span class="legend-item"><span class="legend-dot" style="background: #4A7C59;"></span> Bottom 25%</span>&ensp;
-                <span class="legend-item"><span class="legend-dot" style="background: #C8963E;"></span> Middle 50%</span>&ensp;
-                <span class="legend-item"><span class="legend-dot" style="background: #C44D3F;"></span> Top 25%</span>&ensp;
-                <span style="color: #BABABA;">&middot;</span>&ensp;
-                Q1: {{ q1 }} &middot; Q3: {{ q3 }} defects/unit
+                <span style="font-size: 0.65rem; color: #9A9A9A;">Units ranked by defect rate &mdash;</span>&ensp;
+                <span class="legend-item"><span class="legend-dot" style="background: #4A7C59;"></span> &lt;15%</span>&ensp;
+                <span class="legend-item"><span class="legend-dot" style="background: #C8963E;"></span> 15&ndash;27%</span>&ensp;
+                <span class="legend-item"><span class="legend-dot" style="background: #C44D3F;"></span> &ge;27%</span>
             </div>
 
         </div>
