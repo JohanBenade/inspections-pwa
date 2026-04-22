@@ -376,6 +376,16 @@ body {
         <div class="kpi-sub">{% if c2_summary.units_inspected > 0 %}{{ c2_summary.clearance_pct }}% clearance rate{% else %}awaiting inspection{% endif %}</div>
     </td>
 </tr></table>
+
+{% if priority_actions %}
+<div style="border-left: 3px solid #C8963E; padding: 10px 14px; margin-top: 18px; background: #FDFBF6;">
+    <div style="font-family: 'DM Sans', sans-serif; font-size: 10px; font-weight: 700; letter-spacing: 2px; color: #C8963E; text-transform: uppercase; margin-bottom: 6px;">Priority Actions</div>
+    {% for pa in priority_actions %}
+    <div style="font-size: 11px; color: #1A1A1A; line-height: 1.5; margin-bottom: 2px;">&bull; {{ pa.text }}</div>
+    {% endfor %}
+</div>
+{% endif %}
+
 {% endif %}
 
 {# ================================================================ #}

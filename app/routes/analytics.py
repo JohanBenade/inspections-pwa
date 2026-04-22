@@ -4164,6 +4164,42 @@ def _build_batch_report_data(batch_id):
                 [tenant_id] + c2_uids)]
             c2_trade_max = c2_trade_data[0]['count'] if c2_trade_data else 1
 
+    # --- Priority Actions (cover-page callout) ---
+    # Only meaningful on mixed batches with remaining open defects.
+    priority_actions = []
+    if is_mixed and c2_summary.get('total_still_open', 0) > 0:
+        total_open = c2_summary['total_still_open']
+        units_with_open = sum(1 for u in c2_unit_table if u['still_open'] > 0)
+        # Bullet 1 — close-out total (always shown in this branch)
+        priority_actions.append({
+            'kind': 'total',
+            'text': 'Close out {} defects across {} unit{}.'.format(
+                total_open, units_with_open, 's' if units_with_open != 1 else ''),
+        })
+        # Bullet 2 — dominant remaining area (if >= 25% concentration)
+        if c2_area_data:
+            top_area = c2_area_data[0]
+            area_pct = round(top_area['defect_count'] / total_open * 100)
+            if area_pct >= 25:
+                priority_actions.append({
+                    'kind': 'area',
+                    'text': '{} holds {}% of what\'s left \u2014 one subcontractor brief closes most of it.'.format(
+                        top_area['area'], area_pct),
+                })
+        # Bullet 3 — top remaining zone (if >= 3 units still open)
+        zone_counts = {}
+        for u in c2_unit_table:
+            if u['still_open'] > 0:
+                zone_counts[u['zone']] = zone_counts.get(u['zone'], 0) + 1
+        if zone_counts:
+            top_zone, top_zone_n = max(zone_counts.items(), key=lambda kv: kv[1])
+            if top_zone_n >= 3:
+                priority_actions.append({
+                    'kind': 'zone',
+                    'text': '{} is where the concentration is \u2014 {} units still open.'.format(
+                        top_zone, top_zone_n),
+                })
+
     return {
         'batch': batch,
         'zones': zones,
@@ -4183,6 +4219,7 @@ def _build_batch_report_data(batch_id):
         'worst_dominant_zone': worst_dominant[0],
         'worst_dominant_count': worst_dominant[1],
         'batch_rectification': batch_rectification,
+        'priority_actions': priority_actions,
         'logo_b64': logo_b64,
         'sig_b64': sig_b64,
         'report_date': report_date,
