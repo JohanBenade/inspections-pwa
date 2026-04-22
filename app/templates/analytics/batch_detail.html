@@ -61,6 +61,20 @@
     <div style="font-size: 0.75rem; color: #C8963E; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; margin-bottom: 0.25rem;">{{ batch.name }} &middot; {{ batch.status | replace('_', ' ') | title }} &middot; {{ zones | length }} zone{{ 's' if zones | length != 1 }}</div>
     <div class="divider"></div>
 
+    <!-- PRIORITY ACTIONS (mixed batches only) -->
+    {% if is_mixed and priority_actions %}
+    <div style="background: #FDFBF6; border-left: 3px solid #C8963E; border-radius: 6px; padding: 0.9rem 1.25rem; margin-bottom: 1.25rem;">
+        <div style="font-size: 0.7rem; color: #C8963E; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; margin-bottom: 0.4rem;">Priority Actions</div>
+        <ul style="list-style: none; padding: 0; margin: 0;">
+            {% for pa in priority_actions %}
+            <li style="font-size: 0.85rem; color: #1A1A1A; padding: 0.15rem 0; padding-left: 0.9rem; position: relative;">
+                <span style="position: absolute; left: 0; color: #C8963E;">&bull;</span>{{ pa.text }}
+            </li>
+            {% endfor %}
+        </ul>
+    </div>
+    {% endif %}
+
     <!-- PROGRESS -->
     <div class="mb-2"><span class="section-num">Progress</span></div>
     <div class="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-4">
@@ -186,9 +200,95 @@
     {% endfor %}
     {% endif %}
 
-    <!-- 02 HOT SPOTS -->
+    <!-- 01 ZONE SUMMARY -->
+    {% if zones %}
+    <div class="mb-2 mt-4"><span class="section-num">01 &mdash; Zone Summary</span></div>
+    <div class="divider"></div>
+    <div style="background: #FAFAF8; border-left: 3px solid #C8963E; border-radius: 6px; padding: 0.9rem 1.25rem; margin-bottom: 1rem; font-size: 0.85rem; color: #1A1A1A;">
+        Batch average: <strong>{{ kpis.avg_defects }} defects/unit</strong>. Project average: <strong>{{ kpis.project_avg }}</strong>. This batch is <strong>{{ kpis.vs_project_ratio }}&times; the norm</strong>.
+    </div>
+    <div style="background: #FAFAF8; border: 1px solid #e5e5e5; border-radius: 8px; overflow: hidden; margin-bottom: 1.5rem;">
+        <table style="width: 100%; border-collapse: collapse; font-size: 0.85rem;">
+            <thead>
+                <tr style="background: #F5F3EE; color: #6B6B6B; font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.08em;">
+                    <th style="text-align: left; padding: 0.6rem 1rem; font-weight: 600;">Zone</th>
+                    <th style="text-align: center; padding: 0.6rem 0.5rem; font-weight: 600;">Cycle</th>
+                    <th style="text-align: right; padding: 0.6rem 0.5rem; font-weight: 600;">Units</th>
+                    <th style="text-align: right; padding: 0.6rem 0.5rem; font-weight: 600;">Inspected</th>
+                    <th style="text-align: right; padding: 0.6rem 0.5rem; font-weight: 600;">Avg/Unit</th>
+                    <th style="text-align: right; padding: 0.6rem 0.5rem; font-weight: 600;">Defects</th>
+                    <th style="text-align: right; padding: 0.6rem 1rem; font-weight: 600;">Rate</th>
+                </tr>
+            </thead>
+            <tbody>
+            {% for z in zones %}
+            {% set zone_rate = z.defect_rate %}
+            {% set row_tint = 'rgba(196,77,63,0.06)' if zone_rate >= 27 else ('rgba(200,150,62,0.06)' if zone_rate >= 15 else 'rgba(74,124,89,0.05)') %}
+            {% set rate_tint = 'rgba(196,77,63,0.18)' if zone_rate >= 27 else ('rgba(200,150,62,0.18)' if zone_rate >= 15 else 'rgba(74,124,89,0.14)') %}
+            {% set rate_colour = '#C44D3F' if zone_rate >= 27 else ('#C8963E' if zone_rate >= 15 else '#4A7C59') %}
+                <tr style="background: {{ row_tint }}; border-top: 1px solid #f0f0f0;">
+                    <td style="padding: 0.55rem 1rem; font-weight: 600; color: #1A1A1A;">{{ z.label }}</td>
+                    <td style="padding: 0.55rem 0.5rem; text-align: center;">
+                        <span style="display: inline-block; padding: 2px 8px; border-radius: 3px; font-size: 0.65rem; font-weight: 700; {% if z.cycle_number > 1 %}background: rgba(61,107,142,0.15); color: #3D6B8E;{% else %}background: rgba(200,150,62,0.15); color: #C8963E;{% endif %}">C{{ z.cycle_number }}</span>
+                    </td>
+                    <td style="padding: 0.55rem 0.5rem; text-align: right;">{{ z.total_units }}</td>
+                    <td style="padding: 0.55rem 0.5rem; text-align: right;">{{ z.inspected }}</td>
+                    <td style="padding: 0.55rem 0.5rem; text-align: right;">
+                        <span style="font-weight: 700; color: {% if z.avg > kpis.avg_defects %}#C44D3F{% elif z.avg < kpis.avg_defects %}#4A7C59{% else %}#C8963E{% endif %};">{{ z.avg }}</span>
+                    </td>
+                    <td style="padding: 0.55rem 0.5rem; text-align: right; font-weight: 700;">{{ z.defects }}</td>
+                    <td style="padding: 0.55rem 1rem; text-align: right; background: {{ rate_tint }}; color: {{ rate_colour }}; font-weight: 700;">{{ zone_rate }}%</td>
+                </tr>
+            {% endfor %}
+            </tbody>
+            <tfoot>
+                <tr style="background: #F5F3EE; border-top: 1px solid #e5e5e5;">
+                    <td colspan="3" style="padding: 0.55rem 1rem; font-weight: 600;">Batch Total</td>
+                    <td style="padding: 0.55rem 0.5rem; text-align: right; font-weight: 700;">{{ kpis.inspected }}</td>
+                    <td style="padding: 0.55rem 0.5rem; text-align: right; font-weight: 700;">{{ kpis.avg_defects }}</td>
+                    <td style="padding: 0.55rem 0.5rem; text-align: right; font-weight: 700;">{{ kpis.total_defects }}</td>
+                    <td style="padding: 0.55rem 1rem; text-align: right; color: #9A9A9A;">{{ kpis.defect_rate }}%</td>
+                </tr>
+            </tfoot>
+        </table>
+    </div>
+    {% endif %}
+
+    <!-- 02 SYSTEMIC ISSUES -->
+    {% if recurring %}
+    <div class="mb-2 mt-4"><span class="section-num">02 &mdash; Systemic Issues</span></div>
+    <div class="divider"></div>
+    <div class="hotspot-panel mb-6">
+        <div style="margin-bottom: 0.75rem;">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+                <span style="font-size: 0.9rem; font-weight: 600; color: #1A1A1A;">Top 10 recurring defects</span>
+                <span style="font-size: 0.7rem; color: #9A9A9A;">{{ recurring|sum(attribute='cnt') }} occurrences</span>
+            </div>
+            <div style="font-size: 0.75rem; color: #6B6B6B; margin-top: 0.15rem;">Ranked by spread across units &mdash; address these batch-wide, not unit-by-unit</div>
+        </div>
+        {% set rec_max = recurring[0].cnt if recurring else 1 %}
+        {% for r in recurring %}
+        <a href="{{ url_for('analytics.explore', q=r.original_comment) }}" style="display: block; padding: 0.5rem 0; text-decoration: none; color: inherit; {% if not loop.last %}border-bottom: 1px solid #f0f0f0;{% endif %}">
+            <div style="display: flex; align-items: center; gap: 0.4rem; margin-bottom: 0.3rem;">
+                <span style="display: inline-block; width: 20px; height: 20px; line-height: 20px; border-radius: 50%; text-align: center; font-size: 0.65rem; font-weight: 700; color: white; background: #C44D3F; flex-shrink: 0;">{{ loop.index }}</span>
+                <span style="font-size: 0.8rem; font-weight: 500; color: #1A1A1A; flex: 1; min-width: 0;">{{ r.original_comment }}{% if r.cat_breakdown %} <span style="font-size: 0.7rem; font-weight: 400; color: #6B6B6B;">({% for c in r.cat_breakdown %}{{ c.cat }} {{ c.cnt }}{% if not loop.last %} &middot; {% endif %}{% endfor %})</span>{% endif %}</span>
+                <span style="font-size: 0.8rem; font-weight: 700; color: #C44D3F; flex-shrink: 0;">{{ r.cnt }}</span>
+                <span style="font-size: 0.7rem; color: #9A9A9A; width: 80px; text-align: right; flex-shrink: 0;">in {{ r.unit_count }} units</span>
+            </div>
+            <div style="height: 8px; background: #f0f0f0; border-radius: 3px;">
+                <div style="height: 100%; width: {{ (r.cnt / rec_max * 100)|round }}%; background: #C44D3F; border-radius: 3px;"></div>
+            </div>
+        </a>
+        {% endfor %}
+        <div style="font-size: 0.7rem; color: #9A9A9A; margin-top: 0.5rem; padding-top: 0.4rem; border-top: 1px solid #f0f0f0;">
+            {{ recurring|length }} defect type{{ 's' if recurring|length != 1 }} found across 2 or more units &middot; Tap any row to explore &rarr;
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- 03 HOT SPOTS -->
     {% if area_data %}
-    <div class="mb-2 mt-4"><span class="section-num">02 &mdash; Hot Spots</span></div>
+    <div class="mb-2 mt-4"><span class="section-num">03 &mdash; Hot Spots</span></div>
     <div class="divider"></div>
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
 
@@ -274,9 +374,9 @@
     </div>
     {% endif %}
 
-    <!-- 03 AREA DEEP DIVE -->
+    <!-- 04 AREA DEEP DIVE -->
     {% if area_deep_dive %}
-    <div class="mb-2 mt-4"><span class="section-num">03 &mdash; Area Deep Dive</span></div>
+    <div class="mb-2 mt-4"><span class="section-num">04 &mdash; Area Deep Dive</span></div>
     <div class="divider"></div>
     <div style="font-size: 0.8rem; color: #6B6B6B; margin-bottom: 1rem;">Top 3 defect types in the highest-defect areas</div>
     <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.25rem; margin-bottom: 0.75rem;">
@@ -311,41 +411,9 @@
 
 
 
-    <!-- 05 SYSTEMIC ISSUES -->
-    {% if recurring %}
-    <div class="mb-2"><span class="section-num">05 &mdash; Systemic Issues</span></div>
-    <div class="divider"></div>
-    <div class="hotspot-panel mb-6">
-        <div style="margin-bottom: 0.75rem;">
-            <div style="display: flex; justify-content: space-between; align-items: center;">
-                <span style="font-size: 0.9rem; font-weight: 600; color: #1A1A1A;">Top 10 recurring defects</span>
-                <span style="font-size: 0.7rem; color: #9A9A9A;">{{ recurring|sum(attribute='cnt') }} occurrences</span>
-            </div>
-            <div style="font-size: 0.75rem; color: #6B6B6B; margin-top: 0.15rem;">Ranked by spread across units &mdash; address these batch-wide, not unit-by-unit</div>
-        </div>
-        {% set rec_max = recurring[0].cnt if recurring else 1 %}
-        {% for r in recurring %}
-        <a href="{{ url_for('analytics.explore', q=r.original_comment) }}" style="display: block; padding: 0.5rem 0; text-decoration: none; color: inherit; {% if not loop.last %}border-bottom: 1px solid #f0f0f0;{% endif %}">
-            <div style="display: flex; align-items: center; gap: 0.4rem; margin-bottom: 0.3rem;">
-                <span style="display: inline-block; width: 20px; height: 20px; line-height: 20px; border-radius: 50%; text-align: center; font-size: 0.65rem; font-weight: 700; color: white; background: #C44D3F; flex-shrink: 0;">{{ loop.index }}</span>
-                <span style="font-size: 0.8rem; font-weight: 500; color: #1A1A1A; flex: 1; min-width: 0;">{{ r.original_comment }}{% if r.cat_breakdown %} <span style="font-size: 0.7rem; font-weight: 400; color: #6B6B6B;">({% for c in r.cat_breakdown %}{{ c.cat }} {{ c.cnt }}{% if not loop.last %} &middot; {% endif %}{% endfor %})</span>{% endif %}</span>
-                <span style="font-size: 0.8rem; font-weight: 700; color: #C44D3F; flex-shrink: 0;">{{ r.cnt }}</span>
-                <span style="font-size: 0.7rem; color: #9A9A9A; width: 40px; text-align: right; flex-shrink: 0;">{{ r.unit_count }}u</span>
-            </div>
-            <div style="height: 8px; background: #f0f0f0; border-radius: 3px;">
-                <div style="height: 100%; width: {{ (r.cnt / rec_max * 100)|round }}%; background: #C44D3F; border-radius: 3px;"></div>
-            </div>
-        </a>
-        {% endfor %}
-        <div style="font-size: 0.7rem; color: #9A9A9A; margin-top: 0.5rem; padding-top: 0.4rem; border-top: 1px solid #f0f0f0;">
-            {{ recurring|length }} defect type{{ 's' if recurring|length != 1 }} found across 2 or more units &middot; Tap any row to explore &rarr;
-        </div>
-    </div>
-    {% endif %}
-
-    <!-- 06 DEFECTS BY TRADE -->
+    <!-- 05 DEFECTS BY TRADE -->
     {% if category_data %}
-    <div class="mb-2"><span class="section-num">06 &mdash; Defects by Trade</span></div>
+    <div class="mb-2"><span class="section-num">05 &mdash; Defects by Trade</span></div>
     <div class="divider"></div>
     <div class="hotspot-panel mb-6">
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem;">
