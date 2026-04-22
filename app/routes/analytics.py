@@ -756,6 +756,7 @@ def batch_analytics(batch_id):
             'cycle_id': cycle_id, 'cycle_number': cycle_number,
             'total_units': z['zone_units'], 'inspected': zone_inspected,
             'defects': zone_defects, 'avg': zone_avg,
+            'defect_rate': round(zone_defects / (ITEMS_PER_UNIT * zone_inspected) * 100, 1) if zone_inspected > 0 else 0,
             'traffic': zone_traffic, 'delta': zone_delta,
             'units': unit_rows, 'rectification': rectification,
             'block_slug': _block_to_slug(block),
@@ -769,60 +770,36 @@ def batch_analytics(batch_id):
     batch_defect_rate = round(batch_total_defects / batch_items * 100, 1) if batch_items > 0 else 0
     proj_defect_rate = round(project_avg_raw / ITEMS_PER_UNIT * 100, 1) if project_avg_raw > 0 else 0
 
-    # Quartile banding across all inspected units in batch
-    all_unit_counts = []
+    # Fixed-threshold banding (matches PDF report): >=27% red, >=15% amber, <15% green
+    def _band(rate):
+        if rate >= 27:
+            return 'red'
+        if rate >= 15:
+            return 'amber'
+        return 'green'
+
+    # Sort zones worst-first by defect_rate
+    zones.sort(key=lambda z: z['defect_rate'], reverse=True)
+
+    # Apply fixed-threshold traffic to zones
+    for z in zones:
+        z['traffic'] = _band(z['defect_rate']) if z['inspected'] > 0 else 'green'
+
+    # Apply fixed-threshold traffic to individual units (based on per-unit defect rate)
     for z in zones:
         for u in z['units']:
             if u['insp_status'] in reviewed_statuses:
-                all_unit_counts.append(u['defect_count'])
-    if len(all_unit_counts) >= 4:
-        all_unit_counts_sorted = sorted(all_unit_counts)
-        n_units = len(all_unit_counts_sorted)
-        q1 = all_unit_counts_sorted[n_units // 4]
-        q3 = all_unit_counts_sorted[(n_units * 3) // 4]
-    elif all_unit_counts:
-        q1 = min(all_unit_counts)
-        q3 = max(all_unit_counts)
-    else:
-        q1 = q3 = 0
-
-    # Apply quartile traffic to zones
-    for z in zones:
-        if z['inspected'] > 0 and q3 > 0:
-            if z['avg'] <= q1:
-                z['traffic'] = 'green'
-            elif z['avg'] <= q3:
-                z['traffic'] = 'amber'
+                u_rate = round(u['defect_count'] / ITEMS_PER_UNIT * 100, 1) if ITEMS_PER_UNIT > 0 else 0
+                u['defect_rate'] = u_rate
+                u['traffic'] = _band(u_rate)
             else:
-                z['traffic'] = 'red'
-        else:
-            z['traffic'] = 'green'
-
-    # Apply quartile traffic to individual units
-    for z in zones:
-        for u in z['units']:
-            if u['insp_status'] in reviewed_statuses and q3 > 0:
-                if u['defect_count'] <= q1:
-                    u['traffic'] = 'green'
-                elif u['defect_count'] <= q3:
-                    u['traffic'] = 'amber'
-                else:
-                    u['traffic'] = 'red'
-            else:
+                u['defect_rate'] = 0
                 u['traffic'] = 'grey'
 
-    # Batch-level traffic
-    if batch_avg > 0 and q3 > 0:
-        if batch_avg <= q1:
-            batch_traffic = 'green'
-        elif batch_avg <= q3:
-            batch_traffic = 'amber'
-        else:
-            batch_traffic = 'red'
-    else:
-        batch_traffic = 'green'
+    # Batch-level traffic from fixed thresholds
+    batch_traffic = _band(batch_defect_rate) if batch_total_inspected > 0 else 'green'
     delta_val = 0
-    delta_label = 'Q1: {} | Q3: {}'.format(q1, q3)
+    delta_label = ''
 
     all_unit_counts_sorted2 = sorted(all_unit_counts) if all_unit_counts else []
     if all_unit_counts_sorted2:
@@ -842,6 +819,7 @@ def batch_analytics(batch_id):
         'median_defects': round(batch_median, 1),
         'min_defects': batch_min, 'max_defects': batch_max,
         'items_inspected': ITEMS_PER_UNIT * batch_total_inspected,
+        'vs_project_ratio': round(batch_defect_rate / proj_defect_rate, 2) if proj_defect_rate > 0 else 0,
     }
 
     # 6. Area breakdown scoped to batch cycles
@@ -997,6 +975,54 @@ def batch_analytics(batch_id):
         WHERE tenant_id = ? AND status IN ('reviewed', 'complete') ORDER BY created_at DESC
     """, [tenant_id])]
 
+    # Mixed-batch flag (C1 + C2+ zones both present)
+    cycle_numbers = {z['cycle_number'] for z in zones}
+    is_mixed = any(cn == 1 for cn in cycle_numbers) and any(cn > 1 for cn in cycle_numbers)
+
+    # Priority Actions (top-of-page callout on mixed batches with open C2+ defects)
+    priority_actions = []
+    if is_mixed:
+        # Total open defects across C2+ zones and number of units holding them
+        c2_zones_list = [z for z in zones if z['cycle_number'] > 1]
+        total_open = 0
+        units_with_open = 0
+        zone_open_unit_counts = {}
+        for z in c2_zones_list:
+            zone_units_open = 0
+            for u in z['units']:
+                if u['insp_status'] in reviewed_statuses and u['defect_count'] > 0:
+                    total_open += u['defect_count']
+                    units_with_open += 1
+                    zone_units_open += 1
+            if zone_units_open > 0:
+                zone_open_unit_counts[z['label']] = zone_units_open
+
+        if total_open > 0:
+            priority_actions.append({
+                'kind': 'total',
+                'text': 'Close out {} defects across {} unit{}.'.format(
+                    total_open, units_with_open, 's' if units_with_open != 1 else ''),
+            })
+            # Dominant remaining area (if >= 25% concentration)
+            if area_data:
+                top_area = area_data[0]
+                area_pct = round(top_area['defect_count'] / total_open * 100)
+                if area_pct >= 25:
+                    priority_actions.append({
+                        'kind': 'area',
+                        'text': '{} holds {}% of what\'s left — one subcontractor brief closes most of it.'.format(
+                            top_area['area'].title(), area_pct),
+                    })
+            # Top remaining zone (if >= 3 units still open)
+            if zone_open_unit_counts:
+                top_zone, top_zone_n = max(zone_open_unit_counts.items(), key=lambda kv: kv[1])
+                if top_zone_n >= 3:
+                    priority_actions.append({
+                        'kind': 'zone',
+                        'text': '{} is where the concentration is — {} units still open.'.format(
+                            top_zone, top_zone_n),
+                    })
+
     return render_template('analytics/batch_detail.html',
                            batch=batch, zones=zones, kpis=kpis,
                            area_data=area_data, area_max=area_max,
@@ -1006,7 +1032,7 @@ def batch_analytics(batch_id):
                            top_defects=top_defects, td_median=td_median,
                            recurring=recurring,
                            category_data=category_data, cat_median=cat_median,
-                           q1=q1, q3=q3,
+                           is_mixed=is_mixed, priority_actions=priority_actions,
                            all_batches=all_batches, floor_labels=FLOOR_LABELS,
                            batch_id=batch_id)
 
