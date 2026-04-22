@@ -3701,6 +3701,7 @@ def _build_batch_report_data(batch_id):
             'cycle_id': cycle_id, 'cycle_number': cycle_number,
             'total_units': z['zone_units'], 'inspected': zone_inspected,
             'defects': zone_defects, 'avg': zone_avg,
+            'defect_rate': round(zone_defects / (ITEMS_PER_UNIT * zone_inspected) * 100, 1) if zone_inspected > 0 else 0,
             'units': unit_rows, 'rectification': rectification,
         })
         batch_total_defects += zone_defects
@@ -3741,6 +3742,7 @@ def _build_batch_report_data(batch_id):
         'total_defects': batch_total_defects, 'avg_defects': batch_avg,
         'defect_rate': batch_defect_rate, 'project_avg': project_avg,
         'proj_defect_rate': proj_defect_rate,
+        'vs_project_ratio': round(batch_avg / project_avg, 1) if project_avg > 0 else 0,
         'median_defects': round(batch_median, 1),
         'min_defects': batch_min, 'max_defects': batch_max,
         'items_inspected': batch_items,
@@ -3938,6 +3940,11 @@ def _build_batch_report_data(batch_id):
     c2_zones = [z for z in zones if z['cycle_number'] > 1]
     is_mixed = bool(c1_zones) and bool(c2_zones)
 
+    # Sort zones worst-first by defect_rate (applies to both C1 and C2)
+    c1_zones.sort(key=lambda z: z['defect_rate'], reverse=True)
+    c2_zones.sort(key=lambda z: z['defect_rate'], reverse=True)
+    zones.sort(key=lambda z: z['defect_rate'], reverse=True)
+
     # C1-scoped KPIs
     c1_inspected = sum(z['inspected'] for z in c1_zones)
     c1_defects = sum(z['defects'] for z in c1_zones)
@@ -3953,6 +3960,7 @@ def _build_batch_report_data(batch_id):
         'items_inspected': c1_items,
         'project_avg': project_avg,
         'proj_defect_rate': proj_defect_rate,
+        'vs_project_ratio': round(c1_avg / project_avg, 1) if project_avg > 0 else 0,
     }
 
     # C1-scoped area/trade/worst — defaults to combined; re-scoped when mixed
