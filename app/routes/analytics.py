@@ -770,6 +770,13 @@ def batch_analytics(batch_id):
     batch_defect_rate = round(batch_total_defects / batch_items * 100, 1) if batch_items > 0 else 0
     proj_defect_rate = round(project_avg_raw / ITEMS_PER_UNIT * 100, 1) if project_avg_raw > 0 else 0
 
+    # Flatten inspected-unit defect counts (used below for median / min / max KPIs)
+    all_unit_counts = []
+    for z in zones:
+        for u in z['units']:
+            if u['insp_status'] in reviewed_statuses:
+                all_unit_counts.append(u['defect_count'])
+
     # Fixed-threshold banding (matches PDF report): >=27% red, >=15% amber, <15% green
     def _band(rate):
         if rate >= 27:
