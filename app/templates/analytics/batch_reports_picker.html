@@ -1,0 +1,40 @@
+{% extends 'base.html' %}
+{% block title %}Batch Reports{% endblock %}
+{% block content %}
+<div style="max-width: 900px; margin: 0 auto; padding: 1.5rem 1rem;">
+  <a href="{{ url_for('analytics.pipeline_dashboard') }}" style="color:#9A9A9A; font-size:0.85rem; text-decoration:none;">&larr; Pipeline Dashboard</a>
+  <h1 style="font-family: 'Cormorant Garamond', Georgia, serif; font-weight: 700; font-size: 2.25rem; letter-spacing: -0.01em; margin: 0.5rem 0 0.25rem 0; color: #1A1A1A;">Batch Reports</h1>
+  <p style="color:#9A9A9A; font-size:0.85rem; margin:0;">Early status report per batch &mdash; reviewed-or-higher units only.</p>
+
+  <div style="margin-top: 1.5rem; background:#fff; border:1px solid #e5e5e5; border-radius:8px; overflow:hidden;">
+    <table style="width:100%; border-collapse:collapse; font-size:0.9rem;">
+      <thead style="background:#F5F3EE;">
+        <tr>
+          <th style="text-align:left; padding:0.75rem 1rem; font-weight:600; color:#1A1A1A;">Batch</th>
+          <th style="text-align:left; padding:0.75rem 1rem; font-weight:600; color:#1A1A1A;">Created</th>
+          <th style="text-align:left; padding:0.75rem 1rem; font-weight:600; color:#1A1A1A;">Status</th>
+          <th style="text-align:right; padding:0.75rem 1rem; font-weight:600; color:#1A1A1A;">Units (reviewed+ / total)</th>
+          <th style="text-align:right; padding:0.75rem 1rem; font-weight:600; color:#1A1A1A;">Report</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for b in batches %}
+        <tr style="border-top:1px solid #e5e5e5;">
+          <td style="padding:0.75rem 1rem; font-weight:600; color:#1A1A1A;">{{ b.name }}</td>
+          <td style="padding:0.75rem 1rem; color:#555;">{{ b.created_at[:10] if b.created_at else '&mdash;' }}</td>
+          <td style="padding:0.75rem 1rem; color:#555; text-transform:capitalize;">{{ b.status }}</td>
+          <td style="padding:0.75rem 1rem; text-align:right; color:#555;">{{ b.reviewed_units or 0 }} / {{ b.total_units or 0 }}</td>
+          <td style="padding:0.75rem 1rem; text-align:right; white-space:nowrap;">
+            <a href="{{ url_for('analytics.batch_report_view', batch_id=b.id) }}" style="padding:0.35rem 0.8rem; font-size:0.8rem; font-weight:600; border-radius:6px; background:#F5F3EE; color:#1A1A1A; border:1px solid #e5e5e5; text-decoration:none;">View</a>
+            <a href="{{ url_for('analytics.batch_report_pdf', batch_id=b.id) }}" style="padding:0.35rem 0.8rem; font-size:0.8rem; font-weight:600; border-radius:6px; background:#C8963E; color:white; text-decoration:none; margin-left:0.25rem;" onclick="this.textContent='Preparing...'; this.style.opacity='0.7'; this.style.pointerEvents='none';">PDF</a>
+          </td>
+        </tr>
+        {% endfor %}
+        {% if not batches %}
+        <tr><td colspan="5" style="padding:2rem; text-align:center; color:#9A9A9A;">No batches yet.</td></tr>
+        {% endif %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

@@ -97,6 +97,7 @@
                         <a href="{{ url_for('analytics.dashboard') }}" class="text-sm text-gray-300 hover:text-white">Analytics</a>
                         {% if current_user.role == 'admin' %}
                         <a href="{{ url_for('data_quality.descriptions') }}" class="text-sm text-gray-300 hover:text-white">Data Quality</a>
+                        <a href="{{ url_for('analytics.batch_reports_picker') }}" class="text-sm text-gray-300 hover:text-white">Batch Reports</a>
                         {% endif %}
                         {% endif %}
                     </div>

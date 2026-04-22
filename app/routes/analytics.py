@@ -4,7 +4,7 @@ Provides data-driven view of defect patterns across all units in a cycle.
 Access: Manager + Admin only.
 """
 from flask import Blueprint, render_template, session, request, make_response
-from app.auth import require_manager, require_office_admin, require_team_lead
+from app.auth import require_manager, require_office_admin, require_team_lead, require_admin
 import math
 from app.services.db import query_db
 
@@ -5879,3 +5879,27 @@ def pipeline_dashboard():
     data = _build_pipeline_report_data(live=is_live)
     data['mode'] = 'live' if is_live else 'snapshot'
     return render_template('analytics/pipeline_dashboard.html', **data)
+
+
+
+@analytics_bp.route('/batch-reports')
+@require_admin
+def batch_reports_picker():
+    """Admin-only picker page listing all batches with links to their reports."""
+    from flask import session
+    tenant_id = session.get('tenant_id', 'MONOGRAPH')
+    rows = query_db("""
+        SELECT ib.id, ib.name, ib.status, ib.created_at,
+               COUNT(DISTINCT bu.id) AS total_units,
+               SUM(CASE WHEN i.status IN ('reviewed','approved','certified','pending_followup')
+                        THEN 1 ELSE 0 END) AS reviewed_units
+        FROM inspection_batch ib
+        LEFT JOIN batch_unit bu ON bu.batch_id = ib.id AND bu.removed_at IS NULL
+        LEFT JOIN inspection i ON i.unit_id = bu.unit_id AND i.cycle_id = bu.cycle_id
+            AND i.tenant_id = ib.tenant_id
+        WHERE ib.tenant_id = ?
+        GROUP BY ib.id, ib.name, ib.status, ib.created_at
+        ORDER BY ib.created_at DESC
+    """, [tenant_id])
+    batches = [dict(r) for r in rows]
+    return render_template('analytics/batch_reports_picker.html', batches=batches)
