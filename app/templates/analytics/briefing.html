@@ -358,11 +358,20 @@ body {
 
   {% if c2_open_details %}
   <div class="open-target">
-    <div class="open-target-head">De-snag open item{{ 's' if c2_open_details|length > 1 else '' }}</div>
+    <div class="open-target-head">De-snag open item{{ 's' if c2_still_open > 1 else '' }}</div>
     <div class="open-target-body">
+      {% if c2_still_open <= 5 %}
       {% for d in c2_open_details %}
       Unit <b>{{ d.unit_number }}</b> &middot; {{ d.block }} {{ d.floor_label }} &middot; {{ d.area }} &middot; {{ d.trade }} &middot; {{ d.count }} defect{{ 's' if d.count != 1 else '' }} not rectified.{% if loop.last %} Full detail page 5.{% endif %}{% if not loop.last %}<br>{% endif %}
       {% endfor %}
+      {% else %}
+      {% for unit_num, entries in c2_open_details|groupby('unit_number') %}
+      {% set first = entries|first %}
+      {% set total = entries|sum(attribute='count') %}
+      {% set areas = entries|map(attribute='area')|unique|list %}
+      Unit <b>{{ unit_num }}</b> &middot; {{ first.block }} {{ first.floor_label }} &middot; {{ total }} item{{ 's' if total != 1 else '' }} not rectified &middot; {{ areas|join(', ') }}.{% if not loop.last %}<br>{% endif %}
+      {% endfor %}
+      {% endif %}
     </div>
   </div>
   {% endif %}
@@ -533,7 +542,8 @@ body {
   <div class="sect-title">{{ c2_units|length }} de-snag unit{{ 's' if c2_units|length != 1 else '' }} &middot; {{ c2_cleared }} of {{ c2_brought_forward }} cleared{% if c2_brought_forward > 0 %} &middot; {{ "%.1f"|format(c2_cleared / c2_brought_forward * 100) }}%{% endif %}</div>
   <div class="sect-sub">
     {% if c2_still_open == 0 %}All defects rectified.
-    {% else %}{{ c2_still_open }} defect{{ 's' if c2_still_open != 1 else '' }} not rectified{% if c2_open_details %} &mdash; {% for d in c2_open_details %}unit {{ d.unit_number }}, {{ d.area }}, {{ d.trade }}{% if not loop.last %}; {% endif %}{% endfor %}{% endif %}.
+    {% elif c2_still_open <= 5 %}{{ c2_still_open }} defect{{ 's' if c2_still_open != 1 else '' }} not rectified{% if c2_open_details %} &mdash; {% for d in c2_open_details %}unit {{ d.unit_number }}, {{ d.area }}, {{ d.trade }}{% if not loop.last %}; {% endif %}{% endfor %}{% endif %}.
+    {% else %}{{ c2_still_open }} defects not rectified. See page 1 for summary.
     {% endif %}
   </div>
 
@@ -553,7 +563,7 @@ body {
   {% endfor %}
 
   <div class="closing">
-    {{ c2_brought_forward }} defect{{ 's' if c2_brought_forward != 1 else '' }} reviewed across {{ c2_units|length }} de-snag unit{{ 's' if c2_units|length != 1 else '' }} &middot; {{ c2_cleared }} rectified &middot; {{ c2_still_open }} not rectified.{% if c2_open_details %} Not-rectified item{{ 's' if c2_open_details|length > 1 else '' }}: {% for d in c2_open_details %}unit {{ d.unit_number }} &middot; {{ d.area }} &middot; {{ d.trade }}{% if not loop.last %}; {% endif %}{% endfor %}.{% endif %}
+    {{ c2_brought_forward }} defect{{ 's' if c2_brought_forward != 1 else '' }} reviewed across {{ c2_units|length }} de-snag unit{{ 's' if c2_units|length != 1 else '' }} &middot; {{ c2_cleared }} rectified &middot; {{ c2_still_open }} not rectified.
   </div>
   {% else %}
   <div class="sect-title">De-snag results</div>
