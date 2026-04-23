@@ -268,6 +268,7 @@ body {
 }
 
 /* PRINT / PDF */
+.pdf-running-header { display: none; }
 @media print {
   body { padding: 0; background: white; }
   .briefing-header { display: none; }
@@ -282,6 +283,19 @@ body {
     background: transparent;
   }
   .page:first-of-type { page-break-before: auto; }
+  .pdf-running-header {
+    display: block;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    font-size: 9pt;
+    color: #8F8E88;
+    text-align: center;
+    padding: 3mm 0;
+    z-index: 1000;
+  }
 }
 @page {
   size: A4;
@@ -302,6 +316,8 @@ body {
   </div>
 </div>
 {% endif %}
+
+<div class="pdf-running-header">{{ batch.name }} &middot; {{ report_date }} &middot; Power Park Student Housing Phase 3</div>
 
 <div class="doc">
 
