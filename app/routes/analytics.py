@@ -4469,11 +4469,11 @@ def _build_briefing_data(batch_id):
             zone['still_open'] = zop
         zones.append(zone)
 
-    # Sort zones: C1 worst-first, then C2 by still_open desc
+    # Sort zones: C1 by avg_per_unit desc (per-unit intensity); C2 by brought_forward desc (workload)
     c1_zones = sorted([z for z in zones if z['is_c1']],
-                     key=lambda z: z['defects_raised'], reverse=True)
+                     key=lambda z: z['avg_per_unit'], reverse=True)
     c2_zones = sorted([z for z in zones if not z['is_c1']],
-                     key=lambda z: (z['still_open'], z['brought_forward']), reverse=True)
+                     key=lambda z: z['brought_forward'], reverse=True)
     zones_sorted = c1_zones + c2_zones
 
     # ---- 6. By area (C1 only) ----
@@ -4558,7 +4558,7 @@ def _build_briefing_data(batch_id):
             c['bar_pct'] = round(c['count'] / combo_max * 100) if combo_max > 0 else 0
 
     # ---- 9. Hot spots (derived) ----
-    worst_zone = c1_zones[0] if c1_zones else None
+    worst_zone = max(c1_zones, key=lambda z: z['defects_raised']) if c1_zones else None
     worst_unit = c1_units[0] if c1_units else None
     worst_area = area_data[0] if area_data else None
     worst_trade = trade_data[0] if trade_data else None
