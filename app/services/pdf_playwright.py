@@ -20,9 +20,10 @@ def _get_browser():
     return _browser
 
 
-def html_to_pdf(html_string, footer_template=None):
+def html_to_pdf(html_string, footer_template=None, header_template=None, margin=None):
     """Convert HTML string to PDF bytes using Playwright/Chromium.
-    Optional footer_template enables Playwright header/footer rendering.
+    Optional header_template/footer_template enable Playwright running header/footer.
+    Optional margin dict overrides defaults (e.g. when a header needs more top space).
     """
     browser = _get_browser()
     page = browser.new_page()
@@ -31,17 +32,17 @@ def html_to_pdf(html_string, footer_template=None):
         pdf_opts = {
             'format': 'A4',
             'print_background': True,
-            'margin': {
+            'margin': margin or {
                 'top': '18mm',
                 'bottom': '20mm',
                 'left': '16mm',
                 'right': '16mm',
             },
         }
-        if footer_template:
+        if footer_template or header_template:
             pdf_opts['display_header_footer'] = True
-            pdf_opts['header_template'] = '<span></span>'
-            pdf_opts['footer_template'] = footer_template
+            pdf_opts['header_template'] = header_template or '<span></span>'
+            pdf_opts['footer_template'] = footer_template or '<span></span>'
         pdf_bytes = page.pdf(**pdf_opts)
     finally:
         page.close()
