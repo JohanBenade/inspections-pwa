@@ -361,7 +361,7 @@ body {
     <div class="open-target-head">De-snag open item{{ 's' if c2_open_details|length > 1 else '' }}</div>
     <div class="open-target-body">
       {% for d in c2_open_details %}
-      Unit <b>{{ d.unit_number }}</b> &middot; {{ d.block }} {{ d.floor_label }} &middot; {{ d.area }} &middot; {{ d.trade }} &middot; {{ d.count }} defect{{ 's' if d.count != 1 else '' }} not rectified.{% if loop.last %} Full detail page 6.{% endif %}{% if not loop.last %}<br>{% endif %}
+      Unit <b>{{ d.unit_number }}</b> &middot; {{ d.block }} {{ d.floor_label }} &middot; {{ d.area }} &middot; {{ d.trade }} &middot; {{ d.count }} defect{{ 's' if d.count != 1 else '' }} not rectified.{% if loop.last %} Full detail page 5.{% endif %}{% if not loop.last %}<br>{% endif %}
       {% endfor %}
     </div>
   </div>
@@ -465,12 +465,14 @@ body {
 
 {# ============ PAGE 3 — BY AREA ============ #}
 <section class="page">
-  <div class="page-meta"><span class="batch-id">{{ batch.name }}</span><span>Page 3 &mdash; Defects by area</span></div>
+  <div class="page-meta"><span class="batch-id">{{ batch.name }}</span><span>Page 3 &mdash; Defects by area and trade</span></div>
 
-  {% if area_data %}
-  <div class="sect-title">{{ "{:,}".format(c1_total_defects) }} snag defects across {{ area_data|length }} area{{ 's' if area_data|length != 1 else '' }}</div>
+  {% if area_data or trade_data %}
+  <div class="sect-title">{{ "{:,}".format(c1_total_defects) }} snag defects across {{ area_data|length }} area{{ 's' if area_data|length != 1 else '' }} and {{ trade_data|length }} trade{{ 's' if trade_data|length != 1 else '' }}</div>
   <div class="sect-sub">Total across {{ c1_unit_count }} C1 unit{{ 's' if c1_unit_count != 1 else '' }}.</div>
 
+  {% if area_data %}
+  <div class="section-label">By area</div>
   {% for a in area_data %}
   <div class="bar-row heavy">
     <div class="bar-name"><b>{{ a.area }}</b></div>
@@ -478,22 +480,10 @@ body {
     <div class="bar-val"><span class="pct">{{ a.pct }}%</span><b>{{ a.count }}</b></div>
   </div>
   {% endfor %}
-  {% else %}
-  <div class="sect-title">Defects by area</div>
-  <div class="sect-sub">No snag inspections yet in this batch.</div>
   {% endif %}
-</section>
-
-<div class="pagebreak">&mdash; &mdash; &mdash;</div>
-
-{# ============ PAGE 4 — BY TRADE ============ #}
-<section class="page">
-  <div class="page-meta"><span class="batch-id">{{ batch.name }}</span><span>Page 4 &mdash; Defects by trade</span></div>
 
   {% if trade_data %}
-  <div class="sect-title">{{ "{:,}".format(c1_total_defects) }} snag defects across {{ trade_data|length }} trade{{ 's' if trade_data|length != 1 else '' }}</div>
-  <div class="sect-sub">Total across {{ c1_unit_count }} C1 unit{{ 's' if c1_unit_count != 1 else '' }}.</div>
-
+  <div class="section-label">By trade</div>
   {% for t in trade_data %}
   <div class="bar-row heavy">
     <div class="bar-name"><b>{{ t.trade }}</b></div>
@@ -501,17 +491,18 @@ body {
     <div class="bar-val"><span class="pct">{{ t.pct }}%</span><b>{{ t.count }}</b></div>
   </div>
   {% endfor %}
+  {% endif %}
   {% else %}
-  <div class="sect-title">Defects by trade</div>
+  <div class="sect-title">Defects by area and trade</div>
   <div class="sect-sub">No snag inspections yet in this batch.</div>
   {% endif %}
 </section>
 
 <div class="pagebreak">&mdash; &mdash; &mdash;</div>
 
-{# ============ PAGE 5 — SNAG UNITS ============ #}
+{# ============ PAGE 4 — SNAG UNITS ============ #}
 <section class="page">
-  <div class="page-meta"><span class="batch-id">{{ batch.name }}</span><span>Page 5 &mdash; Snag units</span></div>
+  <div class="page-meta"><span class="batch-id">{{ batch.name }}</span><span>Page 4 &mdash; Snag units</span></div>
 
   {% if c1_unit_splits %}
   <div class="sect-title">{{ c1_unit_splits|length }} unit{{ 's' if c1_unit_splits|length != 1 else '' }} inspected at C1</div>
@@ -534,9 +525,9 @@ body {
 
 <div class="pagebreak">&mdash; &mdash; &mdash;</div>
 
-{# ============ PAGE 6 — DE-SNAG RESULTS ============ #}
+{# ============ PAGE 5 — DE-SNAG RESULTS ============ #}
 <section class="page">
-  <div class="page-meta"><span class="batch-id">{{ batch.name }}</span><span>Page 6 &mdash; De-snag results</span></div>
+  <div class="page-meta"><span class="batch-id">{{ batch.name }}</span><span>Page 5 &mdash; De-snag results</span></div>
 
   {% if c2_units %}
   <div class="sect-title">{{ c2_units|length }} de-snag unit{{ 's' if c2_units|length != 1 else '' }} &middot; {{ c2_cleared }} of {{ c2_brought_forward }} cleared{% if c2_brought_forward > 0 %} &middot; {{ "%.1f"|format(c2_cleared / c2_brought_forward * 100) }}%{% endif %}</div>
@@ -572,9 +563,9 @@ body {
 
 <div class="pagebreak">&mdash; &mdash; &mdash;</div>
 
-{# ============ PAGE 7 — EXCLUSIONS ============ #}
+{# ============ PAGE 6 — EXCLUSIONS ============ #}
 <section class="page">
-  <div class="page-meta"><span class="batch-id">{{ batch.name }}</span><span>Page 7 &mdash; Exclusions</span></div>
+  <div class="page-meta"><span class="batch-id">{{ batch.name }}</span><span>Page 6 &mdash; Exclusions</span></div>
 
   {% if excl_items_grouped %}
   <div class="sect-title">{{ excl_total }} item{{ 's' if excl_total != 1 else '' }} excluded from inspection</div>
