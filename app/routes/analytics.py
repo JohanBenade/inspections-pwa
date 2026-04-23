@@ -4711,9 +4711,8 @@ def batch_briefing_pdf(batch_id):
     pdf_bytes = html_to_pdf(html_str)
     response = make_response(pdf_bytes)
     response.headers['Content-Type'] = 'application/pdf'
-    fname = 'PPSH_Site_Briefing_{}_{}.pdf'.format(
-        data['batch']['name'].replace(' ', '_'),
-        data['report_date_slug'])
+    fname = 'PPSH_Site_Briefing_{}.pdf'.format(
+        data['batch']['name'].replace(' ', '_'))
     response.headers['Content-Disposition'] = 'attachment; filename={}'.format(fname)
     return response
 
