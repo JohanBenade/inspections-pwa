@@ -4623,8 +4623,8 @@ def _build_briefing_data(batch_id):
             if a not in area_map:
                 area_map[a] = {'name': a, 'order': r['area_order'], 'trades': {}, 'count': 0}
             if t not in area_map[a]['trades']:
-                area_map[a]['trades'][t] = {'name': t, 'order': r['category_order'], 'items': []}
-            area_map[a]['trades'][t]['items'].append(r['item'])
+                area_map[a]['trades'][t] = {'name': t, 'order': r['category_order'], 'item_list': []}
+            area_map[a]['trades'][t]['item_list'].append(r['item'])
             area_map[a]['count'] += 1
         for a in sorted(area_map.values(), key=lambda x: x['order']):
             a['trades'] = sorted(a['trades'].values(), key=lambda x: x['order'])
