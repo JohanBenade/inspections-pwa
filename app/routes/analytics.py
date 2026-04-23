@@ -4688,7 +4688,7 @@ def _build_briefing_data(batch_id):
 
 
 @analytics_bp.route('/report/briefing/<batch_id>')
-@require_manager
+@require_team_lead
 def batch_briefing_view(batch_id):
     """Batch site briefing - HTML view."""
     data = _build_briefing_data(batch_id)
@@ -4699,7 +4699,7 @@ def batch_briefing_view(batch_id):
 
 
 @analytics_bp.route('/report/briefing/<batch_id>/pdf')
-@require_manager
+@require_team_lead
 def batch_briefing_pdf(batch_id):
     """Batch site briefing - PDF download via Playwright."""
     from app.services.pdf_playwright import html_to_pdf
@@ -6406,9 +6406,9 @@ def pipeline_dashboard():
 
 
 @analytics_bp.route('/batch-reports')
-@require_admin
+@require_team_lead
 def batch_reports_picker():
-    """Admin-only picker page listing all batches with links to their reports."""
+    """Picker page listing all batches with links to their reports."""
     from flask import session
     tenant_id = session.get('tenant_id', 'MONOGRAPH')
     rows = query_db("""
