@@ -4436,6 +4436,9 @@ def _build_briefing_data(batch_id):
                         'count': dr['count'],
                     })
 
+    # Sort c2_units: open-defect units first within zone, then by unit_number
+    c2_units.sort(key=lambda u: (-u['still_open'], u['unit_number']))
+
     # ---- 5. Zone summary (all cycles, C1 and C2) ----
     zones = []
     for c in cycles:
