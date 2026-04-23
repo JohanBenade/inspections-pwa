@@ -24,8 +24,7 @@
           <td style="padding:0.75rem 1rem; color:#555; text-transform:capitalize;">{{ b.status }}</td>
           <td style="padding:0.75rem 1rem; text-align:right; color:#555;">{{ b.reviewed_units or 0 }} / {{ b.total_units or 0 }}</td>
           <td style="padding:0.75rem 1rem; text-align:right; white-space:nowrap;">
-            <a href="{{ url_for('analytics.batch_analytics', batch_id=b.id) }}" style="padding:0.35rem 0.8rem; font-size:0.8rem; font-weight:600; border-radius:6px; background:#F5F3EE; color:#1A1A1A; border:1px solid #e5e5e5; text-decoration:none;">View</a>
-            <a href="{{ url_for('analytics.batch_report_pdf', batch_id=b.id) }}" style="padding:0.35rem 0.8rem; font-size:0.8rem; font-weight:600; border-radius:6px; background:#C8963E; color:white; text-decoration:none; margin-left:0.25rem;" onclick="this.textContent='Preparing...'; this.style.opacity='0.7'; this.style.pointerEvents='none';">PDF</a>
+            <a href="{{ url_for('analytics.batch_briefing_view', batch_id=b.id) }}" style="padding:0.35rem 0.8rem; font-size:0.8rem; font-weight:600; border-radius:6px; background:#F5F3EE; color:#1A1A1A; border:1px solid #e5e5e5; text-decoration:none;">View</a>
           </td>
         </tr>
         {% endfor %}

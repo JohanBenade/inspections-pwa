@@ -1,0 +1,620 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{{ batch.name }} Site Briefing &mdash; {{ report_date }}</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  background: #EFEEE9; color: #1A1A1A; line-height: 1.55;
+  padding: 2rem 1rem;
+}
+.doc { max-width: 820px; margin: 0 auto; }
+
+.briefing-header {
+  max-width: 820px;
+  margin: 0 auto 1.5rem auto;
+  padding: 0 0.5rem;
+}
+.briefing-header .back-link {
+  display: inline-block;
+  font-size: 0.85rem;
+  color: #4A4A4A;
+  text-decoration: none;
+  margin-bottom: 0.75rem;
+}
+.briefing-header .back-link:hover { color: #1A1A1A; }
+.briefing-title {
+  font-family: 'Cormorant Garamond', Georgia, serif;
+  font-weight: 700;
+  font-size: 2.25rem;
+  letter-spacing: -0.01em;
+  margin: 0 0 0.25rem 0;
+  color: #1A1A1A;
+  line-height: 1.1;
+}
+.briefing-subtitle {
+  color: #9A9A9A;
+  font-size: 0.85rem;
+  margin: 0 0 1rem 0;
+}
+.briefing-actions {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+.briefing-actions .btn {
+  padding: 0.5rem 1rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  border-radius: 6px;
+  text-decoration: none;
+  cursor: pointer;
+  font-family: inherit;
+  display: inline-block;
+}
+.briefing-actions .btn-print {
+  background: #F5F3EE;
+  color: #1A1A1A;
+  border: 1px solid #e5e5e5;
+}
+.briefing-actions .btn-pdf {
+  background: #C8963E;
+  color: white;
+  border: 1px solid #C8963E;
+}
+
+.intro {
+  background: #fff; border: 0.5px solid #D8D6CE; border-radius: 12px;
+  padding: 1.25rem 1.5rem; margin-bottom: 1.5rem;
+  font-size: 14px; color: #4A4A4A;
+}
+.page {
+  background: #FEFDFA;
+  border: 0.5px solid #D8D6CE;
+  border-radius: 12px;
+  padding: 2rem 2rem 1.75rem 2rem;
+  margin-bottom: 1.25rem;
+}
+.page-meta {
+  display: flex; justify-content: space-between; align-items: baseline;
+  font-size: 12px; color: #8F8E88;
+  border-bottom: 0.5px solid #E5E3DB;
+  padding-bottom: 10px; margin-bottom: 1.5rem;
+}
+.batch-id { font-weight: 500; color: #4A4A4A; }
+.pagebreak { text-align: center; font-size: 11px; color: #B0AEA5; margin: 0.5rem 0 0.25rem 0; }
+
+.lead { font-size: 30px; font-weight: 500; line-height: 1.2; margin: 0.4rem 0 0.75rem 0; }
+.lead-sub { font-size: 14px; color: #4A4A4A; margin-bottom: 1.5rem; }
+
+.kpi-row {
+  display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px;
+  margin-bottom: 1.5rem;
+}
+.kpi-card { background: #F5F3EC; border-radius: 8px; padding: 14px 16px; }
+.kpi-label { font-size: 11px; color: #4A4A4A; margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.04em; }
+.kpi-num { font-size: 26px; font-weight: 500; margin-bottom: 2px; line-height: 1.1; }
+.kpi-sub { font-size: 12px; color: #8F8E88; }
+.kpi-num.green { color: #0F6E56; }
+.kpi-num.amber { color: #85530B; }
+
+.open-target {
+  background: #FDF6E7; border: 0.5px solid #EAD59F;
+  border-radius: 8px; padding: 14px 18px; margin-bottom: 1.5rem;
+}
+.open-target-head { font-size: 11px; color: #85530B; font-weight: 500; letter-spacing: 0.04em; text-transform: uppercase; margin-bottom: 6px; }
+.open-target-body { font-size: 15px; color: #633806; line-height: 1.5; }
+.open-target-body b { font-weight: 500; }
+
+.sect-title { font-size: 18px; font-weight: 500; margin: 0 0 4px 0; }
+.sect-sub { font-size: 13px; color: #4A4A4A; margin-bottom: 1rem; }
+.section-label { font-size: 13px; color: #4A4A4A; margin: 1.25rem 0 0.5rem 0; font-weight: 500; }
+
+/* ZONE TABLE */
+.zone-table { width: 100%; border-collapse: collapse; font-size: 13px; margin-bottom: 1rem; }
+.zone-table th {
+  text-align: left; font-weight: 500; font-size: 11px; text-transform: uppercase;
+  letter-spacing: 0.04em; color: #6B6B6B; padding: 8px 10px;
+  border-bottom: 1px solid #D8D6CE;
+}
+.zone-table td {
+  padding: 9px 10px; border-bottom: 0.5px solid #E5E3DB;
+}
+.zone-table tr.zone-hot td { background: #FDEDEA; }
+.zone-table tr.zone-warm td { background: #FDF6E7; }
+.zone-table .num { text-align: right; font-variant-numeric: tabular-nums; }
+.zone-table .zone-name { font-weight: 500; }
+.zone-table .zone-cycle {
+  display: inline-block; font-size: 10px; font-weight: 500;
+  padding: 2px 6px; border-radius: 3px; margin-left: 6px;
+  vertical-align: 1px;
+}
+.c1-badge { background: #E6F1FB; color: #0C447C; }
+.c2-badge { background: #E1F5EE; color: #0F6E56; }
+
+/* HOTSPOT TILES */
+.hotspot-grid {
+  display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px;
+  margin-bottom: 1rem;
+}
+.hotspot-tile {
+  background: #FDEDEA; border: 0.5px solid #F0C4BD;
+  border-radius: 8px; padding: 14px 16px;
+}
+.hotspot-tile.tile-doors { background: #FDEDEA; border-color: #F0C4BD; }
+.hotspot-tile.tile-area { background: #FDF6E7; border-color: #EAD59F; }
+.hotspot-tile.tile-unit { background: #FDEDEA; border-color: #F0C4BD; }
+.hotspot-tile.tile-zone { background: #FDEDEA; border-color: #F0C4BD; }
+.hotspot-label { font-size: 11px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 6px; }
+.hotspot-tile.tile-area .hotspot-label { color: #85530B; }
+.hotspot-tile.tile-doors .hotspot-label,
+.hotspot-tile.tile-unit .hotspot-label,
+.hotspot-tile.tile-zone .hotspot-label { color: #79281C; }
+.hotspot-what { font-size: 18px; font-weight: 500; margin-bottom: 2px; }
+.hotspot-tile.tile-area .hotspot-what { color: #4A2F05; }
+.hotspot-tile.tile-doors .hotspot-what,
+.hotspot-tile.tile-unit .hotspot-what,
+.hotspot-tile.tile-zone .hotspot-what { color: #4A1B0C; }
+.hotspot-detail { font-size: 13px; }
+.hotspot-tile.tile-area .hotspot-detail { color: #633806; }
+.hotspot-tile.tile-doors .hotspot-detail,
+.hotspot-tile.tile-unit .hotspot-detail,
+.hotspot-tile.tile-zone .hotspot-detail { color: #712B13; }
+
+/* BAR ROWS */
+.bar-row {
+  display: grid; grid-template-columns: 130px 1fr 80px;
+  align-items: center; gap: 12px; padding: 6px 0;
+  font-size: 13px;
+}
+.bar-row.heavy { padding: 8px 0; }
+.bar-name { font-weight: 500; }
+.bar-track { height: 8px; background: #E5E3DB; border-radius: 3px; overflow: hidden; }
+.bar-fill { height: 100%; border-radius: 3px; background: #D85A30; }
+.bar-fill.light { background: #F0997B; }
+.bar-val { text-align: right; font-size: 13px; font-variant-numeric: tabular-nums; }
+.bar-val b { font-weight: 500; }
+.bar-val .pct { color: #8F8E88; font-size: 11px; margin-right: 4px; }
+
+/* UNIT ROW */
+.unit-row {
+  display: grid; grid-template-columns: 56px 140px 1fr 60px;
+  align-items: baseline; gap: 12px; padding: 12px 0;
+  border-top: 0.5px solid #E5E3DB;
+  font-size: 13px;
+}
+.unit-row:first-child { border-top: none; }
+.unit-row.unit-hot { background: #FDEDEA; padding-left: 8px; padding-right: 8px; border-radius: 4px; }
+.unit-row.unit-warm { background: #FDF6E7; padding-left: 8px; padding-right: 8px; border-radius: 4px; }
+.unit-no { font-size: 16px; font-weight: 500; }
+.unit-zone { color: #8F8E88; font-size: 12px; line-height: 1.35; }
+.unit-detail { color: #4A4A4A; font-size: 12px; line-height: 1.5; }
+.unit-tot { font-size: 15px; font-weight: 500; text-align: right; }
+
+/* RECTIFICATION */
+.cleared-row {
+  display: grid; grid-template-columns: 50px 130px 1fr 70px;
+  align-items: center; gap: 12px; padding: 8px 0;
+  font-size: 13px; border-top: 0.5px solid #E5E3DB;
+}
+.cleared-row:first-child { border-top: none; }
+.cleared-bar { height: 6px; background: #E1F5EE; border-radius: 3px; overflow: hidden; }
+.cleared-fill { height: 100%; background: #1D9E75; border-radius: 3px; }
+.cleared-pct { text-align: right; font-size: 13px; font-weight: 500; color: #0F6E56; font-variant-numeric: tabular-nums; }
+.cleared-one-open { background: #FDF6E7; border-radius: 4px; padding-left: 6px; padding-right: 6px; }
+.cleared-one-open .cleared-bar { background: #FAEEDA; }
+.cleared-one-open .cleared-fill { background: #BA7517; }
+.cleared-one-open .cleared-pct { color: #85530B; }
+
+/* EXCLUSIONS */
+.excl-intro-line {
+  font-size: 13px; color: #4A4A4A; line-height: 1.6;
+  margin-bottom: 1.25rem;
+}
+.excl-grid-2col {
+  column-count: 2;
+  column-gap: 28px;
+}
+.excl-area-block {
+  break-inside: avoid;
+  margin-bottom: 1.25rem;
+  display: inline-block;
+  width: 100%;
+}
+.excl-area-head {
+  display: flex; justify-content: space-between; align-items: baseline;
+  border-bottom: 1px solid #D8D6CE;
+  padding-bottom: 6px; margin-bottom: 8px;
+}
+.excl-area-name {
+  font-size: 13px; font-weight: 500;
+  text-transform: uppercase; letter-spacing: 0.04em;
+  color: #1A1A1A;
+}
+.excl-area-count {
+  font-size: 11px; color: #8F8E88;
+  font-variant-numeric: tabular-nums;
+}
+.excl-trade-block { margin-bottom: 10px; }
+.excl-trade-name {
+  font-size: 11px; color: #6B6B6B; font-weight: 500;
+  margin-bottom: 3px;
+  letter-spacing: 0.02em;
+}
+.excl-item-list { list-style: none; }
+.excl-item-list li {
+  font-size: 12px; color: #4A4A4A;
+  padding: 2px 0 2px 10px;
+  position: relative;
+  line-height: 1.5;
+}
+.excl-item-list li::before {
+  content: '\00B7';
+  position: absolute; left: 0; top: 0;
+  color: #B0AEA5;
+}
+
+.closing {
+  margin-top: 1rem; padding-top: 0.75rem;
+  border-top: 0.5px solid #E5E3DB;
+  font-size: 12px; color: #8F8E88; line-height: 1.55;
+}
+.empty-state {
+  font-size: 13px; color: #8F8E88;
+  padding: 0.5rem 0;
+}
+
+/* PRINT / PDF */
+@media print {
+  body { padding: 0; background: white; }
+  .briefing-header { display: none; }
+  .pagebreak { display: none; }
+  .doc { max-width: 100%; }
+  .page {
+    page-break-before: always;
+    margin-bottom: 0;
+    border: none;
+    border-radius: 0;
+    padding: 0.5rem 0;
+    background: transparent;
+  }
+  .page:first-of-type { page-break-before: auto; }
+}
+@page {
+  size: A4;
+  margin: 14mm;
+}
+</style>
+</head>
+<body>
+
+{% if not is_pdf %}
+<div class="briefing-header">
+  <a href="{{ url_for('analytics.batch_reports_picker') }}" class="back-link">&larr; Batch Reports</a>
+  <h1 class="briefing-title">{{ batch.name }} Site Briefing</h1>
+  <p class="briefing-subtitle">{{ report_date }} &middot; Power Park Student Housing Phase 3</p>
+  <div class="briefing-actions">
+    <button onclick="window.print()" class="btn btn-print">Print</button>
+    <a href="{{ url_for('analytics.batch_briefing_pdf', batch_id=batch.id) }}" class="btn btn-pdf" onclick="this.textContent='Preparing...'; this.style.opacity='0.7'; this.style.pointerEvents='none';">Download PDF</a>
+  </div>
+</div>
+{% endif %}
+
+<div class="doc">
+
+{% set FL = {0: 'Ground', 1: '1st Floor', 2: '2nd Floor'} %}
+
+{# ============ PAGE 1 — OVERVIEW ============ #}
+<section class="page">
+  <div class="page-meta">
+    <span class="batch-id">{{ batch.name }} &middot; {{ report_date }} &middot; Power Park Student Housing Phase 3</span>
+    <span>Page 1 &mdash; Overview</span>
+  </div>
+
+  <div class="lead">
+    {% if c1_total_defects > 0 and c2_brought_forward > 0 %}
+      {{ "{:,}".format(c1_total_defects) }} new defects raised &middot; {{ "{:,}".format(c2_cleared) }} cleared &middot; {{ c2_still_open }} still open
+    {% elif c1_total_defects > 0 %}
+      {{ "{:,}".format(c1_total_defects) }} new defects raised
+    {% elif c2_brought_forward > 0 %}
+      {{ "{:,}".format(c2_cleared) }} cleared &middot; {{ c2_still_open }} still open
+    {% else %}
+      No inspection data yet
+    {% endif %}
+  </div>
+  <div class="lead-sub">
+    {{ c1_unit_count }} snag unit{{ 's' if c1_unit_count != 1 else '' }} (C1){% if c2_unit_count > 0 %} and {{ c2_unit_count }} de-snag unit{{ 's' if c2_unit_count != 1 else '' }} (C2){% endif %} across {{ zone_count }} zone{{ 's' if zone_count != 1 else '' }} &mdash; for Ralph Rhoda, Raubex site
+  </div>
+
+  <div class="kpi-row">
+    <div class="kpi-card">
+      <div class="kpi-label">Snag (C1)</div>
+      <div class="kpi-num">{% if c1_total_defects > 0 %}{{ "{:,}".format(c1_total_defects) }}{% else %}&mdash;{% endif %}</div>
+      <div class="kpi-sub">{% if c1_total_defects > 0 %}defects raised across {{ c1_unit_count }} unit{{ 's' if c1_unit_count != 1 else '' }}{% else %}no snag data yet{% endif %}</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-label">De-snag (C2) cleared</div>
+      <div class="kpi-num{% if c2_brought_forward > 0 %} green{% endif %}">{% if c2_brought_forward > 0 %}{{ "{:,}".format(c2_cleared) }}{% else %}&mdash;{% endif %}</div>
+      <div class="kpi-sub">{% if c2_brought_forward > 0 %}of {{ "{:,}".format(c2_brought_forward) }} rectified &nbsp;&middot;&nbsp; {{ "%.1f"|format(c2_cleared / c2_brought_forward * 100) }}%{% else %}no de-snag data yet{% endif %}</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-label">De-snag (C2) still open</div>
+      <div class="kpi-num{% if c2_still_open > 0 %} amber{% endif %}">{% if c2_brought_forward > 0 %}{{ c2_still_open }}{% else %}&mdash;{% endif %}</div>
+      <div class="kpi-sub">
+        {% if c2_still_open > 0 %}
+          {% set open_unit_count = c2_open_details|map(attribute='unit_number')|unique|list|length %}
+          {{ open_unit_count }} unit{{ 's' if open_unit_count != 1 else '' }} &middot; {{ c2_still_open }} item{{ 's' if c2_still_open != 1 else '' }}
+        {% elif c2_brought_forward > 0 %}
+          all clear
+        {% else %}
+          no de-snag data yet
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  {% if c2_open_details %}
+  <div class="open-target">
+    <div class="open-target-head">De-snag open item{{ 's' if c2_open_details|length > 1 else '' }}</div>
+    <div class="open-target-body">
+      {% for d in c2_open_details %}
+      Unit <b>{{ d.unit_number }}</b> &middot; {{ d.block }} {{ d.floor_label }} &middot; {{ d.area }} &middot; {{ d.trade }} &middot; {{ d.count }} defect{{ 's' if d.count != 1 else '' }} not rectified.{% if loop.last %} Full detail page 6.{% endif %}{% if not loop.last %}<br>{% endif %}
+      {% endfor %}
+    </div>
+  </div>
+  {% endif %}
+
+  <div class="section-label">Zone summary</div>
+  {% if zones %}
+  <table class="zone-table">
+    <thead>
+      <tr>
+        <th>Zone</th>
+        <th class="num">Units</th>
+        <th class="num">Defects raised</th>
+        <th class="num">Avg / unit</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for z in zones %}
+        {% if z.is_c1 %}
+          {% set row_class = 'zone-hot' if z.avg_per_unit >= 100 else ('zone-warm' if z.avg_per_unit >= 50 else '') %}
+          <tr class="{{ row_class }}">
+            <td><span class="zone-name">{{ z.label }}</span><span class="zone-cycle c1-badge">C1</span></td>
+            <td class="num">{{ z.units }}</td>
+            <td class="num"><b>{{ "{:,}".format(z.defects_raised) }}</b></td>
+            <td class="num">{{ "%.1f"|format(z.avg_per_unit) }}</td>
+          </tr>
+        {% else %}
+          <tr>
+            <td><span class="zone-name">{{ z.label }}</span><span class="zone-cycle c2-badge">{{ z.cycle_tag }}</span></td>
+            <td class="num">{{ z.units }}</td>
+            <td class="num">{{ z.brought_forward }} brought fwd &middot; {{ z.cleared }} cleared &middot; {{ z.still_open }} open</td>
+            <td class="num">&mdash;</td>
+          </tr>
+        {% endif %}
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <p class="empty-state">No zones in this batch yet.</p>
+  {% endif %}
+</section>
+
+<div class="pagebreak">&mdash; &mdash; &mdash;</div>
+
+{# ============ PAGE 2 — HOT SPOTS ============ #}
+<section class="page">
+  <div class="page-meta"><span class="batch-id">{{ batch.name }}</span><span>Page 2 &mdash; Hot spots</span></div>
+
+  {% if c1_total_defects > 0 %}
+  <div class="sect-title">Where the defects cluster</div>
+  <div class="sect-sub">The four biggest concentrations in the {{ "{:,}".format(c1_total_defects) }} snag defects.</div>
+
+  <div class="hotspot-grid">
+    {% if worst_zone %}
+    <div class="hotspot-tile tile-zone">
+      <div class="hotspot-label">Worst zone</div>
+      <div class="hotspot-what">{{ worst_zone.label }}</div>
+      <div class="hotspot-detail">{{ worst_zone.defects_raised }} defects &middot; {{ worst_zone.units }} unit{{ 's' if worst_zone.units != 1 else '' }} &middot; {{ "%.0f"|format(worst_zone.defects_raised / c1_total_defects * 100) }}% of batch total</div>
+    </div>
+    {% endif %}
+    {% if worst_unit %}
+    <div class="hotspot-tile tile-unit">
+      <div class="hotspot-label">Worst unit</div>
+      <div class="hotspot-what">Unit {{ worst_unit.unit_number }} &middot; {{ worst_unit.block }} {{ FL[worst_unit.floor] }}</div>
+      <div class="hotspot-detail">{{ worst_unit.defect_count }} defects &middot; {{ "%.0f"|format(worst_unit.defect_count / c1_total_defects * 100) }}% of batch total</div>
+    </div>
+    {% endif %}
+    {% if worst_area %}
+    <div class="hotspot-tile tile-area">
+      <div class="hotspot-label">Worst area</div>
+      <div class="hotspot-what">{{ worst_area.area }}</div>
+      <div class="hotspot-detail">{{ worst_area.count }} defects &middot; {{ worst_area.pct }}% of batch total</div>
+    </div>
+    {% endif %}
+    {% if worst_trade %}
+    <div class="hotspot-tile tile-doors">
+      <div class="hotspot-label">Worst trade</div>
+      <div class="hotspot-what">{{ worst_trade.trade }}</div>
+      <div class="hotspot-detail">{{ worst_trade.count }} defects &middot; {{ worst_trade.pct }}% of batch total</div>
+    </div>
+    {% endif %}
+  </div>
+
+  {% if combo_data %}
+  <div class="section-label" style="margin-top: 1.25rem;">Top area &times; trade combinations</div>
+  {% for c in combo_data %}
+  <div class="bar-row heavy">
+    <div class="bar-name">{{ c.area }} &middot; {{ c.trade }}</div>
+    <div class="bar-track"><div class="bar-fill" style="width: {{ c.bar_pct }}%;"></div></div>
+    <div class="bar-val"><span class="pct">{{ c.pct }}%</span><b>{{ c.count }}</b></div>
+  </div>
+  {% endfor %}
+  {% endif %}
+  {% else %}
+  <div class="sect-title">Where the defects cluster</div>
+  <div class="sect-sub">No snag inspections yet in this batch.</div>
+  {% endif %}
+</section>
+
+<div class="pagebreak">&mdash; &mdash; &mdash;</div>
+
+{# ============ PAGE 3 — BY AREA ============ #}
+<section class="page">
+  <div class="page-meta"><span class="batch-id">{{ batch.name }}</span><span>Page 3 &mdash; Defects by area</span></div>
+
+  {% if area_data %}
+  <div class="sect-title">{{ "{:,}".format(c1_total_defects) }} snag defects across {{ area_data|length }} area{{ 's' if area_data|length != 1 else '' }}</div>
+  <div class="sect-sub">Total across {{ c1_unit_count }} C1 unit{{ 's' if c1_unit_count != 1 else '' }}.</div>
+
+  {% for a in area_data %}
+  <div class="bar-row heavy">
+    <div class="bar-name"><b>{{ a.area }}</b></div>
+    <div class="bar-track"><div class="bar-fill{% if loop.index > 2 %} light{% endif %}" style="width: {{ a.bar_pct }}%;"></div></div>
+    <div class="bar-val"><span class="pct">{{ a.pct }}%</span><b>{{ a.count }}</b></div>
+  </div>
+  {% endfor %}
+  {% else %}
+  <div class="sect-title">Defects by area</div>
+  <div class="sect-sub">No snag inspections yet in this batch.</div>
+  {% endif %}
+</section>
+
+<div class="pagebreak">&mdash; &mdash; &mdash;</div>
+
+{# ============ PAGE 4 — BY TRADE ============ #}
+<section class="page">
+  <div class="page-meta"><span class="batch-id">{{ batch.name }}</span><span>Page 4 &mdash; Defects by trade</span></div>
+
+  {% if trade_data %}
+  <div class="sect-title">{{ "{:,}".format(c1_total_defects) }} snag defects across {{ trade_data|length }} trade{{ 's' if trade_data|length != 1 else '' }}</div>
+  <div class="sect-sub">Total across {{ c1_unit_count }} C1 unit{{ 's' if c1_unit_count != 1 else '' }}.</div>
+
+  {% for t in trade_data %}
+  <div class="bar-row heavy">
+    <div class="bar-name"><b>{{ t.trade }}</b></div>
+    <div class="bar-track"><div class="bar-fill{% if loop.index > 2 %} light{% endif %}" style="width: {{ t.bar_pct }}%;"></div></div>
+    <div class="bar-val"><span class="pct">{{ t.pct }}%</span><b>{{ t.count }}</b></div>
+  </div>
+  {% endfor %}
+  {% else %}
+  <div class="sect-title">Defects by trade</div>
+  <div class="sect-sub">No snag inspections yet in this batch.</div>
+  {% endif %}
+</section>
+
+<div class="pagebreak">&mdash; &mdash; &mdash;</div>
+
+{# ============ PAGE 5 — SNAG UNITS ============ #}
+<section class="page">
+  <div class="page-meta"><span class="batch-id">{{ batch.name }}</span><span>Page 5 &mdash; Snag units</span></div>
+
+  {% if c1_unit_splits %}
+  <div class="sect-title">{{ c1_unit_splits|length }} unit{{ 's' if c1_unit_splits|length != 1 else '' }} inspected at C1</div>
+  <div class="sect-sub">Ranked by defect count. Worst-first.</div>
+
+  {% for u in c1_unit_splits %}
+    {% set row_class = 'unit-hot' if u.total >= 125 else ('unit-warm' if u.total >= 90 else '') %}
+  <div class="unit-row {{ row_class }}">
+    <div class="unit-no">{{ u.unit_number }}</div>
+    <div class="unit-zone">{{ u.block }}<br>{{ u.floor_label }}</div>
+    <div class="unit-detail">{% for s in u.splits %}{{ s.area }} {{ s.count }}{% if not loop.last %} &middot; {% endif %}{% endfor %}</div>
+    <div class="unit-tot">{{ u.total }}</div>
+  </div>
+  {% endfor %}
+  {% else %}
+  <div class="sect-title">Snag units</div>
+  <div class="sect-sub">No snag inspections yet in this batch.</div>
+  {% endif %}
+</section>
+
+<div class="pagebreak">&mdash; &mdash; &mdash;</div>
+
+{# ============ PAGE 6 — DE-SNAG RESULTS ============ #}
+<section class="page">
+  <div class="page-meta"><span class="batch-id">{{ batch.name }}</span><span>Page 6 &mdash; De-snag results</span></div>
+
+  {% if c2_units %}
+  <div class="sect-title">{{ c2_units|length }} de-snag unit{{ 's' if c2_units|length != 1 else '' }} &middot; {{ c2_cleared }} of {{ c2_brought_forward }} cleared{% if c2_brought_forward > 0 %} &middot; {{ "%.1f"|format(c2_cleared / c2_brought_forward * 100) }}%{% endif %}</div>
+  <div class="sect-sub">
+    {% if c2_still_open == 0 %}All defects rectified.
+    {% else %}{{ c2_still_open }} defect{{ 's' if c2_still_open != 1 else '' }} not rectified{% if c2_open_details %} &mdash; {% for d in c2_open_details %}unit {{ d.unit_number }}, {{ d.area }}, {{ d.trade }}{% if not loop.last %}; {% endif %}{% endfor %}{% endif %}.
+    {% endif %}
+  </div>
+
+  <div class="section-label">Per-unit breakdown</div>
+  {% for zone in zones if not zone.is_c1 %}
+    {% for u in c2_units %}
+      {% if u.block == zone.block and u.floor == zone.floor %}
+        {% set is_open = u.still_open > 0 %}
+  <div class="cleared-row{% if is_open %} cleared-one-open{% endif %}">
+    <div class="unit-no"{% if is_open %} style="color: #85530B;"{% endif %}>{{ u.unit_number }}</div>
+    <div class="unit-zone"{% if is_open %} style="color: #85530B;"{% endif %}>{{ u.block }} {{ FL[u.floor] }}</div>
+    <div class="cleared-bar"><div class="cleared-fill" style="width: {{ u.clearance_pct }}%;"></div></div>
+    <div class="cleared-pct">{{ u.cleared }} / {{ u.brought_forward }}</div>
+  </div>
+      {% endif %}
+    {% endfor %}
+  {% endfor %}
+
+  <div class="closing">
+    {{ c2_brought_forward }} defect{{ 's' if c2_brought_forward != 1 else '' }} reviewed across {{ c2_units|length }} de-snag unit{{ 's' if c2_units|length != 1 else '' }} &middot; {{ c2_cleared }} rectified &middot; {{ c2_still_open }} not rectified.{% if c2_open_details %} Not-rectified item{{ 's' if c2_open_details|length > 1 else '' }}: {% for d in c2_open_details %}unit {{ d.unit_number }} &middot; {{ d.area }} &middot; {{ d.trade }}{% if not loop.last %}; {% endif %}{% endfor %}.{% endif %}
+  </div>
+  {% else %}
+  <div class="sect-title">De-snag results</div>
+  <div class="sect-sub">No de-snag inspections yet in this batch.</div>
+  {% endif %}
+</section>
+
+<div class="pagebreak">&mdash; &mdash; &mdash;</div>
+
+{# ============ PAGE 7 — EXCLUSIONS ============ #}
+<section class="page">
+  <div class="page-meta"><span class="batch-id">{{ batch.name }}</span><span>Page 7 &mdash; Exclusions</span></div>
+
+  {% if excl_items_grouped %}
+  <div class="sect-title">{{ excl_total }} item{{ 's' if excl_total != 1 else '' }} excluded from inspection</div>
+  <div class="sect-sub">{{ excl_list.name }}. Applied at every unit in this batch.</div>
+
+  <div class="excl-intro-line">
+    These inspection points were deferred across all {{ total_units }} unit{{ 's' if total_units != 1 else '' }}. Listed below in the same area &rarr; trade structure used on the individual unit PDFs.
+  </div>
+
+  <div class="excl-grid-2col">
+    {% for a in excl_items_grouped %}
+    <div class="excl-area-block">
+      <div class="excl-area-head">
+        <div class="excl-area-name">{{ a.name }}</div>
+        <div class="excl-area-count">{{ a.count }} item{{ 's' if a.count != 1 else '' }}</div>
+      </div>
+      {% for t in a.trades %}
+      <div class="excl-trade-block">
+        <div class="excl-trade-name">{{ t.name }}</div>
+        <ul class="excl-item-list">
+          {% for item in t.items %}
+          <li>{{ item }}</li>
+          {% endfor %}
+        </ul>
+      </div>
+      {% endfor %}
+    </div>
+    {% endfor %}
+  </div>
+
+  <div class="closing">
+    Per-unit exclusion counts on the individual unit PDFs may vary from {{ excl_total }} where floor-specific items (e.g. burglar bars on upper floors) apply automatically. These are shown on each unit PDF.
+  </div>
+  {% else %}
+  <div class="sect-title">Exclusions</div>
+  <div class="sect-sub">No exclusion list linked to this batch.</div>
+  {% endif %}
+</section>
+
+</div>
+
+</body>
+</html>
