@@ -298,7 +298,7 @@ body {
   <p class="briefing-subtitle">{{ report_date }} &middot; Power Park Student Housing Phase 3</p>
   <div class="briefing-actions">
     <button onclick="window.print()" class="btn btn-print">Print</button>
-    <a href="{{ url_for('analytics.batch_briefing_pdf', batch_id=batch.id) }}" class="btn btn-pdf" onclick="this.textContent='Preparing...'; this.style.opacity='0.7'; this.style.pointerEvents='none';">Download PDF</a>
+    <a href="{{ url_for('analytics.batch_briefing_pdf', batch_id=batch.id) }}" class="btn btn-pdf" onclick="var b=this; b.textContent='Preparing...'; b.style.opacity='0.7'; b.style.pointerEvents='none'; setTimeout(function(){ b.textContent='Download PDF'; b.style.opacity='1'; b.style.pointerEvents='auto'; }, 5000);">Download PDF</a>
   </div>
 </div>
 {% endif %}
