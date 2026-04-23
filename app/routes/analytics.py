@@ -4475,6 +4475,9 @@ def _build_briefing_data(batch_id):
     c2_zones = sorted([z for z in zones if not z['is_c1']],
                      key=lambda z: z['brought_forward'], reverse=True)
     zones_sorted = c1_zones + c2_zones
+    # Page 6 rectification order: zone with open defects first, then by workload
+    c2_zones_by_open = sorted([z for z in zones if not z['is_c1']],
+                              key=lambda z: (z['still_open'], z['brought_forward']), reverse=True)
 
     # ---- 6. By area (C1 only) ----
     area_data = []
@@ -4654,6 +4657,7 @@ def _build_briefing_data(batch_id):
         'c2_still_open': c2_still_open,
         'c2_open_details': c2_open_details,
         'zones': zones_sorted,
+        'c2_zones_by_open': c2_zones_by_open,
 
         # Hot spots
         'worst_zone': worst_zone,

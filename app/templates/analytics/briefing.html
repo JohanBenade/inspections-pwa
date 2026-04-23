@@ -547,7 +547,7 @@ body {
   </div>
 
   <div class="section-label">Per-unit breakdown</div>
-  {% for zone in zones if not zone.is_c1 %}
+  {% for zone in c2_zones_by_open %}
     {% for u in c2_units %}
       {% if u.block == zone.block and u.floor == zone.floor %}
         {% set is_open = u.still_open > 0 %}
