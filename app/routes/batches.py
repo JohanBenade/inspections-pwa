@@ -161,7 +161,7 @@ def list_batches():
             SUM(CASE WHEN i.status = 'in_progress' THEN 1 ELSE 0 END) AS in_progress,
             SUM(CASE WHEN i.status IS NULL OR i.status = 'not_started' THEN 1 ELSE 0 END) AS pending
         FROM inspection_batch ib
-        LEFT JOIN batch_unit bu ON bu.batch_id = ib.id AND bu.status != 'removed'
+        LEFT JOIN batch_unit bu ON bu.batch_id = ib.id AND bu.removed_at IS NULL
         LEFT JOIN inspection i ON i.unit_id = bu.unit_id AND i.cycle_id = bu.cycle_id
         WHERE ib.tenant_id = ?
         GROUP BY ib.id
@@ -328,7 +328,7 @@ def detail(batch_id):
         LEFT JOIN inspection i ON i.unit_id = u.id AND i.cycle_id = bu.cycle_id
         LEFT JOIN inspector insp ON bu.inspector_id = insp.id
         WHERE bu.batch_id = ? AND bu.tenant_id = ?
-        AND bu.status != 'removed'
+        AND bu.removed_at IS NULL
         ORDER BY u.block, u.floor, u.unit_number
     """, [batch_id, tenant_id])
     units = [dict(r) for r in units_raw]
@@ -484,7 +484,7 @@ def detail_data(batch_id):
         LEFT JOIN inspection i ON i.unit_id = u.id AND i.cycle_id = bu.cycle_id
         LEFT JOIN inspector insp ON bu.inspector_id = insp.id
         WHERE bu.batch_id = ? AND bu.tenant_id = ?
-        AND bu.status != 'removed'
+        AND bu.removed_at IS NULL
         ORDER BY u.block, u.floor, u.unit_number
     """, [batch_id, tenant_id])
     units = [dict(r) for r in units_raw]
@@ -633,7 +633,7 @@ def apply_exclusion_list_all(batch_id):
         FROM batch_unit bu
         LEFT JOIN inspection i ON i.unit_id = bu.unit_id AND i.cycle_id = bu.cycle_id
         WHERE bu.batch_id = ? AND bu.tenant_id = ?
-        AND bu.status != 'removed'
+        AND bu.removed_at IS NULL
         AND (i.status IS NULL OR i.status IN ('not_started'))
     """, [batch_id, tenant_id]).fetchall()
 
@@ -1310,7 +1310,7 @@ def _build_live_monitor_data(batch_id, tenant_id):
         LEFT JOIN inspection i ON i.unit_id = u.id AND i.cycle_id = bu.cycle_id
         LEFT JOIN inspector insp ON bu.inspector_id = insp.id
         WHERE bu.batch_id = ? AND bu.tenant_id = ?
-        AND bu.status != 'removed'
+        AND bu.removed_at IS NULL
         ORDER BY u.unit_number
     """, [batch_id, tenant_id])
     units = [dict(r) for r in units_raw]
