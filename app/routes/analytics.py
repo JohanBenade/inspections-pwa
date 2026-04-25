@@ -5724,6 +5724,7 @@ def _build_pipeline_report_data(live=False):
             steps.append(p)
             p = p - _td(days=14)
         steps.reverse()
+        print(f"[DEBUG-CHART] snapshot_sast={snapshot_sast} snapshot_str={snapshot_str} anchor={anchor} steps={[s.strftime('%Y-%m-%d %H:%M:%S') for s in steps]}", flush=True)
         
         for p in steps:
             p_str = p.strftime('%Y-%m-%d %H:%M:%S')
@@ -5739,6 +5740,7 @@ def _build_pipeline_report_data(live=False):
             cleared_row = query_db(
                 "SELECT COUNT(*) as c FROM defect d JOIN unit_real u ON d.unit_id = u.id WHERE d.tenant_id = ? AND d.status = 'cleared' AND d.cleared_at <= ? AND d.raised_cycle_id NOT LIKE 'test-%%' AND EXISTS (SELECT 1 FROM inspection i2 WHERE i2.unit_id = d.unit_id AND i2.cycle_id = d.raised_cycle_id AND i2.status IN ('reviewed','approved','certified','pending_followup') AND i2.review_submitted_at <= ?)",
                 [tenant_id, p_str, p_str], one=True)
+            print(f"[DEBUG-CHART] p_str={p_str} gate={gate_units['c']} raised={raised_row['c'] if raised_row else 0} cleared={cleared_row['c'] if cleared_row else 0}", flush=True)
             trend_points.append({
                 'date': p.strftime('%d %b'),
                 'raised': raised_row['c'] if raised_row else 0,
