@@ -6343,6 +6343,7 @@ def _build_pipeline_report_data(live=False):
         'q3': q3,
         'snapshot_label': snapshot_label,
         'snapshot_date': snapshot_date,
+        'snapshot_str': snapshot_str,
         'ledger_from': (snapshot_utc - _td(days=14) + _td(hours=2)).strftime('%d %b'),
         'ledger_to': (snapshot_utc + _td(hours=2) - _td(days=1)).strftime('%d %b %Y'),
         'kpi': kpi,
@@ -6397,8 +6398,9 @@ def pipeline_report_pdf():
     pdf_bytes = html_to_pdf(html_str, footer_template=footer)
     resp = make_response(pdf_bytes)
     resp.headers['Content-Type'] = 'application/pdf'
-    resp.headers['Content-Disposition'] = 'attachment; filename=Pipeline_Report_{}.pdf'.format(
-        datetime.datetime.now().strftime('%Y%m%d'))
+    snapshot_date_iso = data.get('snapshot_str', '')[:10]
+    resp.headers['Content-Disposition'] = 'attachment; filename=Pipeline_Report_as_at_{}.pdf'.format(
+        snapshot_date_iso)
     return resp
 
 
