@@ -5776,6 +5776,7 @@ def _build_pipeline_report_data(live=False):
         'new': new_week_row['c'] if new_week_row else 0,
         'open': total_open_row['c'] if total_open_row else 0,
     }
+    print('[DEBUG-LEDGER] live=%s tenant=%s last_week_str=%s now_str=%s snapshot_str=%s | bfwd=%s cleared=%s new=%s open=%s' % (live, tenant_id, last_week_str, now_str, snapshot_str, ledger['bfwd'], ledger['cleared'], ledger['new'], ledger['open']), flush=True)
 
     # SVG chart coordinates (600w x 200h chart area)
     chart_w = 600
