@@ -5558,8 +5558,8 @@ def _build_pipeline_report_data(live=False):
             zone_groups[zone]['defects'] += r['defect_count'] or 0
         for zone, data in zone_groups.items():
             movements.append({
-                'label': 'Defects Raised',
-                'detail': '{} — {} defects raised'.format(zone, data['defects']),
+                'label': 'C1 Completed',
+                'detail': '{} — {} defects logged'.format(zone, data['defects']),
                 'units': data['units'],
                 'colour': '#C8963E',
             })
