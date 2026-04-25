@@ -528,6 +528,9 @@ body {
                 <span style="font-size: 10px; color: #6B6B6B;">Open Defects</span>
             </div>
         </div>
+        <div style="font-size: 9px; color: #6B6B6B; margin-top: 6px; line-height: 1.4;">
+            Pool measured against {{ kpi.units_inspected }} inspected units. Earlier growth reflects new units coming under C1 inspection; declines reflect C2+ rectification outpacing new discovery.
+        </div>
         {% else %}
         <div class="trend-placeholder">
             No defect data available
