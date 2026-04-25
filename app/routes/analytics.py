@@ -5717,7 +5717,7 @@ def _build_pipeline_report_data(live=False):
     if first_defect and first_defect['d']:
         # Walk backwards from snapshot in 14-day steps until we pass the first defect date
         start = _dt.fromisoformat(first_defect['d'].replace('Z', '+00:00') if 'Z' in first_defect['d'] else first_defect['d'])
-        anchor = snapshot_sast.replace(hour=23, minute=59, second=59)
+        anchor = _dt.strptime(snapshot_str, '%Y-%m-%d %H:%M:%S')
         steps = []
         p = anchor
         while p >= start:
