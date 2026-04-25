@@ -166,13 +166,15 @@
         </div>
 
         <!-- Row 3: New defects (C2+) callout -->
-        <div style="background: {% if desnag.total_regressions == 0 %}#D9E6DA{% else %}#F5E2DF{% endif %}; padding: 12px 16px; border-radius: 6px; display: flex; align-items: center; justify-content: space-between; gap: 12px;">
+        {% if desnag.total_regressions > 0 %}
+        <div style="background: #F5E2DF; padding: 12px 16px; border-radius: 6px; display: flex; align-items: center; justify-content: space-between; gap: 12px;">
             <div>
                 <div style="font-size: 0.65rem; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: #6B6B6B;">New Defects (C2+)</div>
                 <div style="font-size: 0.7rem; color: #6B6B6B; margin-top: 2px;">Raised during de-snag inspections</div>
             </div>
-            <div style="font-family: 'DM Sans', sans-serif; font-size: 1.8rem; font-weight: 700; color: {% if desnag.total_regressions == 0 %}#4A7C59{% else %}#C44D3F{% endif %};">{{ desnag.total_regressions }}</div>
+            <div style="font-family: 'DM Sans', sans-serif; font-size: 1.8rem; font-weight: 700; color: #C44D3F;">{{ desnag.total_regressions }}</div>
         </div>
+        {% endif %}
     </div>
     {% endif %}
 

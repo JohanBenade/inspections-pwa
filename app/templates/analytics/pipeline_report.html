@@ -381,13 +381,15 @@ body {
         </div>
 
         <!-- Row 3: New defects (C2+) callout -->
-        <div style="background: {% if desnag.total_regressions == 0 %}#D9E6DA{% else %}#F5E2DF{% endif %}; padding: 10px 14px; border-radius: 4px; display: flex; align-items: center; justify-content: space-between; gap: 10px;">
+        {% if desnag.total_regressions > 0 %}
+        <div style="background: #F5E2DF; padding: 10px 14px; border-radius: 4px; display: flex; align-items: center; justify-content: space-between; gap: 10px;">
             <div>
                 <div style="font-size: 8px; font-weight: 600; letter-spacing: 1px; text-transform: uppercase; color: #9A9A9A;">New Defects (C2+)</div>
                 <div style="font-size: 9px; color: #6B6B6B; margin-top: 2px;">Raised during de-snag inspections</div>
             </div>
-            <div style="font-size: 22px; font-weight: 700; color: {% if desnag.total_regressions == 0 %}#4A7C59{% else %}#C44D3F{% endif %};">{{ desnag.total_regressions }}</div>
+            <div style="font-size: 22px; font-weight: 700; color: #C44D3F;">{{ desnag.total_regressions }}</div>
         </div>
+        {% endif %}
 
     </div>
     {% endif %}
