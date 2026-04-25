@@ -123,9 +123,9 @@ def create_app():
                 JOIN unit u ON i.unit_id = u.id
                 JOIN inspection_cycle ic ON i.cycle_id = ic.id
                 WHERE i.inspector_id = ? AND i.tenant_id = ?
-                AND i.status IN ('not_started', 'in_progress')
+                AND i.status IN ('not_started', 'in_progress', 'paused')
                 ORDER BY
-                    CASE i.status WHEN 'in_progress' THEN 0 ELSE 1 END,
+                    CASE i.status WHEN 'in_progress' THEN 0 WHEN 'paused' THEN 1 ELSE 2 END,
                     u.unit_number
             """, [user_id, tenant_id])
             
