@@ -5731,15 +5731,15 @@ def _build_pipeline_report_data(live=False):
             # Trim: skip points where the gate has fewer than 10 units
             gate_units = query_db(
                 "SELECT COUNT(DISTINCT i.unit_id) as c FROM inspection i JOIN unit_real u ON i.unit_id = u.id WHERE i.tenant_id = ? AND i.status IN ('reviewed','approved','certified','pending_followup') AND i.review_submitted_at <= ? AND i.cycle_id NOT LIKE 'test-%%'",
-                [tenant_id, p_str], one=True)
+                [tenant_id, snapshot_str], one=True)
             if not gate_units or gate_units['c'] < 10:
                 continue
             raised_row = query_db(
                 "SELECT COUNT(*) as c FROM defect d JOIN unit_real u ON d.unit_id = u.id WHERE d.tenant_id = ? AND d.created_at <= ? AND d.raised_cycle_id NOT LIKE 'test-%%' AND EXISTS (SELECT 1 FROM inspection i2 WHERE i2.unit_id = d.unit_id AND i2.cycle_id = d.raised_cycle_id AND i2.status IN ('reviewed','approved','certified','pending_followup') AND i2.review_submitted_at <= ?)",
-                [tenant_id, p_str, p_str], one=True)
+                [tenant_id, p_str, snapshot_str], one=True)
             cleared_row = query_db(
                 "SELECT COUNT(*) as c FROM defect d JOIN unit_real u ON d.unit_id = u.id WHERE d.tenant_id = ? AND d.status = 'cleared' AND d.cleared_at <= ? AND d.raised_cycle_id NOT LIKE 'test-%%' AND EXISTS (SELECT 1 FROM inspection i2 WHERE i2.unit_id = d.unit_id AND i2.cycle_id = d.raised_cycle_id AND i2.status IN ('reviewed','approved','certified','pending_followup') AND i2.review_submitted_at <= ?)",
-                [tenant_id, p_str, p_str], one=True)
+                [tenant_id, p_str, snapshot_str], one=True)
             print(f"[DEBUG-CHART] p_str={p_str} gate={gate_units['c']} raised={raised_row['c'] if raised_row else 0} cleared={cleared_row['c'] if cleared_row else 0}", flush=True)
             trend_points.append({
                 'date': p.strftime('%d %b'),
