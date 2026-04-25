@@ -5758,7 +5758,7 @@ def _build_pipeline_report_data(live=False):
     
     bfwd_row = query_db(
         "SELECT COUNT(*) as c FROM defect d JOIN unit_real u ON d.unit_id = u.id WHERE d.tenant_id = ? AND d.created_at <= ? AND (d.status = 'open' OR (d.status = 'cleared' AND d.cleared_at > ?)) AND d.raised_cycle_id NOT LIKE 'test-%%' AND EXISTS (SELECT 1 FROM inspection i2 WHERE i2.unit_id = d.unit_id AND i2.cycle_id = d.raised_cycle_id AND i2.status IN ('reviewed','approved','certified','pending_followup') AND i2.review_submitted_at <= ?)",
-        [tenant_id, last_week_str, last_week_str, last_week_str], one=True)
+        [tenant_id, last_week_str, last_week_str, now_str], one=True)
     cleared_week_row = query_db(
         "SELECT COUNT(*) as c FROM defect d JOIN unit_real u ON d.unit_id = u.id WHERE d.tenant_id = ? AND d.status = 'cleared' AND d.cleared_at > ? AND d.cleared_at <= ? AND d.raised_cycle_id NOT LIKE 'test-%%' AND EXISTS (SELECT 1 FROM inspection i2 WHERE i2.unit_id = d.unit_id AND i2.cycle_id = d.raised_cycle_id AND i2.status IN ('reviewed','approved','certified','pending_followup') AND i2.review_submitted_at <= ?)",
         [tenant_id, last_week_str, now_str, now_str], one=True)
@@ -5776,7 +5776,6 @@ def _build_pipeline_report_data(live=False):
         'new': new_week_row['c'] if new_week_row else 0,
         'open': total_open_row['c'] if total_open_row else 0,
     }
-    print('[DEBUG-LEDGER] live=%s tenant=%s last_week_str=%s now_str=%s snapshot_str=%s | bfwd=%s cleared=%s new=%s open=%s' % (live, tenant_id, last_week_str, now_str, snapshot_str, ledger['bfwd'], ledger['cleared'], ledger['new'], ledger['open']), flush=True)
 
     # SVG chart coordinates (600w x 200h chart area)
     chart_w = 600
