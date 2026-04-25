@@ -90,6 +90,12 @@
         </div>
     </div>
 
+    {% if mode != 'live' %}
+    <div style="margin: 1.5rem 0 0.75rem 0; padding-bottom: 6px; border-bottom: 1px solid #D8D4CA;">
+        <div style="font-family: 'DM Sans', sans-serif; font-size: 0.7rem; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase; color: #6B6B6B;">Status as at {{ ledger_to }}</div>
+    </div>
+    {% endif %}
+
     <!-- ========== DE-SNAG RESULTS ========== -->
     {% if desnag %}
     <div style="margin-bottom: 2rem;">
@@ -167,6 +173,12 @@
             </div>
             <div style="font-family: 'DM Sans', sans-serif; font-size: 1.8rem; font-weight: 700; color: {% if desnag.total_regressions == 0 %}#4A7C59{% else %}#C44D3F{% endif %};">{{ desnag.total_regressions }}</div>
         </div>
+    </div>
+    {% endif %}
+
+    {% if mode != 'live' %}
+    <div style="margin: 1.5rem 0 0.75rem 0; padding-bottom: 6px; border-bottom: 1px solid #D8D4CA;">
+        <div style="font-family: 'DM Sans', sans-serif; font-size: 0.7rem; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase; color: #6B6B6B;">This Fortnight &mdash; {{ ledger_from }} to {{ ledger_to }}</div>
     </div>
     {% endif %}
 
@@ -248,6 +260,12 @@
         <div style="font-size: 0.7rem; color: #6B6B6B; margin-top: 10px; line-height: 1.4;">
             Pool measured against {{ kpi.units_inspected }} inspected units. Earlier growth reflects new units coming under C1 inspection; declines reflect C2+ rectification outpacing new discovery.
         </div>
+    </div>
+    {% endif %}
+
+    {% if mode != 'live' %}
+    <div style="margin: 1.5rem 0 0.75rem 0; padding-bottom: 6px; border-bottom: 1px solid #D8D4CA;">
+        <div style="font-family: 'DM Sans', sans-serif; font-size: 0.7rem; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase; color: #6B6B6B;">Status as at {{ ledger_to }}</div>
     </div>
     {% endif %}
 

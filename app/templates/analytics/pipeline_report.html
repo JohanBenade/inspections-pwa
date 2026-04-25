@@ -302,6 +302,12 @@ body {
     </div>
     {% endif %}
 
+    {% if mode != 'live' %}
+    <div style="margin: 14px 0 8px 0; padding-bottom: 4px; border-bottom: 1px solid #D8D4CA;">
+        <div style="font-family: 'DM Sans', sans-serif; font-size: 9px; font-weight: 600; letter-spacing: 1.4px; text-transform: uppercase; color: #6B6B6B;">Status as at {{ ledger_to }}</div>
+    </div>
+    {% endif %}
+
     <!-- SECTION 02: DE-SNAG RESULTS -->
     {% if desnag %}
     <div class="section" style="margin-bottom: 18px;">
@@ -383,6 +389,12 @@ body {
             <div style="font-size: 22px; font-weight: 700; color: {% if desnag.total_regressions == 0 %}#4A7C59{% else %}#C44D3F{% endif %};">{{ desnag.total_regressions }}</div>
         </div>
 
+    </div>
+    {% endif %}
+
+    {% if mode != 'live' %}
+    <div style="margin: 14px 0 8px 0; padding-bottom: 4px; border-bottom: 1px solid #D8D4CA;">
+        <div style="font-family: 'DM Sans', sans-serif; font-size: 9px; font-weight: 600; letter-spacing: 1.4px; text-transform: uppercase; color: #6B6B6B;">This Fortnight &mdash; {{ ledger_from }} to {{ ledger_to }}</div>
     </div>
     {% endif %}
 
@@ -542,6 +554,12 @@ body {
     <div style="page-break-before: always;"></div>
 
     <!-- ============ PAGE 3: WHERE'S THE PROBLEM ============ -->
+
+    {% if mode != 'live' %}
+    <div style="margin: 14px 0 8px 0; padding-bottom: 4px; border-bottom: 1px solid #D8D4CA;">
+        <div style="font-family: 'DM Sans', sans-serif; font-size: 9px; font-weight: 600; letter-spacing: 1.4px; text-transform: uppercase; color: #6B6B6B;">Status as at {{ ledger_to }}</div>
+    </div>
+    {% endif %}
 
     <!-- SECTION 07: ZONE GRID -->
     <div class="section" style="margin-bottom: 18px;">
