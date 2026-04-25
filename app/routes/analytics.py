@@ -5711,31 +5711,39 @@ def _build_pipeline_report_data(live=False):
         "SELECT MIN(created_at) as d FROM defect WHERE tenant_id = ? AND status IN ('open','cleared')",
         [tenant_id], one=True)
     
+    # Fortnightly chart points anchored to snapshot moment, computed under unified gate
+    # (same gate as the ledger card). Points where gate has <10 units are skipped.
     trend_points = []
     if first_defect and first_defect['d']:
-        # Find first Monday on or after first defect
+        # Walk backwards from snapshot in 14-day steps until we pass the first defect date
         start = _dt.fromisoformat(first_defect['d'].replace('Z', '+00:00') if 'Z' in first_defect['d'] else first_defect['d'])
-        days_until_mon = (0 - start.weekday()) % 7
-        if days_until_mon == 0 and start.hour > 0:
-            days_until_mon = 0  # same day is fine
-        first_mon = (start + _td(days=days_until_mon)).replace(hour=23, minute=59, second=59)
+        anchor = snapshot_sast.replace(hour=23, minute=59, second=59)
+        steps = []
+        p = anchor
+        while p >= start:
+            steps.append(p)
+            p = p - _td(days=14)
+        steps.reverse()
         
-        today = snapshot_sast
-        mon = first_mon
-        while mon <= today:
-            mon_str = mon.strftime('%Y-%m-%d %H:%M:%S')
+        for p in steps:
+            p_str = p.strftime('%Y-%m-%d %H:%M:%S')
+            # Trim: skip points where the gate has fewer than 10 units
+            gate_units = query_db(
+                "SELECT COUNT(DISTINCT i.unit_id) as c FROM inspection i JOIN unit_real u ON i.unit_id = u.id WHERE i.tenant_id = ? AND i.status IN ('reviewed','approved','certified','pending_followup') AND i.review_submitted_at <= ? AND i.cycle_id NOT LIKE 'test-%%'",
+                [tenant_id, p_str], one=True)
+            if not gate_units or gate_units['c'] < 10:
+                continue
             raised_row = query_db(
                 "SELECT COUNT(*) as c FROM defect d JOIN unit_real u ON d.unit_id = u.id WHERE d.tenant_id = ? AND d.created_at <= ? AND d.raised_cycle_id NOT LIKE 'test-%%' AND EXISTS (SELECT 1 FROM inspection i2 WHERE i2.unit_id = d.unit_id AND i2.cycle_id = d.raised_cycle_id AND i2.status IN ('reviewed','approved','certified','pending_followup') AND i2.review_submitted_at <= ?)",
-                [tenant_id, mon_str, mon_str], one=True)
+                [tenant_id, p_str, p_str], one=True)
             cleared_row = query_db(
                 "SELECT COUNT(*) as c FROM defect d JOIN unit_real u ON d.unit_id = u.id WHERE d.tenant_id = ? AND d.status = 'cleared' AND d.cleared_at <= ? AND d.raised_cycle_id NOT LIKE 'test-%%' AND EXISTS (SELECT 1 FROM inspection i2 WHERE i2.unit_id = d.unit_id AND i2.cycle_id = d.raised_cycle_id AND i2.status IN ('reviewed','approved','certified','pending_followup') AND i2.review_submitted_at <= ?)",
-                [tenant_id, mon_str, mon_str], one=True)
+                [tenant_id, p_str, p_str], one=True)
             trend_points.append({
-                'date': mon.strftime('%d %b'),
+                'date': p.strftime('%d %b'),
                 'raised': raised_row['c'] if raised_row else 0,
                 'cleared': cleared_row['c'] if cleared_row else 0,
             })
-            mon = mon + _td(days=7)
 
     # In live mode, add today as final trend point
     if live and trend_points:
