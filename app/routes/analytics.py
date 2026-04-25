@@ -6255,11 +6255,13 @@ def _build_pipeline_report_data(live=False):
     q3 = round(_pctl(unit_defect_counts, 75), 1)
 
     # Additional KPI metrics (snapshot-based)
-    # Median defects per unit
-    defect_counts_sorted = sorted([u['open'] for u in stuck_units]) if stuck_units else []
-    if defect_counts_sorted:
-        mid = len(defect_counts_sorted) // 2
-        median_defects = defect_counts_sorted[mid] if len(defect_counts_sorted) % 2 else round((defect_counts_sorted[mid-1] + defect_counts_sorted[mid]) / 2, 1)
+    # Median defects per unit (across all inspected units, including zero-defect units)
+    stuck_counts = [u['open'] for u in stuck_units]
+    zero_defect_units = max(0, units_inspected - len(stuck_counts))
+    all_inspected_counts = sorted(stuck_counts + [0] * zero_defect_units)
+    if all_inspected_counts:
+        mid = len(all_inspected_counts) // 2
+        median_defects = all_inspected_counts[mid] if len(all_inspected_counts) % 2 else round((all_inspected_counts[mid-1] + all_inspected_counts[mid]) / 2, 1)
     else:
         median_defects = 0
 
@@ -6286,7 +6288,7 @@ def _build_pipeline_report_data(live=False):
         'pct_complete': round(units_inspected / total_units * 100) if total_units else 0,
         'open_defects': total_open_defects,
         'certified': metrics['certified'],
-        'avg_per_unit': stuck_headline['avg_per_unit'],
+        'avg_per_unit': round(total_open_defects / units_inspected, 1) if units_inspected > 0 else 0,
         'median_per_unit': median_defects,
         'defect_rate': defect_rate,
         'items_inspected': items_inspected,
