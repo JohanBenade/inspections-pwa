@@ -720,9 +720,8 @@ body {
             <span class="section-number">09</span>
             <span class="section-title">Systemic Issues</span>
         </div>
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
-            <span style="font-size: 9px; color: #6B6B6B;">Ranked by spread across units &mdash; address project-wide</span>
-            <span style="font-size: 9px; color: #9A9A9A;">{{ recurring|sum(attribute='cnt') }} occurrences</span>
+        <div style="margin-bottom: 6px;">
+            <span style="font-size: 9px; color: #6B6B6B;">Ranked by spread across units &mdash; top 10 account for {{ recurring|sum(attribute='cnt') }} occurrences across the project.</span>
         </div>
         {% set rec_max = recurring[0].cnt if recurring else 1 %}
         {% for r in recurring %}
