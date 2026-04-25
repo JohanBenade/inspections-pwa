@@ -755,9 +755,9 @@ def mark_reviewed(cycle_id):
         return redirect(url_for('approvals.review', cycle_id=cycle_id))
 
     db.execute("""
-        UPDATE inspection SET status = 'reviewed', updated_at = ?
+        UPDATE inspection SET status = 'reviewed', updated_at = ?, review_submitted_at = ?
         WHERE id = ?
-    """, [now, inspection_id])
+    """, [now, now, inspection_id])
 
     # Update batch_unit status to match
     db.execute("""
@@ -807,9 +807,9 @@ def bulk_reviewed(cycle_id):
             continue
 
         db.execute("""
-            UPDATE inspection SET status = 'reviewed', updated_at = ?
+            UPDATE inspection SET status = 'reviewed', updated_at = ?, review_submitted_at = ?
             WHERE id = ?
-        """, [now, unit['inspection_id']])
+        """, [now, now, unit['inspection_id']])
 
         # Update batch_unit status to match
         db.execute("""
