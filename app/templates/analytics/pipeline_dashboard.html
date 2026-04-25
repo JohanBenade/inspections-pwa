@@ -214,15 +214,15 @@
         </div>
         {% if pool_trend.direction == 'growing' %}
         <div style="margin-top: 8px; padding: 8px 12px; background: #E8D9C0; border-left: 3px solid #C8963E; border-radius: 0 4px 4px 0; font-size: 0.75rem; color: #6B6B6B; max-width: 480px;">
-            Pool growing by ~{{ pool_trend.avg_change }} defects/week ({{ pool_trend.weeks }}-week avg). Expected while C1 inspections are in progress.
+            Pool grew by ~{{ pool_trend.avg_change }} defects this fortnight. Expected while C1 inspections are in progress.
         </div>
         {% elif pool_trend.direction == 'shrinking' %}
         <div style="margin-top: 8px; padding: 8px 12px; background: #D9E6DA; border-left: 3px solid #4A7C59; border-radius: 0 4px 4px 0; font-size: 0.75rem; color: #6B6B6B; max-width: 480px;">
-            Pool shrinking by ~{{ pool_trend.avg_change }} defects/week ({{ pool_trend.weeks }}-week avg). Remediation outpacing new defect discovery.
+            Pool shrunk by ~{{ pool_trend.avg_change }} defects this fortnight. Remediation outpacing new defect discovery.
         </div>
         {% elif ledger.new > ledger.cleared %}
         <div style="margin-top: 8px; padding: 8px 12px; background: #E8D9C0; border-left: 3px solid #C8963E; border-radius: 0 4px 4px 0; font-size: 0.75rem; color: #6B6B6B; max-width: 480px;">
-            Pool growing this week. No sustained trend yet.
+            Pool unchanged this fortnight.
         </div>
         {% elif ledger.cleared > ledger.new %}
         <div style="margin-top: 8px; padding: 8px 12px; background: #D9E6DA; border-left: 3px solid #4A7C59; border-radius: 0 4px 4px 0; font-size: 0.75rem; color: #6B6B6B; max-width: 480px;">

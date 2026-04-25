@@ -6299,22 +6299,18 @@ def _build_pipeline_report_data(live=False):
         'rate_per_week': rate_per_week,
     }
 
-    # --- POOL TREND (avg net change over last 4 weeks) ---
-    pool_trend = {'direction': 'stable', 'avg_change': 0, 'weeks': 0}
+    # --- POOL TREND (net change over the most recent fortnight) ---
+    pool_trend = {'direction': 'stable', 'avg_change': 0}
     if len(trend_points) >= 2:
-        recent = trend_points[-4:]  # last 4 (or fewer)
-        deltas = []
-        for i in range(1, len(recent)):
-            open_prev = recent[i-1]['raised'] - recent[i-1]['cleared']
-            open_curr = recent[i]['raised'] - recent[i]['cleared']
-            deltas.append(open_curr - open_prev)
-        if deltas:
-            avg_change = round(sum(deltas) / len(deltas))
-            pool_trend = {
-                'direction': 'growing' if avg_change > 0 else 'shrinking' if avg_change < 0 else 'stable',
-                'avg_change': abs(avg_change),
-                'weeks': len(deltas),
-            }
+        prev = trend_points[-2]
+        curr = trend_points[-1]
+        open_prev = prev['raised'] - prev['cleared']
+        open_curr = curr['raised'] - curr['cleared']
+        delta = open_curr - open_prev
+        pool_trend = {
+            'direction': 'growing' if delta > 0 else 'shrinking' if delta < 0 else 'stable',
+            'avg_change': abs(delta),
+        }
 
     # --- STUCK UNITS SORT (cycle desc, then open desc) ---
     stuck_units.sort(key=lambda x: -x['open'])
