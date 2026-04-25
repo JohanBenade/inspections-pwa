@@ -156,9 +156,17 @@ CREATE TABLE IF NOT EXISTS inspection (
     inspector_name TEXT NOT NULL,
     
     status TEXT DEFAULT 'in_progress',
-    -- Values: in_progress | submitted
+    -- Values: not_started | in_progress | paused | submitted | reviewed | approved | pending_followup | certified | closed
     
+    started_at TIMESTAMP,
     submitted_at TIMESTAMP,
+    review_started_at TIMESTAMP,
+    review_submitted_at TIMESTAMP,
+    approved_at TIMESTAMP,
+    manager_reviewed_at TIMESTAMP,
+    manager_reviewed_by TEXT,
+    paused_at TIMESTAMP,
+    total_paused_seconds INTEGER DEFAULT 0,
     
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
