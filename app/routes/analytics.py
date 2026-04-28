@@ -6410,7 +6410,7 @@ def site_meeting_brief_view():
     """Site Meeting Brief - HTML preview."""
     import datetime, base64, os as _os
     from flask import current_app
-    data = {}
+    data = _build_pipeline_report_data(live=False)
     data['is_pdf'] = False
     data['report_date'] = datetime.datetime.now().strftime('%d %B %Y')
     logo_path = _os.path.join(current_app.static_folder, 'monograph_logo.jpg')
@@ -6429,7 +6429,7 @@ def site_meeting_brief_pdf():
     from app.services.pdf_playwright import html_to_pdf
     import datetime, base64, os as _os
     from flask import current_app
-    data = {}
+    data = _build_pipeline_report_data(live=False)
     data['is_pdf'] = True
     data['report_date'] = datetime.datetime.now().strftime('%d %B %Y')
     logo_path = _os.path.join(current_app.static_folder, 'monograph_logo.jpg')

@@ -73,6 +73,40 @@ body {
     font-size: 12px; color: #6B6B6B; margin-top: 4px;
     letter-spacing: 0.5px;
 }
+
+/* Section */
+.section { margin-bottom: 24px; }
+.section-header {
+    display: flex; align-items: baseline; gap: 10px;
+    padding-bottom: 8px; margin-bottom: 12px;
+    border-bottom: 1px solid #E8E6E1;
+}
+.section-number {
+    font-family: "Cormorant Garamond", Georgia, serif;
+    font-size: 22px; font-weight: 400; color: #C8963E;
+}
+.section-title {
+    font-size: 13px; font-weight: 600; color: #1A1A1A;
+    letter-spacing: 0.3px;
+}
+
+/* Status strip (§01) */
+.status-strip {
+    font-size: 13px; line-height: 1.7; color: #1A1A1A;
+}
+.status-strip .line { margin-bottom: 2px; }
+.status-strip .num { font-weight: 700; color: #0A0A0A; }
+.status-strip .sep { color: #9A9A9A; margin: 0 6px; }
+.status-strip .muted { color: #6B6B6B; font-size: 12px; }
+
+/* Page footer scope text */
+.page-footer-scope {
+    margin-top: 32px; padding-top: 12px;
+    border-top: 1px solid #E8E6E1;
+    font-size: 9px; color: #9A9A9A;
+    letter-spacing: 0.3px;
+    text-align: center;
+}
 </style>
 </head>
 <body>
@@ -109,7 +143,26 @@ body {
         <div class="report-subtitle">Power Park Student Housing &mdash; Phase 3 &mdash; 191 Units</div>
     </div>
 
-    <!-- Sections will be added in subsequent commits -->
+    <!-- SECTION 01: PROJECT STATUS -->
+    <div class="section">
+        <div class="section-header">
+            <span class="section-number">01</span>
+            <span class="section-title">Project Status as at {{ snapshot_date }}</span>
+        </div>
+        <div class="status-strip">
+            <div class="line">
+                <span class="num">{{ kpi.units_inspected }}</span> of <span class="num">{{ kpi.total_units }}</span> inspected (<span class="num">{{ kpi.pct_complete }}%</span>){% if kpi.est_complete %}<span class="sep">&middot;</span>est. C1 complete <span class="num">{{ kpi.est_complete }}</span>{% endif %}
+            </div>
+            <div class="line">
+                <span class="num">{{ '{:,}'.format(kpi.open_defects) }}</span> open<span class="sep">&middot;</span>avg <span class="num">{{ kpi.avg_per_unit }}</span>/unit<span class="sep">&middot;</span>worst: Unit <span class="num">{{ kpi.worst_unit }}</span> (<span class="num">{{ kpi.worst_count }}</span>)
+            </div>
+        </div>
+    </div>
+
+    <!-- Page footer scope text -->
+    <div class="page-footer-scope">
+        Inspection scope: 454 items per unit &middot; project exclusion list of 55 items applied.
+    </div>
 
 </div>
 
