@@ -6404,6 +6404,54 @@ def pipeline_report_pdf():
     return resp
 
 
+@analytics_bp.route('/site-meeting-brief')
+@require_manager
+def site_meeting_brief_view():
+    """Site Meeting Brief - HTML preview."""
+    import datetime, base64, os as _os
+    from flask import current_app
+    data = {}
+    data['is_pdf'] = False
+    data['report_date'] = datetime.datetime.now().strftime('%d %B %Y')
+    logo_path = _os.path.join(current_app.static_folder, 'monograph_logo.jpg')
+    if _os.path.exists(logo_path):
+        with open(logo_path, 'rb') as f:
+            data['logo_b64'] = base64.b64encode(f.read()).decode()
+    else:
+        data['logo_b64'] = ''
+    return render_template('analytics/site_meeting_brief.html', **data)
+
+
+@analytics_bp.route('/site-meeting-brief/pdf')
+@require_manager
+def site_meeting_brief_pdf():
+    """Site Meeting Brief - PDF download."""
+    from app.services.pdf_playwright import html_to_pdf
+    import datetime, base64, os as _os
+    from flask import current_app
+    data = {}
+    data['is_pdf'] = True
+    data['report_date'] = datetime.datetime.now().strftime('%d %B %Y')
+    logo_path = _os.path.join(current_app.static_folder, 'monograph_logo.jpg')
+    if _os.path.exists(logo_path):
+        with open(logo_path, 'rb') as f:
+            data['logo_b64'] = base64.b64encode(f.read()).decode()
+    else:
+        data['logo_b64'] = ''
+    html_str = render_template('analytics/site_meeting_brief.html', **data)
+    footer = '''<div style="width: 100%; font-size: 8px; font-family: 'DM Sans', Helvetica, Arial, sans-serif; padding: 0 16mm; display: flex; justify-content: space-between; color: #9A9A9A;">
+        <span>Confidential &mdash; Monograph Architects</span>
+        <span>Power Park Student Housing &ndash; Phase 3</span>
+        <span>Page <span class="pageNumber"></span> of <span class="totalPages"></span></span>
+    </div>'''
+    pdf_bytes = html_to_pdf(html_str, footer_template=footer)
+    resp = make_response(pdf_bytes)
+    resp.headers['Content-Type'] = 'application/pdf'
+    today_iso = datetime.datetime.now().strftime('%Y-%m-%d')
+    resp.headers['Content-Disposition'] = 'attachment; filename=Site_Meeting_Brief_{}.pdf'.format(today_iso)
+    return resp
+
+
 @analytics_bp.route('/pipeline/dashboard')
 @require_manager
 def pipeline_dashboard():
