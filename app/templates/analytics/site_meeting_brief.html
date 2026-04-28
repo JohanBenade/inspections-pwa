@@ -100,6 +100,93 @@ body {
 .status-strip .muted { color: #6B6B6B; font-size: 12px; }
 
 /* Page footer scope text */
+.section-overline {
+    font-size: 9px;
+    font-weight: 600;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: #9A9A9A;
+    margin-bottom: 4px;
+}
+.rate-cards {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    margin: 10px 0 14px 0;
+}
+.rate-card {
+    background: #F5F3EE;
+    padding: 12px 14px;
+    border-radius: 4px;
+    text-align: center;
+}
+.rate-card .label {
+    font-size: 9px;
+    font-weight: 600;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    color: #9A9A9A;
+}
+.rate-card .value {
+    font-size: 22px;
+    font-weight: 700;
+    color: #1A1A1A;
+    margin-top: 4px;
+}
+.rate-card .prev {
+    font-size: 10px;
+    color: #6B6B6B;
+    margin-top: 2px;
+}
+.bar-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 8px;
+}
+.bar-label {
+    width: 60px;
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.8px;
+    text-transform: uppercase;
+    color: #6B6B6B;
+}
+.bar-track {
+    flex: 1;
+    display: flex;
+    height: 22px;
+    border-radius: 3px;
+    overflow: hidden;
+    font-size: 10px;
+    font-weight: 700;
+}
+.bar-green {
+    background: #4A7C59;
+    color: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    white-space: nowrap;
+    padding: 0 6px;
+}
+.bar-red {
+    background: #C44D3F;
+    color: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    white-space: nowrap;
+    padding: 0 6px;
+}
+.bar-total {
+    font-size: 10px;
+    font-weight: 700;
+    color: #1A1A1A;
+    white-space: nowrap;
+    text-align: right;
+    min-width: 100px;
+}
 .page-footer-scope {
     margin-top: 32px; padding-top: 12px;
     border-top: 1px solid #E8E6E1;
@@ -158,6 +245,65 @@ body {
             </div>
         </div>
     </div>
+
+    <!-- SECTION 02: DE-SNAG RESULTS -->
+    {% if desnag %}
+    <div class="section">
+        <div class="section-overline">Status as at {{ snapshot_date_short }}</div>
+        <div class="section-header">
+            <span class="section-number">02</span>
+            <span class="section-title">De-snag Results</span>
+        </div>
+
+        <div class="rate-cards">
+            <div class="rate-card">
+                <div class="label">Unit Clearance</div>
+                <div class="value" style="color: {% if desnag.unit_clearance_rate >= 90 %}#4A7C59{% elif desnag.unit_clearance_rate >= 70 %}#C8963E{% else %}#C44D3F{% endif %};">{{ desnag.unit_clearance_rate }}%</div>
+                {% if prev_unit_clearance_rate is not none %}
+                <div class="prev">prev fortnight: {{ prev_unit_clearance_rate }}%</div>
+                {% endif %}
+            </div>
+            <div class="rate-card">
+                <div class="label">Defect Fix Rate</div>
+                <div class="value" style="color: {% if desnag.clearance_rate >= 90 %}#4A7C59{% elif desnag.clearance_rate >= 70 %}#C8963E{% else %}#C44D3F{% endif %};">{{ desnag.clearance_rate }}%</div>
+                {% if prev_clearance_rate is not none %}
+                <div class="prev">prev fortnight: {{ prev_clearance_rate }}%</div>
+                {% endif %}
+            </div>
+        </div>
+
+        {% set u_open = desnag.count - desnag.fully_cleared %}
+        {% set u_green_pct = (desnag.fully_cleared / desnag.count * 100)|round(1) if desnag.count > 0 else 0 %}
+        {% set d_bar_total = desnag.total_cleared + desnag.total_still_open %}
+        {% set d_green_pct = (desnag.total_cleared / d_bar_total * 100)|round(1) if d_bar_total > 0 else 0 %}
+
+        <div class="bar-row">
+            <span class="bar-label">Units</span>
+            <div class="bar-track">
+                {% if desnag.fully_cleared > 0 %}
+                <div class="bar-green" style="width: {{ u_green_pct }}%;">{{ desnag.fully_cleared }} clear</div>
+                {% endif %}
+                {% if u_open > 0 %}
+                <div class="bar-red" style="width: {{ 100 - u_green_pct }}%;">{{ u_open }} still in de-snag</div>
+                {% endif %}
+            </div>
+            <span class="bar-total">{{ desnag.count }} verified</span>
+        </div>
+
+        <div class="bar-row">
+            <span class="bar-label">Defects</span>
+            <div class="bar-track">
+                {% if desnag.total_cleared > 0 %}
+                <div class="bar-green" style="width: {{ d_green_pct }}%;">{{ '{:,}'.format(desnag.total_cleared) }} fixed</div>
+                {% endif %}
+                {% if desnag.total_still_open > 0 %}
+                <div class="bar-red" style="width: {{ 100 - d_green_pct }}%;">{{ desnag.total_still_open }} remaining</div>
+                {% endif %}
+            </div>
+            <span class="bar-total">{{ '{:,}'.format(d_bar_total) }} b/fwd</span>
+        </div>
+    </div>
+    {% endif %}
 
     <!-- Page footer scope text -->
     <div class="page-footer-scope">

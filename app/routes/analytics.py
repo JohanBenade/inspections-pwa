@@ -6404,6 +6404,60 @@ def pipeline_report_pdf():
     return resp
 
 
+def _build_brief_prev_desnag(tenant_id, cutoff_str):
+    """Brief §02 helper: prev-fortnight unit_clearance_rate and clearance_rate.
+    Mirrors the desnag block of _build_pipeline_report_data using cutoff_str
+    (= snapshot - 14 days) instead of snapshot_str. Isolated to keep
+    Pipeline Report logic untouched.
+    """
+    rows = query_db("""
+        SELECT u.id as unit_id, MAX(i.cycle_number) as max_cycle
+        FROM inspection i
+        JOIN unit_real u ON i.unit_id = u.id
+        WHERE i.tenant_id = ? AND i.cycle_number >= 2
+        AND i.status IN ('reviewed','approved','certified','pending_followup')
+        AND i.review_submitted_at <= ?
+        AND i.cycle_id NOT LIKE 'test-%%'
+        GROUP BY u.id
+    """, [tenant_id, cutoff_str])
+
+    if not rows:
+        return {'prev_unit_clearance_rate': None, 'prev_clearance_rate': None}
+
+    total_bfwd = 0
+    total_cleared = 0
+    fully_cleared_count = 0
+
+    for row in rows:
+        uid = row['unit_id']
+        mc = row['max_cycle']
+        counts = query_db("""
+            SELECT
+                SUM(CASE WHEN d.raised_cycle_number < ? AND d.created_at <= ? THEN 1 ELSE 0 END) as bfwd,
+                SUM(CASE WHEN d.status = 'cleared' AND d.cleared_cycle_number >= 2
+                     AND d.cleared_at <= ? THEN 1 ELSE 0 END) as cleared
+            FROM defect d
+            WHERE d.unit_id = ? AND d.tenant_id = ?
+            AND d.raised_cycle_id NOT LIKE 'test-%%'
+        """, [mc, cutoff_str, cutoff_str, uid, tenant_id], one=True)
+
+        bfwd = counts['bfwd'] or 0
+        cleared = counts['cleared'] or 0
+        if bfwd - cleared == 0:
+            fully_cleared_count += 1
+        total_bfwd += bfwd
+        total_cleared += cleared
+
+    unit_count = len(rows)
+    unit_rate = round(fully_cleared_count / unit_count * 100, 1) if unit_count > 0 else 0
+    overall_rate = round(total_cleared / total_bfwd * 100, 1) if total_bfwd > 0 else 0
+
+    return {
+        'prev_unit_clearance_rate': unit_rate,
+        'prev_clearance_rate': overall_rate,
+    }
+
+
 @analytics_bp.route('/site-meeting-brief')
 @require_manager
 def site_meeting_brief_view():
@@ -6411,6 +6465,11 @@ def site_meeting_brief_view():
     import datetime, base64, os as _os
     from flask import current_app
     data = _build_pipeline_report_data(live=False)
+    _tenant = session.get('tenant_id', 'MONOGRAPH')
+    _snap_dt = datetime.datetime.strptime(data['snapshot_str'], '%Y-%m-%d %H:%M:%S')
+    _prev_cutoff = (_snap_dt - datetime.timedelta(days=14)).strftime('%Y-%m-%d %H:%M:%S')
+    data.update(_build_brief_prev_desnag(_tenant, _prev_cutoff))
+    data['snapshot_date_short'] = _snap_dt.strftime('%d %b %Y').upper()
     data['is_pdf'] = False
     data['report_date'] = datetime.datetime.now().strftime('%d %B %Y')
     logo_path = _os.path.join(current_app.static_folder, 'monograph_logo.jpg')
@@ -6430,6 +6489,11 @@ def site_meeting_brief_pdf():
     import datetime, base64, os as _os
     from flask import current_app
     data = _build_pipeline_report_data(live=False)
+    _tenant = session.get('tenant_id', 'MONOGRAPH')
+    _snap_dt = datetime.datetime.strptime(data['snapshot_str'], '%Y-%m-%d %H:%M:%S')
+    _prev_cutoff = (_snap_dt - datetime.timedelta(days=14)).strftime('%Y-%m-%d %H:%M:%S')
+    data.update(_build_brief_prev_desnag(_tenant, _prev_cutoff))
+    data['snapshot_date_short'] = _snap_dt.strftime('%d %b %Y').upper()
     data['is_pdf'] = True
     data['report_date'] = datetime.datetime.now().strftime('%d %B %Y')
     logo_path = _os.path.join(current_app.static_folder, 'monograph_logo.jpg')
