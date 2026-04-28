@@ -151,10 +151,10 @@ body {
         </div>
         <div class="status-strip">
             <div class="line">
-                <span class="num">{{ kpi.units_inspected }}</span> of <span class="num">{{ kpi.total_units }}</span> inspected (<span class="num">{{ kpi.pct_complete }}%</span>){% if kpi.est_complete %}<span class="sep">&middot;</span>est. C1 complete <span class="num">{{ kpi.est_complete }}</span>{% endif %}
+                <span class="num">{{ kpi.units_inspected }}</span> of <span class="num">{{ kpi.total_units }}</span> units inspected (<span class="num">{{ kpi.pct_complete }}%</span>){% if kpi.est_complete %} &mdash; first inspections expected to complete by <span class="num">{{ kpi.est_complete }}</span>{% endif %}
             </div>
             <div class="line">
-                <span class="num">{{ '{:,}'.format(kpi.open_defects) }}</span> open<span class="sep">&middot;</span>avg <span class="num">{{ kpi.avg_per_unit }}</span>/unit<span class="sep">&middot;</span>worst: Unit <span class="num">{{ kpi.worst_unit }}</span> (<span class="num">{{ kpi.worst_count }}</span>)
+                <span class="num">{{ '{:,}'.format(kpi.open_defects) }}</span> defects open across the site &mdash; averaging <span class="num">{{ kpi.avg_per_unit | round | int }}</span> per unit. The worst is Unit <span class="num">{{ kpi.worst_unit }}</span> with <span class="num">{{ kpi.worst_count }}</span> defects.
             </div>
         </div>
     </div>
