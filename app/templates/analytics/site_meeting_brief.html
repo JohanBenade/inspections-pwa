@@ -249,7 +249,6 @@ body {
     <!-- SECTION 02: DE-SNAG RESULTS -->
     {% if desnag %}
     <div class="section">
-        <div class="section-overline">Status as at {{ snapshot_date_short }}</div>
         <div class="section-header">
             <span class="section-number">02</span>
             <span class="section-title">De-snag Results</span>
@@ -284,10 +283,10 @@ body {
                 <div class="bar-green" style="width: {{ u_green_pct }}%;">{{ desnag.fully_cleared }} clear</div>
                 {% endif %}
                 {% if u_open > 0 %}
-                <div class="bar-red" style="width: {{ 100 - u_green_pct }}%;">{{ u_open }} still in de-snag</div>
+                <div class="bar-red" style="width: {{ 100 - u_green_pct }}%;"></div>
                 {% endif %}
             </div>
-            <span class="bar-total">{{ desnag.count }} verified</span>
+            <span class="bar-total" style="color: {% if u_open > 0 %}#C44D3F{% else %}#4A7C59{% endif %};">{% if u_open > 0 %}{{ u_open }} open{% else %}All clear{% endif %}</span>
         </div>
 
         <div class="bar-row">
@@ -297,10 +296,10 @@ body {
                 <div class="bar-green" style="width: {{ d_green_pct }}%;">{{ '{:,}'.format(desnag.total_cleared) }} fixed</div>
                 {% endif %}
                 {% if desnag.total_still_open > 0 %}
-                <div class="bar-red" style="width: {{ 100 - d_green_pct }}%;">{{ desnag.total_still_open }} remaining</div>
+                <div class="bar-red" style="width: {{ 100 - d_green_pct }}%;"></div>
                 {% endif %}
             </div>
-            <span class="bar-total">{{ '{:,}'.format(d_bar_total) }} b/fwd</span>
+            <span class="bar-total" style="color: {% if desnag.total_still_open > 0 %}#C44D3F{% else %}#4A7C59{% endif %};">{% if desnag.total_still_open > 0 %}{{ desnag.total_still_open }} open{% else %}All clear{% endif %}</span>
         </div>
     </div>
     {% endif %}
