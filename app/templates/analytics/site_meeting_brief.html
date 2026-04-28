@@ -187,6 +187,29 @@ body {
     white-space: nowrap;
     text-align: right;
 }
+.movement-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 11px;
+}
+.movement-table th {
+    text-align: left;
+    font-size: 9px;
+    font-weight: 600;
+    color: #9A9A9A;
+    letter-spacing: 1.2px;
+    text-transform: uppercase;
+    padding: 6px 10px;
+    border-bottom: 2px solid #E8E6E1;
+    white-space: nowrap;
+}
+.movement-table td {
+    padding: 5px 10px;
+    border-bottom: 1px solid #F0EEEA;
+    vertical-align: top;
+    font-family: 'DM Sans', Helvetica, Arial, sans-serif;
+    font-feature-settings: 'lnum' 1, 'tnum' 1;
+}
 .page-footer-scope {
     margin-top: 32px; padding-top: 12px;
     border-top: 1px solid #E8E6E1;
@@ -301,6 +324,53 @@ body {
             </div>
             <span class="bar-total" style="color: {% if desnag.total_still_open > 0 %}#C44D3F{% else %}#4A7C59{% endif %};">{% if desnag.total_still_open > 0 %}{{ desnag.total_still_open }} open{% else %}All clear{% endif %}</span>
         </div>
+    </div>
+    {% endif %}
+
+    <!-- SECTION 04: FORTNIGHT MOVEMENT -->
+    {% if ledger %}
+    <div class="section">
+        <div class="section-header">
+            <span class="section-number">04</span>
+            <span class="section-title">Fortnight Movement ({{ ledger_from }} &ndash; {{ ledger_to }})</span>
+        </div>
+
+        <table class="movement-table" style="max-width: 500px;">
+            <thead>
+                <tr>
+                    <th>B/Fwd</th>
+                    <th style="color: #4A7C59;">- Cleared</th>
+                    <th style="color: #C8963E;">+ New</th>
+                    <th>= Open</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td style="font-weight: 600; font-size: 18px;">{{ '{:,}'.format(ledger.bfwd) }}</td>
+                    <td style="font-weight: 600; font-size: 18px; color: #4A7C59;">{{ '{:,}'.format(ledger.cleared) }}</td>
+                    <td style="font-weight: 600; font-size: 18px; color: #C8963E;">{{ '{:,}'.format(ledger.new) }}</td>
+                    <td style="font-weight: 700; font-size: 20px;">{{ '{:,}'.format(ledger.open) }}</td>
+                </tr>
+            </tbody>
+        </table>
+
+        {% if pool_trend and pool_trend.direction == 'growing' %}
+        <div style="margin-top: 12px; padding: 10px 14px; background: #FFF8EE; border-left: 3px solid #C8963E; border-radius: 0 4px 4px 0; font-size: 11px; color: #6B6B6B;">
+            Pool grew by ~{{ pool_trend.avg_change }} defects this fortnight. Expected while C1 inspections are in progress.
+        </div>
+        {% elif pool_trend and pool_trend.direction == 'shrinking' %}
+        <div style="margin-top: 12px; padding: 10px 14px; background: #EEF5EF; border-left: 3px solid #4A7C59; border-radius: 0 4px 4px 0; font-size: 11px; color: #6B6B6B;">
+            Pool shrunk by ~{{ pool_trend.avg_change }} defects this fortnight. Remediation outpacing new defect discovery.
+        </div>
+        {% elif ledger.new > ledger.cleared %}
+        <div style="margin-top: 12px; padding: 10px 14px; background: #FFF8EE; border-left: 3px solid #C8963E; border-radius: 0 4px 4px 0; font-size: 11px; color: #6B6B6B;">
+            Pool unchanged this fortnight.
+        </div>
+        {% elif ledger.cleared > ledger.new %}
+        <div style="margin-top: 12px; padding: 10px 14px; background: #EEF5EF; border-left: 3px solid #4A7C59; border-radius: 0 4px 4px 0; font-size: 11px; color: #6B6B6B;">
+            Pool shrinking this week. No sustained trend yet.
+        </div>
+        {% endif %}
     </div>
     {% endif %}
 
