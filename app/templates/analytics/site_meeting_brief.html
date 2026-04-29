@@ -273,6 +273,9 @@ body {
             <div class="line">
                 <span class="num">{{ '{:,}'.format(kpi.open_defects) }}</span> defects open across the site &mdash; averaging <span class="num">{{ kpi.avg_per_unit | round | int }}</span> per unit. The worst is Unit <span class="num">{{ kpi.worst_unit }}</span> with <span class="num">{{ kpi.worst_count }}</span> defects.
             </div>
+            <div class="line" style="color: #9A9A9A;">
+                Inspection scope: 454 items per unit &middot; project exclusion list of 55 items applied.
+            </div>
         </div>
     </div>
 
@@ -598,10 +601,6 @@ body {
         {% else %}
         <div class="trend-placeholder">No units with open defects</div>
         {% endif %}
-    </div>
-
-    <div class="page-footer-scope">
-        Inspection scope: 454 items per unit &middot; project exclusion list of 55 items applied.
     </div>
 
 </div>
