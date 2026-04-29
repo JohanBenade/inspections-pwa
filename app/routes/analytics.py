@@ -6487,7 +6487,7 @@ def _build_brief_by_trade(tenant_id, snap_str, prev_cutoff_str):
     prev_rows = query_db(
         "SELECT ct.category_name AS trade, COUNT(*) AS cnt " + open_at_cutoff +
         " GROUP BY ct.category_name",
-        [tenant_id, prev_cutoff_str, prev_cutoff_str, prev_cutoff_str]
+        [tenant_id, prev_cutoff_str, prev_cutoff_str, snap_str]
     )
     prev = {r['trade']: r['cnt'] for r in prev_rows}
 
