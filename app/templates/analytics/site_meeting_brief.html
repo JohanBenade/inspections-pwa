@@ -594,7 +594,6 @@ body {
         <div style="margin-top: 8px; font-size: 9px; color: #9A9A9A;">
             Showing top 5 of {{ stuck_units|length }} units with open defects ({{ '{:,}'.format(ledger.open) }} total).
             Highlighted rows exceed the per-unit average ({{ stuck_headline.avg_per_unit }}).
-            See Pipeline Report for full list.
         </div>
         {% else %}
         <div class="trend-placeholder">No units with open defects</div>
