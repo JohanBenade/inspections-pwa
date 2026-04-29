@@ -6404,6 +6404,56 @@ def pipeline_report_pdf():
     return resp
 
 
+def _build_brief_findings(tenant_id, snapshot_str):
+    """Brief §07 helper: top 5 curated patterns from defect.original_comment.
+    Buckets are hardcoded by interpretive grouping (KEYS, CLEANING, WATER,
+    PAINT MARKS, NOT INSTALLED). Sub-item counts come from item_template.
+    """
+    bucket_rules = [
+        ('KEYS not provided',               ["not provided"]),
+        ('CLEANING required (combined)',    ["to be cleaned", "needs to be cleaned"]),
+        ('WATER not connected for testing', ["no water to test operation"]),
+        ('PAINT MARKS',                     ["has paint marks"]),
+        ('NOT INSTALLED',                   ["not installed"]),
+    ]
+
+    findings = []
+    for caption, comments in bucket_rules:
+        placeholders = ",".join("?" * len(comments))
+        totals = query_db(f"""
+            SELECT COUNT(*) AS cnt, COUNT(DISTINCT unit_id) AS units
+            FROM defect
+            WHERE tenant_id = ?
+              AND status = 'open'
+              AND created_at <= ?
+              AND LOWER(TRIM(original_comment)) IN ({placeholders})
+        """, [tenant_id, snapshot_str] + comments, one=True)
+
+        sub_rows = query_db(f"""
+            SELECT it.item_description AS item, COUNT(*) AS cnt
+            FROM defect d
+            LEFT JOIN item_template it ON d.item_template_id = it.id
+            WHERE d.tenant_id = ?
+              AND d.status = 'open'
+              AND d.created_at <= ?
+              AND LOWER(TRIM(d.original_comment)) IN ({placeholders})
+              AND it.item_description IS NOT NULL
+            GROUP BY it.item_description
+            ORDER BY cnt DESC
+            LIMIT 5
+        """, [tenant_id, snapshot_str] + comments)
+
+        findings.append({
+            'rank': len(findings) + 1,
+            'caption': caption,
+            'cnt': totals['cnt'] or 0,
+            'units': totals['units'] or 0,
+            'sub_items': [{'item': r['item'], 'cnt': r['cnt']} for r in sub_rows],
+        })
+
+    return {'findings': findings}
+
+
 def _build_brief_prev_desnag(tenant_id, cutoff_str):
     """Brief §02 helper: prev-fortnight unit_clearance_rate and clearance_rate.
     Mirrors the desnag block of _build_pipeline_report_data using cutoff_str
@@ -6469,6 +6519,7 @@ def site_meeting_brief_view():
     _snap_dt = datetime.datetime.strptime(data['snapshot_str'], '%Y-%m-%d %H:%M:%S')
     _prev_cutoff = (_snap_dt - datetime.timedelta(days=14)).strftime('%Y-%m-%d %H:%M:%S')
     data.update(_build_brief_prev_desnag(_tenant, _prev_cutoff))
+    data.update(_build_brief_findings(_tenant, data['snapshot_str']))
     data['snapshot_date_short'] = _snap_dt.strftime('%d %b %Y').upper()
     data['is_pdf'] = False
     data['report_date'] = datetime.datetime.now().strftime('%d %B %Y')
@@ -6493,6 +6544,7 @@ def site_meeting_brief_pdf():
     _snap_dt = datetime.datetime.strptime(data['snapshot_str'], '%Y-%m-%d %H:%M:%S')
     _prev_cutoff = (_snap_dt - datetime.timedelta(days=14)).strftime('%Y-%m-%d %H:%M:%S')
     data.update(_build_brief_prev_desnag(_tenant, _prev_cutoff))
+    data.update(_build_brief_findings(_tenant, data['snapshot_str']))
     data['snapshot_date_short'] = _snap_dt.strftime('%d %b %Y').upper()
     data['is_pdf'] = True
     data['report_date'] = datetime.datetime.now().strftime('%d %B %Y')

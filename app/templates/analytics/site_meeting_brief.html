@@ -522,6 +522,37 @@ body {
         {% endif %}
     </div>
 
+    <div class="section" style="margin-bottom: 18px;">
+        <div class="section-header">
+            <span class="section-number">07</span>
+            <span class="section-title">Findings</span>
+        </div>
+
+        {% if findings %}
+        <div style="display: flex; flex-direction: column; gap: 10px;">
+            {% for f in findings %}
+            <div style="border-bottom: 1px solid #EDE9DF; padding-bottom: 8px;">
+                <div style="display: flex; justify-content: space-between; align-items: baseline; gap: 12px;">
+                    <div style="font-size: 11px; font-weight: 600; color: #1A1A1A; letter-spacing: 0.2px;">
+                        <span style="color: #9A9A9A; font-weight: 500; margin-right: 6px;">{{ f.rank }}.</span>{{ f.caption }}
+                    </div>
+                    <div style="font-size: 10px; color: #5F5E5A; white-space: nowrap;">
+                        <span style="font-weight: 600; color: #1A1A1A;">{{ f.cnt }}</span> across <span style="font-weight: 600; color: #1A1A1A;">{{ f.units }}</span> units
+                    </div>
+                </div>
+                {% if f.sub_items %}
+                <div style="font-size: 9px; color: #6B6B6B; margin-top: 3px; padding-left: 18px;">
+                    {% for s in f.sub_items %}{{ s.item }} {{ s.cnt }}{% if not loop.last %} &middot; {% endif %}{% endfor %}
+                </div>
+                {% endif %}
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <div class="trend-placeholder">No findings data available</div>
+        {% endif %}
+    </div>
+
     <div class="page-footer-scope">
         Inspection scope: 454 items per unit &middot; project exclusion list of 55 items applied.
     </div>
