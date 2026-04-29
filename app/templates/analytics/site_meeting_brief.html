@@ -659,11 +659,12 @@ body {
         <table style="width: 100%; border-collapse: collapse; font-size: 10px; table-layout: fixed; margin-top: 8px; font-feature-settings: 'lnum' 1, 'tnum' 1;">
             <thead>
                 <tr>
-                    <th style="text-align: left; padding: 5px 8px; font-size: 8px; font-weight: 600; color: #9A9A9A; letter-spacing: 1.2px; text-transform: uppercase; border-bottom: 2px solid #E8E6E1; width: 90px;">Trade</th>
-                    <th style="text-align: right; padding: 5px 8px; font-size: 8px; font-weight: 600; color: #9A9A9A; letter-spacing: 1.2px; text-transform: uppercase; border-bottom: 2px solid #E8E6E1; width: 60px;">Open</th>
-                    <th style="text-align: right; padding: 5px 8px; font-size: 8px; font-weight: 600; color: #9A9A9A; letter-spacing: 1.2px; text-transform: uppercase; border-bottom: 2px solid #E8E6E1; width: 70px;">&Delta;</th>
-                    <th style="text-align: right; padding: 5px 8px; font-size: 8px; font-weight: 600; color: #9A9A9A; letter-spacing: 1.2px; text-transform: uppercase; border-bottom: 2px solid #E8E6E1; width: 50px;">Share</th>
-                    <th style="text-align: left; padding: 5px 8px; font-size: 8px; font-weight: 600; color: #9A9A9A; letter-spacing: 1.2px; text-transform: uppercase; border-bottom: 2px solid #E8E6E1;">Top Defect</th>
+                    <th style="text-align: left; padding: 5px 8px; font-size: 8px; font-weight: 600; color: #9A9A9A; letter-spacing: 1.2px; text-transform: uppercase; border-bottom: 2px solid #E8E6E1; width: 80px;">Trade</th>
+                    <th style="text-align: right; padding: 5px 8px; font-size: 8px; font-weight: 600; color: #9A9A9A; letter-spacing: 1.2px; text-transform: uppercase; border-bottom: 2px solid #E8E6E1; width: 55px;">Open</th>
+                    <th style="text-align: right; padding: 5px 8px; font-size: 8px; font-weight: 600; color: #9A9A9A; letter-spacing: 1.2px; text-transform: uppercase; border-bottom: 2px solid #E8E6E1; width: 60px;">&Delta;</th>
+                    <th style="text-align: right; padding: 5px 8px; font-size: 8px; font-weight: 600; color: #9A9A9A; letter-spacing: 1.2px; text-transform: uppercase; border-bottom: 2px solid #E8E6E1; width: 45px;">Share</th>
+                    <th style="text-align: left; padding: 5px 8px; font-size: 8px; font-weight: 600; color: #9A9A9A; letter-spacing: 1.2px; text-transform: uppercase; border-bottom: 2px solid #E8E6E1; width: 110px;">Top Defect</th>
+                    <th style="text-align: left; padding: 5px 8px; font-size: 8px; font-weight: 600; color: #9A9A9A; letter-spacing: 1.2px; text-transform: uppercase; border-bottom: 2px solid #E8E6E1;">Top Defect Items</th>
                 </tr>
             </thead>
             <tbody>
@@ -680,6 +681,7 @@ body {
                     <td style="padding: 4px 8px; border-bottom: 1px solid #F0EEEA; color: #5F5E5A;">
                         {% if t.top_defect %}{{ t.top_defect }} &middot; {{ t.top_defect_cnt }}{% else %}&mdash;{% endif %}
                     </td>
+                    <td style="padding: 4px 8px; border-bottom: 1px solid #F0EEEA; color: #5F5E5A; font-size: 9px;">{% if t.top_defect_items %}{{ t.top_defect_items }}{% else %}&mdash;{% endif %}</td>
                 </tr>
                 {% endfor %}
             </tbody>

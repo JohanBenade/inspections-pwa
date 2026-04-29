@@ -6508,6 +6508,31 @@ def _build_brief_by_trade(tenant_id, snap_str, prev_cutoff_str):
                 'cnt': r['cnt'],
             }
 
+    # v271: item-level breakdown for each trade's top defect comment
+    item_sql = (
+        "SELECT it.item_description AS item, COUNT(*) AS cnt " +
+        open_at_cutoff +
+        " AND ct.category_name = ? AND d.original_comment = ? "
+        " GROUP BY it.item_description ORDER BY cnt DESC"
+    )
+    items_by_trade = {}
+    for _trade, _top in top_per_trade.items():
+        if not _top['comment']:
+            items_by_trade[_trade] = []
+            continue
+        _rs = query_db(item_sql, [tenant_id, snap_str, snap_str, snap_str, _trade, _top['comment']])
+        items_by_trade[_trade] = [(r['item'], r['cnt']) for r in _rs]
+
+    def _fmt_items(items, cap=5):
+        if not items:
+            return ''
+        shown = items[:cap]
+        rem = len(items) - cap
+        s = ' \u00b7 '.join(f"{itm} {cnt}" for itm, cnt in shown)
+        if rem > 0:
+            s += f' \u00b7 \u2026+{rem} more'
+        return s
+
     total = sum(curr.values())
     all_trades = ['DOORS', 'WALLS', 'JOINERY', 'PLUMBING', 'FLOOR',
                   'WINDOWS', 'ELECTRICAL', 'FF&E', 'CEILING']
@@ -6525,6 +6550,7 @@ def _build_brief_by_trade(tenant_id, snap_str, prev_cutoff_str):
             'share': share,
             'top_defect': top['comment'],
             'top_defect_cnt': top['cnt'],
+            'top_defect_items': _fmt_items(items_by_trade.get(trade, [])),
         })
     rows.sort(key=lambda r: r['open'], reverse=True)
     return {'by_trade': rows}
