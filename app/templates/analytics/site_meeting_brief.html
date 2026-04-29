@@ -553,6 +553,54 @@ body {
         {% endif %}
     </div>
 
+    <div class="section" style="margin-bottom: 18px;">
+        <div class="section-header" style="display: flex; justify-content: space-between; align-items: baseline;">
+            <div>
+                <span class="section-number">09</span>
+                <span class="section-title">Worst Units</span>
+            </div>
+            {% if stuck_headline %}
+            <div style="font-size: 10px; color: #5F5E5A; font-feature-settings: 'lnum' 1, 'tnum' 1;">
+                Worst: <span style="font-weight: 600; color: #1A1A1A;">{{ stuck_headline.worst_unit or '\u2014' }}</span> <span style="color: #C44D3F;">({{ stuck_headline.worst_count }})</span> &middot;
+                Avg: <span style="font-weight: 600; color: #1A1A1A;">{{ stuck_headline.avg_per_unit }}</span> &middot;
+                Oldest: <span style="font-weight: 600; color: #1A1A1A;">{{ stuck_headline.oldest_weeks }}</span> wks
+            </div>
+            {% endif %}
+        </div>
+
+        {% if stuck_units %}
+        <table style="width: 100%; border-collapse: collapse; font-size: 10px; table-layout: fixed; margin-top: 8px; font-feature-settings: 'lnum' 1, 'tnum' 1;">
+            <thead>
+                <tr>
+                    <th style="text-align: left; padding: 5px 8px; font-size: 8px; font-weight: 600; color: #9A9A9A; letter-spacing: 1.2px; text-transform: uppercase; border-bottom: 2px solid #E8E6E1; width: 70px;">Unit</th>
+                    <th style="text-align: left; padding: 5px 8px; font-size: 8px; font-weight: 600; color: #9A9A9A; letter-spacing: 1.2px; text-transform: uppercase; border-bottom: 2px solid #E8E6E1;">Zone</th>
+                    <th style="text-align: center; padding: 5px 8px; font-size: 8px; font-weight: 600; color: #9A9A9A; letter-spacing: 1.2px; text-transform: uppercase; border-bottom: 2px solid #E8E6E1; width: 60px;">Cycle</th>
+                    <th style="text-align: right; padding: 5px 8px; font-size: 8px; font-weight: 600; color: #9A9A9A; letter-spacing: 1.2px; text-transform: uppercase; border-bottom: 2px solid #E8E6E1; width: 60px;">Open</th>
+                    <th style="text-align: right; padding: 5px 8px; font-size: 8px; font-weight: 600; color: #9A9A9A; letter-spacing: 1.2px; text-transform: uppercase; border-bottom: 2px solid #E8E6E1; width: 90px;">Wks since C1</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for u in stuck_units[:5] %}
+                <tr style="{% if u.open > stuck_headline.avg_per_unit %}background: #FFF8F6;{% endif %}">
+                    <td style="padding: 4px 8px; border-bottom: 1px solid #F0EEEA; font-weight: 700;">{{ u.unit }}</td>
+                    <td style="padding: 4px 8px; border-bottom: 1px solid #F0EEEA;">{{ u.zone }}</td>
+                    <td style="text-align: center; padding: 4px 8px; border-bottom: 1px solid #F0EEEA;">C{{ u.cycle }}</td>
+                    <td style="text-align: right; padding: 4px 8px; border-bottom: 1px solid #F0EEEA; font-weight: 700; {% if u.open > stuck_headline.avg_per_unit %}color: #C44D3F;{% endif %}">{{ u.open }}</td>
+                    <td style="text-align: right; padding: 4px 8px; border-bottom: 1px solid #F0EEEA;">{{ u.weeks }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        <div style="margin-top: 8px; font-size: 9px; color: #9A9A9A;">
+            Showing top 5 of {{ stuck_units|length }} units with open defects ({{ '{:,}'.format(ledger.open) }} total).
+            Highlighted rows exceed the per-unit average ({{ stuck_headline.avg_per_unit }}).
+            See Pipeline Report for full list.
+        </div>
+        {% else %}
+        <div class="trend-placeholder">No units with open defects</div>
+        {% endif %}
+    </div>
+
     <div class="page-footer-scope">
         Inspection scope: 454 items per unit &middot; project exclusion list of 55 items applied.
     </div>
