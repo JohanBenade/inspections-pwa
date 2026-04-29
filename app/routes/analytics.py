@@ -6454,6 +6454,16 @@ def _build_brief_findings(tenant_id, snapshot_str):
     return {'findings': findings}
 
 
+def _strip_leading_zero(date_str):
+    """Strip leading zero from day in date strings like '08 May 2026' -> '8 May 2026'."""
+    if not date_str or not isinstance(date_str, str):
+        return date_str
+    parts = date_str.strip().split(' ', 1)
+    if len(parts) == 2 and parts[0].isdigit():
+        return str(int(parts[0])) + ' ' + parts[1]
+    return date_str
+
+
 def _build_brief_prev_desnag(tenant_id, cutoff_str):
     """Brief §02 helper: prev-fortnight unit_clearance_rate and clearance_rate.
     Mirrors the desnag block of _build_pipeline_report_data using cutoff_str
@@ -6520,6 +6530,8 @@ def site_meeting_brief_view():
     _prev_cutoff = (_snap_dt - datetime.timedelta(days=14)).strftime('%Y-%m-%d %H:%M:%S')
     data.update(_build_brief_prev_desnag(_tenant, _prev_cutoff))
     data.update(_build_brief_findings(_tenant, data['snapshot_str']))
+    if data.get('kpi') and data['kpi'].get('est_complete'):
+        data['kpi']['est_complete'] = _strip_leading_zero(data['kpi']['est_complete'])
     data['snapshot_date_short'] = _snap_dt.strftime('%d %b %Y').upper()
     data['is_pdf'] = False
     data['report_date'] = datetime.datetime.now().strftime('%d %B %Y')
@@ -6545,6 +6557,8 @@ def site_meeting_brief_pdf():
     _prev_cutoff = (_snap_dt - datetime.timedelta(days=14)).strftime('%Y-%m-%d %H:%M:%S')
     data.update(_build_brief_prev_desnag(_tenant, _prev_cutoff))
     data.update(_build_brief_findings(_tenant, data['snapshot_str']))
+    if data.get('kpi') and data['kpi'].get('est_complete'):
+        data['kpi']['est_complete'] = _strip_leading_zero(data['kpi']['est_complete'])
     data['snapshot_date_short'] = _snap_dt.strftime('%d %b %Y').upper()
     data['is_pdf'] = True
     data['report_date'] = datetime.datetime.now().strftime('%d %B %Y')
