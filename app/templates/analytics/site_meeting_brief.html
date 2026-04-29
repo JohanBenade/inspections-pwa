@@ -113,14 +113,14 @@ body {
 .rate-cards {
     display: grid;
     grid-template-columns: 1fr 1fr;
-    gap: 10px;
-    margin: 10px 0 14px 0;
+    gap: 16px;
+    margin: 0 0 10px 0;
 }
 .rate-card {
-    background: #F5F3EE;
-    padding: 12px 14px;
-    border-radius: 4px;
-    text-align: center;
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    text-align: left;
 }
 .rate-card .label {
     font-size: 9px;
@@ -130,21 +130,21 @@ body {
     color: #9A9A9A;
 }
 .rate-card .value {
-    font-size: 22px;
+    font-size: 20px;
     font-weight: 700;
     color: #1A1A1A;
-    margin-top: 4px;
+    margin-top: 0;
 }
 .rate-card .prev {
     font-size: 10px;
     color: #6B6B6B;
-    margin-top: 2px;
+    margin-top: 0;
 }
 .bar-row {
     display: flex;
     align-items: center;
     gap: 10px;
-    margin-bottom: 8px;
+    margin-bottom: 5px;
 }
 .bar-label {
     width: 60px;
@@ -157,7 +157,7 @@ body {
 .bar-track {
     flex: 1;
     display: flex;
-    height: 22px;
+    height: 18px;
     border-radius: 3px;
     overflow: hidden;
     font-size: 10px;
@@ -225,6 +225,23 @@ body {
     font-size: 11px; font-style: italic;
 }
 .section svg text { font-feature-settings: 'lnum' 1, 'tnum' 1; }
+.movement-eq {
+    font-family: 'DM Sans', Helvetica, Arial, sans-serif;
+    font-feature-settings: 'lnum' 1, 'tnum' 1;
+    font-size: 22px; font-weight: 600;
+    color: #1A1A1A;
+    margin: 4px 0 0 0;
+    letter-spacing: -0.5px;
+}
+.movement-eq .op { color: #9A9A9A; margin: 0 8px; font-weight: 400; }
+.movement-eq .cleared { color: #4A7C59; }
+.movement-eq .new { color: #C8963E; }
+.movement-eq .open { color: #1A1A1A; font-weight: 700; }
+.movement-caption {
+    font-size: 9px; font-weight: 600; color: #9A9A9A;
+    letter-spacing: 1.2px; text-transform: uppercase;
+    margin: 4px 0 8px 0;
+}
 </style>
 </head>
 <body>
@@ -346,24 +363,8 @@ body {
             <span class="section-title">Fortnight Movement ({{ ledger_from }} &ndash; {{ ledger_to }})</span>
         </div>
 
-        <table class="movement-table" style="max-width: 500px;">
-            <thead>
-                <tr>
-                    <th>B/Fwd</th>
-                    <th style="color: #4A7C59;">- Cleared</th>
-                    <th style="color: #C8963E;">+ New</th>
-                    <th>= Open</th>
-                </tr>
-            </thead>
-            <tbody>
-                <tr>
-                    <td style="font-weight: 600; font-size: 18px;">{{ '{:,}'.format(ledger.bfwd) }}</td>
-                    <td style="font-weight: 600; font-size: 18px; color: #4A7C59;">{{ '{:,}'.format(ledger.cleared) }}</td>
-                    <td style="font-weight: 600; font-size: 18px; color: #C8963E;">{{ '{:,}'.format(ledger.new) }}</td>
-                    <td style="font-weight: 700; font-size: 20px;">{{ '{:,}'.format(ledger.open) }}</td>
-                </tr>
-            </tbody>
-        </table>
+        <div class="movement-eq">{{ '{:,}'.format(ledger.bfwd) }} <span class="op">−</span> <span class="cleared">{{ '{:,}'.format(ledger.cleared) }}</span> <span class="op">+</span> <span class="new">{{ '{:,}'.format(ledger.new) }}</span> <span class="op">=</span> <span class="open">{{ '{:,}'.format(ledger.open) }}</span></div>
+        <div class="movement-caption">B/Fwd &middot; Cleared &middot; New &middot; Open</div>
 
         {% if pool_trend and pool_trend.direction == 'growing' %}
         <div style="margin-top: 12px; padding: 10px 14px; background: #FFF8EE; border-left: 3px solid #C8963E; border-radius: 0 4px 4px 0; font-size: 11px; color: #6B6B6B;">
@@ -386,7 +387,7 @@ body {
     {% endif %}
 
     <!-- Page footer scope text -->
-    <div class="section" style="page-break-before: always; break-before: page;">
+    <div class="section">
         <div class="section-header">
             <span class="section-number">04</span>
             <span class="section-title">Defect Pool</span>
@@ -465,7 +466,7 @@ body {
     </div>
     {% endif %}
 
-    <div class="section" style="margin-bottom: 18px;">
+    <div class="section" style="margin-bottom: 18px; page-break-before: always; break-before: page;">
         <div class="section-header">
             <span class="section-number">05</span>
             <span class="section-title">Defects by Zone</span>
