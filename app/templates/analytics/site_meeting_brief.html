@@ -242,11 +242,30 @@ body {
     letter-spacing: 1.2px; text-transform: uppercase;
     margin: 4px 0 8px 0;
 }
+.btn-back-fixed {
+    position: fixed; bottom: 20px; right: 20px;
+    display: flex; align-items: center; gap: 6px;
+    padding: 10px 16px;
+    background: #1A1A1A; color: #FFFFFF;
+    font-family: 'DM Sans', Helvetica, Arial, sans-serif;
+    font-size: 12px; font-weight: 600;
+    border-radius: 24px; text-decoration: none;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.18);
+    z-index: 200;
+    border: none; cursor: pointer;
+}
+.btn-back-fixed:hover { background: #333; }
+@media print { .btn-back-fixed { display: none !important; } }
 </style>
 </head>
 <body>
 
 {% if not is_pdf %}
+<button class="btn-back-fixed" onclick="history.back(); return false;" aria-label="Go back">
+    <span style="font-size: 14px; line-height: 1;">&larr;</span>
+    <span>Back</span>
+</button>
+
 <div class="toolbar">
     <a href="{{ url_for('analytics.site_meeting_brief_pdf') }}" class="btn-pdf"
        onclick="var b=this; b.textContent='Preparing...'; b.style.opacity='0.6'; b.style.pointerEvents='none'; setTimeout(function(){b.textContent='Download PDF'; b.style.opacity='1'; b.style.pointerEvents='auto';}, 5000);">
