@@ -386,7 +386,7 @@ body {
     {% endif %}
 
     <!-- Page footer scope text -->
-    <div class="section">
+    <div class="section" style="page-break-before: always; break-before: page;">
         <div class="section-header">
             <span class="section-number">04</span>
             <span class="section-title">Defect Pool</span>
@@ -459,7 +459,6 @@ body {
         {% endif %}
     </div>
 
-    <div style="page-break-before: always; break-before: page;"></div>
     {% if mode != 'live' %}
     <div style="margin: 14px 0 8px 0; padding-bottom: 4px; border-bottom: 1px solid #D8D4CA;">
         <div style="font-family: 'DM Sans', sans-serif; font-size: 9px; font-weight: 600; letter-spacing: 1.4px; text-transform: uppercase; color: #6B6B6B;">Status as at {{ ledger_to }}</div>
@@ -527,7 +526,7 @@ body {
         {% endif %}
     </div>
 
-    <div class="section section-tight" style="margin-bottom: 18px;">
+    <div class="section section-tight" style="margin-bottom: 18px; page-break-before: always; break-before: page;">
         <div class="section-header">
             <span class="section-number">06</span>
             <span class="section-title">Findings</span>
