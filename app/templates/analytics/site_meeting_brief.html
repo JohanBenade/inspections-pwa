@@ -483,11 +483,11 @@ body {
                 <span style="font-size: 8px; color: #BFBDB8;">&mdash;</span>
             </div>
             {% elif zd.stage == 'not_inspected' %}
-            <div style="background: #EEEBE3; border-radius: 5px; padding: 7px 5px; text-align: center; min-height: 80px; display: flex; align-items: center; justify-content: center;">
+            <div style="background: #ECEAE5; border-radius: 5px; padding: 7px 5px; text-align: center; min-height: 80px; display: flex; align-items: center; justify-content: center;">
                 <div style="font-size: 9px; font-weight: 600; color: #9A9A9A;">{{ zd.total_units }} units &middot; not inspected</div>
             </div>
             {% elif zd.stage == 'awaiting' %}
-            <div style="background: #F7E8D4; border-radius: 5px; padding: 7px 5px; text-align: center; min-height: 80px;">
+            <div style="background: #FBEFE2; border-radius: 5px; padding: 7px 5px; text-align: center; min-height: 80px;">
                 <div style="font-size: 9px; font-weight: 600; color: #9A9A9A;">{{ zd.total_units }} units &middot; {{ zd.c1_inspected }} inspected</div>
                 <div style="margin-top: 6px; font-size: 14px; font-weight: 600; color: #1A1A1A;">{{ '{:,}'.format(zd.cnt) }}</div>
                 <div style="font-size: 8px; color: #9A9A9A;">open defects</div>
@@ -512,8 +512,8 @@ body {
         </div>
         <!-- Legend -->
         <div style="margin-top: 5px; display: flex; flex-wrap: wrap; gap: 12px; font-size: 9px; color: #6B6B6B;">
-            <span><span style="display: inline-block; width: 10px; height: 10px; border-radius: 2px; background: #EEEBE3; margin-right: 4px; vertical-align: middle;"></span>Not inspected</span>
-            <span><span style="display: inline-block; width: 10px; height: 10px; border-radius: 2px; background: #F7E8D4; margin-right: 4px; vertical-align: middle;"></span>Awaiting rectification</span>
+            <span><span style="display: inline-block; width: 10px; height: 10px; border-radius: 2px; background: #ECEAE5; margin-right: 4px; vertical-align: middle;"></span>Not inspected</span>
+            <span><span style="display: inline-block; width: 10px; height: 10px; border-radius: 2px; background: #FBEFE2; margin-right: 4px; vertical-align: middle;"></span>Awaiting rectification</span>
             <span><span style="display: inline-block; width: 10px; height: 10px; border-radius: 2px; background: #FAEEDA; margin-right: 4px; vertical-align: middle;"></span>De-snag underway (&lt;80% cleared)</span>
             <span><span style="display: inline-block; width: 10px; height: 10px; border-radius: 2px; background: #EBEFDC; margin-right: 4px; vertical-align: middle;"></span>De-snag near complete (&ge;80% cleared)</span>
         </div>
