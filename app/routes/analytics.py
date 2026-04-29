@@ -5787,7 +5787,7 @@ def _build_pipeline_report_data(live=False):
 
     # SVG chart coordinates (600w x 200h chart area)
     chart_w = 800
-    chart_h = 200
+    chart_h = 280
     svg_points_open = []
     if trend_points:
         max_val = max(p['raised'] - p['cleared'] for p in trend_points) or 1

@@ -442,7 +442,7 @@ body {
 
         {% if svg_open %}
         <svg viewBox="0 0 {{ chart_w + 20 }} {{ chart_h + 30 }}" xmlns="http://www.w3.org/2000/svg"
-             style="width: 78%; height: auto; margin: 0 auto 8px auto; display: block;">
+             style="width: 100%; height: auto; margin: 0 auto 8px auto; display: block;">
             <!-- Grid lines -->
             {% for i in range(5) %}
             {% set gy = 20 + (chart_h - 40) * i / 4 %}
