@@ -573,36 +573,47 @@ body {
         {% endif %}
     </div>
 
+    {% if by_trade %}
     <div class="section section-tight" style="margin-bottom: 18px; page-break-before: always; break-before: page;">
         <div class="section-header">
             <span class="section-number">06</span>
-            <span class="section-title">Recurring Defects</span>
+            <span class="section-title">Defects by Trade</span>
         </div>
-
-        {% if findings %}
-        <div style="display: flex; flex-direction: column; gap: 10px;">
-            {% for f in findings %}
-            <div style="border-bottom: 1px solid #EDE9DF; padding-bottom: 8px;">
-                <div style="display: flex; justify-content: space-between; align-items: baseline; gap: 12px;">
-                    <div style="font-size: 11px; font-weight: 600; color: #1A1A1A; letter-spacing: 0.2px;">
-                        <span style="color: #9A9A9A; font-weight: 500; margin-right: 6px;">{{ f.rank }}.</span>{{ f.caption }}
-                    </div>
-                    <div style="font-size: 10px; color: #5F5E5A; white-space: nowrap;">
-                        <span style="font-weight: 600; color: #1A1A1A;">{{ f.cnt }}</span> across <span style="font-weight: 600; color: #1A1A1A;">{{ f.units }}</span> units
-                    </div>
-                </div>
-                {% if f.sub_items %}
-                <div style="font-size: 9px; color: #6B6B6B; margin-top: 3px; padding-left: 18px;">
-                    {% for s in f.sub_items %}{{ s.item }} {{ s.cnt }}{% if not loop.last %} &middot; {% endif %}{% endfor %}
-                </div>
-                {% endif %}
-            </div>
-            {% endfor %}
+        <table style="width: 100%; border-collapse: collapse; font-size: 10px; table-layout: fixed; margin-top: 8px; font-feature-settings: 'lnum' 1, 'tnum' 1;">
+            <thead>
+                <tr>
+                    <th style="text-align: left; padding: 5px 8px; font-size: 8px; font-weight: 600; color: #9A9A9A; letter-spacing: 1.2px; text-transform: uppercase; border-bottom: 2px solid #E8E6E1; width: 80px;">Trade</th>
+                    <th style="text-align: right; padding: 5px 8px; font-size: 8px; font-weight: 600; color: #9A9A9A; letter-spacing: 1.2px; text-transform: uppercase; border-bottom: 2px solid #E8E6E1; width: 55px;">Open</th>
+                    <th style="text-align: right; padding: 5px 8px; font-size: 8px; font-weight: 600; color: #9A9A9A; letter-spacing: 1.2px; text-transform: uppercase; border-bottom: 2px solid #E8E6E1; width: 60px;">&Delta;</th>
+                    <th style="text-align: right; padding: 5px 8px; font-size: 8px; font-weight: 600; color: #9A9A9A; letter-spacing: 1.2px; text-transform: uppercase; border-bottom: 2px solid #E8E6E1; width: 45px;">Share</th>
+                    <th style="text-align: left; padding: 5px 8px; font-size: 8px; font-weight: 600; color: #9A9A9A; letter-spacing: 1.2px; text-transform: uppercase; border-bottom: 2px solid #E8E6E1; width: 110px;">Top Defect</th>
+                    <th style="text-align: left; padding: 5px 8px; font-size: 8px; font-weight: 600; color: #9A9A9A; letter-spacing: 1.2px; text-transform: uppercase; border-bottom: 2px solid #E8E6E1;">Top Defect Items</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for t in by_trade %}
+                <tr>
+                    <td style="padding: 4px 8px; border-bottom: 1px solid #F0EEEA; font-weight: 700;">{{ t.trade }}</td>
+                    <td style="text-align: right; padding: 4px 8px; border-bottom: 1px solid #F0EEEA; font-weight: 600;">{{ '{:,}'.format(t.open) }}</td>
+                    <td style="text-align: right; padding: 4px 8px; border-bottom: 1px solid #F0EEEA;">
+                        {% if t.delta < 0 %}<span style="color: #4A7C59;">&#9660; {{ -t.delta }}</span>
+                        {% elif t.delta > 0 %}<span style="color: #C44D3F;">&#9650; {{ t.delta }}</span>
+                        {% else %}<span style="color: #9A9A9A;">&mdash;</span>{% endif %}
+                    </td>
+                    <td style="text-align: right; padding: 4px 8px; border-bottom: 1px solid #F0EEEA;">{{ t.share }}%</td>
+                    <td style="padding: 4px 8px; border-bottom: 1px solid #F0EEEA; color: #5F5E5A;">
+                        {% if t.top_defect %}{{ t.top_defect }} &middot; {{ t.top_defect_cnt }}{% else %}&mdash;{% endif %}
+                    </td>
+                    <td style="padding: 4px 8px; border-bottom: 1px solid #F0EEEA; color: #5F5E5A; font-size: 9px;">{% if t.top_defect_items %}{{ t.top_defect_items }}{% else %}&mdash;{% endif %}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        <div style="margin-top: 8px; font-size: 9px; color: #9A9A9A;">
+            Trades ranked by current open count. &Delta; = change vs previous fortnight. Top defect = most-frequent recurring defect attributed to that trade.
         </div>
-        {% else %}
-        <div class="trend-placeholder">No findings data available</div>
-        {% endif %}
     </div>
+    {% endif %}
 
     <div class="section section-tight" style="margin-bottom: 18px;">
         <div class="section-header" style="display: flex; justify-content: space-between; align-items: baseline;">
@@ -649,48 +660,6 @@ body {
         <div class="trend-placeholder">No units with open defects</div>
         {% endif %}
     </div>
-
-    {% if by_trade %}
-    <div class="section section-tight" style="margin-bottom: 18px;">
-        <div class="section-header">
-            <span class="section-number">08</span>
-            <span class="section-title">Defects by Trade</span>
-        </div>
-        <table style="width: 100%; border-collapse: collapse; font-size: 10px; table-layout: fixed; margin-top: 8px; font-feature-settings: 'lnum' 1, 'tnum' 1;">
-            <thead>
-                <tr>
-                    <th style="text-align: left; padding: 5px 8px; font-size: 8px; font-weight: 600; color: #9A9A9A; letter-spacing: 1.2px; text-transform: uppercase; border-bottom: 2px solid #E8E6E1; width: 80px;">Trade</th>
-                    <th style="text-align: right; padding: 5px 8px; font-size: 8px; font-weight: 600; color: #9A9A9A; letter-spacing: 1.2px; text-transform: uppercase; border-bottom: 2px solid #E8E6E1; width: 55px;">Open</th>
-                    <th style="text-align: right; padding: 5px 8px; font-size: 8px; font-weight: 600; color: #9A9A9A; letter-spacing: 1.2px; text-transform: uppercase; border-bottom: 2px solid #E8E6E1; width: 60px;">&Delta;</th>
-                    <th style="text-align: right; padding: 5px 8px; font-size: 8px; font-weight: 600; color: #9A9A9A; letter-spacing: 1.2px; text-transform: uppercase; border-bottom: 2px solid #E8E6E1; width: 45px;">Share</th>
-                    <th style="text-align: left; padding: 5px 8px; font-size: 8px; font-weight: 600; color: #9A9A9A; letter-spacing: 1.2px; text-transform: uppercase; border-bottom: 2px solid #E8E6E1; width: 110px;">Top Defect</th>
-                    <th style="text-align: left; padding: 5px 8px; font-size: 8px; font-weight: 600; color: #9A9A9A; letter-spacing: 1.2px; text-transform: uppercase; border-bottom: 2px solid #E8E6E1;">Top Defect Items</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for t in by_trade %}
-                <tr>
-                    <td style="padding: 4px 8px; border-bottom: 1px solid #F0EEEA; font-weight: 700;">{{ t.trade }}</td>
-                    <td style="text-align: right; padding: 4px 8px; border-bottom: 1px solid #F0EEEA; font-weight: 600;">{{ '{:,}'.format(t.open) }}</td>
-                    <td style="text-align: right; padding: 4px 8px; border-bottom: 1px solid #F0EEEA;">
-                        {% if t.delta < 0 %}<span style="color: #4A7C59;">&#9660; {{ -t.delta }}</span>
-                        {% elif t.delta > 0 %}<span style="color: #C44D3F;">&#9650; {{ t.delta }}</span>
-                        {% else %}<span style="color: #9A9A9A;">&mdash;</span>{% endif %}
-                    </td>
-                    <td style="text-align: right; padding: 4px 8px; border-bottom: 1px solid #F0EEEA;">{{ t.share }}%</td>
-                    <td style="padding: 4px 8px; border-bottom: 1px solid #F0EEEA; color: #5F5E5A;">
-                        {% if t.top_defect %}{{ t.top_defect }} &middot; {{ t.top_defect_cnt }}{% else %}&mdash;{% endif %}
-                    </td>
-                    <td style="padding: 4px 8px; border-bottom: 1px solid #F0EEEA; color: #5F5E5A; font-size: 9px;">{% if t.top_defect_items %}{{ t.top_defect_items }}{% else %}&mdash;{% endif %}</td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
-        <div style="margin-top: 8px; font-size: 9px; color: #9A9A9A;">
-            Trades ranked by current open count. &Delta; = change vs previous fortnight. Top defect = most-frequent recurring defect attributed to that trade.
-        </div>
-    </div>
-    {% endif %}
 
 </div>
 
