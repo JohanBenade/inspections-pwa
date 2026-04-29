@@ -27,7 +27,7 @@ body {
 
 /* Toolbar - screen only */
 .toolbar {
-    position: fixed; top: 16px; right: 16px;
+    position: fixed; top: 72px; right: 16px;
     display: flex; gap: 8px; z-index: 100;
 }
 .toolbar a, .toolbar button {
@@ -242,29 +242,57 @@ body {
     letter-spacing: 1.2px; text-transform: uppercase;
     margin: 4px 0 8px 0;
 }
-.btn-back-fixed {
-    position: fixed; bottom: 20px; right: 20px;
-    display: flex; align-items: center; gap: 6px;
-    padding: 10px 16px;
-    background: #1A1A1A; color: #FFFFFF;
-    font-family: 'DM Sans', Helvetica, Arial, sans-serif;
-    font-size: 12px; font-weight: 600;
-    border-radius: 24px; text-decoration: none;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.18);
-    z-index: 200;
-    border: none; cursor: pointer;
-}
-.btn-back-fixed:hover { background: #333; }
-@media print { .btn-back-fixed { display: none !important; } }
+/* App nav: hide in print mode (defensive; also wrapped in is_pdf below) */
+@media print { nav { display: none !important; } }
 </style>
+
+<!-- Tailwind CSS via CDN (for nav styling) -->
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+    tailwind.config = {
+        theme: { extend: { colors: { primary: '#1e3a5f' } } }
+    }
+</script>
 </head>
 <body>
 
 {% if not is_pdf %}
-<button class="btn-back-fixed" onclick="history.back(); return false;" aria-label="Go back">
-    <span style="font-size: 14px; line-height: 1;">&larr;</span>
-    <span>Back</span>
-</button>
+<!-- App top nav (mirrors base.html for manager/admin role) -->
+<nav class="bg-primary text-white sticky top-0 z-50 shadow-lg">
+    <div class="max-w-7xl mx-auto px-4">
+        <div class="flex justify-between items-center h-14">
+            <div class="flex items-center space-x-6">
+                <a href="{{ url_for('home') }}" class="font-bold text-lg">Monograph</a>
+                {% if current_user %}
+                <div class="hidden md:flex items-center space-x-4">
+                    {% if current_user.role in ['team_lead', 'manager', 'admin'] %}
+                    <a href="{{ url_for('batches.list_batches') }}" class="text-sm text-gray-300 hover:text-white">Batches</a>
+                    <a href="{{ url_for('analytics.batch_reports_picker') }}" class="text-sm text-gray-300 hover:text-white">Batch Reports</a>
+                    {% endif %}
+                    {% if current_user.role in ['manager', 'admin'] %}
+                    <a href="{{ url_for('approvals.pipeline') }}" class="text-sm text-gray-300 hover:text-white">Approvals</a>
+                    <a href="{{ url_for('analytics.pipeline_dashboard') }}" class="text-sm text-gray-300 hover:text-white">Pipeline</a>
+                    <a href="{{ url_for('analytics.site_meeting_brief_view') }}" class="text-sm text-gray-300 hover:text-white">Brief</a>
+                    <a href="{{ url_for('approvals.cleanup') }}" class="text-sm text-gray-300 hover:text-white">Defects Cleanup</a>
+                    <a href="{{ url_for('analytics.inspector_audit') }}" class="text-sm text-gray-300 hover:text-white">Inspector Log</a>
+                    <a href="{{ url_for('analytics.login_status') }}" class="text-sm text-gray-300 hover:text-white">Login Status</a>
+                    {% if current_user.role == 'admin' %}
+                    <a href="{{ url_for('data_quality.descriptions') }}" class="text-sm text-gray-300 hover:text-white">Data Quality</a>
+                    {% endif %}
+                    {% endif %}
+                </div>
+                {% endif %}
+            </div>
+            {% if current_user %}
+            <div class="flex items-center space-x-4">
+                <span class="text-sm text-gray-300 hidden sm:inline">{{ current_user.name }}</span>
+                <span class="text-xs px-2 py-1 rounded bg-white/20">{{ current_user.role }}</span>
+                <a href="{{ url_for('logout') }}" class="hidden md:inline text-sm text-gray-300 hover:text-white">Logout</a>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</nav>
 
 <div class="toolbar">
     <a href="{{ url_for('analytics.site_meeting_brief_pdf') }}" class="btn-pdf"
