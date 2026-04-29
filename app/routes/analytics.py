@@ -6454,6 +6454,82 @@ def _build_brief_findings(tenant_id, snapshot_str):
     return {'findings': findings}
 
 
+def _build_brief_by_trade(tenant_id, snap_str, prev_cutoff_str):
+    """Brief s8: per-trade open counts, fortnight delta, top defect.
+    Mirrors the open-as-of-cutoff logic from _build_pipeline_report_data
+    so per-trade totals sum to the s3 movement headline.
+    """
+    open_at_cutoff = """
+        FROM defect d
+        JOIN unit_real u ON d.unit_id = u.id
+        JOIN item_template it ON d.item_template_id = it.id
+        JOIN category_template ct ON it.category_id = ct.id
+        WHERE d.tenant_id = ?
+          AND d.created_at <= ?
+          AND (d.status = 'open' OR (d.status = 'cleared' AND d.cleared_at > ?))
+          AND d.raised_cycle_id NOT LIKE 'test-%%'
+          AND EXISTS (
+            SELECT 1 FROM inspection i2
+            WHERE i2.unit_id = d.unit_id
+              AND i2.cycle_id = d.raised_cycle_id
+              AND i2.status IN ('reviewed','approved','certified','pending_followup')
+              AND i2.review_submitted_at <= ?
+          )
+    """
+
+    curr_rows = query_db(
+        "SELECT ct.category_name AS trade, COUNT(*) AS cnt " + open_at_cutoff +
+        " GROUP BY ct.category_name",
+        [tenant_id, snap_str, snap_str, snap_str]
+    )
+    curr = {r['trade']: r['cnt'] for r in curr_rows}
+
+    prev_rows = query_db(
+        "SELECT ct.category_name AS trade, COUNT(*) AS cnt " + open_at_cutoff +
+        " GROUP BY ct.category_name",
+        [tenant_id, prev_cutoff_str, prev_cutoff_str, prev_cutoff_str]
+    )
+    prev = {r['trade']: r['cnt'] for r in prev_rows}
+
+    top_rows = query_db(
+        "SELECT ct.category_name AS trade, d.original_comment AS comment, COUNT(*) AS cnt " +
+        open_at_cutoff +
+        " AND d.original_comment IS NOT NULL "
+        " AND LENGTH(TRIM(d.original_comment)) > 0 "
+        " GROUP BY ct.category_name, d.original_comment "
+        " ORDER BY ct.category_name, cnt DESC",
+        [tenant_id, snap_str, snap_str, snap_str]
+    )
+    top_per_trade = {}
+    for r in top_rows:
+        if r['trade'] not in top_per_trade:
+            top_per_trade[r['trade']] = {
+                'comment': (r['comment'] or '').strip(),
+                'cnt': r['cnt'],
+            }
+
+    total = sum(curr.values())
+    all_trades = ['DOORS', 'WALLS', 'JOINERY', 'PLUMBING', 'FLOOR',
+                  'WINDOWS', 'ELECTRICAL', 'FF&E', 'CEILING']
+    rows = []
+    for trade in all_trades:
+        c = curr.get(trade, 0)
+        p = prev.get(trade, 0)
+        share = round(c / total * 100) if total > 0 else 0
+        top = top_per_trade.get(trade, {'comment': '', 'cnt': 0})
+        rows.append({
+            'trade': trade,
+            'open': c,
+            'prev': p,
+            'delta': c - p,
+            'share': share,
+            'top_defect': top['comment'],
+            'top_defect_cnt': top['cnt'],
+        })
+    rows.sort(key=lambda r: r['open'], reverse=True)
+    return {'by_trade': rows}
+
+
 def _strip_leading_zero(date_str):
     """Strip leading zero from day in date strings like '08 May 2026' -> '8 May 2026'."""
     if not date_str or not isinstance(date_str, str):
@@ -6530,6 +6606,7 @@ def site_meeting_brief_view():
     _prev_cutoff = (_snap_dt - datetime.timedelta(days=14)).strftime('%Y-%m-%d %H:%M:%S')
     data.update(_build_brief_prev_desnag(_tenant, _prev_cutoff))
     data.update(_build_brief_findings(_tenant, data['snapshot_str']))
+    data.update(_build_brief_by_trade(_tenant, data['snapshot_str'], _prev_cutoff))
     if data.get('kpi') and data['kpi'].get('est_complete'):
         data['kpi']['est_complete'] = _strip_leading_zero(data['kpi']['est_complete'])
     data['snapshot_date_short'] = _snap_dt.strftime('%d %b %Y').upper()
@@ -6557,6 +6634,7 @@ def site_meeting_brief_pdf():
     _prev_cutoff = (_snap_dt - datetime.timedelta(days=14)).strftime('%Y-%m-%d %H:%M:%S')
     data.update(_build_brief_prev_desnag(_tenant, _prev_cutoff))
     data.update(_build_brief_findings(_tenant, data['snapshot_str']))
+    data.update(_build_brief_by_trade(_tenant, data['snapshot_str'], _prev_cutoff))
     if data.get('kpi') and data['kpi'].get('est_complete'):
         data['kpi']['est_complete'] = _strip_leading_zero(data['kpi']['est_complete'])
     data['snapshot_date_short'] = _snap_dt.strftime('%d %b %Y').upper()
