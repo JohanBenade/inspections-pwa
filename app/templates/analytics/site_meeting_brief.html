@@ -395,7 +395,7 @@ body {
 
         {% if svg_open %}
         <svg viewBox="0 0 {{ chart_w + 20 }} {{ chart_h + 30 }}" xmlns="http://www.w3.org/2000/svg"
-             style="width: 100%; height: auto; margin-bottom: 8px;">
+             style="width: 78%; height: auto; margin: 0 auto 8px auto; display: block;">
             <!-- Grid lines -->
             {% for i in range(5) %}
             {% set gy = 20 + (chart_h - 40) * i / 4 %}
@@ -460,13 +460,12 @@ body {
         {% endif %}
     </div>
 
-    {% if mode != 'live' %}
-    <div style="margin: 14px 0 8px 0; padding-bottom: 4px; border-bottom: 1px solid #D8D4CA;">
-        <div style="font-family: 'DM Sans', sans-serif; font-size: 9px; font-weight: 600; letter-spacing: 1.4px; text-transform: uppercase; color: #6B6B6B;">Status as at {{ ledger_to }}</div>
-    </div>
-    {% endif %}
-
     <div class="section" style="margin-bottom: 18px; page-break-before: always; break-before: page;">
+        {% if mode != 'live' %}
+        <div style="margin: 0 0 8px 0; padding-bottom: 4px; border-bottom: 1px solid #D8D4CA;">
+            <div style="font-family: 'DM Sans', sans-serif; font-size: 9px; font-weight: 600; letter-spacing: 1.4px; text-transform: uppercase; color: #6B6B6B;">Status as at {{ ledger_to }}</div>
+        </div>
+        {% endif %}
         <div class="section-header">
             <span class="section-number">05</span>
             <span class="section-title">Defects by Zone</span>
