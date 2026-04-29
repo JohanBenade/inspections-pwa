@@ -75,8 +75,10 @@ body {
 }
 
 /* Section */
-.section { margin-bottom: 24px; }
+.section { margin-bottom: 24px; page-break-inside: avoid; break-inside: avoid; }
 .section-header {
+    page-break-after: avoid;
+    break-after: avoid-page;
     display: flex; align-items: baseline; gap: 10px;
     padding-bottom: 8px; margin-bottom: 12px;
     border-bottom: 1px solid #E8E6E1;
@@ -478,7 +480,7 @@ body {
             {% endfor %}
 
             {% for block in zone_grid.blocks %}
-            <div style="display: flex; align-items: center; font-size: 9px; font-weight: 600; color: #1A1A1A;">{{ block }}</div>
+            <div style="display: flex; align-items: center; font-size: 9px; font-weight: 600; color: #1A1A1A; page-break-after: avoid; break-after: avoid-page;">{{ block }}</div>
             {% for fl in zone_grid.floors %}
             {% set zd = zone_grid.data.get((block, fl), None) %}
             {% if zd is none %}
