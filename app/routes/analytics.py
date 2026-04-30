@@ -4295,7 +4295,7 @@ def _build_briefing_data(batch_id):
     from flask import session
 
     tenant_id = session.get('tenant_id', 'MONOGRAPH')
-    reviewed_statuses = ('reviewed', 'approved', 'certified', 'pending_followup')
+    reviewed_statuses = ('submitted', 'reviewed', 'approved', 'certified', 'pending_followup')
     FLOOR_LABELS_LOCAL = {0: 'Ground', 1: '1st Floor', 2: '2nd Floor'}
 
     # ---- 1. Batch metadata ----
@@ -4344,7 +4344,7 @@ def _build_briefing_data(batch_id):
             "  AND d.status = 'open' AND d.tenant_id = u.tenant_id "
             "WHERE bu.batch_id = ? AND bu.removed_at IS NULL AND bu.tenant_id = ? "
             "AND bu.cycle_id IN (" + ph + ") "
-            "AND i.status IN ('reviewed','approved','certified','pending_followup') "
+            "AND i.status IN ('submitted','reviewed','approved','certified','pending_followup') "
             "GROUP BY u.id, u.unit_number, u.block, u.floor, i.cycle_id, ic.cycle_number "
             "ORDER BY defect_count DESC, u.unit_number",
             [batch_id, tenant_id] + c1_cycle_ids)
@@ -4368,7 +4368,7 @@ def _build_briefing_data(batch_id):
             "JOIN inspection_cycle ic ON i.cycle_id = ic.id "
             "WHERE bu.batch_id = ? AND bu.removed_at IS NULL AND bu.tenant_id = ? "
             "AND bu.cycle_id IN (" + ph + ") "
-            "AND i.status IN ('reviewed','approved','certified','pending_followup') "
+            "AND i.status IN ('submitted','reviewed','approved','certified','pending_followup') "
             "ORDER BY u.unit_number",
             [batch_id, tenant_id] + c2_cycle_ids)
         for r in c2_rows:
@@ -4499,7 +4499,7 @@ def _build_briefing_data(batch_id):
             "AND d.raised_cycle_id IN (" + ph + ") "
             "AND EXISTS (SELECT 1 FROM inspection i2 WHERE i2.unit_id = d.unit_id "
             "   AND i2.cycle_id = d.raised_cycle_id "
-            "   AND i2.status IN ('reviewed','approved','certified','pending_followup')) "
+            "   AND i2.status IN ('submitted','reviewed','approved','certified','pending_followup')) "
             "GROUP BY at2.area_name ORDER BY count DESC",
             [tenant_id, batch_id, tenant_id] + c1_cycle_ids)
         area_data = [dict(r) for r in area_rows]
@@ -4524,7 +4524,7 @@ def _build_briefing_data(batch_id):
             "AND d.raised_cycle_id IN (" + ph + ") "
             "AND EXISTS (SELECT 1 FROM inspection i2 WHERE i2.unit_id = d.unit_id "
             "   AND i2.cycle_id = d.raised_cycle_id "
-            "   AND i2.status IN ('reviewed','approved','certified','pending_followup')) "
+            "   AND i2.status IN ('submitted','reviewed','approved','certified','pending_followup')) "
             "GROUP BY ct.category_name ORDER BY count DESC",
             [tenant_id, batch_id, tenant_id] + c1_cycle_ids)
         trade_data = [dict(r) for r in trade_rows]
@@ -4552,7 +4552,7 @@ def _build_briefing_data(batch_id):
             "AND d.raised_cycle_id IN (" + ph + ") "
             "AND EXISTS (SELECT 1 FROM inspection i2 WHERE i2.unit_id = d.unit_id "
             "   AND i2.cycle_id = d.raised_cycle_id "
-            "   AND i2.status IN ('reviewed','approved','certified','pending_followup')) "
+            "   AND i2.status IN ('submitted','reviewed','approved','certified','pending_followup')) "
             "GROUP BY at2.area_name, ct.category_name "
             "ORDER BY count DESC LIMIT 8",
             [tenant_id, batch_id, tenant_id] + c1_cycle_ids)
