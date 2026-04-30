@@ -176,35 +176,6 @@ body {
 .trade-table td.td-comment { color: #4A4A4A; font-size: 11px; line-height: 1.4; word-wrap: break-word; }
 .trade-table td.td-items { color: #6B6B6B; font-size: 10px; line-height: 1.4; word-wrap: break-word; }
 
-/* HOTSPOT TILES */
-.hotspot-grid {
-  display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px;
-  margin-bottom: 1rem;
-}
-.hotspot-tile {
-  background: #FDEDEA; border: 0.5px solid #F0C4BD;
-  border-radius: 8px; padding: 14px 16px;
-}
-.hotspot-tile.tile-doors { background: #FDEDEA; border-color: #F0C4BD; }
-.hotspot-tile.tile-area { background: #FDF6E7; border-color: #EAD59F; }
-.hotspot-tile.tile-unit { background: #FDEDEA; border-color: #F0C4BD; }
-.hotspot-tile.tile-zone { background: #FDEDEA; border-color: #F0C4BD; }
-.hotspot-label { font-size: 11px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 6px; }
-.hotspot-tile.tile-area .hotspot-label { color: #85530B; }
-.hotspot-tile.tile-doors .hotspot-label,
-.hotspot-tile.tile-unit .hotspot-label,
-.hotspot-tile.tile-zone .hotspot-label { color: #79281C; }
-.hotspot-what { font-size: 18px; font-weight: 500; margin-bottom: 2px; }
-.hotspot-tile.tile-area .hotspot-what { color: #4A2F05; }
-.hotspot-tile.tile-doors .hotspot-what,
-.hotspot-tile.tile-unit .hotspot-what,
-.hotspot-tile.tile-zone .hotspot-what { color: #4A1B0C; }
-.hotspot-detail { font-size: 13px; }
-.hotspot-tile.tile-area .hotspot-detail { color: #633806; }
-.hotspot-tile.tile-doors .hotspot-detail,
-.hotspot-tile.tile-unit .hotspot-detail,
-.hotspot-tile.tile-zone .hotspot-detail { color: #712B13; }
-
 /* BAR ROWS */
 .bar-row {
   display: grid; grid-template-columns: 130px 1fr 80px;
@@ -273,41 +244,41 @@ body {
   margin-bottom: 1.25rem;
 }
 .excl-grid-2col {
-  column-count: 2;
-  column-gap: 28px;
+  column-count: 3;
+  column-gap: 20px;
 }
 .excl-area-block {
   break-inside: avoid;
-  margin-bottom: 1.25rem;
+  margin-bottom: 0.75rem;
   display: inline-block;
   width: 100%;
 }
 .excl-area-head {
   display: flex; justify-content: space-between; align-items: baseline;
   border-bottom: 1px solid #D8D6CE;
-  padding-bottom: 6px; margin-bottom: 8px;
+  padding-bottom: 4px; margin-bottom: 5px;
 }
 .excl-area-name {
-  font-size: 13px; font-weight: 500;
+  font-size: 11px; font-weight: 500;
   text-transform: uppercase; letter-spacing: 0.04em;
   color: #1A1A1A;
 }
 .excl-area-count {
-  font-size: 11px; color: #8F8E88;
+  font-size: 10px; color: #8F8E88;
   font-variant-numeric: tabular-nums;
 }
-.excl-trade-block { margin-bottom: 10px; }
+.excl-trade-block { margin-bottom: 6px; }
 .excl-trade-name {
-  font-size: 11px; color: #6B6B6B; font-weight: 500;
-  margin-bottom: 3px;
+  font-size: 10px; color: #6B6B6B; font-weight: 500;
+  margin-bottom: 2px;
   letter-spacing: 0.02em;
 }
 .excl-item-list { list-style: none; }
 .excl-item-list li {
-  font-size: 12px; color: #4A4A4A;
-  padding: 2px 0 2px 10px;
+  font-size: 10px; color: #4A4A4A;
+  padding: 1px 0 1px 8px;
   position: relative;
-  line-height: 1.5;
+  line-height: 1.4;
 }
 .excl-item-list li::before {
   content: '\00B7';
@@ -416,21 +387,11 @@ body {
   </div>
 
   {% if c2_open_details %}
+  {% set open_unit_count = c2_open_details|map(attribute='unit_number')|unique|list|length %}
   <div class="open-target">
     <div class="open-target-head">De-snag open item{{ 's' if c2_still_open > 1 else '' }}</div>
     <div class="open-target-body">
-      {% if c2_still_open <= 5 %}
-      {% for d in c2_open_details %}
-      Unit <b>{{ d.unit_number }}</b> &middot; {{ d.block }} {{ d.floor_label }} &middot; {{ d.area }} &middot; {{ d.trade }} &middot; {{ d.count }} defect{{ 's' if d.count != 1 else '' }} not rectified.{% if loop.last %} Full detail page 5.{% endif %}{% if not loop.last %}<br>{% endif %}
-      {% endfor %}
-      {% else %}
-      {% for unit_num, entries in c2_open_details|groupby('unit_number') %}
-      {% set first = entries|first %}
-      {% set total = entries|sum(attribute='count') %}
-      {% set areas = entries|map(attribute='area')|unique|list %}
-      Unit <b>{{ unit_num }}</b> &middot; {{ first.block }} {{ first.floor_label }} &middot; {{ total }} item{{ 's' if total != 1 else '' }} not rectified &middot; {{ areas|join(', ') }}.{% if not loop.last %}<br>{% endif %}
-      {% endfor %}
-      {% endif %}
+      <b>{{ open_unit_count }}</b> unit{{ 's' if open_unit_count != 1 else '' }} open: {% for unit_num, entries in c2_open_details|groupby('unit_number') %}<b>{{ unit_num }}</b> ({{ entries|sum(attribute='count') }}){% if not loop.last %} &middot; {% endif %}{% endfor %} &middot; full detail page 4.
     </div>
   </div>
   {% endif %}
@@ -478,66 +439,9 @@ body {
 
 <div class="pagebreak">&mdash; &mdash; &mdash;</div>
 
-{# ============ PAGE 2 — HOT SPOTS ============ #}
+{# ============ PAGE 2 — BY AREA ============ #}
 <section class="page">
-  <div class="page-meta"><span class="batch-id">{{ batch.name }}</span><span>Page 2 &mdash; Hot spots</span></div>
-
-  {% if c1_total_defects > 0 %}
-  <div class="sect-title">Where the defects cluster</div>
-  <div class="sect-sub">The four biggest concentrations in the {{ "{:,}".format(c1_total_defects) }} snag defects.</div>
-
-  <div class="hotspot-grid">
-    {% if worst_zone %}
-    <div class="hotspot-tile tile-zone">
-      <div class="hotspot-label">Worst zone</div>
-      <div class="hotspot-what">{{ worst_zone.label }}</div>
-      <div class="hotspot-detail">{{ worst_zone.defects_raised }} defects &middot; {{ worst_zone.units }} unit{{ 's' if worst_zone.units != 1 else '' }} &middot; {{ "%.0f"|format(worst_zone.defects_raised / c1_total_defects * 100) }}% of batch total</div>
-    </div>
-    {% endif %}
-    {% if worst_unit %}
-    <div class="hotspot-tile tile-unit">
-      <div class="hotspot-label">Worst unit</div>
-      <div class="hotspot-what">Unit {{ worst_unit.unit_number }} &middot; {{ worst_unit.block }} {{ FL[worst_unit.floor] }}</div>
-      <div class="hotspot-detail">{{ worst_unit.defect_count }} defects &middot; {{ "%.0f"|format(worst_unit.defect_count / c1_total_defects * 100) }}% of batch total</div>
-    </div>
-    {% endif %}
-    {% if worst_area %}
-    <div class="hotspot-tile tile-area">
-      <div class="hotspot-label">Worst area</div>
-      <div class="hotspot-what">{{ worst_area.area }}</div>
-      <div class="hotspot-detail">{{ worst_area.count }} defects &middot; {{ worst_area.pct }}% of batch total</div>
-    </div>
-    {% endif %}
-    {% if worst_trade %}
-    <div class="hotspot-tile tile-doors">
-      <div class="hotspot-label">Worst trade</div>
-      <div class="hotspot-what">{{ worst_trade.trade }}</div>
-      <div class="hotspot-detail">{{ worst_trade.count }} defects &middot; {{ worst_trade.pct }}% of batch total</div>
-    </div>
-    {% endif %}
-  </div>
-
-  {% if combo_data %}
-  <div class="section-label" style="margin-top: 1.25rem;">Top area &times; trade combinations</div>
-  {% for c in combo_data %}
-  <div class="bar-row heavy">
-    <div class="bar-name">{{ c.area }} &middot; {{ c.trade }}</div>
-    <div class="bar-track"><div class="bar-fill" style="width: {{ c.bar_pct }}%;"></div></div>
-    <div class="bar-val"><span class="pct">{{ c.pct }}%</span><b>{{ c.count }}</b></div>
-  </div>
-  {% endfor %}
-  {% endif %}
-  {% else %}
-  <div class="sect-title">Where the defects cluster</div>
-  <div class="sect-sub">No snag inspections yet in this batch.</div>
-  {% endif %}
-</section>
-
-<div class="pagebreak">&mdash; &mdash; &mdash;</div>
-
-{# ============ PAGE 3 — BY AREA ============ #}
-<section class="page">
-  <div class="page-meta"><span class="batch-id">{{ batch.name }}</span><span>Page 3 &mdash; Defects by area and trade</span></div>
+  <div class="page-meta"><span class="batch-id">{{ batch.name }}</span><span>Page 2 &mdash; Defects by area and trade</span></div>
 
   {% if area_data or trade_data %}
   <div class="sect-title">{{ "{:,}".format(c1_total_defects) }} snag defects across {{ area_data|length }} area{{ 's' if area_data|length != 1 else '' }} and {{ trade_data|length }} trade{{ 's' if trade_data|length != 1 else '' }}</div>
@@ -579,6 +483,17 @@ body {
     </tbody>
   </table>
   {% endif %}
+
+  {% if combo_data %}
+  <div class="section-label">Top area &times; trade combinations</div>
+  {% for c in combo_data %}
+  <div class="bar-row heavy">
+    <div class="bar-name">{{ c.area }} &middot; {{ c.trade }}</div>
+    <div class="bar-track"><div class="bar-fill" style="width: {{ c.bar_pct }}%;"></div></div>
+    <div class="bar-val"><span class="pct">{{ c.pct }}%</span><b>{{ c.count }}</b></div>
+  </div>
+  {% endfor %}
+  {% endif %}
   {% else %}
   <div class="sect-title">Defects by area and trade</div>
   <div class="sect-sub">No snag inspections yet in this batch.</div>
@@ -587,9 +502,9 @@ body {
 
 <div class="pagebreak">&mdash; &mdash; &mdash;</div>
 
-{# ============ PAGE 4 — SNAG UNITS ============ #}
+{# ============ PAGE 3 — SNAG UNITS ============ #}
 <section class="page">
-  <div class="page-meta"><span class="batch-id">{{ batch.name }}</span><span>Page 4 &mdash; Snag units</span></div>
+  <div class="page-meta"><span class="batch-id">{{ batch.name }}</span><span>Page 3 &mdash; Snag units</span></div>
 
   {% if c1_unit_splits %}
   <div class="sect-title">{{ c1_unit_splits|length }} unit{{ 's' if c1_unit_splits|length != 1 else '' }} inspected at C1</div>
@@ -612,9 +527,9 @@ body {
 
 <div class="pagebreak">&mdash; &mdash; &mdash;</div>
 
-{# ============ PAGE 5 — DE-SNAG RESULTS ============ #}
+{# ============ PAGE 4 — DE-SNAG RESULTS ============ #}
 <section class="page">
-  <div class="page-meta"><span class="batch-id">{{ batch.name }}</span><span>Page 5 &mdash; De-snag results</span></div>
+  <div class="page-meta"><span class="batch-id">{{ batch.name }}</span><span>Page 4 &mdash; De-snag results</span></div>
 
   {% if c2_units %}
   <div class="sect-title">{{ c2_units|length }} de-snag unit{{ 's' if c2_units|length != 1 else '' }} &middot; {{ c2_cleared }} of {{ c2_brought_forward }} cleared{% if c2_brought_forward > 0 %} &middot; {{ "%.1f"|format(c2_cleared / c2_brought_forward * 100) }}%{% endif %}</div>
@@ -661,9 +576,9 @@ body {
 
 <div class="pagebreak">&mdash; &mdash; &mdash;</div>
 
-{# ============ PAGE 6 — EXCLUSIONS ============ #}
+{# ============ PAGE 5 — EXCLUSIONS ============ #}
 <section class="page">
-  <div class="page-meta"><span class="batch-id">{{ batch.name }}</span><span>Page 6 &mdash; Exclusions</span></div>
+  <div class="page-meta"><span class="batch-id">{{ batch.name }}</span><span>Page 5 &mdash; Exclusions</span></div>
 
   {% if excl_items_grouped %}
   <div class="sect-title">{{ excl_total }} item{{ 's' if excl_total != 1 else '' }} excluded from inspection</div>
