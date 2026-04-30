@@ -4534,6 +4534,71 @@ def _build_briefing_data(batch_id):
             t['pct'] = round(t['count'] / c1_total_defects * 100, 1) if c1_total_defects > 0 else 0
             t['bar_pct'] = round(t['count'] / trade_max * 100) if trade_max > 0 else 0
 
+        # v275: per-trade top defect comment + item-level breakdown
+        top_comment_rows = query_db(
+            "SELECT ct.category_name AS trade, d.original_comment AS comment, COUNT(*) AS cnt "
+            "FROM defect d "
+            "JOIN item_template it ON d.item_template_id = it.id "
+            "JOIN category_template ct ON it.category_id = ct.id "
+            "WHERE d.tenant_id = ? AND d.status = 'open' "
+            "AND d.unit_id IN (SELECT unit_id FROM batch_unit "
+            "   WHERE batch_id = ? AND removed_at IS NULL AND tenant_id = ?) "
+            "AND d.raised_cycle_id IN (" + ph + ") "
+            "AND EXISTS (SELECT 1 FROM inspection i2 WHERE i2.unit_id = d.unit_id "
+            "   AND i2.cycle_id = d.raised_cycle_id "
+            "   AND i2.status IN ('submitted','reviewed','approved','certified','pending_followup')) "
+            "AND d.original_comment IS NOT NULL "
+            "AND LENGTH(TRIM(d.original_comment)) > 0 "
+            "GROUP BY ct.category_name, d.original_comment "
+            "ORDER BY ct.category_name, cnt DESC",
+            [tenant_id, batch_id, tenant_id] + c1_cycle_ids)
+        top_per_trade = {}
+        for r in top_comment_rows:
+            if r['trade'] not in top_per_trade:
+                top_per_trade[r['trade']] = {
+                    'comment': (r['comment'] or '').strip(),
+                    'cnt': r['cnt'],
+                }
+        item_sql_v275 = (
+            "SELECT it.item_description AS item, COUNT(*) AS cnt "
+            "FROM defect d "
+            "JOIN item_template it ON d.item_template_id = it.id "
+            "JOIN category_template ct ON it.category_id = ct.id "
+            "WHERE d.tenant_id = ? AND d.status = 'open' "
+            "AND d.unit_id IN (SELECT unit_id FROM batch_unit "
+            "   WHERE batch_id = ? AND removed_at IS NULL AND tenant_id = ?) "
+            "AND d.raised_cycle_id IN (" + ph + ") "
+            "AND EXISTS (SELECT 1 FROM inspection i2 WHERE i2.unit_id = d.unit_id "
+            "   AND i2.cycle_id = d.raised_cycle_id "
+            "   AND i2.status IN ('submitted','reviewed','approved','certified','pending_followup')) "
+            "AND ct.category_name = ? AND d.original_comment = ? "
+            "GROUP BY it.item_description ORDER BY cnt DESC"
+        )
+        items_by_trade = {}
+        for _trade, _top in top_per_trade.items():
+            if not _top['comment']:
+                items_by_trade[_trade] = []
+                continue
+            _rs = query_db(item_sql_v275,
+                [tenant_id, batch_id, tenant_id] + c1_cycle_ids + [_trade, _top['comment']])
+            items_by_trade[_trade] = [(r['item'], r['cnt']) for r in _rs]
+
+        def _fmt_items_v275(items, cap=5):
+            if not items:
+                return ''
+            shown = items[:cap]
+            rem = len(items) - cap
+            s = ' · '.join(f"{itm} {cnt}" for itm, cnt in shown)
+            if rem > 0:
+                s += f' · …+{rem} more'
+            return s
+
+        for t in trade_data:
+            top = top_per_trade.get(t['trade'], {'comment': '', 'cnt': 0})
+            t['top_defect'] = top['comment']
+            t['top_defect_cnt'] = top['cnt']
+            t['top_defect_items'] = _fmt_items_v275(items_by_trade.get(t['trade'], []))
+
     # ---- 8. Top area x trade combinations (C1 only, top 8) ----
     combo_data = []
     combo_max = 1

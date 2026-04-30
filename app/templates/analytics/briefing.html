@@ -158,6 +158,24 @@ body {
 .c1-badge { background: #E6F1FB; color: #0C447C; }
 .c2-badge { background: #E1F5EE; color: #0F6E56; }
 
+/* TRADE TABLE (Page 3 By trade, v275) */
+.trade-table { width: 100%; border-collapse: collapse; font-size: 12px; margin-bottom: 1rem; table-layout: fixed; }
+.trade-table th {
+  text-align: left; font-weight: 500; font-size: 10px; text-transform: uppercase;
+  letter-spacing: 0.04em; color: #6B6B6B; padding: 8px 8px 6px 8px;
+  border-bottom: 1px solid #D8D6CE;
+}
+.trade-table td {
+  padding: 7px 8px; border-bottom: 0.5px solid #E5E3DB; vertical-align: top;
+}
+.trade-table th.th-trade { width: 80px; }
+.trade-table th.th-num { width: 55px; text-align: right; }
+.trade-table th.th-comment { width: 130px; }
+.trade-table td.td-trade { font-weight: 500; }
+.trade-table td.td-num { text-align: right; font-variant-numeric: tabular-nums; }
+.trade-table td.td-comment { color: #4A4A4A; font-size: 11px; line-height: 1.4; word-wrap: break-word; }
+.trade-table td.td-items { color: #6B6B6B; font-size: 10px; line-height: 1.4; word-wrap: break-word; }
+
 /* HOTSPOT TILES */
 .hotspot-grid {
   display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px;
@@ -521,13 +539,28 @@ body {
 
   {% if trade_data %}
   <div class="section-label">By trade</div>
-  {% for t in trade_data %}
-  <div class="bar-row heavy">
-    <div class="bar-name"><b>{{ t.trade }}</b></div>
-    <div class="bar-track"><div class="bar-fill{% if loop.index > 2 %} light{% endif %}" style="width: {{ t.bar_pct }}%;"></div></div>
-    <div class="bar-val"><span class="pct">{{ t.pct }}%</span><b>{{ t.count }}</b></div>
-  </div>
-  {% endfor %}
+  <table class="trade-table">
+    <thead>
+      <tr>
+        <th class="th-trade">Trade</th>
+        <th class="th-num">Open</th>
+        <th class="th-num">Share</th>
+        <th class="th-comment">Top defect</th>
+        <th>Top defect items</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for t in trade_data %}
+      <tr>
+        <td class="td-trade">{{ t.trade }}</td>
+        <td class="td-num">{{ t.count }}</td>
+        <td class="td-num">{{ t.pct }}%</td>
+        <td class="td-comment">{% if t.top_defect %}{{ t.top_defect }} &middot; {{ t.top_defect_cnt }}{% else %}&mdash;{% endif %}</td>
+        <td class="td-items">{% if t.top_defect_items %}{{ t.top_defect_items }}{% else %}&mdash;{% endif %}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
   {% endif %}
   {% else %}
   <div class="sect-title">Defects by area and trade</div>
