@@ -250,6 +250,23 @@ body {
 .cleared-one-open .cleared-fill { background: #BA7517; }
 .cleared-one-open .cleared-pct { color: #85530B; }
 
+/* v277: open-unit enrichment + collapsed cleared rows */
+.cleared-enrich {
+  font-size: 11px; color: #6B6B6B;
+  padding: 0 8px 8px 62px;
+  line-height: 1.5;
+}
+.cleared-row-collapsed {
+  font-size: 12px; color: #8F8E88;
+  padding: 5px 8px;
+  border-top: 0.5px solid #E5E3DB;
+  line-height: 1.5;
+}
+.cleared-row-collapsed .unit-no-mini {
+  font-weight: 500; color: #4A4A4A;
+  margin-right: 10px;
+}
+
 /* EXCLUSIONS */
 .excl-intro-line {
   font-size: 13px; color: #4A4A4A; line-height: 1.6;
@@ -608,20 +625,30 @@ body {
     {% endif %}
   </div>
 
-  <div class="section-label">Per-unit breakdown</div>
-  {% for zone in c2_zones_by_open %}
-    {% for u in c2_units %}
-      {% if u.block == zone.block and u.floor == zone.floor %}
-        {% set is_open = u.still_open > 0 %}
-  <div class="cleared-row{% if is_open %} cleared-one-open{% endif %}">
-    <div class="unit-no"{% if is_open %} style="color: #85530B;"{% endif %}>{{ u.unit_number }}</div>
-    <div class="unit-zone"{% if is_open %} style="color: #85530B;"{% endif %}>{{ u.block }} {{ FL[u.floor] }}{% if u.inspection_status == 'submitted' %}<br><span class="status-pill">awaiting review</span>{% endif %}</div>
+  {% set open_units = c2_units | selectattr('still_open') | list %}
+  {% set cleared_units = c2_units | rejectattr('still_open') | list %}
+
+  {% if open_units %}
+  <div class="section-label">Open units ({{ open_units|length }})</div>
+  {% for u in open_units %}
+  <div class="cleared-row cleared-one-open">
+    <div class="unit-no" style="color: #85530B;">{{ u.unit_number }}</div>
+    <div class="unit-zone" style="color: #85530B;">{{ u.block }} {{ FL[u.floor] }}{% if u.inspection_status == 'submitted' %}<br><span class="status-pill">awaiting review</span>{% endif %}</div>
     <div class="cleared-bar"><div class="cleared-fill" style="width: {{ u.clearance_pct }}%;"></div></div>
     <div class="cleared-pct">{{ u.cleared }} / {{ u.brought_forward }}</div>
   </div>
-      {% endif %}
-    {% endfor %}
+  {% if u.top_combos %}
+  <div class="cleared-enrich">{{ u.still_open }} open &middot; {% for c in u.top_combos %}{{ c.area }} &times; {{ c.trade }} {{ c.count }}{% if not loop.last %} &middot; {% endif %}{% endfor %}{% if u.top_combos_overflow > 0 %} &middot; &hellip;+{{ u.top_combos_overflow }} more{% endif %}</div>
+  {% endif %}
   {% endfor %}
+  {% endif %}
+
+  {% if cleared_units %}
+  <div class="section-label" style="margin-top: 1.25rem;">Cleared units ({{ cleared_units|length }})</div>
+  {% for u in cleared_units %}
+  <div class="cleared-row-collapsed"><span class="unit-no-mini">{{ u.unit_number }}</span>{{ u.block }} {{ FL[u.floor] }} &middot; {{ u.cleared }} / {{ u.brought_forward }} &middot; 100%</div>
+  {% endfor %}
+  {% endif %}
 
   <div class="closing">
     {{ c2_brought_forward }} defect{{ 's' if c2_brought_forward != 1 else '' }} reviewed across {{ c2_units|length }} de-snag unit{{ 's' if c2_units|length != 1 else '' }} &middot; {{ c2_cleared }} rectified &middot; {{ c2_still_open }} not rectified.

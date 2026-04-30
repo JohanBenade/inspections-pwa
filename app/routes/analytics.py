@@ -4412,7 +4412,7 @@ def _build_briefing_data(batch_id):
             c2_cleared += cl
             c2_still_open += op
             if op > 0:
-                detail_rows = query_db(
+                detail_rows_raw = query_db(
                     "SELECT at2.area_name AS area, ct.category_name AS trade, "
                     "COUNT(d.id) AS count "
                     "FROM defect d "
@@ -4425,7 +4425,8 @@ def _build_briefing_data(batch_id):
                     "GROUP BY at2.area_name, ct.category_name "
                     "ORDER BY at2.area_order, ct.category_order",
                     [unit_id, prev_cycle_id, c2_cycle_id, tenant_id])
-                for dr in detail_rows:
+                detail_list = [dict(dr) for dr in detail_rows_raw]
+                for dr in detail_list:
                     c2_open_details.append({
                         'unit_number': r['unit_number'],
                         'block': r['block'],
@@ -4436,9 +4437,13 @@ def _build_briefing_data(batch_id):
                         'trade': dr['trade'],
                         'count': dr['count'],
                     })
+                # v277: top area x trade combos attached to this unit (sorted by count desc, cap 5)
+                sorted_combos = sorted(detail_list, key=lambda x: x['count'], reverse=True)
+                c2_units[-1]['top_combos'] = sorted_combos[:5]
+                c2_units[-1]['top_combos_overflow'] = max(0, len(sorted_combos) - 5)
 
-    # Sort c2_units: open-defect units first within zone, then by unit_number
-    c2_units.sort(key=lambda u: (-u['still_open'], u['unit_number']))
+    # v277: Sort c2_units by clearance % asc (open units worst-first), cleared units last
+    c2_units.sort(key=lambda u: (1 if u['still_open'] == 0 else 0, u['clearance_pct'], u['unit_number']))
 
     # ---- 5. Zone summary (all cycles, C1 and C2) ----
     zones = []
