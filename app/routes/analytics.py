@@ -4649,19 +4649,18 @@ def _build_briefing_data(batch_id):
                 "AND d.unit_id = ? AND d.raised_cycle_id = ? "
                 "GROUP BY at2.area_name ORDER BY count DESC",
                 [tenant_id, u['unit_id'], u['cycle_id']])]
-            # v276b: per-unit top defect comment + count
-            top_defect_row = query_db(
-                "SELECT d.original_comment AS comment, COUNT(*) AS cnt "
+            # v276c: per-unit worst area x trade combo
+            worst_spot_row = query_db(
+                "SELECT at2.area_name AS area, ct.category_name AS trade, COUNT(d.id) AS count "
                 "FROM defect d "
+                "JOIN item_template it ON d.item_template_id = it.id "
+                "JOIN category_template ct ON it.category_id = ct.id "
+                "JOIN area_template at2 ON ct.area_id = at2.id "
                 "WHERE d.tenant_id = ? AND d.status = 'open' "
                 "AND d.unit_id = ? AND d.raised_cycle_id = ? "
-                "AND d.original_comment IS NOT NULL "
-                "AND LENGTH(TRIM(d.original_comment)) > 0 "
-                "GROUP BY d.original_comment "
-                "ORDER BY cnt DESC LIMIT 1",
+                "GROUP BY at2.area_name, ct.category_name "
+                "ORDER BY count DESC LIMIT 1",
                 [tenant_id, u['unit_id'], u['cycle_id']], one=True)
-            top_defect = (top_defect_row['comment'] or '').strip() if top_defect_row else ''
-            top_defect_cnt = top_defect_row['cnt'] if top_defect_row else 0
             c1_unit_splits.append({
                 'unit_id': u['unit_id'],
                 'unit_number': u['unit_number'],
@@ -4670,8 +4669,7 @@ def _build_briefing_data(batch_id):
                 'floor_label': FLOOR_LABELS_LOCAL.get(u['floor'], 'Floor {}'.format(u['floor'])),
                 'total': u['defect_count'],
                 'splits': splits,
-                'top_defect': top_defect,
-                'top_defect_cnt': top_defect_cnt,
+                'worst_spot': dict(worst_spot_row) if worst_spot_row else None,
                 'inspection_status': u['inspection_status'],
             })
 
