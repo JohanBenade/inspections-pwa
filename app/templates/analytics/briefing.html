@@ -583,7 +583,7 @@ body {
   <div class="unit-row {{ row_class }}">
     <div class="unit-no">{{ u.unit_number }}</div>
     <div class="unit-zone">{{ u.block }}<br>{{ u.floor_label }}{% if u.inspection_status == 'submitted' %}<br><span class="status-pill">awaiting review</span>{% endif %}</div>
-    <div class="unit-detail">{% for s in u.splits %}{{ s.area }} {{ s.count }}{% if not loop.last %} &middot; {% endif %}{% endfor %}{% if u.trade_splits %}<br>{% for s in u.trade_splits %}{{ s.trade }} {{ s.count }}{% if not loop.last %} &middot; {% endif %}{% endfor %}{% endif %}</div>
+    <div class="unit-detail">{% for s in u.splits %}{{ s.area }} {{ s.count }}{% if not loop.last %} &middot; {% endif %}{% endfor %}{% if u.top_defect %}<br><span style="color: #8F8E88;">Top issue:</span> {{ u.top_defect }} &middot; {{ u.top_defect_cnt }}{% endif %}</div>
     <div class="unit-tot">{{ u.total }}</div>
   </div>
   {% endfor %}
