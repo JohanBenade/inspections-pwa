@@ -4334,7 +4334,7 @@ def _build_briefing_data(batch_id):
         ph = ','.join('?' * len(c1_cycle_ids))
         c1_units_rows = query_db(
             "SELECT u.id as unit_id, u.unit_number, u.block, u.floor, "
-            "i.cycle_id, ic.cycle_number, "
+            "i.cycle_id, ic.cycle_number, i.status AS inspection_status, "
             "COUNT(d.id) as defect_count "
             "FROM batch_unit bu "
             "JOIN unit_real u ON bu.unit_id = u.id "
@@ -4345,7 +4345,7 @@ def _build_briefing_data(batch_id):
             "WHERE bu.batch_id = ? AND bu.removed_at IS NULL AND bu.tenant_id = ? "
             "AND bu.cycle_id IN (" + ph + ") "
             "AND i.status IN ('submitted','reviewed','approved','certified','pending_followup') "
-            "GROUP BY u.id, u.unit_number, u.block, u.floor, i.cycle_id, ic.cycle_number "
+            "GROUP BY u.id, u.unit_number, u.block, u.floor, i.cycle_id, ic.cycle_number, i.status "
             "ORDER BY defect_count DESC, u.unit_number",
             [batch_id, tenant_id] + c1_cycle_ids)
         c1_units = [dict(r) for r in c1_units_rows]
@@ -4361,7 +4361,7 @@ def _build_briefing_data(batch_id):
         ph = ','.join('?' * len(c2_cycle_ids))
         c2_rows = query_db(
             "SELECT u.id as unit_id, u.unit_number, u.block, u.floor, "
-            "bu.cycle_id, ic.cycle_number "
+            "bu.cycle_id, ic.cycle_number, i.status AS inspection_status "
             "FROM batch_unit bu "
             "JOIN unit_real u ON bu.unit_id = u.id "
             "JOIN inspection i ON i.unit_id = u.id AND i.cycle_id = bu.cycle_id "
@@ -4406,6 +4406,7 @@ def _build_briefing_data(batch_id):
                 'cleared': cl,
                 'still_open': op,
                 'clearance_pct': round(cl / bf * 100, 1) if bf > 0 else 0,
+                'inspection_status': r['inspection_status'],
             })
             c2_brought_forward += bf
             c2_cleared += cl
@@ -4591,6 +4592,7 @@ def _build_briefing_data(batch_id):
                 'floor_label': FLOOR_LABELS_LOCAL.get(u['floor'], 'Floor {}'.format(u['floor'])),
                 'total': u['defect_count'],
                 'splits': splits,
+                'inspection_status': u['inspection_status'],
             })
 
     # ---- 11. Exclusion list (for page 7) ----
@@ -4679,6 +4681,8 @@ def _build_briefing_data(batch_id):
         # Unit lists
         'c1_unit_splits': c1_unit_splits,
         'c2_units': c2_units,
+        'any_submitted': any(u.get('inspection_status') == 'submitted' for u in c1_unit_splits) or any(u.get('inspection_status') == 'submitted' for u in c2_units),
+        'submitted_unit_count': sum(1 for u in c1_unit_splits if u.get('inspection_status') == 'submitted') + sum(1 for u in c2_units if u.get('inspection_status') == 'submitted'),
 
         # Exclusions
         'excl_list': excl_list,

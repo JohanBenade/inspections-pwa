@@ -87,6 +87,29 @@ body {
 .batch-id { font-weight: 500; color: #4A4A4A; }
 .pagebreak { text-align: center; font-size: 11px; color: #B0AEA5; margin: 0.5rem 0 0.25rem 0; }
 
+.status-pill {
+  display: inline-block;
+  font-size: 9px;
+  font-weight: 500;
+  padding: 1px 6px;
+  background: #F5E5C5;
+  color: #85530B;
+  border-radius: 8px;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  margin-top: 2px;
+  white-space: nowrap;
+}
+.caveat {
+  font-size: 11px;
+  color: #85530B;
+  background: #FBF4E5;
+  padding: 8px 12px;
+  border-radius: 6px;
+  margin: 1rem 0 0 0;
+  border-left: 3px solid #C8963E;
+}
+
 .lead { font-size: 30px; font-weight: 500; line-height: 1.2; margin: 0.4rem 0 0.75rem 0; }
 .lead-sub { font-size: 14px; color: #4A4A4A; margin-bottom: 1.5rem; }
 
@@ -377,6 +400,10 @@ body {
   </div>
   {% endif %}
 
+  {% if any_submitted %}
+  <div class="caveat">Includes {{ submitted_unit_count }} unit{{ 's' if submitted_unit_count != 1 else '' }} pending review &mdash; totals may adjust.</div>
+  {% endif %}
+
   <div class="section-label">Zone summary</div>
   {% if zones %}
   <table class="zone-table">
@@ -522,7 +549,7 @@ body {
     {% set row_class = 'unit-hot' if u.total >= 125 else ('unit-warm' if u.total >= 90 else '') %}
   <div class="unit-row {{ row_class }}">
     <div class="unit-no">{{ u.unit_number }}</div>
-    <div class="unit-zone">{{ u.block }}<br>{{ u.floor_label }}</div>
+    <div class="unit-zone">{{ u.block }}<br>{{ u.floor_label }}{% if u.inspection_status == 'submitted' %}<br><span class="status-pill">awaiting review</span>{% endif %}</div>
     <div class="unit-detail">{% for s in u.splits %}{{ s.area }} {{ s.count }}{% if not loop.last %} &middot; {% endif %}{% endfor %}</div>
     <div class="unit-tot">{{ u.total }}</div>
   </div>
@@ -555,7 +582,7 @@ body {
         {% set is_open = u.still_open > 0 %}
   <div class="cleared-row{% if is_open %} cleared-one-open{% endif %}">
     <div class="unit-no"{% if is_open %} style="color: #85530B;"{% endif %}>{{ u.unit_number }}</div>
-    <div class="unit-zone"{% if is_open %} style="color: #85530B;"{% endif %}>{{ u.block }} {{ FL[u.floor] }}</div>
+    <div class="unit-zone"{% if is_open %} style="color: #85530B;"{% endif %}>{{ u.block }} {{ FL[u.floor] }}{% if u.inspection_status == 'submitted' %}<br><span class="status-pill">awaiting review</span>{% endif %}</div>
     <div class="cleared-bar"><div class="cleared-fill" style="width: {{ u.clearance_pct }}%;"></div></div>
     <div class="cleared-pct">{{ u.cleared }} / {{ u.brought_forward }}</div>
   </div>
