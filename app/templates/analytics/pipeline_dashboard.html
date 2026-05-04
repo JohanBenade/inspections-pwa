@@ -424,34 +424,41 @@
     </div>
     {% endif %}
 
-    <!-- ========== TRADE BREAKDOWN ========== -->
-    {% if trades %}
+    <!-- ========== TRADE BREAKDOWN (v280: SMB-aligned) ========== -->
+    {% if by_trade %}
     <div style="margin-bottom: 2rem;">
         <h2 style="font-family: 'DM Sans', sans-serif; font-weight: 600; font-size: 1.1rem; color: #1A1A1A; margin-bottom: 0.75rem;">Defects by Trade</h2>
-        <table style="border-collapse: collapse; width: 100%; font-size: 0.8rem;">
+        <table style="border-collapse: collapse; width: 100%; font-size: 0.8rem; table-layout: fixed; font-feature-settings: 'lnum' 1, 'tnum' 1;">
             <thead>
                 <tr>
-                    <th style="padding: 6px 8px; text-align: left; border-bottom: 2px solid #E8E6E1; color: #6B6B6B; font-size: 0.7rem; width: 120px;">Trade</th>
-                    <th style="padding: 6px 8px; text-align: right; border-bottom: 2px solid #E8E6E1; color: #6B6B6B; font-size: 0.7rem; width: 60px;">Count</th>
-                    <th style="padding: 6px 8px; text-align: right; border-bottom: 2px solid #E8E6E1; color: #6B6B6B; font-size: 0.7rem; width: 50px;">%</th>
-                    <th style="padding: 6px 8px; border-bottom: 2px solid #E8E6E1;"></th>
+                    <th style="text-align: left; padding: 6px 8px; font-size: 0.7rem; font-weight: 600; color: #9A9A9A; letter-spacing: 0.08em; text-transform: uppercase; border-bottom: 2px solid #E8E6E1; width: 90px;">Trade</th>
+                    <th style="text-align: right; padding: 6px 8px; font-size: 0.7rem; font-weight: 600; color: #9A9A9A; letter-spacing: 0.08em; text-transform: uppercase; border-bottom: 2px solid #E8E6E1; width: 65px;">Open</th>
+                    <th style="text-align: right; padding: 6px 8px; font-size: 0.7rem; font-weight: 600; color: #9A9A9A; letter-spacing: 0.08em; text-transform: uppercase; border-bottom: 2px solid #E8E6E1; width: 65px;">&Delta;</th>
+                    <th style="text-align: right; padding: 6px 8px; font-size: 0.7rem; font-weight: 600; color: #9A9A9A; letter-spacing: 0.08em; text-transform: uppercase; border-bottom: 2px solid #E8E6E1; width: 55px;">Share</th>
+                    <th style="text-align: left; padding: 6px 8px; font-size: 0.7rem; font-weight: 600; color: #9A9A9A; letter-spacing: 0.08em; text-transform: uppercase; border-bottom: 2px solid #E8E6E1; width: 130px;">Top Defect</th>
+                    <th style="text-align: left; padding: 6px 8px; font-size: 0.7rem; font-weight: 600; color: #9A9A9A; letter-spacing: 0.08em; text-transform: uppercase; border-bottom: 2px solid #E8E6E1;">Top Defect Items</th>
                 </tr>
             </thead>
             <tbody>
-                {% for t in trades %}
+                {% for t in by_trade %}
                 <tr>
-                    <td style="padding: 5px 8px; border-bottom: 1px solid #F0EEEA; font-weight: 600;">{{ t.name }}</td>
-                    <td style="padding: 5px 8px; border-bottom: 1px solid #F0EEEA; text-align: right;">{{ '{:,}'.format(t.count) }}</td>
-                    <td style="padding: 5px 8px; border-bottom: 1px solid #F0EEEA; text-align: right; color: #6B6B6B;">{{ t.pct }}%</td>
-                    <td style="padding: 5px 8px; border-bottom: 1px solid #F0EEEA;">
-                        <div style="background: #E8E6E1; border-radius: 2px; height: 12px; overflow: hidden;">
-                            <div style="background: #6B8EC4; border-radius: 2px; height: 12px; width: {{ (t.pct / trades[0].pct * 100)|round(1) }}%;"></div>
-                        </div>
+                    <td style="padding: 5px 8px; border-bottom: 1px solid #F0EEEA; font-weight: 700;">{{ t.trade }}</td>
+                    <td style="text-align: right; padding: 5px 8px; border-bottom: 1px solid #F0EEEA; font-weight: 600;">{{ '{:,}'.format(t.open) }}</td>
+                    <td style="text-align: right; padding: 5px 8px; border-bottom: 1px solid #F0EEEA;">
+                        {% if t.delta < 0 %}<span style="color: #4A7C59;">&#9660; {{ -t.delta }}</span>
+                        {% elif t.delta > 0 %}<span style="color: #C44D3F;">&#9650; {{ t.delta }}</span>
+                        {% else %}<span style="color: #9A9A9A;">&mdash;</span>{% endif %}
                     </td>
+                    <td style="text-align: right; padding: 5px 8px; border-bottom: 1px solid #F0EEEA; color: #6B6B6B;">{{ t.share }}%</td>
+                    <td style="padding: 5px 8px; border-bottom: 1px solid #F0EEEA; color: #5F5E5A; font-size: 0.75rem;">{% if t.top_defect %}{{ t.top_defect }} &middot; {{ t.top_defect_cnt }}{% else %}&mdash;{% endif %}</td>
+                    <td style="padding: 5px 8px; border-bottom: 1px solid #F0EEEA; color: #5F5E5A; font-size: 0.7rem;">{% if t.top_defect_items %}{{ t.top_defect_items }}{% else %}&mdash;{% endif %}</td>
                 </tr>
                 {% endfor %}
             </tbody>
         </table>
+        <div style="margin-top: 8px; font-size: 0.7rem; color: #9A9A9A;">
+            Trades ranked by current open count. &Delta; = change vs previous fortnight. Top defect = most-frequent recurring defect attributed to that trade.
+        </div>
     </div>
     {% endif %}
 

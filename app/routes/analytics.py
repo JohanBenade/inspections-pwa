@@ -6593,6 +6593,110 @@ def _build_brief_by_trade(tenant_id, snap_str, prev_cutoff_str):
     return {'by_trade': rows}
 
 
+
+def _build_dashboard_by_trade(tenant_id, snap_str, prev_cutoff_str):
+    """Pipeline Dashboard: per-trade open counts, delta vs prev_cutoff_str,
+    top defect comment + items. Project-wide via unit_real.
+    Mirrors _build_brief_by_trade so totals reconcile with SMB.
+    Caller controls both timestamps so the same helper serves live and
+    snapshot modes.
+    """
+    open_at_cutoff = """
+        FROM defect d
+        JOIN unit_real u ON d.unit_id = u.id
+        JOIN item_template it ON d.item_template_id = it.id
+        JOIN category_template ct ON it.category_id = ct.id
+        WHERE d.tenant_id = ?
+          AND d.created_at <= ?
+          AND (d.status = 'open' OR (d.status = 'cleared' AND d.cleared_at > ?))
+          AND d.raised_cycle_id NOT LIKE 'test-%%'
+          AND EXISTS (
+            SELECT 1 FROM inspection i2
+            WHERE i2.unit_id = d.unit_id
+              AND i2.cycle_id = d.raised_cycle_id
+              AND i2.status IN ('reviewed','approved','certified','pending_followup')
+              AND i2.review_submitted_at <= ?
+          )
+    """
+
+    curr_rows = query_db(
+        "SELECT ct.category_name AS trade, COUNT(*) AS cnt " + open_at_cutoff +
+        " GROUP BY ct.category_name",
+        [tenant_id, snap_str, snap_str, snap_str]
+    )
+    curr = {r['trade']: r['cnt'] for r in curr_rows}
+
+    prev_rows = query_db(
+        "SELECT ct.category_name AS trade, COUNT(*) AS cnt " + open_at_cutoff +
+        " GROUP BY ct.category_name",
+        [tenant_id, prev_cutoff_str, prev_cutoff_str, snap_str]
+    )
+    prev = {r['trade']: r['cnt'] for r in prev_rows}
+
+    top_rows = query_db(
+        "SELECT ct.category_name AS trade, d.original_comment AS comment, COUNT(*) AS cnt " +
+        open_at_cutoff +
+        " AND d.original_comment IS NOT NULL "
+        " AND LENGTH(TRIM(d.original_comment)) > 0 "
+        " GROUP BY ct.category_name, d.original_comment "
+        " ORDER BY ct.category_name, cnt DESC",
+        [tenant_id, snap_str, snap_str, snap_str]
+    )
+    top_per_trade = {}
+    for r in top_rows:
+        if r['trade'] not in top_per_trade:
+            top_per_trade[r['trade']] = {
+                'comment': (r['comment'] or '').strip(),
+                'cnt': r['cnt'],
+            }
+
+    item_sql = (
+        "SELECT it.item_description AS item, COUNT(*) AS cnt " +
+        open_at_cutoff +
+        " AND ct.category_name = ? AND d.original_comment = ? "
+        " GROUP BY it.item_description ORDER BY cnt DESC"
+    )
+    items_by_trade = {}
+    for _trade, _top in top_per_trade.items():
+        if not _top['comment']:
+            items_by_trade[_trade] = []
+            continue
+        _rs = query_db(item_sql, [tenant_id, snap_str, snap_str, snap_str, _trade, _top['comment']])
+        items_by_trade[_trade] = [(r['item'], r['cnt']) for r in _rs]
+
+    def _fmt_items(items, cap=5):
+        if not items:
+            return ''
+        shown = items[:cap]
+        rem = len(items) - cap
+        s = ' \u00b7 '.join(f"{itm} {cnt}" for itm, cnt in shown)
+        if rem > 0:
+            s += f' \u00b7 \u2026+{rem} more'
+        return s
+
+    total = sum(curr.values())
+    all_trades = ['DOORS', 'WALLS', 'JOINERY', 'PLUMBING', 'FLOOR',
+                  'WINDOWS', 'ELECTRICAL', 'FF&E', 'CEILING']
+    rows = []
+    for trade in all_trades:
+        c = curr.get(trade, 0)
+        p = prev.get(trade, 0)
+        share = round(c / total * 100) if total > 0 else 0
+        top = top_per_trade.get(trade, {'comment': '', 'cnt': 0})
+        rows.append({
+            'trade': trade,
+            'open': c,
+            'prev': p,
+            'delta': c - p,
+            'share': share,
+            'top_defect': top['comment'],
+            'top_defect_cnt': top['cnt'],
+            'top_defect_items': _fmt_items(items_by_trade.get(trade, [])),
+        })
+    rows.sort(key=lambda r: r['open'], reverse=True)
+    return {'by_trade': rows}
+
+
 def _strip_leading_zero(date_str):
     """Strip leading zero from day in date strings like '08 May 2026' -> '8 May 2026'."""
     if not date_str or not isinstance(date_str, str):
@@ -6728,6 +6832,12 @@ def pipeline_dashboard():
     mode = request.args.get('mode', 'live')
     is_live = (mode == 'live')
     data = _build_pipeline_report_data(live=is_live)
+    # v280: per-trade open + delta vs prev fortnight (mirrors SMB cadence math)
+    import datetime as _dt280
+    _snap_dt = _dt280.datetime.strptime(data['snapshot_str'], '%Y-%m-%d %H:%M:%S')
+    _prev_cutoff = (_snap_dt - _dt280.timedelta(days=14)).strftime('%Y-%m-%d %H:%M:%S')
+    _tenant = session.get('tenant_id', 'MONOGRAPH')
+    data.update(_build_dashboard_by_trade(_tenant, data['snapshot_str'], _prev_cutoff))
     data['mode'] = 'live' if is_live else 'snapshot'
     return render_template('analytics/pipeline_dashboard.html', **data)
 
