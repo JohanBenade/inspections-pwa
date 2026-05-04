@@ -6832,10 +6832,17 @@ def pipeline_dashboard():
     mode = request.args.get('mode', 'live')
     is_live = (mode == 'live')
     data = _build_pipeline_report_data(live=is_live)
-    # v280: per-trade open + delta vs prev fortnight (mirrors SMB cadence math)
+    # v280.1: per-trade open + delta. Baseline differs by mode:
+    #   live      -> Δ vs last completed cycle (= last SMB issuance)
+    #   snapshot  -> Δ vs previous cycle (mirrors SMB's fortnight delta)
     import datetime as _dt280
-    _snap_dt = _dt280.datetime.strptime(data['snapshot_str'], '%Y-%m-%d %H:%M:%S')
-    _prev_cutoff = (_snap_dt - _dt280.timedelta(days=14)).strftime('%Y-%m-%d %H:%M:%S')
+    if is_live:
+        # Reuse SMB cadence anchor via canonical snapshot-mode build
+        _prev_data = _build_pipeline_report_data(live=False)
+        _prev_cutoff = _prev_data['snapshot_str']
+    else:
+        _snap_dt = _dt280.datetime.strptime(data['snapshot_str'], '%Y-%m-%d %H:%M:%S')
+        _prev_cutoff = (_snap_dt - _dt280.timedelta(days=14)).strftime('%Y-%m-%d %H:%M:%S')
     _tenant = session.get('tenant_id', 'MONOGRAPH')
     data.update(_build_dashboard_by_trade(_tenant, data['snapshot_str'], _prev_cutoff))
     data['mode'] = 'live' if is_live else 'snapshot'
