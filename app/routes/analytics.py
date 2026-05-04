@@ -6829,8 +6829,12 @@ def site_meeting_brief_pdf():
 @require_team_lead
 def pipeline_dashboard():
     """Pipeline Dashboard - mirror of Pipeline PDF with live/snapshot toggle."""
-    mode = request.args.get('mode', 'live')
-    is_live = (mode == 'live')
+    # v282: snapshot mode disabled. Dashboard is live-only.
+    # To re-enable: remove the two lines below and uncomment the originals.
+    # mode = request.args.get('mode', 'live')
+    # is_live = (mode == 'live')
+    mode = 'live'
+    is_live = True
     data = _build_pipeline_report_data(live=is_live)
     # v280.1: per-trade open + delta. Baseline differs by mode:
     #   live      -> Δ vs last completed cycle (= last SMB issuance)

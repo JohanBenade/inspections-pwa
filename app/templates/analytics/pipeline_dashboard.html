@@ -16,18 +16,24 @@
             {{ snapshot_label }}
         </div>
         <div style="margin-top: 1rem; display: flex; gap: 0.5rem; flex-wrap: wrap; align-items: center;">
+            {# v282: snapshot toggle disabled. To re-enable, change `false` to `true` on the next line. #}
+            {% if false %}
             <!-- Toggle -->
             <div style="display: inline-flex; border: 1px solid #E8E6E1; border-radius: 4px; overflow: hidden; margin-right: 0.5rem;">
                 <a href="?mode=live" style="padding: 6px 14px; font-size: 0.75rem; font-weight: 600; text-decoration: none; {% if mode == 'live' %}background: #1A1A1A; color: white;{% else %}background: #EBE6DE; color: #6B6B6B;{% endif %}">Live</a>
                 <a href="?mode=snapshot" style="padding: 6px 14px; font-size: 0.75rem; font-weight: 600; text-decoration: none; {% if mode == 'snapshot' %}background: #1A1A1A; color: white;{% else %}background: #EBE6DE; color: #6B6B6B;{% endif %}">Snapshot</a>
             </div>
+            {% endif %}
             <a href="{{ url_for('analytics.pipeline_report_view') }}" class="inline-block px-4 py-2 text-sm font-semibold rounded" style="background: #EBE6DE; color: #1A1A1A; border: 1px solid #E8E6E1; text-decoration: none;">
                 View Report
             </a>
+            {# v282: dashboard PDF button disabled (was a snapshot PDF; live doesn't need one). To re-enable, change `false` to `true` on the next line. #}
+            {% if false %}
             <a href="{{ url_for('analytics.pipeline_report_pdf') }}" class="inline-block px-4 py-2 text-sm font-semibold rounded" style="background: #C8963E; color: white; text-decoration: none;"
                onclick="this.textContent='Preparing...'; this.style.opacity='0.7'; this.style.pointerEvents='none'; setTimeout(function(){this.textContent='Download PDF'; this.style.opacity='1'; this.style.pointerEvents='auto';}.bind(this), 5000);">
                 Download PDF
             </a>
+            {% endif %}
         </div>
     </div>
 
