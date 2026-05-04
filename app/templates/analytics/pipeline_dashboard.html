@@ -288,46 +288,32 @@
             {% for fl in zone_grid.floors %}
             {% set zd = zone_grid.data.get((block, fl), None) %}
             {% if zd is none %}
-            <div style="background: #F5F3EE; border-radius: 8px; padding: 10px 8px; text-align: center; min-height: 100px; display: flex; align-items: center; justify-content: center;">
+            <div style="background: #F5F3EE; border: 1px solid #DCD7CB; border-radius: 5px; padding: 10px 8px; text-align: center; min-height: 100px; display: flex; align-items: center; justify-content: center;">
                 <span style="font-size: 0.7rem; color: #BFBDB8;">&mdash;</span>
             </div>
             {% elif zd.stage == 'not_inspected' %}
-            <div style="background: #F1EFE8; border-radius: 8px; padding: 10px 8px; text-align: center; min-height: 100px;">
-                <div style="font-size: 0.9rem; font-weight: 500; color: #5F5E5A;">{{ zd.total_units }} units</div>
-                <div style="font-size: 0.65rem; color: #888780; margin-top: 4px;">not inspected</div>
+            <div style="background: #ECEAE5; border: 1px solid #DCD7CB; border-radius: 5px; padding: 10px 8px; text-align: center; min-height: 100px; display: flex; align-items: center; justify-content: center;">
+                <div style="font-size: 0.75rem; font-weight: 600; color: #9A9A9A;">{{ zd.total_units }} units &middot; not inspected</div>
             </div>
             {% elif zd.stage == 'awaiting' %}
-            <div style="background: #FAECE7; border-radius: 8px; padding: 10px 8px; text-align: center; min-height: 100px;">
-                <div style="font-size: 0.9rem; font-weight: 500; color: #712B13;">{{ zd.total_units }} units</div>
-                <div style="font-size: 0.65rem; color: #993C1D; margin-top: 4px;">{{ zd.c1_inspected }} inspected</div>
-                <div style="margin-top: 8px; font-size: 1rem; font-weight: 500; font-family: 'DM Sans', sans-serif; color: #993C1D;">{{ '{:,}'.format(zd.cnt) }}</div>
-                <div style="font-size: 0.65rem; color: #D85A30;">open defects</div>
+            <div style="background: #FCF2E5; border: 1px solid #DCD7CB; border-radius: 5px; padding: 10px 8px; text-align: center; min-height: 100px;">
+                <div style="font-size: 0.75rem; font-weight: 600; color: #9A9A9A;">{{ zd.total_units }} units &middot; {{ zd.c1_inspected }} inspected</div>
+                <div style="margin-top: 8px; font-size: 1rem; font-weight: 600; font-family: 'DM Sans', sans-serif; color: #1A1A1A;">{{ '{:,}'.format(zd.cnt) }}</div>
+                <div style="font-size: 0.65rem; color: #9A9A9A;">open defects</div>
             </div>
             {% elif zd.stage == 'desnag' %}
-            <div style="background: #FAEEDA; border-radius: 8px; padding: 10px 8px; text-align: center; min-height: 100px;">
-                <div style="font-size: 0.9rem; font-weight: 500; color: #633806;">{{ zd.total_units }} units</div>
-                <div style="font-size: 0.65rem; color: #854F0B; margin-top: 4px;">{{ zd.c1_inspected }} inspected &middot; {{ zd.c2_units }} de-snagged</div>
-                <div style="margin-top: 8px; font-size: 1rem; font-weight: 500; font-family: 'DM Sans', sans-serif; color: #854F0B;">{{ '{:,}'.format(zd.cnt) }}</div>
-                <div style="font-size: 0.65rem; color: #BA7517;">open defects</div>
-                <div style="margin-top: 6px;">
-                    <div style="height: 4px; border-radius: 2px; background: #FAC775; overflow: hidden;">
-                        <div style="width: {{ zd.clearance_pct }}%; height: 100%; border-radius: 2px; background: #BA7517;"></div>
-                    </div>
-                    <div style="font-size: 0.55rem; color: #854F0B; margin-top: 2px;">{{ '{:,}'.format(zd.cleared) }} / {{ '{:,}'.format(zd.raised) }} cleared ({{ zd.clearance_pct }}%)</div>
-                </div>
+            <div style="background: #FAEEDA; border: 1px solid #DCD7CB; border-radius: 5px; padding: 10px 8px; text-align: center; min-height: 100px;">
+                <div style="font-size: 0.75rem; font-weight: 600; color: #9A9A9A;">{{ zd.total_units }} units &middot; {{ zd.c2_units }} de-snagged</div>
+                <div style="margin-top: 8px; font-size: 1rem; font-weight: 600; font-family: 'DM Sans', sans-serif; color: #1A1A1A;">{{ '{:,}'.format(zd.cnt) }}</div>
+                <div style="font-size: 0.65rem; color: #9A9A9A;">open defects</div>
+                <div style="margin-top: 4px; font-size: 0.65rem; font-weight: 600; color: #A37116;">{{ zd.clearance_pct }}% cleared</div>
             </div>
             {% elif zd.stage == 'near_complete' %}
-            <div style="background: #EAF3DE; border-radius: 8px; padding: 10px 8px; text-align: center; min-height: 100px;">
-                <div style="font-size: 0.9rem; font-weight: 500; color: #27500A;">{{ zd.total_units }} units</div>
-                <div style="font-size: 0.65rem; color: #3B6D11; margin-top: 4px;">{{ zd.c1_inspected }} inspected &middot; {{ zd.c2_units }} de-snagged</div>
-                <div style="margin-top: 8px; font-size: 1rem; font-weight: 500; font-family: 'DM Sans', sans-serif; color: #3B6D11;">{{ '{:,}'.format(zd.cnt) }}</div>
-                <div style="font-size: 0.65rem; color: #639922;">open defects</div>
-                <div style="margin-top: 6px;">
-                    <div style="height: 4px; border-radius: 2px; background: #C0DD97; overflow: hidden;">
-                        <div style="width: {{ zd.clearance_pct }}%; height: 100%; border-radius: 2px; background: #639922;"></div>
-                    </div>
-                    <div style="font-size: 0.55rem; color: #3B6D11; margin-top: 2px;">{{ '{:,}'.format(zd.cleared) }} / {{ '{:,}'.format(zd.raised) }} cleared ({{ zd.clearance_pct }}%)</div>
-                </div>
+            <div style="background: #E9EED7; border: 1px solid #DCD7CB; border-radius: 5px; padding: 10px 8px; text-align: center; min-height: 100px;">
+                <div style="font-size: 0.75rem; font-weight: 600; color: #9A9A9A;">{{ zd.total_units }} units &middot; {{ zd.c2_units }} de-snagged</div>
+                <div style="margin-top: 8px; font-size: 1rem; font-weight: 600; font-family: 'DM Sans', sans-serif; color: #1A1A1A;">{{ '{:,}'.format(zd.cnt) }}</div>
+                <div style="font-size: 0.65rem; color: #9A9A9A;">open defects</div>
+                <div style="margin-top: 4px; font-size: 0.65rem; font-weight: 600; color: #5F8838;">{{ zd.clearance_pct }}% cleared</div>
             </div>
             {% endif %}
             {% endfor %}
@@ -335,10 +321,10 @@
         </div>
         <!-- Legend -->
         <div style="margin-top: 0.75rem; display: flex; flex-wrap: wrap; gap: 16px; font-size: 0.7rem; color: #6B6B6B;">
-            <span><span style="display: inline-block; width: 12px; height: 12px; border-radius: 3px; background: #C8BFA8; margin-right: 5px; vertical-align: middle;"></span>Not inspected</span>
-            <span><span style="display: inline-block; width: 12px; height: 12px; border-radius: 3px; background: #D85A30; margin-right: 5px; vertical-align: middle;"></span>Awaiting rectification</span>
-            <span><span style="display: inline-block; width: 12px; height: 12px; border-radius: 3px; background: #BA7517; margin-right: 5px; vertical-align: middle;"></span>De-snag underway (&lt;80% cleared)</span>
-            <span><span style="display: inline-block; width: 12px; height: 12px; border-radius: 3px; background: #639922; margin-right: 5px; vertical-align: middle;"></span>De-snag near complete (&ge;80% cleared)</span>
+            <span><span style="display: inline-block; width: 12px; height: 12px; border-radius: 2px; background: #ECEAE5; border: 1px solid #DCD7CB; margin-right: 5px; vertical-align: middle;"></span>Not inspected</span>
+            <span><span style="display: inline-block; width: 12px; height: 12px; border-radius: 2px; background: #FCF2E5; border: 1px solid #DCD7CB; margin-right: 5px; vertical-align: middle;"></span>Awaiting rectification</span>
+            <span><span style="display: inline-block; width: 12px; height: 12px; border-radius: 2px; background: #FAEEDA; border: 1px solid #DCD7CB; margin-right: 5px; vertical-align: middle;"></span>De-snag underway (&lt;80% cleared)</span>
+            <span><span style="display: inline-block; width: 12px; height: 12px; border-radius: 2px; background: #E9EED7; border: 1px solid #DCD7CB; margin-right: 5px; vertical-align: middle;"></span>De-snag near complete (&ge;80% cleared)</span>
         </div>
     </div>
     {% endif %}
