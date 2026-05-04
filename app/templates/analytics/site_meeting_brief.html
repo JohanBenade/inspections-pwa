@@ -271,6 +271,15 @@ body {
                     <a href="{{ url_for('analytics.pipeline_dashboard') }}" class="text-sm text-gray-300 hover:text-white">Pipeline</a>
                     <a href="{{ url_for('analytics.site_meeting_brief_view') }}" class="text-sm text-gray-300 hover:text-white">Brief</a>
                     {% endif %}
+                    {% if current_user.role == 'team_lead' %}
+                    <a href="{{ url_for('certification.my_reviews') }}" class="text-sm text-gray-300 hover:text-white">Team Lead Reviews</a>
+                    <a href="{{ url_for('certification.my_inspections') }}" class="text-sm text-gray-300 hover:text-white">My Inspections</a>
+                    <a href="{{ url_for('approvals.cleanup') }}" class="text-sm text-gray-300 hover:text-white">Defects Cleanup</a>
+                    {% endif %}
+                    {% if current_user.role in ('office_admin', 'team_lead') %}
+                    <a href="{{ url_for('analytics.inspector_audit') }}" class="text-sm text-gray-300 hover:text-white">Inspector Log</a>
+                    <a href="{{ url_for('analytics.inspector_audit_units') }}" class="text-sm text-gray-300 hover:text-white">Unit Register</a>
+                    {% endif %}
                     {% if current_user.role in ['manager', 'admin'] %}
                     <a href="{{ url_for('approvals.pipeline') }}" class="text-sm text-gray-300 hover:text-white">Approvals</a>
                     <a href="{{ url_for('approvals.cleanup') }}" class="text-sm text-gray-300 hover:text-white">Defects Cleanup</a>
