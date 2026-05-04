@@ -54,7 +54,7 @@ def _slug_to_block(slug):
 
 
 @analytics_bp.route('/')
-@require_manager
+@require_team_lead
 def dashboard():
     """Analytics Dashboard - block+floor cards with project overview."""
     tenant_id = session.get('tenant_id', 'MONOGRAPH')
@@ -629,7 +629,7 @@ def dashboard():
 
 
 @analytics_bp.route('/batch/<batch_id>')
-@require_manager
+@require_team_lead
 def batch_analytics(batch_id):
     """Batch-level analytics dashboard."""
     tenant_id = session.get('tenant_id', 'MONOGRAPH')
@@ -1045,7 +1045,7 @@ def batch_analytics(batch_id):
 
 
 @analytics_bp.route('/<block_slug>/<int:floor>')
-@require_manager
+@require_team_lead
 def block_floor_detail(block_slug, floor):
     """Block+Floor detail page - unit table, round comparison, area breakdown, top defects."""
     tenant_id = session.get('tenant_id', 'MONOGRAPH')
@@ -1380,7 +1380,7 @@ def block_floor_detail(block_slug, floor):
 # ============================================================
 
 @analytics_bp.route('/<block_slug>')
-@require_manager
+@require_team_lead
 def block_detail(block_slug):
     """Block detail page - compare zones (floors) within a block."""
     tenant_id = session.get('tenant_id', 'MONOGRAPH')
@@ -1477,7 +1477,7 @@ def block_detail(block_slug):
 # ============================================================
 
 @analytics_bp.route('/explore')
-@require_manager
+@require_team_lead
 def explore():
     """Universal drill-down: any number on any page links here with filters.
     Every combination of filters shows ranked children + defect breakdown."""
@@ -2076,14 +2076,14 @@ def _build_rectification_data():
 
 
 @analytics_bp.route('/rectification')
-@require_manager
+@require_team_lead
 def rectification():
     """Rectification Command Centre."""
     return render_template('analytics/rectification.html', **_build_rectification_data())
 
 
 @analytics_bp.route('/rectification/report')
-@require_manager
+@require_team_lead
 def rectification_report():
     """View rectification analytics as printable report."""
     import datetime
@@ -2095,7 +2095,7 @@ def rectification_report():
 
 
 @analytics_bp.route('/rectification/pdf')
-@require_manager
+@require_team_lead
 def rectification_pdf():
     """Download rectification analytics as PDF."""
     from app.services.pdf_playwright import html_to_pdf
@@ -2120,7 +2120,7 @@ def rectification_pdf():
 
 
 @analytics_bp.route('/legacy')
-@require_manager
+@require_team_lead
 def dashboard_legacy():
     """LEGACY: Analytics Dashboard - cycle-based view. Will be removed."""
     tenant_id = session.get('tenant_id', 'MONOGRAPH')
@@ -3545,7 +3545,7 @@ def _build_unified_report_data():
 
 
 @analytics_bp.route('/report/unified')
-@require_manager
+@require_team_lead
 def unified_report_view():
     """Unified project report - HTML view."""
     data = _build_unified_report_data()
@@ -3556,7 +3556,7 @@ def unified_report_view():
 
 
 @analytics_bp.route('/report/unified/pdf')
-@require_manager
+@require_team_lead
 def unified_report_pdf():
     """Unified project report - PDF download via Playwright."""
     from app.services.pdf_playwright import html_to_pdf
@@ -3574,7 +3574,7 @@ def unified_report_pdf():
 
 
 @analytics_bp.route('/report/batch/<batch_id>')
-@require_manager
+@require_team_lead
 def batch_report_view(batch_id):
     """Batch inspection report - HTML view."""
     data = _build_batch_report_data(batch_id)
@@ -3585,7 +3585,7 @@ def batch_report_view(batch_id):
 
 
 @analytics_bp.route('/report/batch/<batch_id>/pdf')
-@require_manager
+@require_team_lead
 def batch_report_pdf(batch_id):
     """Batch inspection report - PDF download via Playwright."""
     from app.services.pdf_playwright import html_to_pdf
@@ -4816,7 +4816,7 @@ def batch_briefing_pdf(batch_id):
 
 
 @analytics_bp.route('/inspector/<inspector_name>')
-@require_manager
+@require_team_lead
 def inspector_detail(inspector_name):
     tenant_id = session.get('tenant_id', 'MONOGRAPH')
     FLOOR_LABELS = {0: 'Ground', 1: '1st Floor', 2: '2nd Floor'}
@@ -6443,7 +6443,7 @@ def _build_pipeline_report_data(live=False):
 
 
 @analytics_bp.route('/pipeline')
-@require_manager
+@require_team_lead
 def pipeline_report_view():
     """Pipeline Report - HTML preview."""
     import datetime, base64, os as _os
@@ -6461,7 +6461,7 @@ def pipeline_report_view():
 
 
 @analytics_bp.route('/pipeline/pdf')
-@require_manager
+@require_team_lead
 def pipeline_report_pdf():
     """Pipeline Report - PDF download."""
     from app.services.pdf_playwright import html_to_pdf
@@ -6762,7 +6762,7 @@ def _build_brief_prev_desnag(tenant_id, cutoff_str):
 
 
 @analytics_bp.route('/site-meeting-brief')
-@require_manager
+@require_team_lead
 def site_meeting_brief_view():
     """Site Meeting Brief - HTML preview."""
     import datetime, base64, os as _os
@@ -6788,7 +6788,7 @@ def site_meeting_brief_view():
 
 
 @analytics_bp.route('/site-meeting-brief/pdf')
-@require_manager
+@require_team_lead
 def site_meeting_brief_pdf():
     """Site Meeting Brief - PDF download."""
     from app.services.pdf_playwright import html_to_pdf
@@ -6826,7 +6826,7 @@ def site_meeting_brief_pdf():
 
 
 @analytics_bp.route('/pipeline/dashboard')
-@require_manager
+@require_team_lead
 def pipeline_dashboard():
     """Pipeline Dashboard - mirror of Pipeline PDF with live/snapshot toggle."""
     mode = request.args.get('mode', 'live')
