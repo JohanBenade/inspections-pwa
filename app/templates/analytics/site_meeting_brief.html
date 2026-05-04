@@ -268,11 +268,11 @@ body {
                     {% if current_user.role in ['team_lead', 'manager', 'admin'] %}
                     <a href="{{ url_for('batches.list_batches') }}" class="text-sm text-gray-300 hover:text-white">Batches</a>
                     <a href="{{ url_for('analytics.batch_reports_picker') }}" class="text-sm text-gray-300 hover:text-white">Batch Reports</a>
+                    <a href="{{ url_for('analytics.pipeline_dashboard') }}" class="text-sm text-gray-300 hover:text-white">Pipeline</a>
+                    <a href="{{ url_for('analytics.site_meeting_brief_view') }}" class="text-sm text-gray-300 hover:text-white">Brief</a>
                     {% endif %}
                     {% if current_user.role in ['manager', 'admin'] %}
                     <a href="{{ url_for('approvals.pipeline') }}" class="text-sm text-gray-300 hover:text-white">Approvals</a>
-                    <a href="{{ url_for('analytics.pipeline_dashboard') }}" class="text-sm text-gray-300 hover:text-white">Pipeline</a>
-                    <a href="{{ url_for('analytics.site_meeting_brief_view') }}" class="text-sm text-gray-300 hover:text-white">Brief</a>
                     <a href="{{ url_for('approvals.cleanup') }}" class="text-sm text-gray-300 hover:text-white">Defects Cleanup</a>
                     <a href="{{ url_for('analytics.inspector_audit') }}" class="text-sm text-gray-300 hover:text-white">Inspector Log</a>
                     <a href="{{ url_for('analytics.login_status') }}" class="text-sm text-gray-300 hover:text-white">Login Status</a>
