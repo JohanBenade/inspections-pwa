@@ -121,12 +121,10 @@
     <div class="sticky bottom-0 bg-white border-t shadow-lg p-4 -mx-4">
         <div id="desnag-submit-wrap">
         {% if can_submit %}
-        <form method="POST" action="{{ url_for('inspection.desnag_submit', inspection_id=inspection.id) }}"
-              onsubmit="return confirm('Submit de-snag?\n\n{{ total_cleared }} cleared, {{ total_still_open }} still open.\n\nThis cannot be undone.')">
-            <button type="submit" class="w-full py-3 px-4 bg-green-600 text-white font-semibold rounded-lg hover:bg-green-700 transition-colors">
-                Submit De-snag
-            </button>
-        </form>
+        <a href="{{ url_for('inspection.desnag_sweep_view', inspection_id=inspection.id) }}"
+           class="block w-full py-3 px-4 bg-green-600 text-white font-semibold rounded-lg hover:bg-green-700 transition-colors text-center">
+            Continue
+        </a>
         {% else %}
         <button disabled class="w-full py-3 px-4 bg-gray-300 text-gray-500 font-semibold rounded-lg cursor-not-allowed">
             Address all defects to submit ({{ total_addressed }} / {{ total_bfwd }})
