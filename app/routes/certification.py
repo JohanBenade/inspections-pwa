@@ -850,6 +850,7 @@ def my_reviews():
         LEFT JOIN batch_unit bu ON bu.unit_id = u.id AND bu.cycle_id = i.cycle_id AND bu.status != 'removed'
         LEFT JOIN inspection_batch ib ON bu.batch_id = ib.id
         WHERE i.tenant_id = ? AND i.status = 'submitted'
+          AND (ib.status IS NULL OR ib.status = 'open')
         ORDER BY ib.received_date DESC, u.block, u.floor, u.unit_number
     """, [tenant_id])]
 
