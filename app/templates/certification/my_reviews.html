@@ -63,6 +63,8 @@
                     <div class="flex items-center gap-2 flex-shrink-0">
                         <a href="{{ url_for('certification.view_unit', unit_id=insp.unit_id) }}"
                            class="px-3 py-1.5 text-xs font-semibold rounded bg-gray-100 text-gray-700 hover:bg-gray-200">View</a>
+                        <a href="{{ url_for('approvals.unit_latent', cycle_id=zone.cycle_id, unit_id=insp.unit_id) }}"
+                           class="px-3 py-1.5 text-xs font-semibold rounded bg-purple-100 text-purple-700 hover:bg-purple-200">Latent &rarr;</a>
                         <form method="POST" action="{{ url_for('certification.review_unit', unit_id=insp.unit_id) }}" class="inline">
                             <button type="submit"
                                     class="px-3 py-1.5 text-xs font-semibold rounded bg-green-600 text-white hover:bg-green-700">Mark Reviewed</button>
