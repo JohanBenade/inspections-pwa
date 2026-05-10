@@ -207,6 +207,9 @@
                 <a href="{{ url_for('certification.view_unit', unit_id=unit.unit_id, cycle=cycle.id, **{'from': 'approvals'}) }}"
                    class="text-xs text-blue-600 hover:text-blue-800 ml-2"
                    onclick="event.stopPropagation();">View &rarr;</a>
+                <a href="{{ url_for('approvals.unit_latent', cycle_id=cycle.id, unit_id=unit.unit_id) }}"
+                   class="text-xs text-purple-600 hover:text-purple-800 ml-2"
+                   onclick="event.stopPropagation();">Latent &rarr;</a>
             </div>
         </div>
         <div class="flex items-center gap-3">

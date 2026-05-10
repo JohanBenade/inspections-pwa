@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+
+{% block title %}Latent - Unit {{ unit.unit_number }} - C{{ cycle_number }}{% endblock %}
+
+{% block content %}
+<div class="max-w-4xl mx-auto p-4">
+    <!-- Back link -->
+    <a href="{{ url_for('approvals.review', cycle_id=cycle_id) }}" class="inline-block text-sm text-blue-600 hover:text-blue-800 mb-3">&larr; Back to cycle review</a>
+
+    <!-- Header -->
+    <div class="bg-white rounded-lg shadow p-4 mb-4">
+        <h1 class="text-2xl font-bold text-gray-900">
+            Latent defects &mdash; Unit {{ unit.unit_number }}
+        </h1>
+        <div class="text-sm text-gray-600 mt-1">
+            Block {{ unit.block }} &bull; Floor {{ unit.floor }} &bull; Cycle C{{ cycle_number }}
+        </div>
+    </div>
+
+    <!-- Notes section -->
+    <div class="bg-white rounded-lg shadow p-4">
+        <h2 class="text-lg font-semibold text-gray-900 mb-3">Area notes</h2>
+
+        {% if latent_notes %}
+        <div class="space-y-3">
+            {% for n in latent_notes %}
+            <div class="border border-gray-200 rounded-lg p-3">
+                <div class="flex justify-between items-start mb-2">
+                    <span class="font-semibold text-gray-900">
+                        {{ n.area_name or n.area_name_override }}
+                    </span>
+                    <span class="text-xs text-gray-500">
+                        {% if n.last_edited_by_role == 'team_lead' or n.created_by_role == 'team_lead' %}
+                        By team lead
+                        {% else %}
+                        By inspector
+                        {% endif %}
+                    </span>
+                </div>
+                <div class="text-sm text-gray-700 prose prose-sm max-w-none">{{ n.note_html|safe }}</div>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <div class="border border-dashed border-gray-300 rounded-lg p-6 text-center text-sm text-gray-500 bg-gray-50">
+            No latent defects captured yet. Capture interface coming in next deploy.
+        </div>
+        {% endif %}
+
+        <!-- [+ Add area note] button comes in Step 6 -->
+    </div>
+</div>
+{% endblock %}

@@ -599,6 +599,45 @@ def review(cycle_id):
     return render_template('approvals/review.html', **data)
 
 
+@approvals_bp.route('/<cycle_id>/unit/<unit_id>/latent')
+@require_manager
+def unit_latent(cycle_id, unit_id):
+    """Per-unit latent defect edit page (TL desktop, post-pivot 2026-05)."""
+    tenant_id = session['tenant_id']
+
+    unit = query_db("""
+        SELECT id, unit_number, block, floor
+        FROM unit
+        WHERE id = ? AND tenant_id = ?
+    """, [unit_id, tenant_id], one=True)
+    if not unit:
+        abort(404)
+
+    inspection = query_db("""
+        SELECT id, cycle_number FROM inspection
+        WHERE unit_id = ? AND cycle_id = ? AND tenant_id = ?
+    """, [unit_id, cycle_id, tenant_id], one=True)
+    if not inspection:
+        abort(404)
+
+    latent_notes = query_db("""
+        SELECT n.id, n.note_html, n.area_template_id, n.area_name_override,
+               n.created_by, n.created_by_role, n.last_edited_by_role,
+               n.created_at, at.area_name, at.area_order
+        FROM latent_area_note n
+        LEFT JOIN area_template at ON n.area_template_id = at.id
+        WHERE n.inspection_id = ? AND n.tenant_id = ?
+        ORDER BY at.area_order, n.created_at
+    """, [inspection['id'], tenant_id])
+
+    return render_template('approvals/unit_latent.html',
+        unit=unit,
+        inspection=inspection,
+        cycle_id=cycle_id,
+        cycle_number=inspection['cycle_number'],
+        latent_notes=latent_notes)
+
+
 @approvals_bp.route('/<cycle_id>/edit-defect', methods=['POST'])
 @require_manager
 def edit_defect(cycle_id):
