@@ -2422,60 +2422,6 @@ def serve_latent_photo(photo_id):
     return send_file(photo['file_path'], mimetype=photo['mime_type'])
 
 
-@inspection_bp.route('/<inspection_id>/desnag/sweep')
-@require_auth
-def desnag_sweep_view(inspection_id):
-    """Pre-submit sweep screen. Latent area notes captured here, then submit."""
-    tenant_id = session['tenant_id']
-
-    inspection = query_db("""
-        SELECT i.*, u.unit_number, u.block, u.floor
-        FROM inspection i
-        JOIN unit u ON i.unit_id = u.id
-        WHERE i.id = ? AND i.tenant_id = ?
-    """, [inspection_id, tenant_id], one=True)
-
-    if not inspection:
-        abort(404)
-
-    cycle_number = inspection['cycle_number']
-    unit_id = inspection['unit_id']
-
-    # Gate: all bfwd defects must be addressed (same as desnag_submit)
-    unaddressed = query_db("""
-        SELECT COUNT(*) as cnt FROM defect
-        WHERE unit_id = ? AND tenant_id = ?
-        AND raised_cycle_number < ?
-        AND status = 'open' AND addressed_cycle_number IS NULL
-    """, [unit_id, tenant_id, cycle_number], one=True)['cnt']
-
-    if unaddressed > 0:
-        return redirect(url_for('inspection.desnag_view', inspection_id=inspection_id))
-
-    # Existing latent area notes for this inspection
-    latent_notes = query_db("""
-        SELECT n.id, n.note_html, n.area_template_id, n.area_name_override,
-               n.created_by, n.created_by_role, n.last_edited_by_role,
-               at.area_name, at.area_order
-        FROM latent_area_note n
-        LEFT JOIN area_template at ON n.area_template_id = at.id
-        WHERE n.inspection_id = ? AND n.tenant_id = ?
-        ORDER BY at.area_order, n.created_at
-    """, [inspection_id, tenant_id])
-
-    counts = _desnag_progress(unit_id, tenant_id, cycle_number)
-    floor_label = FLOOR_LABELS.get(inspection['floor'], 'Floor {}'.format(inspection['floor']))
-
-    return render_template('inspection/desnag_sweep.html',
-        inspection=inspection,
-        inspection_id=inspection_id,
-        latent_notes=latent_notes,
-        cycle_number=cycle_number,
-        total_cleared=counts['cleared'],
-        total_still_open=counts['still_open'],
-        floor_label=floor_label)
-
-
 def _desnag_progress(unit_id, tenant_id, cycle_number):
     """Calculate overall de-snag progress."""
     row = query_db("""
