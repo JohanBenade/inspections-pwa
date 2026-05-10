@@ -1083,7 +1083,7 @@ def block_floor_detail(block_slug, floor):
             COUNT(d.id) as defect_count
         FROM unit_real u
         JOIN inspection i ON i.unit_id = u.id AND i.tenant_id = u.tenant_id
-        LEFT JOIN defect d ON d.unit_id = u.id AND d.raised_cycle_id = i.cycle_id
+        LEFT JOIN defect d ON d.unit_id = u.id
             AND d.status = 'open' AND d.tenant_id = u.tenant_id
         WHERE u.block = ? AND u.floor = ? AND u.tenant_id = ?
         AND i.cycle_id NOT LIKE 'test-%'
