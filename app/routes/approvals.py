@@ -620,6 +620,10 @@ def unit_latent(cycle_id, unit_id):
     if not inspection:
         abort(404)
 
+    if inspection['cycle_number'] == 1:
+        flash('Latent defects do not apply at C1.', 'warning')
+        return redirect(url_for('approvals.review', cycle_id=cycle_id))
+
     latent_notes = query_db("""
         SELECT n.id, n.note_html, n.area_template_id, n.area_name_override,
                n.created_by, n.created_by_role, n.last_edited_by_role,
