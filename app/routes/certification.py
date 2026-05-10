@@ -840,7 +840,7 @@ def my_reviews():
                i.cycle_number, i.cycle_id,
                ib.id AS batch_id, ib.name AS batch_name, ib.received_date,
                (SELECT COUNT(*) FROM defect d
-                WHERE d.unit_id = u.id AND d.raised_cycle_id = i.cycle_id
+                WHERE d.unit_id = u.id
                 AND d.status = 'open' AND d.tenant_id = i.tenant_id) AS defect_count
         FROM inspection i
         JOIN unit u ON i.unit_id = u.id
