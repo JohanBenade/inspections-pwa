@@ -57,7 +57,7 @@
                         <span class="text-xs text-gray-400">C{{ insp.cycle_number }}</span>
                         {% endif %}
                         <span class="text-xs text-gray-500 truncate">{{ insp.inspector_name }}</span>
-                        <span class="text-xs font-medium text-gray-700">{{ insp.defect_count }} defect{{ 's' if insp.defect_count != 1 }}</span>
+                        <span class="text-xs font-medium text-gray-700">{{ insp.defect_count }} defect{{ 's' if insp.defect_count != 1 }}{% if insp.latent_count %} &middot; +{{ insp.latent_count }} latent{% endif %}</span>
                     </div>
                     <div class="flex items-center gap-2 flex-shrink-0">
                         <a href="{{ url_for('certification.view_unit', unit_id=insp.unit_id) }}"
