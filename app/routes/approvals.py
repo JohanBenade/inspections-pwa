@@ -20,6 +20,7 @@ from app.auth import require_manager, require_team_lead
 from app.utils import generate_id
 from app.utils.audit import log_audit
 from app.services.db import get_db, query_db
+from app.utils.sanitize import sanitize_note_html
 
 approvals_bp = Blueprint('approvals', __name__, url_prefix='/approvals')
 
@@ -606,7 +607,7 @@ def unit_latent(cycle_id, unit_id):
     tenant_id = session['tenant_id']
 
     unit = query_db("""
-        SELECT id, unit_number, block, floor
+        SELECT id, unit_number, block, floor, unit_type
         FROM unit
         WHERE id = ? AND tenant_id = ?
     """, [unit_id, tenant_id], one=True)
@@ -634,12 +635,96 @@ def unit_latent(cycle_id, unit_id):
         ORDER BY at.area_order, n.created_at
     """, [inspection['id'], tenant_id])
 
+    area_templates = query_db("""
+        SELECT id, area_name, area_order
+        FROM area_template
+        WHERE tenant_id = ? AND unit_type = ?
+        ORDER BY area_order
+    """, [tenant_id, unit['unit_type']])
+
     return render_template('approvals/unit_latent.html',
         unit=unit,
         inspection=inspection,
         cycle_id=cycle_id,
         cycle_number=inspection['cycle_number'],
-        latent_notes=latent_notes)
+        latent_notes=latent_notes,
+        area_templates=area_templates)
+
+
+@approvals_bp.route('/<cycle_id>/unit/<unit_id>/latent/add', methods=['POST'])
+@require_manager
+def add_area_note(cycle_id, unit_id):
+    """Create a new latent area note (TL desktop, C2+ only)."""
+    tenant_id = session['tenant_id']
+    db = get_db()
+    now = datetime.now(timezone.utc).isoformat()
+
+    # Tenant-scoped lookups
+    unit = query_db("""
+        SELECT id FROM unit
+        WHERE id = ? AND tenant_id = ?
+    """, [unit_id, tenant_id], one=True)
+    if not unit:
+        abort(404)
+
+    inspection = query_db("""
+        SELECT id, cycle_number FROM inspection
+        WHERE unit_id = ? AND cycle_id = ? AND tenant_id = ?
+    """, [unit_id, cycle_id, tenant_id], one=True)
+    if not inspection:
+        abort(404)
+
+    if inspection['cycle_number'] == 1:
+        flash('Latent defects do not apply at C1.', 'warning')
+        return redirect(url_for('approvals.review', cycle_id=cycle_id))
+
+    # Form fields
+    area_template_id = request.form.get('area_template_id') or None
+    area_name_override = (request.form.get('area_name_override') or '').strip() or None
+    raw_html = request.form.get('note_html') or ''
+    note_html = sanitize_note_html(raw_html).strip()
+
+    # Handle "Other" option
+    if area_template_id == '__other__':
+        area_template_id = None
+
+    # Validation
+    if not area_template_id and not area_name_override:
+        flash('Please pick an area or specify a custom area name.', 'error')
+        return redirect(url_for('approvals.unit_latent',
+                                cycle_id=cycle_id, unit_id=unit_id))
+
+    if not note_html or note_html in ('<p></p>', '<p><br></p>'):
+        flash('Please type a description for the latent defect.', 'error')
+        return redirect(url_for('approvals.unit_latent',
+                                cycle_id=cycle_id, unit_id=unit_id))
+
+    # Resolve role from inspector table (no role in session)
+    user_row = query_db("""
+        SELECT role FROM inspector WHERE id = ? AND tenant_id = ?
+    """, [session['user_id'], tenant_id], one=True)
+    created_by_role = user_row['role'] if user_row else 'manager'
+
+    # Insert
+    note_id = generate_id()
+    db.execute("""
+        INSERT INTO latent_area_note
+        (id, tenant_id, inspection_id, unit_id, cycle_id, cycle_number,
+         area_template_id, area_name_override, note_html,
+         created_by, created_by_role, created_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    """, [note_id, tenant_id, inspection['id'], unit_id, cycle_id,
+          inspection['cycle_number'], area_template_id, area_name_override,
+          note_html, session['user_id'], created_by_role, now])
+
+    log_audit(db, tenant_id, 'latent_area_note', note_id, 'created',
+              new_value=note_html,
+              user_id=session['user_id'], user_name=session['user_name'])
+
+    db.commit()
+    flash('Latent defect note added.', 'success')
+    return redirect(url_for('approvals.unit_latent',
+                            cycle_id=cycle_id, unit_id=unit_id))
 
 
 @approvals_bp.route('/<cycle_id>/edit-defect', methods=['POST'])
