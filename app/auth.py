@@ -174,6 +174,19 @@ def require_team_lead(f):
     return decorated
 
 
+
+def require_team_lead_only(f):
+    """Require team_lead role exactly (no manager/admin override)."""
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        if 'user_id' not in session:
+            return redirect(url_for('login'))
+        if session.get('role') != 'team_lead':
+            abort(403)
+        return f(*args, **kwargs)
+    return decorated
+
+
 def require_office_admin(f):
     """Require office_admin, manager, or admin (explicit check, not level-based)."""
     @wraps(f)

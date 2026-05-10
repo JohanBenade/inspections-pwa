@@ -16,7 +16,7 @@ from difflib import SequenceMatcher
 from collections import OrderedDict
 from flask import (Blueprint, render_template, session, redirect,
                    url_for, abort, request, flash, send_file)
-from app.auth import require_manager, require_team_lead
+from app.auth import require_manager, require_team_lead, require_team_lead_only
 from app.utils import generate_id
 from app.utils.audit import log_audit
 from app.services.db import get_db, query_db
@@ -601,7 +601,7 @@ def review(cycle_id):
 
 
 @approvals_bp.route('/<cycle_id>/unit/<unit_id>/latent')
-@require_manager
+@require_team_lead_only
 def unit_latent(cycle_id, unit_id):
     """Per-unit latent defect edit page (TL desktop, post-pivot 2026-05)."""
     tenant_id = session['tenant_id']
@@ -652,7 +652,7 @@ def unit_latent(cycle_id, unit_id):
 
 
 @approvals_bp.route('/<cycle_id>/unit/<unit_id>/latent/add', methods=['POST'])
-@require_manager
+@require_team_lead_only
 def add_area_note(cycle_id, unit_id):
     """Create a new latent area note (TL desktop, C2+ only)."""
     tenant_id = session['tenant_id']
@@ -699,11 +699,7 @@ def add_area_note(cycle_id, unit_id):
         return redirect(url_for('approvals.unit_latent',
                                 cycle_id=cycle_id, unit_id=unit_id))
 
-    # Resolve role from inspector table (no role in session)
-    user_row = query_db("""
-        SELECT role FROM inspector WHERE id = ? AND tenant_id = ?
-    """, [session['user_id'], tenant_id], one=True)
-    created_by_role = user_row['role'] if user_row else 'manager'
+    created_by_role = session.get('role', 'inspector')
 
     # Insert
     note_id = generate_id()

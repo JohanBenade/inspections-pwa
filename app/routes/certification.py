@@ -4,7 +4,7 @@ View units by status, review, approve, certify, and close per unit.
 """
 from datetime import datetime, timezone
 from flask import Blueprint, render_template, session, redirect, url_for, abort, request, flash
-from app.auth import require_team_lead, require_manager, get_role_level
+from app.auth import require_team_lead, require_team_lead_only, require_manager, get_role_level
 from app.utils.audit import log_audit
 from app.services.db import get_db, query_db
 
@@ -826,7 +826,7 @@ def update_category_note(unit_id):
 # ============================================================
 
 @certification_bp.route('/my-reviews')
-@require_team_lead
+@require_team_lead_only
 def my_reviews():
     """Team Lead review queue - grouped by batch and zone."""
     tenant_id = session['tenant_id']
