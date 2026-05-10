@@ -4831,7 +4831,7 @@ def inspector_detail(inspector_name):
         JOIN unit_real u ON i.unit_id = u.id
         LEFT JOIN defect d ON d.unit_id = u.id AND d.raised_cycle_id = i.cycle_id
             AND d.status = 'open' AND d.tenant_id = u.tenant_id
-        WHERE i.tenant_id = ? AND i.inspector_name = ?
+        WHERE i.tenant_id = ? AND i.inspector_name = ? AND i.cycle_number = 1
             AND i.status IN ('reviewed','approved','certified','pending_followup')
             AND u.unit_number NOT LIKE 'TEST%'
         GROUP BY u.unit_number, i.cycle_id
