@@ -623,7 +623,7 @@ def unit_latent(cycle_id, unit_id):
 
     if inspection['cycle_number'] == 1:
         flash('Latent defects do not apply at C1.', 'warning')
-        return redirect(url_for('approvals.review', cycle_id=cycle_id))
+        return redirect(url_for('certification.my_reviews'))
 
     latent_notes = query_db("""
         SELECT n.id, n.note_html, n.area_template_id, n.area_name_override,
@@ -676,7 +676,7 @@ def add_area_note(cycle_id, unit_id):
 
     if inspection['cycle_number'] == 1:
         flash('Latent defects do not apply at C1.', 'warning')
-        return redirect(url_for('approvals.review', cycle_id=cycle_id))
+        return redirect(url_for('certification.my_reviews'))
 
     # Form fields
     area_template_id = request.form.get('area_template_id') or None
