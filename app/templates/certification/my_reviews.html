@@ -39,15 +39,9 @@
             <div class="px-4 py-2.5 bg-gray-50/50 flex justify-between items-center">
                 <div class="flex items-center gap-2">
                     <span class="text-sm font-semibold text-gray-700">{{ zone.block }} &middot; {{ zone.floor_label }}</span>
-                    {% if zone.cycle_number > 1 %}
-                    <span class="text-xs px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-700 font-semibold">C{{ zone.cycle_number }}</span>
-                    {% else %}
-                    <span class="text-xs text-gray-400">C{{ zone.cycle_number }}</span>
-                    {% endif %}
                 </div>
                 <div class="flex items-center gap-3">
                     <span class="text-xs text-gray-500">{{ zone.units|length }} to review &middot; {{ zone.total_defects }} defects</span>
-                    <span class="text-xs font-medium text-green-600">{{ zone.reviewed_count }} reviewed</span>
                 </div>
             </div>
 
@@ -57,14 +51,21 @@
                 <div class="px-4 py-2.5 flex items-center justify-between hover:bg-gray-50">
                     <div class="flex items-center gap-3 flex-1 min-w-0">
                         <span class="text-sm font-bold text-gray-800 w-12">{{ insp.unit_number }}</span>
+                        {% if insp.cycle_number > 1 %}
+                        <span class="text-xs px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-700 font-semibold">C{{ insp.cycle_number }}</span>
+                        {% else %}
+                        <span class="text-xs text-gray-400">C{{ insp.cycle_number }}</span>
+                        {% endif %}
                         <span class="text-xs text-gray-500 truncate">{{ insp.inspector_name }}</span>
-                        <span class="text-xs font-medium text-gray-700">{{ insp.defect_count }}</span>
+                        <span class="text-xs font-medium text-gray-700">{{ insp.defect_count }} defect{{ 's' if insp.defect_count != 1 }}</span>
                     </div>
                     <div class="flex items-center gap-2 flex-shrink-0">
                         <a href="{{ url_for('certification.view_unit', unit_id=insp.unit_id) }}"
                            class="px-3 py-1.5 text-xs font-semibold rounded bg-gray-100 text-gray-700 hover:bg-gray-200">View</a>
-                        <a href="{{ url_for('approvals.unit_latent', cycle_id=zone.cycle_id, unit_id=insp.unit_id) }}"
+                        {% if insp.cycle_number > 1 %}
+                        <a href="{{ url_for('approvals.unit_latent', cycle_id=insp.cycle_id, unit_id=insp.unit_id) }}"
                            class="px-3 py-1.5 text-xs font-semibold rounded bg-purple-100 text-purple-700 hover:bg-purple-200">Latent &rarr;</a>
+                        {% endif %}
                         <form method="POST" action="{{ url_for('certification.review_unit', unit_id=insp.unit_id) }}" class="inline">
                             <button type="submit"
                                     class="px-3 py-1.5 text-xs font-semibold rounded bg-green-600 text-white hover:bg-green-700">Mark Reviewed</button>
