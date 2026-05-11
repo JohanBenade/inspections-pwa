@@ -843,8 +843,13 @@ def my_reviews():
                 WHERE d.unit_id = u.id
                 AND d.status = 'open' AND d.tenant_id = i.tenant_id) AS defect_count,
                (SELECT COUNT(*) FROM latent_area_note lan
-                WHERE lan.inspection_id = i.id
-                AND lan.tenant_id = i.tenant_id) AS latent_count
+                WHERE lan.unit_id = u.id
+                AND lan.tenant_id = i.tenant_id
+                AND lan.rectified_at_cycle_number IS NULL) AS latent_open_count,
+               (SELECT COUNT(*) FROM latent_area_note lan
+                WHERE lan.unit_id = u.id
+                AND lan.tenant_id = i.tenant_id
+                AND lan.rectified_at_cycle_number IS NOT NULL) AS latent_rectified_count
         FROM inspection i
         JOIN unit u ON i.unit_id = u.id
         LEFT JOIN batch_unit bu ON bu.unit_id = u.id AND bu.cycle_id = i.cycle_id AND bu.status != 'removed'
