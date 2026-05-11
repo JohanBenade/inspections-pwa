@@ -649,9 +649,9 @@
     </div>
 
     {% if latent_notes_list %}
-    <div style="margin-top: 30px; page-break-before: auto;">
-        <div class="defects-header-title" style="page-break-after: avoid;"><span>Addendum: Latent Defects Identified ({{ latent_summary.total }})</span></div>
-        <p style="font-size: 8pt; font-style: italic; color: #666; margin: 4px 0 12px 0; page-break-after: avoid;">Defects identified by the team lead during cycle reviews. These fall outside the inspection scope but are recorded for rectification during the contract period.</p>
+    <div style="margin-top: 30px; page-break-before: always;">
+        <div class="defects-header-title"><span>Addendum: Latent Defects Identified ({{ latent_summary.total }})</span></div>
+        <p style="font-size: 8pt; font-style: italic; color: #666; margin: 4px 0 12px 0;">Defects identified by the team lead during cycle reviews. These fall outside the inspection scope but are recorded for rectification during the contract period.</p>
         {% for note in latent_notes_list %}
         <div class="no-break" style="margin-bottom: 14px;">
             <div class="area-title" style="margin-bottom: 4px;"><span>{{ note.area_display_name }} &mdash; Identified at C{{ note.cycle_number }} ({{ note.created_at_fmt }})</span></div>
