@@ -526,6 +526,9 @@
             {% if excluded_items_by_area %}
             <div style="border-top: 1px dashed #ccc; margin-top: 8px; padding-top: 6px; font-size: 9pt; color: #666;">Excluded from inspection: {{ summary.excluded }} items not yet assessed</div>
             {% endif %}
+            {% if latent_summary and latent_summary.total > 0 %}
+            <div style="border-top: 1px dashed #ccc; margin-top: 8px; padding-top: 6px; font-size: 9pt; color: #666;">Latent defects to date: {{ latent_summary.total }} ({{ latent_summary.outstanding }} outstanding, {{ latent_summary.rectified }} rectified)</div>
+            {% endif %}
             {% if is_certified %}
             <div class="summary-status">UNIT CLEARED &amp; CERTIFIED</div>
 
@@ -644,6 +647,39 @@
             <p class="signatory-title">PrArch; MD</p>
         </div>
     </div>
+
+    {% if latent_notes_list %}
+    <div style="margin-top: 30px; page-break-before: auto;">
+        <div class="defects-header-title"><span>Addendum: Latent Defects Identified ({{ latent_summary.total }})</span></div>
+        <p style="font-size: 8pt; font-style: italic; color: #666; margin: 4px 0 12px 0;">Defects identified by the team lead during cycle reviews. These fall outside the inspection scope but are recorded for rectification during the contract period.</p>
+        {% for note in latent_notes_list %}
+        <div class="no-break" style="margin-bottom: 14px;">
+            <div class="area-title" style="margin-bottom: 4px;"><span>{{ note.area_display_name }} &mdash; Identified at C{{ note.cycle_number }} ({{ note.created_at_fmt }})</span></div>
+            <div class="rich-text" style="margin-left: 12px; margin-bottom: 6px;">{{ note.note_html | safe }}</div>
+            {% if note.photos %}
+            <table style="margin-left: 12px; margin-bottom: 6px; border-collapse: collapse;">
+                {% for p in note.photos %}
+                {% if loop.index0 % 3 == 0 %}<tr>{% endif %}
+                <td style="padding: 0 6px 6px 0; vertical-align: top;">
+                    {% if p.src %}
+                    <img src="{{ p.src }}" style="width: 180px; height: auto; display: block; border: 1px solid #ddd;">
+                    {% endif %}
+                </td>
+                {% if loop.index % 3 == 0 or loop.last %}</tr>{% endif %}
+                {% endfor %}
+            </table>
+            {% endif %}
+            <div style="margin-left: 12px; font-size: 9pt;">
+                {% if note.rectified_at_cycle_number %}
+                <span style="font-weight: 400;">Status:</span> <span style="color: #228B22; font-weight: 400;">Rectified at C{{ note.rectified_at_cycle_number }} ({{ note.rectified_at_fmt }})</span>
+                {% else %}
+                <span style="font-weight: 400;">Status:</span> <span style="color: #cc0000; font-weight: 400;">Outstanding</span>
+                {% endif %}
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
 
     {% if excluded_items_by_area %}
     <div style="margin-top: 30px; page-break-before: auto;">
