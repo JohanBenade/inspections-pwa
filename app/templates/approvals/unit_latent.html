@@ -3,6 +3,9 @@
 {% block title %}Latent - Unit {{ unit.unit_number }} - C{{ cycle_number }}{% endblock %}
 
 {% block content %}
+{# Date format helper: ISO timestamp string -> DD.MM.YYYY #}
+{% macro fmt_date(iso) %}{{ iso[8:10] }}.{{ iso[5:7] }}.{{ iso[:4] }}{% endmacro %}
+
 <!-- Quill rich-text editor styles -->
 <link href="https://cdn.quilljs.com/1.3.7/quill.snow.css" rel="stylesheet">
 
@@ -60,7 +63,34 @@
                     </span>
                 </div>
                 <div class="text-sm text-gray-700 latent-note-content">{{ n.note_html|safe }}</div>
-                <div class="mt-2 flex justify-end gap-3">
+
+                {# Status badge #}
+                <div class="mt-2">
+                    {% if n.rectified_at_cycle_number %}
+                    <span class="inline-block px-2 py-0.5 text-xs rounded bg-green-100 text-green-800">
+                        Identified at C{{ n.cycle_number }} ({{ fmt_date(n.created_at) }}) &mdash; Rectified at C{{ n.rectified_at_cycle_number }} ({{ fmt_date(n.rectified_at) }})
+                    </span>
+                    {% else %}
+                    <span class="inline-block px-2 py-0.5 text-xs rounded bg-amber-100 text-amber-800">
+                        Identified at C{{ n.cycle_number }} ({{ fmt_date(n.created_at) }}) &mdash; Outstanding
+                    </span>
+                    {% endif %}
+                </div>
+
+                <div class="mt-2 flex justify-end gap-3 items-center">
+                    {% if n.rectified_at_cycle_number %}
+                    {# Rectified state: Re-open + Delete #}
+                    <form method="POST" action="{{ url_for('approvals.reopen_area_note', cycle_id=cycle_id, unit_id=unit.id, note_id=n.id) }}" class="inline">
+                        <button type="submit" class="text-xs text-amber-600 hover:text-amber-800">Re-open</button>
+                    </form>
+                    <button type="button"
+                            class="js-delete-note text-xs text-red-600 hover:text-red-800"
+                            data-delete-url="{{ url_for('approvals.delete_area_note', cycle_id=cycle_id, unit_id=unit.id, note_id=n.id) }}"
+                            data-area-name="{{ n.area_name or n.area_name_override }}">
+                        Delete
+                    </button>
+                    {% else %}
+                    {# Outstanding state: Edit + Delete + Mark Rectified #}
                     <button type="button"
                             class="js-edit-note text-xs text-blue-600 hover:text-blue-800"
                             data-edit-url="{{ url_for('approvals.edit_area_note', cycle_id=cycle_id, unit_id=unit.id, note_id=n.id) }}"
@@ -73,6 +103,10 @@
                             data-area-name="{{ n.area_name or n.area_name_override }}">
                         Delete
                     </button>
+                    <form method="POST" action="{{ url_for('approvals.rectify_area_note', cycle_id=cycle_id, unit_id=unit.id, note_id=n.id) }}" class="inline">
+                        <button type="submit" class="text-xs text-green-600 hover:text-green-800">Mark Rectified</button>
+                    </form>
+                    {% endif %}
                 </div>
             </div>
             {% endfor %}

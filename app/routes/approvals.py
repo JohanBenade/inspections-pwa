@@ -628,12 +628,14 @@ def unit_latent(cycle_id, unit_id):
     latent_notes = query_db("""
         SELECT n.id, n.note_html, n.area_template_id, n.area_name_override,
                n.created_by, n.created_by_role, n.last_edited_by_role,
-               n.created_at, at.area_name, at.area_order
+               n.created_at, n.cycle_number,
+               n.rectified_at_cycle_number, n.rectified_at,
+               at.area_name, at.area_order
         FROM latent_area_note n
         LEFT JOIN area_template at ON n.area_template_id = at.id
-        WHERE n.inspection_id = ? AND n.tenant_id = ?
+        WHERE n.unit_id = ? AND n.tenant_id = ?
         ORDER BY at.area_order, n.created_at
-    """, [inspection['id'], tenant_id])
+    """, [unit_id, tenant_id])
 
     area_templates = query_db("""
         SELECT id, area_name, area_order
@@ -754,11 +756,11 @@ def edit_area_note(cycle_id, unit_id, note_id):
         flash('Latent defects do not apply at C1.', 'warning')
         return redirect(url_for('certification.my_reviews'))
 
-    # Locate the note (scoped to this inspection + tenant)
+    # Locate the note (unit-scoped to allow cross-cycle edit/delete)
     note = query_db("""
         SELECT id, note_html FROM latent_area_note
-        WHERE id = ? AND inspection_id = ? AND tenant_id = ?
-    """, [note_id, inspection['id'], tenant_id], one=True)
+        WHERE id = ? AND unit_id = ? AND tenant_id = ?
+    """, [note_id, unit_id, tenant_id], one=True)
     if not note:
         abort(404)
 
@@ -823,11 +825,11 @@ def delete_area_note(cycle_id, unit_id, note_id):
         flash('Latent defects do not apply at C1.', 'warning')
         return redirect(url_for('certification.my_reviews'))
 
-    # Locate the note (scoped to this inspection + tenant)
+    # Locate the note (unit-scoped to allow cross-cycle edit/delete)
     note = query_db("""
         SELECT id, note_html FROM latent_area_note
-        WHERE id = ? AND inspection_id = ? AND tenant_id = ?
-    """, [note_id, inspection['id'], tenant_id], one=True)
+        WHERE id = ? AND unit_id = ? AND tenant_id = ?
+    """, [note_id, unit_id, tenant_id], one=True)
     if not note:
         abort(404)
 
@@ -845,6 +847,141 @@ def delete_area_note(cycle_id, unit_id, note_id):
 
     db.commit()
     flash('Latent defect note deleted.', 'success')
+    return redirect(url_for('approvals.unit_latent',
+                            cycle_id=cycle_id, unit_id=unit_id))
+
+
+@approvals_bp.route('/<cycle_id>/unit/<unit_id>/latent/<note_id>/rectify', methods=['POST'])
+@require_team_lead_only
+def rectify_area_note(cycle_id, unit_id, note_id):
+    """Mark a latent area note as rectified (TL desktop, C2+ only).
+
+    Records the current cycle as the rectification cycle on the note.
+    Reversible via reopen_area_note. Note lookup is unit-scoped so a TL
+    in any cycle can rectify outstanding notes from prior cycles.
+    """
+    tenant_id = session['tenant_id']
+    db = get_db()
+    now = datetime.now(timezone.utc).isoformat()
+
+    # Tenant-scoped unit
+    unit = query_db("""
+        SELECT id FROM unit
+        WHERE id = ? AND tenant_id = ?
+    """, [unit_id, tenant_id], one=True)
+    if not unit:
+        abort(404)
+
+    # Current cycle's inspection (rectification attributes to current cycle)
+    inspection = query_db("""
+        SELECT id, cycle_number FROM inspection
+        WHERE unit_id = ? AND cycle_id = ? AND tenant_id = ?
+    """, [unit_id, cycle_id, tenant_id], one=True)
+    if not inspection:
+        abort(404)
+
+    if inspection['cycle_number'] == 1:
+        flash('Latent defects do not apply at C1.', 'warning')
+        return redirect(url_for('certification.my_reviews'))
+
+    # Locate the note (unit-scoped, may originate from a prior cycle)
+    note = query_db("""
+        SELECT id, rectified_at_cycle_number FROM latent_area_note
+        WHERE id = ? AND unit_id = ? AND tenant_id = ?
+    """, [note_id, unit_id, tenant_id], one=True)
+    if not note:
+        abort(404)
+
+    if note['rectified_at_cycle_number'] is not None:
+        flash('Note is already marked rectified.', 'warning')
+        return redirect(url_for('approvals.unit_latent',
+                                cycle_id=cycle_id, unit_id=unit_id))
+
+    rectified_by_role = session.get('role', 'inspector')
+
+    db.execute("""
+        UPDATE latent_area_note
+        SET rectified_at_cycle_id = ?,
+            rectified_at_cycle_number = ?,
+            rectified_at = ?,
+            rectified_by = ?,
+            rectified_by_role = ?
+        WHERE id = ? AND tenant_id = ?
+    """, [cycle_id, inspection['cycle_number'], now,
+          session['user_id'], rectified_by_role, note_id, tenant_id])
+
+    log_audit(db, tenant_id, 'latent_area_note', note_id, 'rectified',
+              new_value='cycle_number={}; rectified_at={}'.format(
+                  inspection['cycle_number'], now),
+              user_id=session['user_id'], user_name=session['user_name'])
+
+    db.commit()
+    flash('Latent defect marked rectified.', 'success')
+    return redirect(url_for('approvals.unit_latent',
+                            cycle_id=cycle_id, unit_id=unit_id))
+
+
+@approvals_bp.route('/<cycle_id>/unit/<unit_id>/latent/<note_id>/reopen', methods=['POST'])
+@require_team_lead_only
+def reopen_area_note(cycle_id, unit_id, note_id):
+    """Re-open a rectified latent area note (TL desktop, C2+ only).
+
+    Clears all 5 rectification columns back to NULL. Reverses rectify_area_note.
+    """
+    tenant_id = session['tenant_id']
+    db = get_db()
+
+    # Tenant-scoped unit
+    unit = query_db("""
+        SELECT id FROM unit
+        WHERE id = ? AND tenant_id = ?
+    """, [unit_id, tenant_id], one=True)
+    if not unit:
+        abort(404)
+
+    # Current cycle's inspection (for C1 guard)
+    inspection = query_db("""
+        SELECT id, cycle_number FROM inspection
+        WHERE unit_id = ? AND cycle_id = ? AND tenant_id = ?
+    """, [unit_id, cycle_id, tenant_id], one=True)
+    if not inspection:
+        abort(404)
+
+    if inspection['cycle_number'] == 1:
+        flash('Latent defects do not apply at C1.', 'warning')
+        return redirect(url_for('certification.my_reviews'))
+
+    # Locate the note (unit-scoped)
+    note = query_db("""
+        SELECT id, rectified_at_cycle_number FROM latent_area_note
+        WHERE id = ? AND unit_id = ? AND tenant_id = ?
+    """, [note_id, unit_id, tenant_id], one=True)
+    if not note:
+        abort(404)
+
+    if note['rectified_at_cycle_number'] is None:
+        flash('Note is not currently rectified.', 'warning')
+        return redirect(url_for('approvals.unit_latent',
+                                cycle_id=cycle_id, unit_id=unit_id))
+
+    old_cycle_number = note['rectified_at_cycle_number']
+
+    db.execute("""
+        UPDATE latent_area_note
+        SET rectified_at_cycle_id = NULL,
+            rectified_at_cycle_number = NULL,
+            rectified_at = NULL,
+            rectified_by = NULL,
+            rectified_by_role = NULL
+        WHERE id = ? AND tenant_id = ?
+    """, [note_id, tenant_id])
+
+    log_audit(db, tenant_id, 'latent_area_note', note_id, 'reopened',
+              old_value='cycle_number={}'.format(old_cycle_number),
+              user_id=session['user_id'], user_name=session['user_name'])
+
+    db.commit()
+    flash('Latent defect re-opened.', 'success')
     return redirect(url_for('approvals.unit_latent',
                             cycle_id=cycle_id, unit_id=unit_id))
 
