@@ -198,6 +198,7 @@
                     Cancel
                 </button>
                 <button type="submit"
+                        data-loading-text="Saving..."
                         class="px-4 py-2 text-sm bg-blue-600 hover:bg-blue-700 text-white rounded-md font-medium">
                     Save note
                 </button>
@@ -227,6 +228,7 @@
                     Cancel
                 </button>
                 <button type="submit"
+                        data-loading-text="Saving..."
                         class="px-4 py-2 text-sm bg-blue-600 hover:bg-blue-700 text-white rounded-md font-medium">
                     Save changes
                 </button>
@@ -252,6 +254,7 @@
                     Cancel
                 </button>
                 <button type="submit"
+                        data-loading-text="Deleting..."
                         class="px-4 py-2 text-sm bg-red-600 hover:bg-red-700 text-white rounded-md font-medium">
                     Delete
                 </button>
@@ -278,6 +281,7 @@
                     Cancel
                 </button>
                 <button type="submit"
+                        data-loading-text="Uploading..."
                         class="px-4 py-2 text-sm bg-blue-600 hover:bg-blue-700 text-white rounded-md font-medium">
                     Upload
                 </button>
@@ -381,6 +385,33 @@
     document.addEventListener('keydown', function(e) {
         if (e.key === 'Escape') closeLightbox();
     });
+
+    // === SUBMIT GUARD ===
+    // Prevents double-submission on slow forms (multipart uploads especially).
+    // Applied to every <form> on this page.
+    function preventDoubleSubmit(form) {
+        form.addEventListener('submit', function(e) {
+            // If another handler already cancelled the submit (e.g. confirm
+            // dialog returned false), don't lock -- user can try again.
+            if (e.defaultPrevented) return;
+            if (form.dataset.submitting === '1') {
+                e.preventDefault();
+                return false;
+            }
+            form.dataset.submitting = '1';
+            var btn = form.querySelector('button[type="submit"]');
+            if (btn) {
+                btn.disabled = true;
+                btn.style.opacity = '0.6';
+                btn.style.cursor = 'not-allowed';
+                if (btn.dataset.loadingText) {
+                    btn.dataset.originalText = btn.textContent;
+                    btn.textContent = btn.dataset.loadingText;
+                }
+            }
+        });
+    }
+    document.querySelectorAll('form').forEach(preventDoubleSubmit);
 })();
 
 function openAddModal() {
