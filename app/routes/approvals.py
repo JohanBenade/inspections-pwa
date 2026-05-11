@@ -794,6 +794,61 @@ def edit_area_note(cycle_id, unit_id, note_id):
                             cycle_id=cycle_id, unit_id=unit_id))
 
 
+@approvals_bp.route('/<cycle_id>/unit/<unit_id>/latent/<note_id>/delete', methods=['POST'])
+@require_team_lead_only
+def delete_area_note(cycle_id, unit_id, note_id):
+    """Hard-delete a latent area note (TL desktop, C2+ only).
+
+    Audit logs the deleted note_html in old_value.
+    """
+    tenant_id = session['tenant_id']
+    db = get_db()
+
+    # Tenant-scoped lookups
+    unit = query_db("""
+        SELECT id FROM unit
+        WHERE id = ? AND tenant_id = ?
+    """, [unit_id, tenant_id], one=True)
+    if not unit:
+        abort(404)
+
+    inspection = query_db("""
+        SELECT id, cycle_number FROM inspection
+        WHERE unit_id = ? AND cycle_id = ? AND tenant_id = ?
+    """, [unit_id, cycle_id, tenant_id], one=True)
+    if not inspection:
+        abort(404)
+
+    if inspection['cycle_number'] == 1:
+        flash('Latent defects do not apply at C1.', 'warning')
+        return redirect(url_for('certification.my_reviews'))
+
+    # Locate the note (scoped to this inspection + tenant)
+    note = query_db("""
+        SELECT id, note_html FROM latent_area_note
+        WHERE id = ? AND inspection_id = ? AND tenant_id = ?
+    """, [note_id, inspection['id'], tenant_id], one=True)
+    if not note:
+        abort(404)
+
+    old_html = note['note_html']
+
+    # Hard delete
+    db.execute("""
+        DELETE FROM latent_area_note
+        WHERE id = ? AND tenant_id = ?
+    """, [note_id, tenant_id])
+
+    log_audit(db, tenant_id, 'latent_area_note', note_id, 'deleted',
+              old_value=old_html, new_value=None,
+              user_id=session['user_id'], user_name=session['user_name'])
+
+    db.commit()
+    flash('Latent defect note deleted.', 'success')
+    return redirect(url_for('approvals.unit_latent',
+                            cycle_id=cycle_id, unit_id=unit_id))
+
+
 @approvals_bp.route('/<cycle_id>/edit-defect', methods=['POST'])
 @require_manager
 def edit_defect(cycle_id):
