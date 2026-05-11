@@ -723,6 +723,77 @@ def add_area_note(cycle_id, unit_id):
                             cycle_id=cycle_id, unit_id=unit_id))
 
 
+@approvals_bp.route('/<cycle_id>/unit/<unit_id>/latent/<note_id>/edit', methods=['POST'])
+@require_team_lead_only
+def edit_area_note(cycle_id, unit_id, note_id):
+    """Update note_html on an existing latent area note (TL desktop, C2+ only).
+
+    Edit scope: text only. Area cannot be changed.
+    To change area, delete the note and add a new one.
+    """
+    tenant_id = session['tenant_id']
+    db = get_db()
+    now = datetime.now(timezone.utc).isoformat()
+
+    # Tenant-scoped lookups
+    unit = query_db("""
+        SELECT id FROM unit
+        WHERE id = ? AND tenant_id = ?
+    """, [unit_id, tenant_id], one=True)
+    if not unit:
+        abort(404)
+
+    inspection = query_db("""
+        SELECT id, cycle_number FROM inspection
+        WHERE unit_id = ? AND cycle_id = ? AND tenant_id = ?
+    """, [unit_id, cycle_id, tenant_id], one=True)
+    if not inspection:
+        abort(404)
+
+    if inspection['cycle_number'] == 1:
+        flash('Latent defects do not apply at C1.', 'warning')
+        return redirect(url_for('certification.my_reviews'))
+
+    # Locate the note (scoped to this inspection + tenant)
+    note = query_db("""
+        SELECT id, note_html FROM latent_area_note
+        WHERE id = ? AND inspection_id = ? AND tenant_id = ?
+    """, [note_id, inspection['id'], tenant_id], one=True)
+    if not note:
+        abort(404)
+
+    # Sanitise new content
+    raw_html = request.form.get('note_html') or ''
+    new_html = sanitize_note_html(raw_html).strip()
+
+    if not new_html or new_html in ('<p></p>', '<p><br></p>'):
+        flash('Please type a description for the latent defect.', 'error')
+        return redirect(url_for('approvals.unit_latent',
+                                cycle_id=cycle_id, unit_id=unit_id))
+
+    old_html = note['note_html']
+    edited_by_role = session.get('role', 'inspector')
+
+    # Update
+    db.execute("""
+        UPDATE latent_area_note
+        SET note_html = ?,
+            last_edited_by = ?,
+            last_edited_by_role = ?,
+            last_edited_at = ?
+        WHERE id = ? AND tenant_id = ?
+    """, [new_html, session['user_id'], edited_by_role, now, note_id, tenant_id])
+
+    log_audit(db, tenant_id, 'latent_area_note', note_id, 'edited',
+              old_value=old_html, new_value=new_html,
+              user_id=session['user_id'], user_name=session['user_name'])
+
+    db.commit()
+    flash('Latent defect note updated.', 'success')
+    return redirect(url_for('approvals.unit_latent',
+                            cycle_id=cycle_id, unit_id=unit_id))
+
+
 @approvals_bp.route('/<cycle_id>/edit-defect', methods=['POST'])
 @require_manager
 def edit_defect(cycle_id):
