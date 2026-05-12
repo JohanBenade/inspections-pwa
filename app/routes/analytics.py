@@ -6524,7 +6524,7 @@ def _build_brief_latent(tenant_id, snap_str, prev_cutoff_str):
         LEFT JOIN area_template at ON n.area_template_id = at.id
         JOIN unit_real u ON n.unit_id = u.id
         WHERE n.tenant_id = ?
-          AND n.created_at <= ?
+          AND datetime(n.created_at) <= datetime(?)
           AND u.unit_number NOT LIKE 'TEST%'
         ORDER BY n.created_at
     """, [tenant_id, snap_str])
