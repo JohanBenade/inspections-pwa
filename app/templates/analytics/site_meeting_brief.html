@@ -457,7 +457,7 @@ body {
 
         {% if svg_open %}
         <svg viewBox="0 0 {{ chart_w + 20 }} {{ chart_h + 30 }}" xmlns="http://www.w3.org/2000/svg"
-             style="width: 100%; height: 200px; margin: 0 auto 8px auto; display: block;">
+             style="width: 100%; height: 150px; margin: 0 auto 4px auto; display: block;">
             <!-- Grid lines -->
             {% for i in range(5) %}
             {% set gy = 20 + (chart_h - 40) * i / 4 %}
@@ -780,7 +780,7 @@ body {
             All {{ latent_brief_summary.outstanding_count }} {% if latent_cycle_summary.all_zero_days %}identified this fortnight{% else %}up to {{ latent_cycle_summary.oldest_days }} days old{% endif %}{% if latent_cycle_summary.all_same_cycle %} &middot; current de-snag cycle (C{{ latent_cycle_summary.one_cycle }}){% endif %}.
         </div>
         {% endif %}
-        <div style="margin-top: 12px;">
+        <div style="margin-top: 12px; page-break-before: always; padding-top: 8px;">
             <div style="font-size: 9px; font-weight: 600; color: #9A9A9A; letter-spacing: 1px; text-transform: uppercase; margin-bottom: 8px;">Outstanding &mdash; by zone</div>
             <table style="width: 100%; border-collapse: separate; border-spacing: 0;">
                 <tr>
