@@ -5514,8 +5514,8 @@ def _build_pipeline_report_data(live=False):
         else:
             _cycle_index = (_days_since_anchor - 1) // 14
         snapshot_mon = _CYCLE_END_ANCHOR + _td(days=14 * _cycle_index)
-        # Snapshot moment = Tue 00:00 SAST (= Mon 23:59:59 frozen)
-        snapshot_sast = snapshot_mon + _td(days=1)
+        # Snapshot moment = Tue 11:59 SAST (allows Tuesday morning reviews to land in today's brief)
+        snapshot_sast = snapshot_mon + _td(days=1, hours=11, minutes=59)
         snapshot_utc = snapshot_sast - _td(hours=2)
         snapshot_str = snapshot_utc.strftime('%Y-%m-%d %H:%M:%S')
         prev_week_utc = snapshot_utc - _td(days=14)
