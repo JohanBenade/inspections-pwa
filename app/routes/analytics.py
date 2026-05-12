@@ -6653,7 +6653,14 @@ def _build_brief_latent(tenant_id, snap_str, prev_cutoff_str):
             _tz_count = 0
         _units = len(area_unit_ids.get(a, set()))
         _share = int(round(100.0 * c / _total_out)) if _total_out else 0
-        by_area_sorted.append((a, c, _units, _share, _tz_label, _tz_count))
+        by_area_sorted.append({
+            'name': a,
+            'count': c,
+            'units': _units,
+            'share': _share,
+            'top_zone': _tz_label,
+            'top_zone_count': _tz_count,
+        })
 
     # Overall top zone (cluster callout)
     if zone_outstanding and _total_out:
@@ -6709,6 +6716,25 @@ def _build_brief_latent(tenant_id, snap_str, prev_cutoff_str):
             'units': _units_list,
         })
 
+    # 2-column split: minimise diff between left and right cumulative note counts
+    if outstanding_by_zone:
+        _total_notes_in_list = sum(z['outstanding_count'] for z in outstanding_by_zone)
+        _best_split = 0
+        _best_diff = None
+        for _i in range(1, len(outstanding_by_zone) + 1):
+            _l_sum = sum(z['outstanding_count'] for z in outstanding_by_zone[:_i])
+            _r_sum = _total_notes_in_list - _l_sum
+            _diff = abs(_l_sum - _r_sum)
+            if _best_diff is None or _diff < _best_diff:
+                _best_diff = _diff
+                _best_split = _i
+        latent_outstanding_columns = [
+            {'zones': outstanding_by_zone[:_best_split]},
+            {'zones': outstanding_by_zone[_best_split:]},
+        ]
+    else:
+        latent_outstanding_columns = [{'zones': []}, {'zones': []}]
+
     return {
         'latent_notes_list': visible_notes,
         'latent_brief_summary': {
@@ -6728,6 +6754,7 @@ def _build_brief_latent(tenant_id, snap_str, prev_cutoff_str):
         'latent_top_zone': latent_top_zone,
         'latent_cycle_summary': latent_cycle_summary,
         'latent_outstanding_by_zone': outstanding_by_zone,
+        'latent_outstanding_columns': latent_outstanding_columns,
     }
 
 

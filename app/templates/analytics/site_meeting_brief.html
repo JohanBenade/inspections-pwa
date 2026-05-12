@@ -457,7 +457,7 @@ body {
 
         {% if svg_open %}
         <svg viewBox="0 0 {{ chart_w + 20 }} {{ chart_h + 30 }}" xmlns="http://www.w3.org/2000/svg"
-             style="width: 100%; height: auto; margin: 0 auto 8px auto; display: block;">
+             style="width: 100%; height: 200px; margin: 0 auto 8px auto; display: block;">
             <!-- Grid lines -->
             {% for i in range(5) %}
             {% set gy = 20 + (chart_h - 40) * i / 4 %}
@@ -753,26 +753,20 @@ body {
         {% if latent_by_area %}
         <div style="margin-top: 14px;">
             <div style="font-size: 9px; font-weight: 600; color: #9A9A9A; letter-spacing: 1px; text-transform: uppercase; margin-bottom: 4px;">By Area (outstanding)</div>
-            <table style="width: 100%; border-collapse: collapse; font-size: 10px; font-feature-settings: 'lnum' 1, 'tnum' 1;">
+            <table style="width: 60%; border-collapse: collapse; font-size: 10px; font-feature-settings: 'lnum' 1, 'tnum' 1;">
                 <thead>
                     <tr>
                         <th style="text-align: left; padding: 5px 8px; font-size: 8px; font-weight: 600; color: #9A9A9A; letter-spacing: 1.2px; text-transform: uppercase; border-bottom: 2px solid #E8E6E1;">Area</th>
-                        <th style="text-align: right; padding: 5px 8px; font-size: 8px; font-weight: 600; color: #9A9A9A; letter-spacing: 1.2px; text-transform: uppercase; border-bottom: 2px solid #E8E6E1; width: 55px;">Count</th>
-                        <th style="text-align: right; padding: 5px 8px; font-size: 8px; font-weight: 600; color: #9A9A9A; letter-spacing: 1.2px; text-transform: uppercase; border-bottom: 2px solid #E8E6E1; width: 55px;">Units</th>
-                        <th style="text-align: right; padding: 5px 8px; font-size: 8px; font-weight: 600; color: #9A9A9A; letter-spacing: 1.2px; text-transform: uppercase; border-bottom: 2px solid #E8E6E1; width: 55px;">Share</th>
-                        <th style="text-align: left; padding: 5px 8px; font-size: 8px; font-weight: 600; color: #9A9A9A; letter-spacing: 1.2px; text-transform: uppercase; border-bottom: 2px solid #E8E6E1;">Top zone</th>
-                        <th style="text-align: right; padding: 5px 8px; font-size: 8px; font-weight: 600; color: #9A9A9A; letter-spacing: 1.2px; text-transform: uppercase; border-bottom: 2px solid #E8E6E1; width: 60px;">In zone</th>
+                        <th style="text-align: right; padding: 5px 8px; font-size: 8px; font-weight: 600; color: #9A9A9A; letter-spacing: 1.2px; text-transform: uppercase; border-bottom: 2px solid #E8E6E1; width: 90px;">Outstanding</th>
+                        <th style="text-align: right; padding: 5px 8px; font-size: 8px; font-weight: 600; color: #9A9A9A; letter-spacing: 1.2px; text-transform: uppercase; border-bottom: 2px solid #E8E6E1; width: 70px;">Share</th>
                     </tr>
                 </thead>
                 <tbody>
-                    {% for area, cnt, units, share, top_zone, top_zone_count in latent_by_area %}
+                    {% for row in latent_by_area %}
                     <tr>
-                        <td style="padding: 4px 8px; border-bottom: 1px solid #F0EEEA; font-weight: 600;">{{ area }}</td>
-                        <td style="text-align: right; padding: 4px 8px; border-bottom: 1px solid #F0EEEA; font-weight: 700; color: #C44D3F;">{{ cnt }}</td>
-                        <td style="text-align: right; padding: 4px 8px; border-bottom: 1px solid #F0EEEA;">{{ units }}</td>
-                        <td style="text-align: right; padding: 4px 8px; border-bottom: 1px solid #F0EEEA;">{{ share }}%</td>
-                        <td style="padding: 4px 8px; border-bottom: 1px solid #F0EEEA; color: #6B6B6B;">{{ top_zone }}</td>
-                        <td style="text-align: right; padding: 4px 8px; border-bottom: 1px solid #F0EEEA; color: #6B6B6B;">{{ top_zone_count }}</td>
+                        <td style="padding: 4px 8px; border-bottom: 1px solid #F0EEEA; font-weight: 600;">{{ row.name }}</td>
+                        <td style="text-align: right; padding: 4px 8px; border-bottom: 1px solid #F0EEEA; font-weight: 700; color: #C44D3F;">{{ row.count }}</td>
+                        <td style="text-align: right; padding: 4px 8px; border-bottom: 1px solid #F0EEEA;">{{ row.share }}%</td>
                     </tr>
                     {% endfor %}
                 </tbody>
@@ -788,27 +782,33 @@ body {
         {% endif %}
         <div style="margin-top: 12px;">
             <div style="font-size: 9px; font-weight: 600; color: #9A9A9A; letter-spacing: 1px; text-transform: uppercase; margin-bottom: 8px;">Outstanding &mdash; by zone</div>
-            <div style="column-count: 2; column-gap: 16px; column-rule: 1px solid #E8E6E1;">
-                {% for zone in latent_outstanding_by_zone %}
-                <div style="break-inside: avoid; page-break-inside: avoid; margin-bottom: 14px;">
-                    <div style="font-size: 10px; font-weight: 700; color: #1A1A1A; margin-bottom: 6px; padding-bottom: 4px; border-bottom: 1px solid #DCD7CB;">
-                        {{ zone.zone_label }}
-                        <span style="font-weight: 400; color: #6B6B6B;"> &middot; {{ zone.outstanding_count }} across {{ zone.units_count }} unit{% if zone.units_count != 1 %}s{% endif %}</span>
-                    </div>
-                    {% for unit in zone.units %}
-                    <div style="break-inside: avoid; page-break-inside: avoid; margin-bottom: 8px; padding-left: 6px; border-left: 2px solid #C44D3F;">
-                        <div style="font-size: 10px; font-weight: 700; color: #1A1A1A; margin-bottom: 3px;">Unit {{ unit.unit_number }}</div>
-                        {% for note in unit.notes %}
-                        <div style="display: flex; gap: 6px; margin-bottom: 2px; align-items: baseline;">
-                            <div style="flex: 0 0 76px; font-size: 8px; font-weight: 600; color: #9A9A9A; letter-spacing: 0.5px; text-transform: uppercase; line-height: 1.4;">{{ note.area_display_name }}</div>
-                            <div style="flex: 1; font-size: 9.5px; line-height: 1.4; color: #1A1A1A;">{{ note.note_html | safe }}</div>
+            <table style="width: 100%; border-collapse: separate; border-spacing: 0;">
+                <tr>
+                    {% for col in latent_outstanding_columns %}
+                    <td style="width: 50%; vertical-align: top; padding: 0 {% if loop.first %}8px 0 0{% else %}0 0 8px{% endif %};">
+                        {% for zone in col.zones %}
+                        <div style="margin-bottom: 14px;">
+                            <div style="font-size: 10px; font-weight: 700; color: #1A1A1A; margin-bottom: 6px; padding-bottom: 4px; border-bottom: 1px solid #DCD7CB;">
+                                {{ zone.zone_label }}
+                                <span style="font-weight: 400; color: #6B6B6B;"> &middot; {{ zone.outstanding_count }} across {{ zone.units_count }} unit{% if zone.units_count != 1 %}s{% endif %}</span>
+                            </div>
+                            {% for unit in zone.units %}
+                            <div style="page-break-inside: avoid; break-inside: avoid; margin-bottom: 8px; padding-left: 6px; border-left: 2px solid #C44D3F;">
+                                <div style="font-size: 10px; font-weight: 700; color: #1A1A1A; margin-bottom: 3px;">Unit {{ unit.unit_number }}</div>
+                                {% for note in unit.notes %}
+                                <div style="display: flex; gap: 6px; margin-bottom: 2px; align-items: baseline;">
+                                    <div style="flex: 0 0 72px; font-size: 8px; font-weight: 600; color: #9A9A9A; letter-spacing: 0.5px; text-transform: uppercase; line-height: 1.4;">{{ note.area_display_name }}</div>
+                                    <div style="flex: 1; font-size: 9.5px; line-height: 1.4; color: #1A1A1A;">{{ note.note_html | safe }}</div>
+                                </div>
+                                {% endfor %}
+                            </div>
+                            {% endfor %}
                         </div>
                         {% endfor %}
-                    </div>
+                    </td>
                     {% endfor %}
-                </div>
-                {% endfor %}
-            </div>
+                </tr>
+            </table>
         </div>
         {% endif %}
 
