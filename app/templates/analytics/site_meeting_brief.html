@@ -332,7 +332,7 @@ body {
         </div>
         <div class="report-title">Site Meeting Brief</div>
         <div class="report-subtitle">Power Park Student Housing &mdash; Phase 3 &mdash; 191 four-bed Units</div>
-        <div class="report-subtitle" style="font-size: 10px; color: #9A9A9A; margin-top: 1px; font-style: italic; letter-spacing: 0.3px;">Scope: dwelling units only &mdash; other and external areas are excluded.</div>
+        <div class="report-subtitle" style="font-size: 10px; color: #9A9A9A; margin-top: 1px; font-style: italic; letter-spacing: 0.3px;">Scope: dwelling units only &mdash; other and external areas are excluded from analytics.</div>
     </div>
 
     <!-- SECTION 01: PROJECT STATUS -->
@@ -716,6 +716,15 @@ body {
         </div>
         {% endif %}
 
+        {% if latent_top_zone %}
+        <div style="margin-top: 14px; padding: 8px 12px; background: #F8F4ED; border-left: 3px solid #C8963E; font-size: 10px; color: #1A1A1A;">
+            <span style="font-weight: 700; color: #C8963E; text-transform: uppercase; letter-spacing: 0.8px; font-size: 9px;">Concentration:</span>
+            <span style="font-weight: 600;">{{ latent_top_zone.label }}</span>
+            <span style="color: #6B6B6B;">({{ latent_top_zone.count }} of {{ latent_brief_summary.outstanding_count }}, {{ latent_top_zone.pct }}%)</span>
+            <span style="color: #6B6B6B;"> &mdash; recommend focused remediation visit.</span>
+        </div>
+        {% endif %}
+
         {% if latent_zone_grid and latent_zone_grid.blocks %}
         <div style="margin-top: 14px;">
             <div style="font-size: 9px; font-weight: 600; color: #9A9A9A; letter-spacing: 1px; text-transform: uppercase; margin-bottom: 6px;">Distribution by Zone (outstanding)</div>
@@ -744,22 +753,26 @@ body {
         {% if latent_by_area %}
         <div style="margin-top: 14px;">
             <div style="font-size: 9px; font-weight: 600; color: #9A9A9A; letter-spacing: 1px; text-transform: uppercase; margin-bottom: 4px;">By Area (outstanding)</div>
-            <table style="width: 100%; border-collapse: collapse; font-size: 10px; font-feature-settings: 'lnum' 1, 'tnum' 1; table-layout: fixed;">
+            <table style="width: 100%; border-collapse: collapse; font-size: 10px; font-feature-settings: 'lnum' 1, 'tnum' 1;">
                 <thead>
                     <tr>
                         <th style="text-align: left; padding: 5px 8px; font-size: 8px; font-weight: 600; color: #9A9A9A; letter-spacing: 1.2px; text-transform: uppercase; border-bottom: 2px solid #E8E6E1;">Area</th>
-                        <th style="text-align: right; padding: 5px 8px; font-size: 8px; font-weight: 600; color: #9A9A9A; letter-spacing: 1.2px; text-transform: uppercase; border-bottom: 2px solid #E8E6E1; width: 70px;">Count</th>
-                        <th style="text-align: right; padding: 5px 8px; font-size: 8px; font-weight: 600; color: #9A9A9A; letter-spacing: 1.2px; text-transform: uppercase; border-bottom: 2px solid #E8E6E1; width: 120px;">Affected units</th>
-                        <th style="text-align: right; padding: 5px 8px; font-size: 8px; font-weight: 600; color: #9A9A9A; letter-spacing: 1.2px; text-transform: uppercase; border-bottom: 2px solid #E8E6E1; width: 70px;">Share</th>
+                        <th style="text-align: right; padding: 5px 8px; font-size: 8px; font-weight: 600; color: #9A9A9A; letter-spacing: 1.2px; text-transform: uppercase; border-bottom: 2px solid #E8E6E1; width: 55px;">Count</th>
+                        <th style="text-align: right; padding: 5px 8px; font-size: 8px; font-weight: 600; color: #9A9A9A; letter-spacing: 1.2px; text-transform: uppercase; border-bottom: 2px solid #E8E6E1; width: 55px;">Units</th>
+                        <th style="text-align: right; padding: 5px 8px; font-size: 8px; font-weight: 600; color: #9A9A9A; letter-spacing: 1.2px; text-transform: uppercase; border-bottom: 2px solid #E8E6E1; width: 55px;">Share</th>
+                        <th style="text-align: left; padding: 5px 8px; font-size: 8px; font-weight: 600; color: #9A9A9A; letter-spacing: 1.2px; text-transform: uppercase; border-bottom: 2px solid #E8E6E1;">Top zone</th>
+                        <th style="text-align: right; padding: 5px 8px; font-size: 8px; font-weight: 600; color: #9A9A9A; letter-spacing: 1.2px; text-transform: uppercase; border-bottom: 2px solid #E8E6E1; width: 60px;">In zone</th>
                     </tr>
                 </thead>
                 <tbody>
-                    {% for area, cnt, affected, share in latent_by_area %}
+                    {% for area, cnt, units, share, top_zone, top_zone_count in latent_by_area %}
                     <tr>
                         <td style="padding: 4px 8px; border-bottom: 1px solid #F0EEEA; font-weight: 600;">{{ area }}</td>
                         <td style="text-align: right; padding: 4px 8px; border-bottom: 1px solid #F0EEEA; font-weight: 700; color: #C44D3F;">{{ cnt }}</td>
-                        <td style="text-align: right; padding: 4px 8px; border-bottom: 1px solid #F0EEEA;">{{ affected }}</td>
+                        <td style="text-align: right; padding: 4px 8px; border-bottom: 1px solid #F0EEEA;">{{ units }}</td>
                         <td style="text-align: right; padding: 4px 8px; border-bottom: 1px solid #F0EEEA;">{{ share }}%</td>
+                        <td style="padding: 4px 8px; border-bottom: 1px solid #F0EEEA; color: #6B6B6B;">{{ top_zone }}</td>
+                        <td style="text-align: right; padding: 4px 8px; border-bottom: 1px solid #F0EEEA; color: #6B6B6B;">{{ top_zone_count }}</td>
                     </tr>
                     {% endfor %}
                 </tbody>
@@ -768,24 +781,34 @@ body {
         {% endif %}
 
         {% if latent_brief_summary.outstanding_count > 0 %}
-        <div style="margin-top: 16px;">
-            <div style="font-size: 9px; font-weight: 600; color: #9A9A9A; letter-spacing: 1px; text-transform: uppercase; margin-bottom: 8px;">Outstanding ({{ latent_brief_summary.outstanding_count }}) &mdash; oldest first</div>
-            {% for note in latent_notes_list %}
-            {% if not note.is_rectified %}
-            <div style="margin-bottom: 12px; padding: 8px 10px; border-left: 2px solid #C44D3F; background: #FAFAF8; page-break-inside: avoid; break-inside: avoid-page;">
-                <div style="font-size: 10px; color: #1A1A1A; margin-bottom: 4px;">
-                    <span style="font-weight: 700;">Unit {{ note.unit_number }}</span>
-                    <span style="color: #9A9A9A;"> &middot; </span>
-                    <span style="font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;">{{ note.area_display_name }}</span>
-                    <span style="color: #9A9A9A;"> &middot; </span>
-                    <span>C{{ note.cycle_number }}</span>
-                    <span style="color: #9A9A9A;"> &middot; </span>
-                    <span style="color: #C44D3F; font-weight: 600;">{{ note.age_days }} days open</span>
+        {% if latent_cycle_summary %}
+        <div style="margin-top: 14px; font-size: 10px; color: #6B6B6B; font-style: italic;">
+            All {{ latent_brief_summary.outstanding_count }} {% if latent_cycle_summary.all_zero_days %}identified this fortnight{% else %}up to {{ latent_cycle_summary.oldest_days }} days old{% endif %}{% if latent_cycle_summary.all_same_cycle %} &middot; current de-snag cycle (C{{ latent_cycle_summary.one_cycle }}){% endif %}.
+        </div>
+        {% endif %}
+        <div style="margin-top: 12px;">
+            <div style="font-size: 9px; font-weight: 600; color: #9A9A9A; letter-spacing: 1px; text-transform: uppercase; margin-bottom: 8px;">Outstanding &mdash; by zone</div>
+            <div style="column-count: 2; column-gap: 16px; column-rule: 1px solid #E8E6E1;">
+                {% for zone in latent_outstanding_by_zone %}
+                <div style="break-inside: avoid; page-break-inside: avoid; margin-bottom: 14px;">
+                    <div style="font-size: 10px; font-weight: 700; color: #1A1A1A; margin-bottom: 6px; padding-bottom: 4px; border-bottom: 1px solid #DCD7CB;">
+                        {{ zone.zone_label }}
+                        <span style="font-weight: 400; color: #6B6B6B;"> &middot; {{ zone.outstanding_count }} across {{ zone.units_count }} unit{% if zone.units_count != 1 %}s{% endif %}</span>
+                    </div>
+                    {% for unit in zone.units %}
+                    <div style="break-inside: avoid; page-break-inside: avoid; margin-bottom: 8px; padding-left: 6px; border-left: 2px solid #C44D3F;">
+                        <div style="font-size: 10px; font-weight: 700; color: #1A1A1A; margin-bottom: 3px;">Unit {{ unit.unit_number }}</div>
+                        {% for note in unit.notes %}
+                        <div style="display: flex; gap: 6px; margin-bottom: 2px; align-items: baseline;">
+                            <div style="flex: 0 0 76px; font-size: 8px; font-weight: 600; color: #9A9A9A; letter-spacing: 0.5px; text-transform: uppercase; line-height: 1.4;">{{ note.area_display_name }}</div>
+                            <div style="flex: 1; font-size: 9.5px; line-height: 1.4; color: #1A1A1A;">{{ note.note_html | safe }}</div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    {% endfor %}
                 </div>
-                <div style="font-size: 10px; line-height: 1.4; color: #1A1A1A; margin-bottom: 0;">{{ note.note_html | safe }}</div>
+                {% endfor %}
             </div>
-            {% endif %}
-            {% endfor %}
         </div>
         {% endif %}
 

@@ -6558,6 +6558,7 @@ def _build_brief_latent(tenant_id, snap_str, prev_cutoff_str):
     zone_outstanding = {}
     area_outstanding = {}
     area_unit_ids = {}
+    area_zone_counts = {}
     blocks_seen = set()
     floors_seen = set()
 
@@ -6592,6 +6593,9 @@ def _build_brief_latent(tenant_id, snap_str, prev_cutoff_str):
                 area_outstanding.get(area_display, 0) + 1
             )
             area_unit_ids.setdefault(area_display, set()).add(n['unit_id'])
+            _azk = (n['block'], n['floor'])
+            _azc = area_zone_counts.setdefault(area_display, {})
+            _azc[_azk] = _azc.get(_azk, 0) + 1
             n['is_rectified'] = False
             n['created_at_fmt'] = _fmt_date(n.get('created_at'))
             n['rectified_at_fmt'] = None
@@ -6629,15 +6633,81 @@ def _build_brief_latent(tenant_id, snap_str, prev_cutoff_str):
             n['photos'] = photos_by_note.get(n['id'], [])
 
     oldest_days = max((n['age_days'] for n in outstanding), default=0)
+    _FL_LABELS = {0: 'Ground Floor', 1: '1st Floor', 2: '2nd Floor', 3: '3rd Floor'}
+
+    def _zone_label(blk, fl):
+        return '{} / {}'.format(blk, _FL_LABELS.get(fl, 'Floor {}'.format(fl)))
+
     _total_out = len(outstanding)
-    by_area_sorted = sorted(
-        [
-            (a, c, len(area_unit_ids.get(a, set())),
-             int(round(100.0 * c / _total_out)) if _total_out else 0)
-            for a, c in area_outstanding.items()
-        ],
-        key=lambda x: -x[1],
-    )
+
+    # Enriched by-area: (area, count, units, share_pct, top_zone_label, top_zone_count)
+    by_area_sorted = []
+    for a, c in sorted(area_outstanding.items(), key=lambda x: -x[1]):
+        zc = area_zone_counts.get(a, {})
+        if zc:
+            _tz, _tc = max(zc.items(), key=lambda kv: kv[1])
+            _tz_label = _zone_label(_tz[0], _tz[1])
+            _tz_count = _tc
+        else:
+            _tz_label = ''
+            _tz_count = 0
+        _units = len(area_unit_ids.get(a, set()))
+        _share = int(round(100.0 * c / _total_out)) if _total_out else 0
+        by_area_sorted.append((a, c, _units, _share, _tz_label, _tz_count))
+
+    # Overall top zone (cluster callout)
+    if zone_outstanding and _total_out:
+        _top_z, _top_c = max(zone_outstanding.items(), key=lambda kv: kv[1])
+        latent_top_zone = {
+            'block': _top_z[0],
+            'floor': _top_z[1],
+            'floor_label': _FL_LABELS.get(_top_z[1], 'Floor {}'.format(_top_z[1])),
+            'count': _top_c,
+            'pct': int(round(100.0 * _top_c / _total_out)),
+            'label': _zone_label(_top_z[0], _top_z[1]),
+        }
+    else:
+        latent_top_zone = None
+
+    # Cycle / age summary (drives section-level statement)
+    _cycles = set(n.get('cycle_number') for n in outstanding if n.get('cycle_number') is not None)
+    latent_cycle_summary = {
+        'all_same_cycle': len(_cycles) == 1,
+        'one_cycle': next(iter(_cycles)) if len(_cycles) == 1 else None,
+        'all_zero_days': oldest_days == 0,
+        'oldest_days': oldest_days,
+    } if outstanding else None
+
+    # Outstanding grouped by zone -> units -> notes (for 2-column list)
+    _zone_notes = {}
+    for n in outstanding:
+        _zone_notes.setdefault((n['block'], n['floor']), []).append(n)
+    outstanding_by_zone = []
+    for _zk in sorted(_zone_notes.keys(), key=lambda x: (x[0], x[1])):
+        _zone_n = _zone_notes[_zk]
+        _unit_n = {}
+        for _n in _zone_n:
+            _unit_n.setdefault(_n['unit_number'], []).append(_n)
+        _units_list = []
+        for _un in sorted(_unit_n.keys()):
+            _unotes = _unit_n[_un]
+            _unotes.sort(key=lambda x: (x.get('area_order') or 999, x.get('area_display_name') or ''))
+            _units_list.append({
+                'unit_number': _un,
+                'notes': [{
+                    'area_display_name': _x.get('area_display_name'),
+                    'note_html': _x.get('note_html'),
+                } for _x in _unotes],
+            })
+        outstanding_by_zone.append({
+            'block': _zk[0],
+            'floor': _zk[1],
+            'floor_label': _FL_LABELS.get(_zk[1], 'Floor {}'.format(_zk[1])),
+            'zone_label': _zone_label(_zk[0], _zk[1]),
+            'outstanding_count': len(_zone_n),
+            'units_count': len(_units_list),
+            'units': _units_list,
+        })
 
     return {
         'latent_notes_list': visible_notes,
@@ -6655,6 +6725,9 @@ def _build_brief_latent(tenant_id, snap_str, prev_cutoff_str):
             'data': zone_outstanding,
         },
         'latent_by_area': by_area_sorted,
+        'latent_top_zone': latent_top_zone,
+        'latent_cycle_summary': latent_cycle_summary,
+        'latent_outstanding_by_zone': outstanding_by_zone,
     }
 
 
