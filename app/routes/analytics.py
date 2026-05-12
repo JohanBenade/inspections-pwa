@@ -6491,6 +6491,165 @@ def pipeline_report_pdf():
     return resp
 
 
+def _build_brief_latent(tenant_id, snap_str, prev_cutoff_str):
+    """Brief s3: project-wide latent defects with fortnight-aware split.
+
+    Returns:
+      latent_notes_list: combined outstanding (oldest first) +
+        rectified-this-fortnight (most recent first). Each note carries
+        unit_number, block, floor, area_display_name, age_days,
+        is_rectified, created_at_fmt, rectified_at_fmt, photos.
+      latent_brief_summary: dict with outstanding_count, affected_units_count,
+        rectified_this_fortnight_count, rectified_to_date_count,
+        oldest_days_open, total_identified.
+      latent_zone_grid: {blocks, floors, data} for outstanding-only spatial.
+      latent_by_area: list of (area_name, count) tuples, outstanding only,
+        sorted by count desc.
+
+    Predicates (snap-frozen):
+      existing at snap        : n.created_at <= snap_str
+      outstanding at snap     : n.rectified_at IS NULL OR n.rectified_at > snap_str
+      rectified at snap       : n.rectified_at <= snap_str
+      rectified this fortnight: prev_cutoff_str < n.rectified_at <= snap_str
+    """
+    import datetime
+
+    rows = query_db("""
+        SELECT n.id, n.unit_id, n.cycle_id, n.cycle_number, n.note_html,
+               n.area_template_id, n.area_name_override, n.created_at,
+               n.rectified_at_cycle_number, n.rectified_at,
+               at.area_name, at.area_order,
+               u.unit_number, u.block, u.floor
+        FROM latent_area_note n
+        LEFT JOIN area_template at ON n.area_template_id = at.id
+        JOIN unit_real u ON n.unit_id = u.id
+        WHERE n.tenant_id = ?
+          AND n.created_at <= ?
+          AND u.unit_number NOT LIKE 'TEST%'
+        ORDER BY n.created_at
+    """, [tenant_id, snap_str])
+
+    if not rows:
+        return {
+            'latent_notes_list': [],
+            'latent_brief_summary': {
+                'outstanding_count': 0,
+                'affected_units_count': 0,
+                'rectified_this_fortnight_count': 0,
+                'rectified_to_date_count': 0,
+                'oldest_days_open': 0,
+                'total_identified': 0,
+            },
+            'latent_zone_grid': {'blocks': [], 'floors': [], 'data': {}},
+            'latent_by_area': [],
+        }
+
+    snap_dt = datetime.datetime.strptime(snap_str, '%Y-%m-%d %H:%M:%S')
+
+    def _fmt_date(iso):
+        if not iso or len(iso) < 10:
+            return ''
+        return '{}.{}.{}'.format(iso[8:10], iso[5:7], iso[:4])
+
+    outstanding = []
+    rectified_fortnight = []
+    rectified_to_date_count = 0
+    outstanding_unit_ids = set()
+    zone_outstanding = {}
+    area_outstanding = {}
+    blocks_seen = set()
+    floors_seen = set()
+
+    for r in rows:
+        n = dict(r)
+        rectified_at = n.get('rectified_at')
+        is_rectified_at_snap = bool(rectified_at and rectified_at <= snap_str)
+        is_rectified_this_fortnight = bool(
+            rectified_at and prev_cutoff_str < rectified_at <= snap_str
+        )
+        area_display = (
+            n.get('area_name') or n.get('area_name_override') or 'Other'
+        )
+
+        if is_rectified_at_snap:
+            rectified_to_date_count += 1
+            if is_rectified_this_fortnight:
+                n['is_rectified'] = True
+                n['created_at_fmt'] = _fmt_date(n.get('created_at'))
+                n['rectified_at_fmt'] = _fmt_date(rectified_at)
+                n['area_display_name'] = area_display
+                n['age_days'] = 0
+                rectified_fortnight.append(n)
+        else:
+            outstanding_unit_ids.add(n['unit_id'])
+            zone_outstanding[(n['block'], n['floor'])] = (
+                zone_outstanding.get((n['block'], n['floor']), 0) + 1
+            )
+            blocks_seen.add(n['block'])
+            floors_seen.add(n['floor'])
+            area_outstanding[area_display] = (
+                area_outstanding.get(area_display, 0) + 1
+            )
+            n['is_rectified'] = False
+            n['created_at_fmt'] = _fmt_date(n.get('created_at'))
+            n['rectified_at_fmt'] = None
+            n['area_display_name'] = area_display
+            try:
+                created_dt = datetime.datetime.strptime(
+                    n['created_at'][:19], '%Y-%m-%d %H:%M:%S'
+                )
+                n['age_days'] = (snap_dt - created_dt).days
+            except Exception:
+                n['age_days'] = 0
+            outstanding.append(n)
+
+    outstanding.sort(key=lambda x: -x['age_days'])
+    rectified_fortnight.sort(
+        key=lambda x: x.get('rectified_at') or '', reverse=True
+    )
+    visible_notes = outstanding + rectified_fortnight
+
+    if visible_notes:
+        note_ids = [n['id'] for n in visible_notes]
+        placeholders = ','.join('?' * len(note_ids))
+        photo_rows = query_db("""
+            SELECT id, latent_area_note_id, file_path, mime_type,
+                   display_order, original_filename
+            FROM latent_photo
+            WHERE tenant_id = ? AND latent_area_note_id IN ({})
+            ORDER BY latent_area_note_id, display_order
+        """.format(placeholders), [tenant_id] + note_ids)
+        photos_by_note = {}
+        for p in photo_rows:
+            pd = dict(p)
+            photos_by_note.setdefault(pd['latent_area_note_id'], []).append(pd)
+        for n in visible_notes:
+            n['photos'] = photos_by_note.get(n['id'], [])
+
+    oldest_days = max((n['age_days'] for n in outstanding), default=0)
+    by_area_sorted = sorted(
+        area_outstanding.items(), key=lambda x: x[1], reverse=True
+    )
+
+    return {
+        'latent_notes_list': visible_notes,
+        'latent_brief_summary': {
+            'outstanding_count': len(outstanding),
+            'affected_units_count': len(outstanding_unit_ids),
+            'rectified_this_fortnight_count': len(rectified_fortnight),
+            'rectified_to_date_count': rectified_to_date_count,
+            'oldest_days_open': oldest_days,
+            'total_identified': len(outstanding) + rectified_to_date_count,
+        },
+        'latent_zone_grid': {
+            'blocks': sorted(blocks_seen),
+            'floors': sorted(floors_seen),
+            'data': zone_outstanding,
+        },
+        'latent_by_area': by_area_sorted,
+    }
+
+
 def _build_brief_by_trade(tenant_id, snap_str, prev_cutoff_str):
     """Brief s8: per-trade open counts, fortnight delta, top defect.
     Mirrors the open-as-of-cutoff logic from _build_pipeline_report_data
@@ -6773,6 +6932,9 @@ def site_meeting_brief_view():
     _prev_cutoff = (_snap_dt - datetime.timedelta(days=14)).strftime('%Y-%m-%d %H:%M:%S')
     data.update(_build_brief_prev_desnag(_tenant, _prev_cutoff))
     data.update(_build_brief_by_trade(_tenant, data['snapshot_str'], _prev_cutoff))
+    data.update(_build_brief_latent(_tenant, data['snapshot_str'], _prev_cutoff))
+    from app.services.pdf_generator import encode_latent_photos
+    encode_latent_photos(data)
     if data.get('kpi') and data['kpi'].get('est_complete'):
         data['kpi']['est_complete'] = _strip_leading_zero(data['kpi']['est_complete'])
     data['snapshot_date_short'] = _snap_dt.strftime('%d %b %Y').upper()
@@ -6800,6 +6962,9 @@ def site_meeting_brief_pdf():
     _prev_cutoff = (_snap_dt - datetime.timedelta(days=14)).strftime('%Y-%m-%d %H:%M:%S')
     data.update(_build_brief_prev_desnag(_tenant, _prev_cutoff))
     data.update(_build_brief_by_trade(_tenant, data['snapshot_str'], _prev_cutoff))
+    data.update(_build_brief_latent(_tenant, data['snapshot_str'], _prev_cutoff))
+    from app.services.pdf_generator import encode_latent_photos
+    encode_latent_photos(data)
     if data.get('kpi') and data['kpi'].get('est_complete'):
         data['kpi']['est_complete'] = _strip_leading_zero(data['kpi']['est_complete'])
     data['snapshot_date_short'] = _snap_dt.strftime('%d %b %Y').upper()
