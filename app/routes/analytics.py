@@ -6557,6 +6557,7 @@ def _build_brief_latent(tenant_id, snap_str, prev_cutoff_str):
     outstanding_unit_ids = set()
     zone_outstanding = {}
     area_outstanding = {}
+    area_unit_ids = {}
     blocks_seen = set()
     floors_seen = set()
 
@@ -6590,6 +6591,7 @@ def _build_brief_latent(tenant_id, snap_str, prev_cutoff_str):
             area_outstanding[area_display] = (
                 area_outstanding.get(area_display, 0) + 1
             )
+            area_unit_ids.setdefault(area_display, set()).add(n['unit_id'])
             n['is_rectified'] = False
             n['created_at_fmt'] = _fmt_date(n.get('created_at'))
             n['rectified_at_fmt'] = None
@@ -6627,8 +6629,14 @@ def _build_brief_latent(tenant_id, snap_str, prev_cutoff_str):
             n['photos'] = photos_by_note.get(n['id'], [])
 
     oldest_days = max((n['age_days'] for n in outstanding), default=0)
+    _total_out = len(outstanding)
     by_area_sorted = sorted(
-        area_outstanding.items(), key=lambda x: x[1], reverse=True
+        [
+            (a, c, len(area_unit_ids.get(a, set())),
+             int(round(100.0 * c / _total_out)) if _total_out else 0)
+            for a, c in area_outstanding.items()
+        ],
+        key=lambda x: -x[1],
     )
 
     return {
