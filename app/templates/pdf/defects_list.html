@@ -656,19 +656,6 @@
         <div class="no-break" style="margin-bottom: 14px;">
             <div class="area-title" style="margin-bottom: 4px;"><span>{{ note.area_display_name }} &mdash; Identified at C{{ note.cycle_number }} ({{ note.created_at_fmt }})</span></div>
             <div class="rich-text" style="margin-left: 12px; margin-bottom: 6px;">{{ note.note_html | safe }}</div>
-            {% if note.photos %}
-            <table style="margin-left: 12px; margin-bottom: 6px; border-collapse: collapse;">
-                {% for p in note.photos %}
-                {% if loop.index0 % 3 == 0 %}<tr>{% endif %}
-                <td style="padding: 0 6px 6px 0; vertical-align: top;">
-                    {% if p.src %}
-                    <img src="{{ p.src }}" style="width: 180px; height: auto; display: block; border: 1px solid #ddd;">
-                    {% endif %}
-                </td>
-                {% if loop.index % 3 == 0 or loop.last %}</tr>{% endif %}
-                {% endfor %}
-            </table>
-            {% endif %}
             <div style="margin-left: 12px; font-size: 9pt;">
                 {% if note.rectified_at_cycle_number %}
                 <span style="font-weight: 400;">Status:</span> <span style="color: #228B22; font-weight: 400;">Rectified at C{{ note.rectified_at_cycle_number }} ({{ note.rectified_at_fmt }})</span>
