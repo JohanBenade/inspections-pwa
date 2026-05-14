@@ -7165,6 +7165,8 @@ def _build_outstanding_items_data(tenant_id):
     import sqlite3, re
     from datetime import datetime, timezone, timedelta
 
+    _FL_LABELS = {0: 'Ground', 1: '1st Floor', 2: '2nd Floor', 3: '3rd Floor'}
+
     conn = sqlite3.connect('/var/data/inspections.db')
     conn.row_factory = sqlite3.Row
 
