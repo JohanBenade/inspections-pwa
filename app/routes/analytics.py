@@ -7179,17 +7179,26 @@ def _build_outstanding_items_data(tenant_id):
             SELECT u.block, u.floor, u.unit_number,
                    at.area_name, at.area_order,
                    ct.category_name AS trade, ct.category_order,
-                   it.item_description, it.item_order,
+                   it.item_description, it.item_order, it.depth,
+                   COALESCE(pit.item_order, it.item_order) AS sort_parent,
                    COALESCE(NULLIF(d.reviewed_comment,''), NULLIF(d.raw_comment,''), d.original_comment) AS description,
                    d.raised_cycle_number, d.created_at
             FROM defect d
             JOIN item_template it ON d.item_template_id = it.id AND it.tenant_id = d.tenant_id
+            LEFT JOIN item_template pit ON it.parent_item_id = pit.id AND pit.tenant_id = it.tenant_id
             JOIN category_template ct ON it.category_id = ct.id AND ct.tenant_id = d.tenant_id
             JOIN area_template at ON ct.area_id = at.id AND at.tenant_id = d.tenant_id
             JOIN unit_real u ON d.unit_id = u.id AND u.tenant_id = d.tenant_id
             WHERE d.tenant_id = ? AND d.status = 'open'
+              AND EXISTS (
+                  SELECT 1 FROM inspection i
+                  WHERE i.unit_id = d.unit_id
+                    AND i.tenant_id = d.tenant_id
+                    AND i.cycle_number >= 2
+              )
             ORDER BY u.block, u.floor, CAST(u.unit_number AS INTEGER),
-                     at.area_order, ct.category_order, it.item_order
+                     at.area_order, ct.category_order,
+                     sort_parent, it.depth, it.item_order
         """, (tenant_id,)).fetchall()
 
         latent_rows = conn.execute("""
@@ -7200,6 +7209,12 @@ def _build_outstanding_items_data(tenant_id):
             JOIN area_template at ON lan.area_template_id = at.id AND at.tenant_id = lan.tenant_id
             JOIN unit_real u ON lan.unit_id = u.id AND u.tenant_id = lan.tenant_id
             WHERE lan.tenant_id = ? AND lan.rectified_at IS NULL
+              AND EXISTS (
+                  SELECT 1 FROM inspection i
+                  WHERE i.unit_id = lan.unit_id
+                    AND i.tenant_id = lan.tenant_id
+                    AND i.cycle_number >= 2
+              )
             ORDER BY u.block, u.floor, CAST(u.unit_number AS INTEGER), at.area_order
         """, (tenant_id,)).fetchall()
     finally:
