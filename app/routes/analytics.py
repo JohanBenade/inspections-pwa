@@ -6513,6 +6513,17 @@ def _build_brief_latent(tenant_id, snap_str, prev_cutoff_str):
       rectified this fortnight: prev_cutoff_str < n.rectified_at <= snap_str
     """
     import datetime
+    import re as _re
+
+    _BULLET_RE = _re.compile(r'<li[^>]*>(.*?)</li>', _re.DOTALL | _re.IGNORECASE)
+    _TAG_RE = _re.compile(r'<[^>]+>')
+
+    def _count_bullets(html):
+        html = html or ''
+        bullets = _BULLET_RE.findall(html)
+        if not bullets:
+            return 1 if _TAG_RE.sub(' ', html).strip() else 0
+        return sum(1 for b in bullets if _TAG_RE.sub(' ', b).strip())
 
     rows = query_db("""
         SELECT n.id, n.unit_id, n.cycle_id, n.cycle_number, n.note_html,
@@ -6564,6 +6575,7 @@ def _build_brief_latent(tenant_id, snap_str, prev_cutoff_str):
 
     for r in rows:
         n = dict(r)
+        n['bullet_count'] = _count_bullets(n.get('note_html'))
         rectified_at = n.get('rectified_at')
         is_rectified_at_snap = bool(rectified_at and rectified_at <= snap_str)
         is_rectified_this_fortnight = bool(
@@ -6574,7 +6586,7 @@ def _build_brief_latent(tenant_id, snap_str, prev_cutoff_str):
         )
 
         if is_rectified_at_snap:
-            rectified_to_date_count += 1
+            rectified_to_date_count += n['bullet_count']
             if is_rectified_this_fortnight:
                 n['is_rectified'] = True
                 n['created_at_fmt'] = _fmt_date(n.get('created_at'))
@@ -6585,17 +6597,17 @@ def _build_brief_latent(tenant_id, snap_str, prev_cutoff_str):
         else:
             outstanding_unit_ids.add(n['unit_id'])
             zone_outstanding[(n['block'], n['floor'])] = (
-                zone_outstanding.get((n['block'], n['floor']), 0) + 1
+                zone_outstanding.get((n['block'], n['floor']), 0) + n['bullet_count']
             )
             blocks_seen.add(n['block'])
             floors_seen.add(n['floor'])
             area_outstanding[area_display] = (
-                area_outstanding.get(area_display, 0) + 1
+                area_outstanding.get(area_display, 0) + n['bullet_count']
             )
             area_unit_ids.setdefault(area_display, set()).add(n['unit_id'])
             _azk = (n['block'], n['floor'])
             _azc = area_zone_counts.setdefault(area_display, {})
-            _azc[_azk] = _azc.get(_azk, 0) + 1
+            _azc[_azk] = _azc.get(_azk, 0) + n['bullet_count']
             n['is_rectified'] = False
             n['created_at_fmt'] = _fmt_date(n.get('created_at'))
             n['rectified_at_fmt'] = None
@@ -6638,7 +6650,7 @@ def _build_brief_latent(tenant_id, snap_str, prev_cutoff_str):
     def _zone_label(blk, fl):
         return '{} / {}'.format(blk, _FL_LABELS.get(fl, 'Floor {}'.format(fl)))
 
-    _total_out = len(outstanding)
+    _total_out = sum(n.get('bullet_count', 0) for n in outstanding)
 
     # Enriched by-area: (area, count, units, share_pct, top_zone_label, top_zone_count)
     by_area_sorted = []
@@ -6711,7 +6723,7 @@ def _build_brief_latent(tenant_id, snap_str, prev_cutoff_str):
             'floor': _zk[1],
             'floor_label': _FL_LABELS.get(_zk[1], 'Floor {}'.format(_zk[1])),
             'zone_label': _zone_label(_zk[0], _zk[1]),
-            'outstanding_count': len(_zone_n),
+            'outstanding_count': sum(n.get('bullet_count', 0) for n in _zone_n),
             'units_count': len(_units_list),
             'units': _units_list,
         })
@@ -6738,12 +6750,12 @@ def _build_brief_latent(tenant_id, snap_str, prev_cutoff_str):
     return {
         'latent_notes_list': visible_notes,
         'latent_brief_summary': {
-            'outstanding_count': len(outstanding),
+            'outstanding_count': _total_out,
             'affected_units_count': len(outstanding_unit_ids),
-            'rectified_this_fortnight_count': len(rectified_fortnight),
+            'rectified_this_fortnight_count': sum(n.get('bullet_count', 0) for n in rectified_fortnight),
             'rectified_to_date_count': rectified_to_date_count,
             'oldest_days_open': oldest_days,
-            'total_identified': len(outstanding) + rectified_to_date_count,
+            'total_identified': _total_out + rectified_to_date_count,
         },
         'latent_zone_grid': {
             'blocks': sorted(blocks_seen),
