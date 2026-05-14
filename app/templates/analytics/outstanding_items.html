@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<title>Outstanding Items List - Power Park Phase 3</title>
+<title>Outstanding Items - Power Park Phase 3</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600;700&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -115,6 +115,14 @@ body {
     font-size: 7pt; color: #9A9A9A; text-align: center;
     letter-spacing: 0.5px;
 }
+.action-row { margin: 8px 0 14px 0; display: flex; gap: 8px; justify-content: flex-end; }
+.btn-pdf {
+    background: #C8963E; color: #FFF; padding: 7px 14px;
+    border-radius: 4px; text-decoration: none;
+    font-size: 9pt; font-weight: 600; letter-spacing: 0.3px;
+}
+.btn-pdf:hover { background: #B0822F; }
+@media print { .no-print { display: none !important; } }
 </style>
 </head>
 <body>
@@ -126,26 +134,34 @@ body {
     </div>
     <div class="meta">
         {{ report_date }}<br>
-        <span class="sub">Site Punch List</span>
+        <span class="sub">Punch List</span>
     </div>
 </div>
 
-<h1 class="report-title">Outstanding Items List</h1>
+<div class="action-row no-print">
+    <a href="{{ url_for('analytics.outstanding_items_pdf') }}" class="btn-pdf" onclick="this.textContent='Preparing...'">Download PDF</a>
+</div>
+
+<h1 class="report-title">Outstanding Items</h1>
 <div class="report-subtitle">Power Park Student Housing &mdash; Phase 3</div>
 <div class="report-meta">Live data &middot; {{ snapshot_label }} &middot; Scope: dwelling units only</div>
+<div class="report-meta" style="margin-top: 4px;">Items still open on units in active de-snag. Snag carryovers and latent findings combined.</div>
 
 <div class="cover-stats">
     <div class="cover-stat">
         <div class="num">{{ totals.open_defects }}</div>
-        <div class="label">Open Defects</div>
+        <div class="label">Open Snag Items</div>
+        <div class="label" style="color: #B0B0B0; text-transform: none; letter-spacing: 0; font-size: 7pt; margin-top: 2px;">from C1, awaiting rectification</div>
     </div>
     <div class="cover-stat">
         <div class="num latent">{{ totals.latent_outstanding }}</div>
-        <div class="label">Latent Outstanding</div>
+        <div class="label">Latent Defects</div>
+        <div class="label" style="color: #B0B0B0; text-transform: none; letter-spacing: 0; font-size: 7pt; margin-top: 2px;">found by TLs during de-snag</div>
     </div>
     <div class="cover-stat">
         <div class="num units">{{ totals.units_affected }}</div>
         <div class="label">Units Affected</div>
+        <div class="label" style="color: #B0B0B0; text-transform: none; letter-spacing: 0; font-size: 7pt; margin-top: 2px;">in active de-snag</div>
     </div>
 </div>
 

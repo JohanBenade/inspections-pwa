@@ -7355,3 +7355,34 @@ def outstanding_items_view():
     else:
         data['logo_b64'] = ''
     return render_template('analytics/outstanding_items.html', **data)
+
+
+@analytics_bp.route('/outstanding-items/pdf')
+@require_team_lead
+def outstanding_items_pdf():
+    """Outstanding Items List - PDF download."""
+    from app.services.pdf_playwright import html_to_pdf
+    import datetime as _dt, base64 as _b64, os as _os
+    from flask import current_app as _ca
+    _tenant = session.get('tenant_id', 'MONOGRAPH')
+    data = _build_outstanding_items_data(_tenant)
+    data['is_pdf'] = True
+    data['report_date'] = _dt.datetime.now().strftime('%d %B %Y')
+    logo_path = _os.path.join(_ca.static_folder, 'monograph_logo.jpg')
+    if _os.path.exists(logo_path):
+        with open(logo_path, 'rb') as f:
+            data['logo_b64'] = _b64.b64encode(f.read()).decode()
+    else:
+        data['logo_b64'] = ''
+    html_str = render_template('analytics/outstanding_items.html', **data)
+    footer = '''<div style="width: 100%; font-size: 8px; font-family: 'DM Sans', Helvetica, Arial, sans-serif; padding: 0 16mm; display: flex; justify-content: space-between; color: #9A9A9A;">
+        <span>Confidential &mdash; Monograph Architects</span>
+        <span>Power Park Student Housing &ndash; Phase 3</span>
+        <span>Page <span class="pageNumber"></span> of <span class="totalPages"></span></span>
+    </div>'''
+    pdf_bytes = html_to_pdf(html_str, footer_template=footer)
+    resp = make_response(pdf_bytes)
+    resp.headers['Content-Type'] = 'application/pdf'
+    today_iso = _dt.datetime.now().strftime('%Y-%m-%d')
+    resp.headers['Content-Disposition'] = 'attachment; filename=Outstanding_Items_{}.pdf'.format(today_iso)
+    return resp

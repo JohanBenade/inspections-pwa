@@ -83,6 +83,7 @@
                         <a href="{{ url_for('analytics.batch_reports_picker') }}" class="text-sm text-gray-300 hover:text-white">Batch Reports</a>
                         <a href="{{ url_for('analytics.pipeline_dashboard') }}" class="text-sm text-gray-300 hover:text-white">Pipeline</a>
                         <a href="{{ url_for('analytics.site_meeting_brief_view') }}" class="text-sm text-gray-300 hover:text-white">Brief</a>
+                        <a href="{{ url_for('analytics.outstanding_items_view') }}" class="text-sm text-gray-300 hover:text-white">Outstanding</a>
                         {% endif %}
                         {% if current_user.role == 'team_lead' %}
                         <a href="{{ url_for('certification.my_reviews') }}" class="text-sm text-gray-300 hover:text-white">Team Lead Reviews</a>
@@ -190,6 +191,15 @@
                           d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"/>
                 </svg>
                 <span class="text-xs mt-1">Brief</span>
+            </a>
+            <!-- Outstanding Items -->
+            <a href="{{ url_for('analytics.outstanding_items_view') }}" 
+               class="flex flex-col items-center text-gray-600 hover:text-primary tap-target">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
+                          d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2M9 12h6m-6 4h6"/>
+                </svg>
+                <span class="text-xs mt-1">Outstanding</span>
             </a>
             {% endif %}
 
