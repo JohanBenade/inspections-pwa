@@ -7148,3 +7148,193 @@ def batch_reports_picker():
     """, [tenant_id])
     batches = [dict(r) for r in rows]
     return render_template('analytics/batch_reports_picker.html', batches=batches)
+
+
+
+# ============================================================================
+# Outstanding Items List (Site Punch List for Ralph + site teams)
+# ============================================================================
+
+def _build_outstanding_items_data(tenant_id):
+    """All open defects + outstanding latent, grouped Block -> Floor -> Unit -> Area.
+
+    Live data (no snapshot freeze). For Ralph Rhoda's site teams to plan
+    rectification sweeps. Latent notes are exploded into individual bullet
+    items so each actionable line gets its own row.
+    """
+    import sqlite3, re
+    from datetime import datetime, timezone, timedelta
+
+    conn = sqlite3.connect('/var/data/inspections.db')
+    conn.row_factory = sqlite3.Row
+
+    now = datetime.now(timezone.utc)
+    sast = now.astimezone(timezone(timedelta(hours=2)))
+    snapshot_label = sast.strftime('%d %b %Y %H:%M SAST')
+
+    try:
+        defect_rows = conn.execute("""
+            SELECT u.block, u.floor, u.unit_number,
+                   at.area_name, at.area_order,
+                   ct.category_name AS trade, ct.category_order,
+                   it.item_description, it.item_order,
+                   COALESCE(NULLIF(d.reviewed_comment,''), NULLIF(d.raw_comment,''), d.original_comment) AS description,
+                   d.raised_cycle_number, d.created_at
+            FROM defect d
+            JOIN item_template it ON d.item_template_id = it.id AND it.tenant_id = d.tenant_id
+            JOIN category_template ct ON it.category_id = ct.id AND ct.tenant_id = d.tenant_id
+            JOIN area_template at ON ct.area_id = at.id AND at.tenant_id = d.tenant_id
+            JOIN unit_real u ON d.unit_id = u.id AND u.tenant_id = d.tenant_id
+            WHERE d.tenant_id = ? AND d.status = 'open'
+            ORDER BY u.block, u.floor, CAST(u.unit_number AS INTEGER),
+                     at.area_order, ct.category_order, it.item_order
+        """, (tenant_id,)).fetchall()
+
+        latent_rows = conn.execute("""
+            SELECT u.block, u.floor, u.unit_number,
+                   at.area_name, at.area_order,
+                   lan.note_html, lan.cycle_number, lan.created_at
+            FROM latent_area_note lan
+            JOIN area_template at ON lan.area_template_id = at.id AND at.tenant_id = lan.tenant_id
+            JOIN unit_real u ON lan.unit_id = u.id AND u.tenant_id = lan.tenant_id
+            WHERE lan.tenant_id = ? AND lan.rectified_at IS NULL
+            ORDER BY u.block, u.floor, CAST(u.unit_number AS INTEGER), at.area_order
+        """, (tenant_id,)).fetchall()
+    finally:
+        conn.close()
+
+    def _parse_created_at(s):
+        if not s:
+            return None
+        s = s.replace('T', ' ').split('+')[0].split('.')[0]
+        try:
+            return datetime.strptime(s, '%Y-%m-%d %H:%M:%S').replace(tzinfo=timezone.utc)
+        except Exception:
+            return None
+
+    units_dict = {}
+    trade_counts = {}
+
+    def _get_unit(block, floor, unit_number):
+        key = (block, floor, unit_number)
+        if key not in units_dict:
+            units_dict[key] = {
+                'block': block,
+                'floor': floor,
+                'floor_label': _FL_LABELS.get(floor, 'Floor {}'.format(floor)),
+                'unit_number': unit_number,
+                'open_count': 0,
+                'latent_count': 0,
+                'oldest_age_days': 0,
+                '_areas': {},
+            }
+        return units_dict[key]
+
+    def _get_area(unit, name, order):
+        if name not in unit['_areas']:
+            unit['_areas'][name] = {'name': name, 'area_order': order or 99, 'defects': []}
+        return unit['_areas'][name]
+
+    # Defects
+    for r in defect_rows:
+        u = _get_unit(r['block'], r['floor'], r['unit_number'])
+        a = _get_area(u, r['area_name'], r['area_order'])
+        ca = _parse_created_at(r['created_at'])
+        age_days = (now - ca).days if ca else 0
+        cyc = r['raised_cycle_number']
+        a['defects'].append({
+            'trade': r['trade'] or '',
+            'description': (r['description'] or '').strip(),
+            'cycle': 'C{}'.format(cyc) if cyc else '',
+            'is_latent': False,
+            'age_days': age_days,
+        })
+        u['open_count'] += 1
+        if age_days > u['oldest_age_days']:
+            u['oldest_age_days'] = age_days
+        t = r['trade'] or 'OTHER'
+        trade_counts[t] = trade_counts.get(t, 0) + 1
+
+    # Latent (explode bullets)
+    _BULLET_RE = re.compile(r'<li[^>]*>(.*?)</li>', re.DOTALL | re.IGNORECASE)
+    _TAG_RE = re.compile(r'<[^>]+>')
+    for r in latent_rows:
+        u = _get_unit(r['block'], r['floor'], r['unit_number'])
+        a = _get_area(u, r['area_name'], r['area_order'])
+        html = r['note_html'] or ''
+        bullets = _BULLET_RE.findall(html)
+        if not bullets:
+            txt = _TAG_RE.sub(' ', html).strip()
+            if txt:
+                bullets = [txt]
+        ca = _parse_created_at(r['created_at'])
+        age_days = (now - ca).days if ca else 0
+        cyc = r['cycle_number']
+        for b in bullets:
+            txt = _TAG_RE.sub(' ', b).strip()
+            txt = re.sub(r'\s+', ' ', txt)
+            if not txt:
+                continue
+            a['defects'].append({
+                'trade': 'LATENT',
+                'description': txt,
+                'cycle': 'C{}'.format(cyc) if cyc else '',
+                'is_latent': True,
+                'age_days': age_days,
+            })
+            u['latent_count'] += 1
+            if age_days > u['oldest_age_days']:
+                u['oldest_age_days'] = age_days
+
+    # Finalise: sort units, expand areas
+    def _unit_key(k):
+        try:
+            return (k[0], k[1], int(k[2]))
+        except (ValueError, TypeError):
+            return (k[0], k[1], 0)
+
+    units_list = []
+    for key in sorted(units_dict.keys(), key=_unit_key):
+        u = units_dict[key]
+        u['areas'] = sorted(u['_areas'].values(), key=lambda x: x['area_order'])
+        u['oldest_age_weeks'] = u['oldest_age_days'] // 7
+        del u['_areas']
+        units_list.append(u)
+
+    by_trade = sorted(
+        [{'name': t, 'count': c} for t, c in trade_counts.items()],
+        key=lambda x: -x['count']
+    )
+
+    total_open = sum(u['open_count'] for u in units_list)
+    total_latent = sum(u['latent_count'] for u in units_list)
+
+    return {
+        'snapshot_label': snapshot_label,
+        'totals': {
+            'open_defects': total_open,
+            'latent_outstanding': total_latent,
+            'units_affected': len(units_list),
+            'by_trade': by_trade,
+        },
+        'units': units_list,
+    }
+
+
+@analytics_bp.route('/outstanding-items')
+@require_team_lead
+def outstanding_items_view():
+    """Outstanding Items List - HTML view (Site Punch List)."""
+    import datetime as _dt, base64 as _b64, os as _os
+    from flask import current_app as _ca
+    _tenant = session.get('tenant_id', 'MONOGRAPH')
+    data = _build_outstanding_items_data(_tenant)
+    data['is_pdf'] = False
+    data['report_date'] = _dt.datetime.now().strftime('%d %B %Y')
+    logo_path = _os.path.join(_ca.static_folder, 'monograph_logo.jpg')
+    if _os.path.exists(logo_path):
+        with open(logo_path, 'rb') as f:
+            data['logo_b64'] = _b64.b64encode(f.read()).decode()
+    else:
+        data['logo_b64'] = ''
+    return render_template('analytics/outstanding_items.html', **data)
