@@ -7180,6 +7180,7 @@ def _build_outstanding_items_data(tenant_id):
                    at.area_name, at.area_order,
                    ct.category_name AS trade, ct.category_order,
                    it.item_description, it.item_order, it.depth,
+                   pit.item_description AS parent_item_description,
                    COALESCE(pit.item_order, it.item_order) AS sort_parent,
                    COALESCE(NULLIF(d.reviewed_comment,''), NULLIF(d.raw_comment,''), d.original_comment) AS description,
                    d.raised_cycle_number, d.created_at
@@ -7259,8 +7260,15 @@ def _build_outstanding_items_data(tenant_id):
         ca = _parse_created_at(r['created_at'])
         age_days = (now - ca).days if ca else 0
         cyc = r['raised_cycle_number']
+        item_desc = (r['item_description'] or '').strip()
+        parent_desc = (r['parent_item_description'] or '').strip() if r['depth'] else ''
+        if parent_desc:
+            item_path = '{} > {}'.format(parent_desc, item_desc)
+        else:
+            item_path = item_desc
         a['defects'].append({
             'trade': r['trade'] or '',
+            'item_path': item_path,
             'description': (r['description'] or '').strip(),
             'cycle': 'C{}'.format(cyc) if cyc else '',
             'is_latent': False,
@@ -7294,6 +7302,7 @@ def _build_outstanding_items_data(tenant_id):
                 continue
             a['defects'].append({
                 'trade': 'LATENT',
+                'item_path': '',
                 'description': txt,
                 'cycle': 'C{}'.format(cyc) if cyc else '',
                 'is_latent': True,

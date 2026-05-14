@@ -102,6 +102,8 @@ body {
 }
 .defect-trade.latent { color: #C8963E; }
 .defect-desc { flex: 1; color: #1A1A1A; }
+.defect-item-path { font-size: 8.5pt; color: #6B6B6B; font-weight: 500; margin-bottom: 1px; }
+.defect-comment { color: #1A1A1A; }
 .defect-cycle { flex: 0 0 28px; font-size: 8pt; color: #9A9A9A; text-align: right; line-height: 1.5; }
 
 .empty-state {
@@ -261,7 +263,10 @@ body {
             {% for d in area.defects %}
             <div class="defect-row">
                 <div class="defect-trade {% if d.is_latent %}latent{% endif %}">{{ d.trade if d.trade else '&mdash;' | safe }}</div>
-                <div class="defect-desc">{{ d.description }}</div>
+                <div class="defect-desc">
+                    {% if d.item_path %}<div class="defect-item-path">{{ d.item_path }}</div>{% endif %}
+                    <div class="defect-comment">{{ d.description }}</div>
+                </div>
                 <div class="defect-cycle">{{ d.cycle }}</div>
             </div>
             {% endfor %}
