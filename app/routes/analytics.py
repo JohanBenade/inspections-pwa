@@ -7190,12 +7190,7 @@ def _build_outstanding_items_data(tenant_id):
             JOIN area_template at ON ct.area_id = at.id AND at.tenant_id = d.tenant_id
             JOIN unit_real u ON d.unit_id = u.id AND u.tenant_id = d.tenant_id
             WHERE d.tenant_id = ? AND d.status = 'open'
-              AND EXISTS (
-                  SELECT 1 FROM inspection i
-                  WHERE i.unit_id = d.unit_id
-                    AND i.tenant_id = d.tenant_id
-                    AND i.cycle_number >= 2
-              )
+              AND d.raised_cycle_number >= 2
             ORDER BY u.block, u.floor, CAST(u.unit_number AS INTEGER),
                      at.area_order, ct.category_order,
                      sort_parent, it.depth, it.item_order
