@@ -270,6 +270,7 @@ body {
                     <a href="{{ url_for('analytics.batch_reports_picker') }}" class="text-sm text-gray-300 hover:text-white">Batch Reports</a>
                     <a href="{{ url_for('analytics.pipeline_dashboard') }}" class="text-sm text-gray-300 hover:text-white">Pipeline</a>
                     <a href="{{ url_for('analytics.site_meeting_brief_view') }}" class="text-sm text-gray-300 hover:text-white">Brief</a>
+                    <a href="{{ url_for('analytics.outstanding_items_view') }}" class="text-sm text-gray-300 hover:text-white">Outstanding</a>
                     {% endif %}
                     {% if current_user.role == 'team_lead' %}
                     <a href="{{ url_for('certification.my_reviews') }}" class="text-sm text-gray-300 hover:text-white">Team Lead Reviews</a>
