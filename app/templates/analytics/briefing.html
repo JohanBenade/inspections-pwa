@@ -317,9 +317,65 @@ body {
   size: A4;
   margin: 14mm;
 }
+.top-nav {
+    background: #1e3a5f; color: #FFF;
+    height: 56px; padding: 0 16px;
+    display: flex; align-items: center; justify-content: space-between;
+    font-family: 'DM Sans', system-ui, sans-serif; font-size: 14px;
+    position: sticky; top: 0; z-index: 50;
+}
+.top-nav .left { display: flex; align-items: center; gap: 22px; flex-wrap: wrap; }
+.top-nav .right { display: flex; align-items: center; gap: 14px; font-size: 13px; color: #D1D5DB; }
+.top-nav a { color: #D1D5DB; text-decoration: none; }
+.top-nav a:hover { color: #FFF; }
+.top-nav .brand { color: #FFF; font-weight: 700; font-size: 17px; }
+.top-nav .current { color: #FFF; }
+.top-nav .role-badge { background: rgba(255,255,255,0.2); padding: 2px 8px; border-radius: 4px; font-size: 11px; color: #FFF; }
+@media print { .top-nav { display: none !important; } }
+@media screen { body { padding-top: 0 !important; } }
 </style>
 </head>
 <body>
+{% if not is_pdf and current_user %}
+<nav class="top-nav">
+    <div class="left">
+        <a href="{{ url_for('home') }}" class="brand">Monograph</a>
+        {% if current_user.role in ['inspector', 'office_admin'] %}
+            <a href="{{ url_for('home') }}">Home</a>
+        {% endif %}
+        {% if current_user.role in ['team_lead', 'manager', 'admin'] %}
+            <a href="{{ url_for('batches.list_batches') }}">Batches</a>
+            <a href="{{ url_for('analytics.batch_reports_picker') }}">Batch Reports</a>
+            <a href="{{ url_for('analytics.pipeline_dashboard') }}">Pipeline</a>
+            <a href="{{ url_for('analytics.site_meeting_brief_view') }}">Brief</a>
+            <a href="{{ url_for('analytics.outstanding_items_view') }}">Outstanding</a>
+        {% endif %}
+        {% if current_user.role == 'team_lead' %}
+            <a href="{{ url_for('certification.my_reviews') }}">Team Lead Reviews</a>
+            <a href="{{ url_for('certification.my_inspections') }}">My Inspections</a>
+            <a href="{{ url_for('approvals.cleanup') }}">Defects Cleanup</a>
+        {% endif %}
+        {% if current_user.role in ('office_admin', 'team_lead') %}
+            <a href="{{ url_for('analytics.inspector_audit') }}">Inspector Log</a>
+            <a href="{{ url_for('analytics.inspector_audit_units') }}">Unit Register</a>
+        {% endif %}
+        {% if current_user.role in ['manager', 'admin'] %}
+            <a href="{{ url_for('approvals.pipeline') }}">Approvals</a>
+            <a href="{{ url_for('approvals.cleanup') }}">Defects Cleanup</a>
+            <a href="{{ url_for('analytics.inspector_audit') }}">Inspector Log</a>
+            <a href="{{ url_for('analytics.login_status') }}">Login Status</a>
+            {% if current_user.role == 'admin' %}
+                <a href="{{ url_for('data_quality.descriptions') }}">Data Quality</a>
+            {% endif %}
+        {% endif %}
+    </div>
+    <div class="right">
+        <span>{{ current_user.name }}</span>
+        <span class="role-badge">{{ current_user.role }}</span>
+        <a href="{{ url_for('logout') }}">Logout</a>
+    </div>
+</nav>
+{% endif %}
 
 {% if not is_pdf %}
 <div class="briefing-header">
