@@ -138,7 +138,7 @@ body {
     height: 56px; padding: 0 16px;
     display: flex; align-items: center; justify-content: space-between;
     font-family: 'DM Sans', system-ui, sans-serif; font-size: 14px;
-    position: sticky; top: 0; z-index: 50;
+    position: fixed; top: 0; left: 0; right: 0; z-index: 50;
 }
 .top-nav .left { display: flex; align-items: center; gap: 22px; flex-wrap: wrap; }
 .top-nav .right { display: flex; align-items: center; gap: 14px; font-size: 13px; color: #D1D5DB; }
@@ -148,7 +148,7 @@ body {
 .top-nav .current { color: #FFF; }
 .top-nav .role-badge { background: rgba(255,255,255,0.2); padding: 2px 8px; border-radius: 4px; font-size: 11px; color: #FFF; }
 @media print { .top-nav { display: none !important; } }
-@media screen { body { padding-top: 0 !important; } }
+@media screen { body { padding-top: 56px !important; } }
 </style>
 </head>
 <body>
