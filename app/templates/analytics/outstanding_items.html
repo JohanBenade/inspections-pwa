@@ -128,11 +128,12 @@ body {
 @media print { .no-print { display: none !important; } }
 .top-nav {
     background: #1e3a5f; color: #FFF;
-    height: 56px; padding: 0 16px;
-    display: flex; align-items: center; justify-content: space-between;
+    height: 56px;
+    display: flex; align-items: center; justify-content: center;
     font-family: 'DM Sans', system-ui, sans-serif; font-size: 14px;
     position: fixed; top: 0; left: 0; right: 0; z-index: 50;
 }
+.top-nav .nav-inner { width: 100%; max-width: 1280px; padding: 0 16px; display: flex; align-items: center; justify-content: space-between; }
 .top-nav .left { display: flex; align-items: center; gap: 22px; flex-wrap: wrap; }
 .top-nav .right { display: flex; align-items: center; gap: 14px; font-size: 13px; color: #D1D5DB; }
 .top-nav a { color: #D1D5DB; text-decoration: none; }
@@ -147,6 +148,7 @@ body {
 <body>
 {% if not is_pdf and current_user %}
 <nav class="top-nav">
+    <div class="nav-inner">
     <div class="left">
         <a href="{{ url_for('home') }}" class="brand">Monograph</a>
         {% if current_user.role in ['inspector', 'office_admin'] %}
@@ -182,6 +184,7 @@ body {
         <span>{{ current_user.name }}</span>
         <span class="role-badge">{{ current_user.role }}</span>
         <a href="{{ url_for('logout') }}">Logout</a>
+    </div>
     </div>
 </nav>
 {% endif %}
