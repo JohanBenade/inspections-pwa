@@ -1,0 +1,277 @@
+
+
+
+def _build_batch_desnag_data(tenant_id, batch_id):
+    """De-snag Report data - per-batch live snapshot of outstanding work.
+
+    Identical scope to Outstanding Items (open defects + outstanding latent),
+    but filtered to units belonging to the given batch (excluding removed).
+    Refreshes on every render - never frozen. Returns None if the batch does
+    not exist for this tenant.
+    """
+    import sqlite3, re
+    from datetime import datetime, timezone, timedelta
+
+    _FL_LABELS = {0: 'Ground', 1: '1st Floor', 2: '2nd Floor', 3: '3rd Floor'}
+
+    conn = sqlite3.connect('/var/data/inspections.db')
+    conn.row_factory = sqlite3.Row
+
+    now = datetime.now(timezone.utc)
+    sast = now.astimezone(timezone(timedelta(hours=2)))
+    snapshot_label = sast.strftime('%d %b %Y %H:%M SAST')
+
+    try:
+        batch_row = conn.execute("""
+            SELECT name, created_at
+            FROM inspection_batch
+            WHERE id = ? AND tenant_id = ?
+        """, (batch_id, tenant_id)).fetchone()
+
+        if not batch_row:
+            return None
+
+        defect_rows = conn.execute("""
+            SELECT u.block, u.floor, u.unit_number,
+                   at.area_name, at.area_order,
+                   ct.category_name AS trade, ct.category_order,
+                   it.item_description, it.item_order, it.depth,
+                   pit.item_description AS parent_item_description,
+                   COALESCE(pit.item_order, it.item_order) AS sort_parent,
+                   COALESCE(NULLIF(d.reviewed_comment,''), NULLIF(d.raw_comment,''), d.original_comment) AS description,
+                   d.raised_cycle_number, d.created_at
+            FROM defect d
+            JOIN item_template it ON d.item_template_id = it.id AND it.tenant_id = d.tenant_id
+            LEFT JOIN item_template pit ON it.parent_item_id = pit.id AND pit.tenant_id = it.tenant_id
+            JOIN category_template ct ON it.category_id = ct.id AND ct.tenant_id = d.tenant_id
+            JOIN area_template at ON ct.area_id = at.id AND at.tenant_id = d.tenant_id
+            JOIN unit_real u ON d.unit_id = u.id AND u.tenant_id = d.tenant_id
+            WHERE d.tenant_id = ? AND d.status = 'open'
+              AND EXISTS (
+                  SELECT 1 FROM inspection i
+                  WHERE i.unit_id = d.unit_id
+                    AND i.tenant_id = d.tenant_id
+                    AND i.cycle_number >= 2
+              )
+              AND EXISTS (
+                  SELECT 1 FROM batch_unit bu
+                  WHERE bu.unit_id = d.unit_id
+                    AND bu.tenant_id = d.tenant_id
+                    AND bu.batch_id = ?
+                    AND bu.status != 'removed'
+              )
+            ORDER BY u.block, u.floor, CAST(u.unit_number AS INTEGER),
+                     at.area_order, ct.category_order,
+                     sort_parent, it.depth, it.item_order
+        """, (tenant_id, batch_id)).fetchall()
+
+        latent_rows = conn.execute("""
+            SELECT u.block, u.floor, u.unit_number,
+                   at.area_name, at.area_order,
+                   lan.note_html, lan.cycle_number, lan.created_at
+            FROM latent_area_note lan
+            JOIN area_template at ON lan.area_template_id = at.id AND at.tenant_id = lan.tenant_id
+            JOIN unit_real u ON lan.unit_id = u.id AND u.tenant_id = lan.tenant_id
+            WHERE lan.tenant_id = ? AND lan.rectified_at IS NULL
+              AND EXISTS (
+                  SELECT 1 FROM inspection i
+                  WHERE i.unit_id = lan.unit_id
+                    AND i.tenant_id = lan.tenant_id
+                    AND i.cycle_number >= 2
+              )
+              AND EXISTS (
+                  SELECT 1 FROM batch_unit bu
+                  WHERE bu.unit_id = lan.unit_id
+                    AND bu.tenant_id = lan.tenant_id
+                    AND bu.batch_id = ?
+                    AND bu.status != 'removed'
+              )
+            ORDER BY u.block, u.floor, CAST(u.unit_number AS INTEGER), at.area_order
+        """, (tenant_id, batch_id)).fetchall()
+    finally:
+        conn.close()
+
+    def _parse_created_at(s):
+        if not s:
+            return None
+        s = s.replace('T', ' ').split('+')[0].split('.')[0]
+        try:
+            return datetime.strptime(s, '%Y-%m-%d %H:%M:%S').replace(tzinfo=timezone.utc)
+        except Exception:
+            return None
+
+    units_dict = {}
+    trade_counts = {}
+
+    def _get_unit(block, floor, unit_number):
+        key = (block, floor, unit_number)
+        if key not in units_dict:
+            units_dict[key] = {
+                'block': block,
+                'floor': floor,
+                'floor_label': _FL_LABELS.get(floor, 'Floor {}'.format(floor)),
+                'unit_number': unit_number,
+                'open_count': 0,
+                'latent_count': 0,
+                'oldest_age_days': 0,
+                '_areas': {},
+            }
+        return units_dict[key]
+
+    def _get_area(unit, name, order):
+        if name not in unit['_areas']:
+            unit['_areas'][name] = {'name': name, 'area_order': order or 99, 'defects': []}
+        return unit['_areas'][name]
+
+    # Defects
+    for r in defect_rows:
+        u = _get_unit(r['block'], r['floor'], r['unit_number'])
+        a = _get_area(u, r['area_name'], r['area_order'])
+        ca = _parse_created_at(r['created_at'])
+        age_days = (now - ca).days if ca else 0
+        cyc = r['raised_cycle_number']
+        item_desc = (r['item_description'] or '').strip()
+        parent_desc = (r['parent_item_description'] or '').strip() if r['depth'] else ''
+        if parent_desc:
+            item_path = '{} > {}'.format(parent_desc, item_desc)
+        else:
+            item_path = item_desc
+        a['defects'].append({
+            'trade': r['trade'] or '',
+            'item_path': item_path,
+            'description': (r['description'] or '').strip(),
+            'cycle': 'C{}'.format(cyc) if cyc else '',
+            'is_latent': False,
+            'age_days': age_days,
+        })
+        u['open_count'] += 1
+        if age_days > u['oldest_age_days']:
+            u['oldest_age_days'] = age_days
+        t = r['trade'] or 'OTHER'
+        trade_counts[t] = trade_counts.get(t, 0) + 1
+
+    # Latent (explode bullets)
+    _BULLET_RE = re.compile(r'<li[^>]*>(.*?)</li>', re.DOTALL | re.IGNORECASE)
+    _TAG_RE = re.compile(r'<[^>]+>')
+    for r in latent_rows:
+        u = _get_unit(r['block'], r['floor'], r['unit_number'])
+        a = _get_area(u, r['area_name'], r['area_order'])
+        html = r['note_html'] or ''
+        bullets = _BULLET_RE.findall(html)
+        if not bullets:
+            txt = _TAG_RE.sub(' ', html).strip()
+            if txt:
+                bullets = [txt]
+        ca = _parse_created_at(r['created_at'])
+        age_days = (now - ca).days if ca else 0
+        cyc = r['cycle_number']
+        for b in bullets:
+            txt = _TAG_RE.sub(' ', b).strip()
+            txt = re.sub(r'\s+', ' ', txt)
+            if not txt:
+                continue
+            a['defects'].append({
+                'trade': 'LATENT',
+                'item_path': '',
+                'description': txt,
+                'cycle': 'C{}'.format(cyc) if cyc else '',
+                'is_latent': True,
+                'age_days': age_days,
+            })
+            u['latent_count'] += 1
+            if age_days > u['oldest_age_days']:
+                u['oldest_age_days'] = age_days
+
+    # Finalise: sort units, expand areas
+    def _unit_key(k):
+        try:
+            return (k[0], k[1], int(k[2]))
+        except (ValueError, TypeError):
+            return (k[0], k[1], 0)
+
+    units_list = []
+    for key in sorted(units_dict.keys(), key=_unit_key):
+        u = units_dict[key]
+        u['areas'] = sorted(u['_areas'].values(), key=lambda x: x['area_order'])
+        u['oldest_age_weeks'] = u['oldest_age_days'] // 7
+        del u['_areas']
+        units_list.append(u)
+
+    by_trade = sorted(
+        [{'name': t, 'count': c} for t, c in trade_counts.items()],
+        key=lambda x: -x['count']
+    )
+
+    total_open = sum(u['open_count'] for u in units_list)
+    total_latent = sum(u['latent_count'] for u in units_list)
+
+    batch_created_raw = batch_row['created_at'] or ''
+    batch_created = batch_created_raw.split('T')[0].split(' ')[0] if batch_created_raw else ''
+
+    return {
+        'snapshot_label': snapshot_label,
+        'batch_name': batch_row['name'] or '',
+        'batch_created': batch_created,
+        'totals': {
+            'open_defects': total_open,
+            'latent_outstanding': total_latent,
+            'units_affected': len(units_list),
+            'by_trade': by_trade,
+        },
+        'units': units_list,
+    }
+
+
+@analytics_bp.route('/report/desnag/<batch_id>')
+@require_team_lead
+def batch_desnag_view(batch_id):
+    """De-snag Report - HTML view (per-batch, live)."""
+    import datetime as _dt, base64 as _b64, os as _os
+    from flask import current_app as _ca, abort
+    _tenant = session.get('tenant_id', 'MONOGRAPH')
+    data = _build_batch_desnag_data(_tenant, batch_id)
+    if data is None:
+        abort(404)
+    data['is_pdf'] = False
+    data['report_date'] = _dt.datetime.now().strftime('%d %B %Y')
+    logo_path = _os.path.join(_ca.static_folder, 'monograph_logo.jpg')
+    if _os.path.exists(logo_path):
+        with open(logo_path, 'rb') as f:
+            data['logo_b64'] = _b64.b64encode(f.read()).decode()
+    else:
+        data['logo_b64'] = ''
+    return render_template('analytics/outstanding_items.html', **data)
+
+
+@analytics_bp.route('/report/desnag/<batch_id>/pdf')
+@require_team_lead
+def batch_desnag_pdf(batch_id):
+    """De-snag Report - PDF download (per-batch, live)."""
+    from app.services.pdf_playwright import html_to_pdf
+    import datetime as _dt, base64 as _b64, os as _os
+    from flask import current_app as _ca, abort
+    _tenant = session.get('tenant_id', 'MONOGRAPH')
+    data = _build_batch_desnag_data(_tenant, batch_id)
+    if data is None:
+        abort(404)
+    data['is_pdf'] = True
+    data['report_date'] = _dt.datetime.now().strftime('%d %B %Y')
+    logo_path = _os.path.join(_ca.static_folder, 'monograph_logo.jpg')
+    if _os.path.exists(logo_path):
+        with open(logo_path, 'rb') as f:
+            data['logo_b64'] = _b64.b64encode(f.read()).decode()
+    else:
+        data['logo_b64'] = ''
+    html_str = render_template('analytics/outstanding_items.html', **data)
+    footer = '''<div style="width: 100%; font-size: 8px; font-family: 'DM Sans', Helvetica, Arial, sans-serif; padding: 0 16mm; display: flex; justify-content: space-between; color: #9A9A9A;">
+        <span>Confidential &mdash; Monograph Architects</span>
+        <span>Power Park Student Housing &ndash; Phase 3</span>
+        <span>Page <span class="pageNumber"></span> of <span class="totalPages"></span></span>
+    </div>'''
+    pdf_bytes = html_to_pdf(html_str, footer_template=footer)
+    resp = make_response(pdf_bytes)
+    resp.headers['Content-Type'] = 'application/pdf'
+    today_iso = _dt.datetime.now().strftime('%Y-%m-%d')
+    safe_name = (data['batch_name'] or 'batch').replace(' ', '_').replace('/', '_')
+    resp.headers['Content-Disposition'] = 'attachment; filename=De-snag_{}_{}.pdf'.format(safe_name, today_iso)
+    return resp
