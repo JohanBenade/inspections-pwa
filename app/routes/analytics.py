@@ -7648,7 +7648,7 @@ def batch_desnag_view(batch_id):
             data['logo_b64'] = _b64.b64encode(f.read()).decode()
     else:
         data['logo_b64'] = ''
-    return render_template('analytics/outstanding_items.html', **data)
+    return render_template('analytics/batch_desnag.html', batch_id=batch_id, **data)
 
 
 @analytics_bp.route('/report/desnag/<batch_id>/pdf')
@@ -7670,7 +7670,7 @@ def batch_desnag_pdf(batch_id):
             data['logo_b64'] = _b64.b64encode(f.read()).decode()
     else:
         data['logo_b64'] = ''
-    html_str = render_template('analytics/outstanding_items.html', **data)
+    html_str = render_template('analytics/batch_desnag.html', batch_id=batch_id, **data)
     footer = '''<div style="width: 100%; font-size: 8px; font-family: 'DM Sans', Helvetica, Arial, sans-serif; padding: 0 16mm; display: flex; justify-content: space-between; color: #9A9A9A;">
         <span>Confidential &mdash; Monograph Architects</span>
         <span>Power Park Student Housing &ndash; Phase 3</span>

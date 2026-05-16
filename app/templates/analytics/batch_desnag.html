@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>De-snag Report - {{ batch_name }} - Power Park Phase 3</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600;700&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+@page { size: A4; margin: 16mm 12mm 16mm 12mm; }
+* { box-sizing: border-box; }
+body {
+    font-family: 'DM Sans', system-ui, sans-serif;
+    font-size: 9pt;
+    color: #1A1A1A;
+    margin: 0;
+    line-height: 1.4;
+    background: #FFFFFF;
+}
+.report-wrap { max-width: 210mm; margin: 0 auto; padding: 14mm 12mm; background: #FFFFFF; }
+@media print { .report-wrap { padding: 0; max-width: none; } }
+.report-header {
+    display: flex; justify-content: space-between; align-items: flex-end;
+    border-bottom: 2px solid #1A1A1A;
+    padding-bottom: 8px; margin-bottom: 14px;
+}
+.report-header img { height: 32px; width: auto; }
+.report-header .meta { text-align: right; font-size: 8pt; color: #6B6B6B; letter-spacing: 1.5px; text-transform: uppercase; line-height: 1.4; }
+.report-header .meta .sub { color: #9A9A9A; }
+.back-link { display: inline-block; font-size: 9pt; color: #4A4A4A; text-decoration: none; }
+.back-link:hover { color: #1A1A1A; }
+.report-title {
+    font-family: 'Cormorant Garamond', serif;
+    font-weight: 500;
+    font-size: 30pt;
+    line-height: 1;
+    margin: 0 0 4px 0;
+    letter-spacing: -0.01em;
+}
+.report-subtitle { font-size: 11pt; color: #1A1A1A; margin: 0 0 2px 0; }
+.report-meta { font-size: 9pt; color: #6B6B6B; font-style: italic; margin: 0 0 4px 0; }
+.section-title {
+    font-size: 8pt; font-weight: 700; color: #C8963E;
+    letter-spacing: 1.5px; text-transform: uppercase;
+    margin: 18px 0 8px 0;
+}
+.cover-stats {
+    display: flex; gap: 24px;
+    margin: 14px 0 0 0;
+    padding: 14px 0;
+    border-top: 1px solid #E8E6E1;
+    border-bottom: 1px solid #E8E6E1;
+}
+.cover-stat { flex: 1; }
+.cover-stat .num {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 28pt; font-weight: 600; line-height: 1;
+    color: #C44D3F;
+}
+.cover-stat .num.latent { color: #C8963E; }
+.cover-stat .num.units { color: #1A1A1A; }
+.cover-stat .label {
+    font-size: 8pt; color: #6B6B6B;
+    text-transform: uppercase; letter-spacing: 1px;
+    margin-top: 4px;
+}
+.trade-table { width: 100%; max-width: 380px; border-collapse: collapse; font-size: 9pt; }
+.trade-table th {
+    text-align: left; padding: 5px 8px; font-size: 7pt; font-weight: 600;
+    color: #9A9A9A; letter-spacing: 1.2px; text-transform: uppercase;
+    border-bottom: 2px solid #E8E6E1;
+}
+.trade-table td { padding: 3px 8px; border-bottom: 1px solid #F0EEEA; }
+.trade-table td.num { text-align: right; font-weight: 600; }
+
+.unit-block { page-break-inside: avoid; break-inside: avoid; margin-bottom: 14px; }
+.unit-header {
+    background: #F5F3EE;
+    padding: 5px 10px;
+    border-left: 3px solid #C8963E;
+    margin-bottom: 4px;
+    display: flex; justify-content: space-between; align-items: baseline; gap: 8px;
+}
+.unit-id { font-size: 10pt; font-weight: 700; color: #1A1A1A; }
+.unit-zone { font-size: 8pt; color: #6B6B6B; }
+.unit-meta { font-size: 8pt; color: #6B6B6B; white-space: nowrap; }
+
+.area-name {
+    font-size: 8pt; font-weight: 600; color: #9A9A9A;
+    letter-spacing: 1.2px; text-transform: uppercase;
+    margin: 5px 0 1px 0;
+}
+.defect-row {
+    display: flex; gap: 8px; font-size: 9pt;
+    line-height: 1.45; padding: 1px 0 1px 14px;
+    page-break-inside: avoid;
+}
+.defect-trade {
+    flex: 0 0 92px;
+    font-size: 8pt; font-weight: 600;
+    color: #6B6B6B;
+    text-transform: uppercase; letter-spacing: 0.5px;
+    line-height: 1.5;
+}
+.defect-trade.latent { color: #C8963E; }
+.defect-desc { flex: 1; color: #1A1A1A; line-height: 1.45; }
+.defect-item-path { color: #6B6B6B; font-weight: 500; }
+.defect-sep { color: #B5B5B5; }
+.defect-comment { color: #1A1A1A; }
+.defect-cycle { flex: 0 0 28px; font-size: 8pt; color: #9A9A9A; text-align: right; line-height: 1.5; }
+
+.empty-state {
+    text-align: center; padding: 40px 0;
+    color: #9A9A9A; font-style: italic; font-size: 11pt;
+}
+.footer {
+    margin-top: 24px;
+    padding-top: 8px;
+    border-top: 1px solid #E8E6E1;
+    font-size: 7pt; color: #9A9A9A; text-align: center;
+    letter-spacing: 0.5px;
+}
+.action-row { margin: 8px 0 14px 0; display: flex; gap: 8px; justify-content: flex-end; }
+.btn-pdf {
+    background: #C8963E; color: #FFF; padding: 7px 14px;
+    border-radius: 4px; text-decoration: none;
+    font-size: 9pt; font-weight: 600; letter-spacing: 0.3px;
+}
+.btn-pdf:hover { background: #B0822F; }
+@media print { .no-print { display: none !important; } }
+.top-nav {
+    background: #1e3a5f; color: #FFF;
+    height: 56px;
+    display: flex; align-items: center; justify-content: center;
+    font-family: 'DM Sans', system-ui, sans-serif; font-size: 14px;
+    position: fixed; top: 0; left: 0; right: 0; z-index: 50;
+}
+.top-nav .nav-inner { width: 100%; max-width: 1280px; padding: 0 16px; display: flex; align-items: center; justify-content: space-between; }
+.top-nav .left { display: flex; align-items: center; gap: 22px; flex-wrap: wrap; }
+.top-nav .right { display: flex; align-items: center; gap: 14px; font-size: 13px; color: #D1D5DB; }
+.top-nav a { color: #D1D5DB; text-decoration: none; }
+.top-nav a:hover { color: #FFF; }
+.top-nav .brand { color: #FFF; font-weight: 700; font-size: 17px; }
+.top-nav .current { color: #FFF; }
+.top-nav .role-badge { background: rgba(255,255,255,0.2); padding: 2px 8px; border-radius: 4px; font-size: 11px; color: #FFF; }
+@media print { .top-nav { display: none !important; } }
+@media screen { body { padding-top: 56px !important; } }
+</style>
+</head>
+<body>
+{% if not is_pdf and current_user %}
+<nav class="top-nav">
+    <div class="nav-inner">
+    <div class="left">
+        <a href="{{ url_for('home') }}" class="brand">Monograph</a>
+        {% if current_user.role in ['inspector', 'office_admin'] %}
+            <a href="{{ url_for('home') }}">Home</a>
+        {% endif %}
+        {% if current_user.role in ['team_lead', 'manager', 'admin'] %}
+            <a href="{{ url_for('batches.list_batches') }}">Batches</a>
+            <a href="{{ url_for('analytics.batch_reports_picker') }}">Batch Reports</a>
+            <a href="{{ url_for('analytics.pipeline_dashboard') }}">Pipeline</a>
+            <a href="{{ url_for('analytics.site_meeting_brief_view') }}">Brief</a>
+            <a href="{{ url_for('analytics.outstanding_items_view') }}" class="current">Outstanding</a>
+        {% endif %}
+        {% if current_user.role == 'team_lead' %}
+            <a href="{{ url_for('certification.my_reviews') }}">Team Lead Reviews</a>
+            <a href="{{ url_for('certification.my_inspections') }}">My Inspections</a>
+            <a href="{{ url_for('approvals.cleanup') }}">Defects Cleanup</a>
+        {% endif %}
+        {% if current_user.role in ('office_admin', 'team_lead') %}
+            <a href="{{ url_for('analytics.inspector_audit') }}">Inspector Log</a>
+            <a href="{{ url_for('analytics.inspector_audit_units') }}">Unit Register</a>
+        {% endif %}
+        {% if current_user.role in ['manager', 'admin'] %}
+            <a href="{{ url_for('approvals.pipeline') }}">Approvals</a>
+            <a href="{{ url_for('approvals.cleanup') }}">Defects Cleanup</a>
+            <a href="{{ url_for('analytics.inspector_audit') }}">Inspector Log</a>
+            <a href="{{ url_for('analytics.login_status') }}">Login Status</a>
+            {% if current_user.role == 'admin' %}
+                <a href="{{ url_for('data_quality.descriptions') }}">Data Quality</a>
+            {% endif %}
+        {% endif %}
+    </div>
+    <div class="right">
+        <span>{{ current_user.name }}</span>
+        <span class="role-badge">{{ current_user.role }}</span>
+        <a href="{{ url_for('logout') }}">Logout</a>
+    </div>
+    </div>
+</nav>
+{% endif %}
+<div class="report-wrap">
+
+<div class="no-print" style="margin-bottom: 8px;">
+    <a href="{{ url_for('analytics.batch_reports_picker') }}" class="back-link">&larr; Batch Reports</a>
+</div>
+<div class="report-header">
+    <div>
+        {% if logo_b64 %}<img src="data:image/jpeg;base64,{{ logo_b64 }}" alt="Monograph">{% endif %}
+    </div>
+    <div class="meta">
+        {{ report_date }}<br>
+        <span class="sub">De-snag Report</span>
+    </div>
+</div>
+
+<div class="action-row no-print">
+    <a href="{{ url_for('analytics.batch_desnag_pdf', batch_id=batch_id) }}" class="btn-pdf" onclick="this.textContent='Preparing...'">Download PDF</a>
+</div>
+
+<h1 class="report-title">De-snag Report &mdash; {{ batch_name }}</h1>
+<div class="report-subtitle">Power Park Student Housing &mdash; Phase 3</div>
+<div class="report-meta">Created {{ batch_created }} &middot; Live data &middot; {{ snapshot_label }}</div>
+<div class="report-meta" style="margin-top: 4px;">Open snag carryovers and latent findings on this batch's de-snagged units. Live.</div>
+
+<div class="cover-stats">
+    <div class="cover-stat">
+        <div class="num">{{ totals.open_defects }}</div>
+        <div class="label">Open Snag Items</div>
+        <div class="label" style="color: #B0B0B0; text-transform: none; letter-spacing: 0; font-size: 7pt; margin-top: 2px;">from C1, awaiting rectification</div>
+    </div>
+    <div class="cover-stat">
+        <div class="num latent">{{ totals.latent_outstanding }}</div>
+        <div class="label">Latent Defects</div>
+        <div class="label" style="color: #B0B0B0; text-transform: none; letter-spacing: 0; font-size: 7pt; margin-top: 2px;">found by TLs during de-snag</div>
+    </div>
+    <div class="cover-stat">
+        <div class="num units">{{ totals.units_affected }}</div>
+        <div class="label">Units Affected</div>
+        <div class="label" style="color: #B0B0B0; text-transform: none; letter-spacing: 0; font-size: 7pt; margin-top: 2px;">in active de-snag</div>
+    </div>
+</div>
+
+{% if totals.by_trade %}
+<div class="section-title">By Trade</div>
+<table class="trade-table">
+    <thead>
+        <tr>
+            <th>Trade</th>
+            <th style="text-align: right; width: 80px;">Open</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for t in totals.by_trade %}
+        <tr>
+            <td>{{ t.name }}</td>
+            <td class="num">{{ t.count }}</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% endif %}
+
+<div style="page-break-before: always; padding-top: 4px;">
+    <div class="section-title" style="margin-top: 0;">Open Items By Unit</div>
+
+    {% if units %}
+        {% for u in units %}
+        <div class="unit-block">
+            <div class="unit-header">
+                <div>
+                    <span class="unit-id">UNIT {{ u.unit_number }}</span>
+                    <span class="unit-zone">&middot; {{ u.block }} / {{ u.floor_label }}</span>
+                </div>
+                <div class="unit-meta">
+                    {{ u.open_count }} open{% if u.latent_count %} + {{ u.latent_count }} latent{% endif %}
+                    {% if u.oldest_age_weeks %}&middot; oldest {{ u.oldest_age_weeks }} wk{% if u.oldest_age_weeks != 1 %}s{% endif %}{% endif %}
+                </div>
+            </div>
+            {% for area in u.areas %}
+            <div class="area-name">{{ area.name }}</div>
+            {% for d in area.defects %}
+            <div class="defect-row">
+                <div class="defect-trade {% if d.is_latent %}latent{% endif %}">{{ d.trade if d.trade else '&mdash;' | safe }}</div>
+                <div class="defect-desc">{% if d.item_path %}<span class="defect-item-path">{{ d.item_path }}</span><span class="defect-sep"> &mdash; </span>{% endif %}<span class="defect-comment">{{ d.description }}</span></div>
+                <div class="defect-cycle">{{ d.cycle }}</div>
+            </div>
+            {% endfor %}
+            {% endfor %}
+        </div>
+        {% endfor %}
+    {% else %}
+        <div class="empty-state">No open items. All units clear.</div>
+    {% endif %}
+</div>
+
+<div class="footer">
+    Confidential &mdash; Monograph Architects &middot; Power Park Student Housing Phase 3 &middot; {{ report_date }}
+</div>
+
+</div>
+</body>
+</html>
