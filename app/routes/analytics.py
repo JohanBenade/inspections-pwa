@@ -7613,8 +7613,13 @@ def _build_batch_desnag_data(tenant_id, batch_id):
     total_open = sum(u['open_count'] for u in units_list)
     total_latent = sum(u['latent_count'] for u in units_list)
 
-    batch_created_raw = batch_row['created_at'] or ''
-    batch_created = batch_created_raw.split('T')[0].split(' ')[0] if batch_created_raw else ''
+    batch_created = ''
+    if batch_row['created_at']:
+        try:
+            _d = datetime.strptime(batch_row['created_at'].split('T')[0].split(' ')[0], '%Y-%m-%d')
+            batch_created = '{} {} {}'.format(_d.day, _d.strftime('%B'), _d.year)
+        except Exception:
+            batch_created = batch_row['created_at']
 
     return {
         'snapshot_label': snapshot_label,
