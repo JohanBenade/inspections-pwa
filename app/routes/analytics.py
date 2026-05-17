@@ -4778,10 +4778,18 @@ def _build_briefing_data(batch_id):
 @require_team_lead
 def batch_briefing_view(batch_id):
     """Batch site briefing - HTML view."""
+    import base64 as _b64, os as _os
+    from flask import current_app as _ca
     data = _build_briefing_data(batch_id)
     if data is None:
         return "Batch not found or no data.", 404
     data['is_pdf'] = False
+    logo_path = _os.path.join(_ca.static_folder, 'monograph_logo.jpg')
+    if _os.path.exists(logo_path):
+        with open(logo_path, 'rb') as f:
+            data['logo_b64'] = _b64.b64encode(f.read()).decode()
+    else:
+        data['logo_b64'] = ''
     return render_template('analytics/briefing.html', **data)
 
 
@@ -4790,10 +4798,18 @@ def batch_briefing_view(batch_id):
 def batch_briefing_pdf(batch_id):
     """Batch site briefing - PDF download via Playwright."""
     from app.services.pdf_playwright import html_to_pdf
+    import base64 as _b64, os as _os
+    from flask import current_app as _ca
     data = _build_briefing_data(batch_id)
     if data is None:
         return "Batch not found or no data.", 404
     data['is_pdf'] = True
+    logo_path = _os.path.join(_ca.static_folder, 'monograph_logo.jpg')
+    if _os.path.exists(logo_path):
+        with open(logo_path, 'rb') as f:
+            data['logo_b64'] = _b64.b64encode(f.read()).decode()
+    else:
+        data['logo_b64'] = ''
     html_str = render_template('analytics/briefing.html', **data)
     batch_name = data['batch']['name']
     report_date = data.get('report_date', '')
