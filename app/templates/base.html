@@ -74,33 +74,33 @@
                     
                     {% if current_user %}
                     <!-- Desktop nav links -->
-                    <div class="hidden md:flex items-center space-x-4">
+                    <div class="hidden md:flex items-center space-x-3">
                         {% if current_user.role in ['inspector', 'office_admin'] %}
-                        <a href="{{ url_for('home') }}" class="text-sm text-gray-300 hover:text-white">Home</a>
+                        <a href="{{ url_for('home') }}" class="text-xs text-gray-300 hover:text-white">Home</a>
                         {% endif %}
                         {% if current_user.role in ['team_lead', 'manager', 'admin'] %}
-                        <a href="{{ url_for('batches.list_batches') }}" class="text-sm text-gray-300 hover:text-white">Batches</a>
-                        <a href="{{ url_for('analytics.batch_reports_picker') }}" class="text-sm text-gray-300 hover:text-white">Batch Reports</a>
-                        <a href="{{ url_for('analytics.pipeline_dashboard') }}" class="text-sm text-gray-300 hover:text-white">Pipeline</a>
-                        <a href="{{ url_for('analytics.site_meeting_brief_view') }}" class="text-sm text-gray-300 hover:text-white">Brief</a>
-                        <a href="{{ url_for('analytics.outstanding_items_view') }}" class="text-sm text-gray-300 hover:text-white">Outstanding</a>
+                        <a href="{{ url_for('batches.list_batches') }}" class="text-xs text-gray-300 hover:text-white">Batches</a>
+                        <a href="{{ url_for('analytics.batch_reports_picker') }}" class="text-xs text-gray-300 hover:text-white">Batch Reports</a>
+                        <a href="{{ url_for('analytics.pipeline_dashboard') }}" class="text-xs text-gray-300 hover:text-white">Pipeline</a>
+                        <a href="{{ url_for('analytics.site_meeting_brief_view') }}" class="text-xs text-gray-300 hover:text-white">Brief</a>
+                        <a href="{{ url_for('analytics.outstanding_items_view') }}" class="text-xs text-gray-300 hover:text-white">Outstanding</a>
                         {% endif %}
                         {% if current_user.role == 'team_lead' %}
-                        <a href="{{ url_for('certification.my_reviews') }}" class="text-sm text-gray-300 hover:text-white">Team Lead Reviews</a>
-                        <a href="{{ url_for('certification.my_inspections') }}" class="text-sm text-gray-300 hover:text-white">My Inspections</a>
-                        <a href="{{ url_for('approvals.cleanup') }}" class="text-sm text-gray-300 hover:text-white">Defects Cleanup</a>
+                        <a href="{{ url_for('certification.my_reviews') }}" class="text-xs text-gray-300 hover:text-white">Team Lead Reviews</a>
+                        <a href="{{ url_for('certification.my_inspections') }}" class="text-xs text-gray-300 hover:text-white">My Inspections</a>
+                        <a href="{{ url_for('approvals.cleanup') }}" class="text-xs text-gray-300 hover:text-white">Defects Cleanup</a>
                         {% endif %}
                         {% if current_user.role in ('office_admin', 'team_lead') %}
-                        <a href="{{ url_for('analytics.inspector_audit') }}" class="text-sm text-gray-300 hover:text-white">Inspector Log</a>
-                        <a href="{{ url_for('analytics.inspector_audit_units') }}" class="text-sm text-gray-300 hover:text-white">Unit Register</a>
+                        <a href="{{ url_for('analytics.inspector_audit') }}" class="text-xs text-gray-300 hover:text-white">Inspector Log</a>
+                        <a href="{{ url_for('analytics.inspector_audit_units') }}" class="text-xs text-gray-300 hover:text-white">Unit Register</a>
                         {% endif %}
                         {% if current_user.role in ['manager', 'admin'] %}
-                        <a href="{{ url_for('approvals.pipeline') }}" class="text-sm text-gray-300 hover:text-white">Approvals</a>
-                        <a href="{{ url_for('approvals.cleanup') }}" class="text-sm text-gray-300 hover:text-white">Defects Cleanup</a>
-                        <a href="{{ url_for('analytics.inspector_audit') }}" class="text-sm text-gray-300 hover:text-white">Inspector Log</a>
-                        <a href="{{ url_for('analytics.login_status') }}" class="text-sm text-gray-300 hover:text-white">Login Status</a>
+                        <a href="{{ url_for('approvals.pipeline') }}" class="text-xs text-gray-300 hover:text-white">Approvals</a>
+                        <a href="{{ url_for('approvals.cleanup') }}" class="text-xs text-gray-300 hover:text-white">Defects Cleanup</a>
+                        <a href="{{ url_for('analytics.inspector_audit') }}" class="text-xs text-gray-300 hover:text-white">Inspector Log</a>
+                        <a href="{{ url_for('analytics.login_status') }}" class="text-xs text-gray-300 hover:text-white">Login Status</a>
                         {% if current_user.role == 'admin' %}
-                        <a href="{{ url_for('data_quality.descriptions') }}" class="text-sm text-gray-300 hover:text-white">Data Quality</a>
+                        <a href="{{ url_for('data_quality.descriptions') }}" class="text-xs text-gray-300 hover:text-white">Data Quality</a>
                         {% endif %}
                         {% endif %}
                     </div>
@@ -109,9 +109,9 @@
                 
                 {% if current_user %}
                 <div class="flex items-center space-x-4">
-                    <span class="text-sm text-gray-300 hidden sm:inline">{{ current_user.name }}</span>
+                    <span class="text-xs text-gray-300 hidden sm:inline">{{ current_user.name }}</span>
                     <span class="text-xs px-2 py-1 rounded bg-white/20">{{ current_user.role }}</span>
-                    <a href="{{ url_for('logout') }}" class="hidden md:inline text-sm text-gray-300 hover:text-white">Logout</a>
+                    <a href="{{ url_for('logout') }}" class="hidden md:inline text-xs text-gray-300 hover:text-white">Logout</a>
                 </div>
                 {% endif %}
             </div>
