@@ -442,10 +442,10 @@ body {
   <a href="{{ url_for('analytics.batch_briefing_pdf', batch_id=batch.id) }}" class="btn-pdf" onclick="this.textContent='Preparing...'">Download PDF</a>
 </div>
 
-<h1 class="report-title">{{ batch.name }} Site Briefing</h1>
+<h1 class="report-title">Site Briefing &mdash; {{ batch.name }}</h1>
 <div class="report-subtitle">Power Park Student Housing &mdash; Phase 3</div>
 <div class="report-meta">{{ report_date }} &middot; Live data</div>
-<div class="report-meta" style="margin-top: 4px;">Fortnightly status briefing for Raubex site team.</div>
+<div class="report-meta" style="margin-top: 4px;">Batch status overview &mdash; defects raised, cleared, and still open. Live.</div>
 
 {% set FL = {0: 'Ground', 1: '1st Floor', 2: '2nd Floor'} %}
 
