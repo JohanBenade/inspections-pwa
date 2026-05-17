@@ -7637,10 +7637,13 @@ def _build_batch_desnag_data(tenant_id, batch_id):
         except Exception:
             batch_created = batch_row['created_at']
 
+    report_date = datetime.now().strftime('%d %B %Y')
+
     return {
         'snapshot_label': snapshot_label,
         'batch_name': batch_row['name'] or '',
         'batch_created': batch_created,
+        'report_date': report_date,
         'totals': {
             'open_defects': total_open,
             'latent_outstanding': total_latent,
