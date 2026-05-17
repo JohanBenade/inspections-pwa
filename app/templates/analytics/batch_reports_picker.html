@@ -2,7 +2,7 @@
 {% block title %}Batch Reports{% endblock %}
 {% block content %}
 <div style="max-width: 900px; margin: 0 auto; padding: 1.5rem 1rem;">
-  <h1 style="font-family: 'Cormorant Garamond', Georgia, serif; font-weight: 700; font-size: 2.25rem; letter-spacing: -0.01em; margin: 0.5rem 0 0.25rem 0; color: #1A1A1A;">Batch Reports</h1>
+  <h1 style="font-family: 'DM Sans', system-ui, sans-serif; font-weight: 700; font-size: 2.25rem; letter-spacing: -0.01em; margin: 0.5rem 0 0.25rem 0; color: #1A1A1A;">Batch Reports</h1>
   <p style="color:#9A9A9A; font-size:0.85rem; margin:0;">Early status report per batch &mdash; reviewed-or-higher units only.</p>
 
   <div style="margin-top: 1.5rem; background:#fff; border:1px solid #e5e5e5; border-radius:8px; overflow:hidden;">
@@ -24,7 +24,7 @@
           <td style="padding:0.75rem 1rem; color:#555; text-transform:capitalize;">{{ b.status }}</td>
           <td style="padding:0.75rem 1rem; text-align:right; color:#555;">{{ b.reviewed_units or 0 }} / {{ b.total_units or 0 }}</td>
           <td style="padding:0.75rem 1rem; text-align:right; white-space:nowrap;">
-            <a href="{{ url_for('analytics.batch_briefing_view', batch_id=b.id) }}" style="padding:0.35rem 0.8rem; font-size:0.8rem; font-weight:600; border-radius:6px; background:#F5F3EE; color:#1A1A1A; border:1px solid #e5e5e5; text-decoration:none;">View</a>
+            <a href="{{ url_for('analytics.batch_briefing_view', batch_id=b.id) }}" style="padding:0.35rem 0.8rem; font-size:0.8rem; font-weight:600; border-radius:6px; background:#F5F3EE; color:#1A1A1A; border:1px solid #e5e5e5; text-decoration:none; margin-right:0.4rem;">Site Briefing</a><a href="{{ url_for('analytics.batch_desnag_view', batch_id=b.id) }}" style="padding:0.35rem 0.8rem; font-size:0.8rem; font-weight:600; border-radius:6px; background:#F5F3EE; color:#1A1A1A; border:1px solid #e5e5e5; text-decoration:none;">De-snag Report</a>
           </td>
         </tr>
         {% endfor %}
