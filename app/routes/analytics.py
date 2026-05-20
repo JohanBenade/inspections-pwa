@@ -7459,6 +7459,7 @@ def _build_batch_desnag_data(tenant_id, batch_id):
                     AND bu.tenant_id = d.tenant_id
                     AND bu.batch_id = ?
                     AND bu.status != 'removed'
+                    AND i.cycle_number >= 2
                     AND i.status IN ('submitted','reviewed','pending_followup','approved','certified','closed')
               )
             ORDER BY u.block, u.floor, CAST(u.unit_number AS INTEGER),
@@ -7483,6 +7484,7 @@ def _build_batch_desnag_data(tenant_id, batch_id):
                     AND bu.tenant_id = lan.tenant_id
                     AND bu.batch_id = ?
                     AND bu.status != 'removed'
+                    AND i.cycle_number >= 2
                     AND i.status IN ('submitted','reviewed','pending_followup','approved','certified','closed')
               )
             ORDER BY u.block, u.floor, CAST(u.unit_number AS INTEGER), at.area_order
