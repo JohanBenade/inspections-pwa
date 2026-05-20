@@ -400,6 +400,31 @@ def detail(batch_id):
         cn = u.get('cycle_number') or 1
         u['checkpoints'] = u['defect_bfwd'] if cn > 1 else u['checkpoints_c1']
 
+    # --- Unit Checkpoints column (baseline - exclusions + open prior latents) ---
+    lan_map = {}
+    if units:
+        lan_unit_ids = list(set(u['unit_id'] for u in units))
+        lan_ph = ','.join(['?'] * len(lan_unit_ids))
+        lan_rows = query_db(f"""
+            SELECT unit_id, cycle_number, COUNT(*) AS cnt
+            FROM latent_area_note
+            WHERE tenant_id = ?
+              AND unit_id IN ({lan_ph})
+              AND rectified_at_cycle_id IS NULL
+            GROUP BY unit_id, cycle_number
+        """, [tenant_id] + lan_unit_ids)
+        for lr in lan_rows:
+            lan_map.setdefault(lr['unit_id'], {})[lr['cycle_number']] = lr['cnt']
+
+    for u in units:
+        unit_cycle = u.get('cycle_number') or 1
+        u['open_prior_latents'] = sum(
+            cnt for cn, cnt in lan_map.get(u['unit_id'], {}).items() if cn < unit_cycle
+        )
+        u['unit_checkpoints'] = u['checkpoints_c1'] + u['open_prior_latents']
+
+    total_checkpoints = sum(u.get('unit_checkpoints', 0) for u in units)
+
     # --- Items marked (for live Inspecting progress) ---
     inspection_ids = [u.get('inspection_id') for u in units if u.get('inspection_id')]
     items_map = {}
@@ -453,7 +478,8 @@ def detail(batch_id):
                            floor_labels=FLOOR_LABELS, cycle_ids=cycle_ids,
                            excl_lists=excl_lists,
                            removed_units=removed_units,
-                           refreshed_at=refreshed_at)
+                           refreshed_at=refreshed_at,
+                           total_checkpoints=total_checkpoints)
 
 
 
@@ -550,6 +576,31 @@ def detail_data(batch_id):
         cn = u.get('cycle_number') or 1
         u['checkpoints'] = u['defect_bfwd'] if cn > 1 else u['checkpoints_c1']
 
+    # --- Unit Checkpoints column (baseline - exclusions + open prior latents) ---
+    lan_map = {}
+    if units:
+        lan_unit_ids = list(set(u['unit_id'] for u in units))
+        lan_ph = ','.join(['?'] * len(lan_unit_ids))
+        lan_rows = query_db(f"""
+            SELECT unit_id, cycle_number, COUNT(*) AS cnt
+            FROM latent_area_note
+            WHERE tenant_id = ?
+              AND unit_id IN ({lan_ph})
+              AND rectified_at_cycle_id IS NULL
+            GROUP BY unit_id, cycle_number
+        """, [tenant_id] + lan_unit_ids)
+        for lr in lan_rows:
+            lan_map.setdefault(lr['unit_id'], {})[lr['cycle_number']] = lr['cnt']
+
+    for u in units:
+        unit_cycle = u.get('cycle_number') or 1
+        u['open_prior_latents'] = sum(
+            cnt for cn, cnt in lan_map.get(u['unit_id'], {}).items() if cn < unit_cycle
+        )
+        u['unit_checkpoints'] = u['checkpoints_c1'] + u['open_prior_latents']
+
+    total_checkpoints = sum(u.get('unit_checkpoints', 0) for u in units)
+
     inspection_ids = [u.get('inspection_id') for u in units if u.get('inspection_id')]
     items_map = {}
     if inspection_ids:
@@ -586,6 +637,7 @@ def detail_data(batch_id):
                            excl_lists=excl_lists,
                            floor_labels=FLOOR_LABELS,
                            refreshed_at=refreshed_at,
+                           total_checkpoints=total_checkpoints,
                            is_partial_refresh=True)
 
 
