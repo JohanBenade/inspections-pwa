@@ -421,7 +421,7 @@ def detail(batch_id):
         u['open_prior_latents'] = sum(
             cnt for cn, cnt in lan_map.get(u['unit_id'], {}).items() if cn < unit_cycle
         )
-        u['unit_checkpoints'] = u['checkpoints_c1'] + u['open_prior_latents']
+        u['unit_checkpoints'] = u['checkpoints'] + u['open_prior_latents']
 
     total_checkpoints = sum(u.get('unit_checkpoints', 0) for u in units)
 
@@ -597,7 +597,7 @@ def detail_data(batch_id):
         u['open_prior_latents'] = sum(
             cnt for cn, cnt in lan_map.get(u['unit_id'], {}).items() if cn < unit_cycle
         )
-        u['unit_checkpoints'] = u['checkpoints_c1'] + u['open_prior_latents']
+        u['unit_checkpoints'] = u['checkpoints'] + u['open_prior_latents']
 
     total_checkpoints = sum(u.get('unit_checkpoints', 0) for u in units)
 
