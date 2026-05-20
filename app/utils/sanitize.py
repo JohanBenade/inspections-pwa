@@ -43,8 +43,13 @@ def split_note_html_by_li(html):
     if not html:
         return [html]
     soup = BeautifulSoup(html, 'html.parser')
-    children = [c for c in soup.children
-                if not (isinstance(c, str) and not c.strip())]
+    def _ignorable(c):
+        if isinstance(c, str):
+            return not c.strip()
+        if getattr(c, 'name', None) == 'p' and not c.get_text(strip=True):
+            return True
+        return False
+    children = [c for c in soup.children if not _ignorable(c)]
     if len(children) != 1:
         return [html]
     root = children[0]
