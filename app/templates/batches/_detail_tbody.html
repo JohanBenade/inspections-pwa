@@ -12,7 +12,8 @@
     <td class="px-4 py-3 text-sm text-gray-600 whitespace-nowrap">
         {{ u.block }} &middot; {{ floor_labels.get(u.floor, u.floor) }}
         {% if u.cycle_number and u.cycle_number > 1 %}
-        &middot; <span class="px-1.5 py-0.5 text-xs font-semibold rounded bg-amber-100 text-amber-700">C{{ u.cycle_number }}</span>
+        {% set cycle_classes = {2: 'bg-cyan-100 text-cyan-700', 3: 'bg-amber-100 text-amber-700', 4: 'bg-orange-100 text-orange-700', 5: 'bg-red-100 text-red-700'}.get(u.cycle_number, 'bg-gray-100 text-gray-700') %}
+        &middot; <span class="px-1.5 py-0.5 text-xs font-semibold rounded {{ cycle_classes }}">C{{ u.cycle_number }}</span>
         {% else %}
         &middot; <span class="text-gray-400 text-xs">C{{ u.cycle_number or 1 }}</span>
         {% endif %}
