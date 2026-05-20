@@ -7451,17 +7451,15 @@ def _build_batch_desnag_data(tenant_id, batch_id):
             JOIN unit_real u ON d.unit_id = u.id AND u.tenant_id = d.tenant_id
             WHERE d.tenant_id = ? AND d.status = 'open'
               AND EXISTS (
-                  SELECT 1 FROM inspection i
-                  WHERE i.unit_id = d.unit_id
-                    AND i.tenant_id = d.tenant_id
-                    AND i.cycle_number >= 2
-              )
-              AND EXISTS (
                   SELECT 1 FROM batch_unit bu
+                  JOIN inspection i ON i.unit_id = bu.unit_id
+                                    AND i.cycle_id = bu.cycle_id
+                                    AND i.tenant_id = bu.tenant_id
                   WHERE bu.unit_id = d.unit_id
                     AND bu.tenant_id = d.tenant_id
                     AND bu.batch_id = ?
                     AND bu.status != 'removed'
+                    AND i.status IN ('submitted','reviewed','pending_followup','approved','certified','closed')
               )
             ORDER BY u.block, u.floor, CAST(u.unit_number AS INTEGER),
                      at.area_order, ct.category_order,
@@ -7477,17 +7475,15 @@ def _build_batch_desnag_data(tenant_id, batch_id):
             JOIN unit_real u ON lan.unit_id = u.id AND u.tenant_id = lan.tenant_id
             WHERE lan.tenant_id = ? AND lan.rectified_at IS NULL
               AND EXISTS (
-                  SELECT 1 FROM inspection i
-                  WHERE i.unit_id = lan.unit_id
-                    AND i.tenant_id = lan.tenant_id
-                    AND i.cycle_number >= 2
-              )
-              AND EXISTS (
                   SELECT 1 FROM batch_unit bu
+                  JOIN inspection i ON i.unit_id = bu.unit_id
+                                    AND i.cycle_id = bu.cycle_id
+                                    AND i.tenant_id = bu.tenant_id
                   WHERE bu.unit_id = lan.unit_id
                     AND bu.tenant_id = lan.tenant_id
                     AND bu.batch_id = ?
                     AND bu.status != 'removed'
+                    AND i.status IN ('submitted','reviewed','pending_followup','approved','certified','closed')
               )
             ORDER BY u.block, u.floor, CAST(u.unit_number AS INTEGER), at.area_order
         """, (tenant_id, batch_id)).fetchall()
