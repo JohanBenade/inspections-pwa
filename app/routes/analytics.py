@@ -6514,7 +6514,7 @@ def _build_brief_latent(tenant_id, snap_str, prev_cutoff_str):
       latent_notes_list: combined outstanding (oldest first) +
         rectified-this-fortnight (most recent first). Each note carries
         unit_number, block, floor, area_display_name, age_days,
-        is_rectified, created_at_fmt, rectified_at_fmt, photos.
+        is_rectified, created_at_fmt, rectified_at_fmt.
       latent_brief_summary: dict with outstanding_count, affected_units_count,
         rectified_this_fortnight_count, rectified_to_date_count,
         oldest_days_open, total_identified.
@@ -6642,23 +6642,6 @@ def _build_brief_latent(tenant_id, snap_str, prev_cutoff_str):
         key=lambda x: x.get('rectified_at') or '', reverse=True
     )
     visible_notes = outstanding + rectified_fortnight
-
-    if visible_notes:
-        note_ids = [n['id'] for n in visible_notes]
-        placeholders = ','.join('?' * len(note_ids))
-        photo_rows = query_db("""
-            SELECT id, latent_area_note_id, file_path, mime_type,
-                   display_order, original_filename
-            FROM latent_photo
-            WHERE tenant_id = ? AND latent_area_note_id IN ({})
-            ORDER BY latent_area_note_id, display_order
-        """.format(placeholders), [tenant_id] + note_ids)
-        photos_by_note = {}
-        for p in photo_rows:
-            pd = dict(p)
-            photos_by_note.setdefault(pd['latent_area_note_id'], []).append(pd)
-        for n in visible_notes:
-            n['photos'] = photos_by_note.get(n['id'], [])
 
     oldest_days = max((n['age_days'] for n in outstanding), default=0)
     _FL_LABELS = {0: 'Ground Floor', 1: '1st Floor', 2: '2nd Floor', 3: '3rd Floor'}
@@ -7069,8 +7052,6 @@ def site_meeting_brief_view():
     data.update(_build_brief_prev_desnag(_tenant, _prev_cutoff))
     data.update(_build_brief_by_trade(_tenant, data['snapshot_str'], _prev_cutoff))
     data.update(_build_brief_latent(_tenant, data['snapshot_str'], _prev_cutoff))
-    from app.services.pdf_generator import encode_latent_photos
-    encode_latent_photos(data)
     if data.get('kpi') and data['kpi'].get('est_complete'):
         data['kpi']['est_complete'] = _strip_leading_zero(data['kpi']['est_complete'])
     data['snapshot_date_short'] = _snap_dt.strftime('%d %b %Y').upper()
@@ -7099,8 +7080,6 @@ def site_meeting_brief_pdf():
     data.update(_build_brief_prev_desnag(_tenant, _prev_cutoff))
     data.update(_build_brief_by_trade(_tenant, data['snapshot_str'], _prev_cutoff))
     data.update(_build_brief_latent(_tenant, data['snapshot_str'], _prev_cutoff))
-    from app.services.pdf_generator import encode_latent_photos
-    encode_latent_photos(data)
     if data.get('kpi') and data['kpi'].get('est_complete'):
         data['kpi']['est_complete'] = _strip_leading_zero(data['kpi']['est_complete'])
     data['snapshot_date_short'] = _snap_dt.strftime('%d %b %Y').upper()

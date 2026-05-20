@@ -107,7 +107,7 @@ def view_defects_html(unit_id):
     """View defects list as HTML with print/download toolbar."""
     tenant_id = session['tenant_id']
     from flask import request as req, render_template, url_for
-    from app.services.pdf_generator import get_defects_data, encode_latent_photos
+    from app.services.pdf_generator import get_defects_data
 
     unit = query_db(
         "SELECT * FROM unit WHERE id = ? AND tenant_id = ?",
@@ -128,8 +128,6 @@ def view_defects_html(unit_id):
     data = get_defects_data(tenant_id, unit_id, cycle_id)
     if not data:
         abort(404)
-
-    encode_latent_photos(data)
 
     return render_template(
         'pdf/defects_list.html',

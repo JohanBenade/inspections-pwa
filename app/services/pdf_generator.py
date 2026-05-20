@@ -438,7 +438,7 @@ def get_defects_data(tenant_id, unit_id, cycle_id=None):
 
 
 def _fetch_latent_for_pdf(tenant_id, unit_id):
-    """Fetch latent area notes + photos for a unit, formatted for PDF/HTML rendering.
+    """Fetch latent area notes for a unit, formatted for PDF/HTML rendering.
 
     Unit-scoped (all cycles). Returns:
         {'latent_notes_list': [dict, ...],
@@ -446,9 +446,7 @@ def _fetch_latent_for_pdf(tenant_id, unit_id):
 
     Each note dict carries: id, unit_id, cycle_id, cycle_number, note_html,
     created_at, rectified_at, rectified_at_cycle_number, area_display_name,
-    created_at_fmt (DD.MM.YYYY), rectified_at_fmt (DD.MM.YYYY or None),
-    photos: [dict, ...] with file_path + mime_type (raw; src added by
-    encode_latent_photos).
+    created_at_fmt (DD.MM.YYYY), rectified_at_fmt (DD.MM.YYYY or None).
     """
     latent_rows = query_db("""
         SELECT n.id, n.unit_id, n.cycle_id, n.cycle_number, n.note_html,
@@ -466,21 +464,6 @@ def _fetch_latent_for_pdf(tenant_id, unit_id):
             'latent_notes_list': [],
             'latent_summary': {'total': 0, 'outstanding': 0, 'rectified': 0}
         }
-
-    note_ids = [r['id'] for r in latent_rows]
-    placeholders = ','.join('?' * len(note_ids))
-    photo_rows = query_db("""
-        SELECT id, latent_area_note_id, file_path, mime_type,
-               display_order, original_filename
-        FROM latent_photo
-        WHERE tenant_id = ? AND latent_area_note_id IN ({})
-        ORDER BY latent_area_note_id, display_order
-    """.format(placeholders), [tenant_id] + note_ids)
-
-    photos_by_note = {}
-    for p in photo_rows:
-        pd = dict(p)
-        photos_by_note.setdefault(pd['latent_area_note_id'], []).append(pd)
 
     def _fmt_date(iso):
         if not iso or len(iso) < 10:
@@ -504,7 +487,6 @@ def _fetch_latent_for_pdf(tenant_id, unit_id):
             or n.get('area_name_override')
             or 'Other'
         )
-        n['photos'] = photos_by_note.get(n['id'], [])
         notes_list.append(n)
 
     return {
@@ -517,27 +499,6 @@ def _fetch_latent_for_pdf(tenant_id, unit_id):
     }
 
 
-def encode_latent_photos(data):
-    """Mutate data dict in place: add 'src' base64 data URI to each photo.
-
-    Both HTML preview and PDF generation use base64 - keeps Playwright simple
-    (no HTTP round-trip to auth-protected serve_note_photo route).
-    """
-    import base64
-    for note in data.get('latent_notes_list', []):
-        for photo in note.get('photos', []):
-            file_path = photo.get('file_path')
-            if file_path and os.path.exists(file_path):
-                try:
-                    with open(file_path, 'rb') as f:
-                        b64 = base64.b64encode(f.read()).decode()
-                    mime = photo.get('mime_type') or 'image/jpeg'
-                    photo['src'] = 'data:{};base64,{}'.format(mime, b64)
-                except Exception:
-                    photo['src'] = ''
-            else:
-                photo['src'] = ''
-
 
 def generate_defects_pdf(tenant_id, unit_id, cycle_id=None):
     """Generate a defects list PDF for a unit."""
@@ -547,8 +508,6 @@ def generate_defects_pdf(tenant_id, unit_id, cycle_id=None):
     data = get_defects_data(tenant_id, unit_id, cycle_id)
     if not data:
         return None
-
-    encode_latent_photos(data)
 
     static_folder = current_app.static_folder
     logo_path = os.path.join(static_folder, 'monograph_logo.jpg')

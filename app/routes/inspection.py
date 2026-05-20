@@ -4,7 +4,7 @@ Inspections are conducted within a cycle created by the architect.
 """
 import os
 from datetime import date, datetime, timezone
-from flask import Blueprint, render_template, session, redirect, url_for, abort, request, jsonify, make_response, send_file
+from flask import Blueprint, render_template, session, redirect, url_for, abort, request, jsonify, make_response
 from app.auth import require_auth
 from app.utils import generate_id
 from app.utils.wash import wash_description
@@ -2403,23 +2403,6 @@ def desnag_submit(inspection_id):
     db.commit()
 
     return redirect(url_for('home'))
-
-
-@inspection_bp.route('/photo/<photo_id>')
-@require_auth
-def serve_latent_photo(photo_id):
-    """Serve a latent-defect photo. Auth-gated and tenant-scoped."""
-    tenant_id = session['tenant_id']
-    photo = query_db("""
-        SELECT file_path, mime_type
-        FROM latent_photo
-        WHERE id = ? AND tenant_id = ?
-    """, [photo_id, tenant_id], one=True)
-    if not photo:
-        abort(404)
-    if not os.path.exists(photo['file_path']):
-        abort(404)
-    return send_file(photo['file_path'], mimetype=photo['mime_type'])
 
 
 def _desnag_progress(unit_id, tenant_id, cycle_number):

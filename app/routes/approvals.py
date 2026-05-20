@@ -21,12 +21,6 @@ from app.utils import generate_id
 from app.utils.audit import log_audit
 from app.services.db import get_db, query_db
 from app.utils.sanitize import sanitize_note_html
-import shutil
-from werkzeug.utils import secure_filename
-from flask import send_from_directory
-from PIL import Image, ImageOps
-import pillow_heif
-pillow_heif.register_heif_opener()
 
 approvals_bp = Blueprint('approvals', __name__, url_prefix='/approvals')
 
@@ -650,27 +644,13 @@ def unit_latent(cycle_id, unit_id):
         ORDER BY area_order
     """, [tenant_id, unit['unit_type']])
 
-    # Fetch photos for all notes in one query (avoid N+1)
-    photos_by_note = {}
-    if latent_notes:
-        note_ids = [n['id'] for n in latent_notes]
-        placeholders = ','.join('?' * len(note_ids))
-        photo_rows = query_db(
-            "SELECT id, latent_area_note_id, original_filename, display_order "
-            "FROM latent_photo WHERE latent_area_note_id IN ({}) AND tenant_id = ? "
-            "ORDER BY latent_area_note_id, display_order".format(placeholders),
-            note_ids + [tenant_id])
-        for p in photo_rows:
-            photos_by_note.setdefault(p['latent_area_note_id'], []).append(p)
-
     return render_template('approvals/unit_latent.html',
         unit=unit,
         inspection=inspection,
         cycle_id=cycle_id,
         cycle_number=inspection['cycle_number'],
         latent_notes=latent_notes,
-        area_templates=area_templates,
-        photos_by_note=photos_by_note)
+        area_templates=area_templates)
 
 
 @approvals_bp.route('/<cycle_id>/unit/<unit_id>/latent/add', methods=['POST'])
@@ -739,20 +719,9 @@ def add_area_note(cycle_id, unit_id):
               new_value=note_html,
               user_id=session['user_id'], user_name=session['user_name'])
 
-    # Save any uploaded photos (multipart form field 'photos')
-    photo_files = request.files.getlist('photos')
-    saved_count, rejected = _save_photos_for_note(
-        db, tenant_id, note_id, photo_files, now,
-        session['user_id'], session['user_name'])
-
     db.commit()
 
-    msg = 'Latent defect note added.'
-    if saved_count:
-        msg += ' {} photo(s) attached.'.format(saved_count)
-    if rejected:
-        msg += ' Rejected: ' + ', '.join(rejected) + '.'
-    flash(msg, 'success')
+    flash('Latent defect note added.', 'success')
     return redirect(url_for('approvals.unit_latent',
                             cycle_id=cycle_id, unit_id=unit_id))
 
@@ -867,45 +836,14 @@ def delete_area_note(cycle_id, unit_id, note_id):
 
     old_html = note['note_html']
 
-    # Cascade delete: gather photos, remove files + dir, then DB rows
-    photos = query_db("""
-        SELECT id, file_path FROM latent_photo
-        WHERE latent_area_note_id = ? AND tenant_id = ?
-    """, [note_id, tenant_id])
-    photo_count = len(photos) if photos else 0
-
-    for p in (photos or []):
-        try:
-            if p['file_path'] and os.path.exists(p['file_path']):
-                os.remove(p['file_path'])
-        except Exception:
-            pass
-
-    photo_dir = os.path.join(PHOTO_BASE_DIR, note_id)
-    try:
-        if os.path.isdir(photo_dir):
-            shutil.rmtree(photo_dir)
-    except Exception:
-        pass
-
-    if photo_count:
-        db.execute("""
-            DELETE FROM latent_photo
-            WHERE latent_area_note_id = ? AND tenant_id = ?
-        """, [note_id, tenant_id])
-
     # Hard delete (note row)
     db.execute("""
         DELETE FROM latent_area_note
         WHERE id = ? AND tenant_id = ?
     """, [note_id, tenant_id])
 
-    audit_old = old_html
-    if photo_count:
-        audit_old += ' [cascaded {} photo(s)]'.format(photo_count)
-
     log_audit(db, tenant_id, 'latent_area_note', note_id, 'deleted',
-              old_value=audit_old, new_value=None,
+              old_value=old_html, new_value=None,
               user_id=session['user_id'], user_name=session['user_name'])
 
     db.commit()
@@ -1047,274 +985,6 @@ def reopen_area_note(cycle_id, unit_id, note_id):
     flash('Latent defect re-opened.', 'success')
     return redirect(url_for('approvals.unit_latent',
                             cycle_id=cycle_id, unit_id=unit_id))
-
-
-# ============================================================
-# Photo upload / delete / serve for latent notes (Step 7)
-# ============================================================
-
-PHOTO_BASE_DIR = '/var/data/photos'
-PHOTO_MAX_FILE_SIZE = 10 * 1024 * 1024  # 10 MB
-PHOTO_MAX_WIDTH = 1200
-PHOTO_JPEG_QUALITY = 85
-
-
-def _save_photos_for_note(db, tenant_id, note_id, files, now, user_id, user_name):
-    """Save uploaded photo files for a latent note.
-
-    Compresses to JPEG max 1200px wide, quality 85. EXIF orientation respected.
-    Caller commits the db transaction. Returns (saved_count, rejected_filenames_list).
-    Per-file errors are caught and reported via the rejected list — never raised.
-    """
-    if not files:
-        return 0, []
-
-    photo_dir = os.path.join(PHOTO_BASE_DIR, note_id)
-    os.makedirs(photo_dir, exist_ok=True)
-
-    max_order_row = query_db("""
-        SELECT COALESCE(MAX(display_order), -1) AS max_o FROM latent_photo
-        WHERE latent_area_note_id = ? AND tenant_id = ?
-    """, [note_id, tenant_id], one=True)
-    next_order = (max_order_row['max_o'] if max_order_row else -1) + 1
-
-    saved = 0
-    rejected = []
-    for f in files:
-        if not f or not f.filename:
-            continue
-        original_filename = secure_filename(f.filename) or 'photo'
-
-        # Size check
-        f.stream.seek(0, 2)
-        size = f.stream.tell()
-        f.stream.seek(0)
-        if size == 0:
-            continue
-        if size > PHOTO_MAX_FILE_SIZE:
-            rejected.append(original_filename + ' (>10MB)')
-            continue
-
-        # Open with Pillow (HEIC via registered opener)
-        try:
-            img = Image.open(f.stream)
-            img.load()
-        except Exception:
-            rejected.append(original_filename + ' (invalid image)')
-            continue
-
-        # EXIF orientation
-        try:
-            img = ImageOps.exif_transpose(img)
-        except Exception:
-            pass
-
-        # Strip alpha to RGB (JPEG has no alpha channel)
-        if img.mode in ('RGBA', 'LA'):
-            background = Image.new('RGB', img.size, (255, 255, 255))
-            background.paste(img, mask=img.split()[-1])
-            img = background
-        elif img.mode == 'P':
-            img = img.convert('RGBA')
-            background = Image.new('RGB', img.size, (255, 255, 255))
-            background.paste(img, mask=img.split()[-1])
-            img = background
-        elif img.mode != 'RGB':
-            img = img.convert('RGB')
-
-        # Resize if wider than max
-        if img.width > PHOTO_MAX_WIDTH:
-            ratio = PHOTO_MAX_WIDTH / float(img.width)
-            new_h = int(img.height * ratio)
-            img = img.resize((PHOTO_MAX_WIDTH, new_h), Image.LANCZOS)
-
-        # Save as JPEG
-        photo_id = generate_id()
-        file_path = os.path.join(photo_dir, photo_id + '.jpg')
-        img.save(file_path, 'JPEG', quality=PHOTO_JPEG_QUALITY, optimize=True)
-        compressed_size = os.path.getsize(file_path)
-
-        db.execute("""
-            INSERT INTO latent_photo
-            (id, tenant_id, latent_area_note_id, file_path, mime_type, file_size,
-             original_filename, display_order, uploaded_by, uploaded_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        """, [photo_id, tenant_id, note_id, file_path, 'image/jpeg',
-              compressed_size, original_filename, next_order,
-              user_id, now])
-
-        log_audit(db, tenant_id, 'latent_photo', photo_id, 'created',
-                  new_value='note_id={}; size={}'.format(note_id, compressed_size),
-                  user_id=user_id, user_name=user_name)
-
-        next_order += 1
-        saved += 1
-
-    return saved, rejected
-
-
-@approvals_bp.route('/<cycle_id>/unit/<unit_id>/latent/<note_id>/photo/upload', methods=['POST'])
-@require_team_lead_only
-def upload_note_photo(cycle_id, unit_id, note_id):
-    """Upload one or more photos to a latent area note (TL desktop, C2+ only).
-
-    Rejects when the note is currently rectified (force re-open first).
-    Multipart form field: 'photos' (multiple).
-    """
-    tenant_id = session['tenant_id']
-    db = get_db()
-    now = datetime.now(timezone.utc).isoformat()
-
-    unit = query_db("""
-        SELECT id FROM unit
-        WHERE id = ? AND tenant_id = ?
-    """, [unit_id, tenant_id], one=True)
-    if not unit:
-        abort(404)
-
-    inspection = query_db("""
-        SELECT id, cycle_number FROM inspection
-        WHERE unit_id = ? AND cycle_id = ? AND tenant_id = ?
-    """, [unit_id, cycle_id, tenant_id], one=True)
-    if not inspection:
-        abort(404)
-
-    if inspection['cycle_number'] == 1:
-        flash('Latent defects do not apply at C1.', 'warning')
-        return redirect(url_for('certification.my_reviews'))
-
-    note = query_db("""
-        SELECT id, rectified_at_cycle_number FROM latent_area_note
-        WHERE id = ? AND unit_id = ? AND tenant_id = ?
-    """, [note_id, unit_id, tenant_id], one=True)
-    if not note:
-        abort(404)
-
-    if note['rectified_at_cycle_number'] is not None:
-        flash('Re-open this note before adding photos.', 'warning')
-        return redirect(url_for('approvals.unit_latent',
-                                cycle_id=cycle_id, unit_id=unit_id))
-
-    photo_files = request.files.getlist('photos')
-    if not photo_files or all((not f or not f.filename) for f in photo_files):
-        flash('Please select at least one photo.', 'error')
-        return redirect(url_for('approvals.unit_latent',
-                                cycle_id=cycle_id, unit_id=unit_id))
-
-    saved_count, rejected = _save_photos_for_note(
-        db, tenant_id, note_id, photo_files, now,
-        session['user_id'], session['user_name'])
-
-    db.commit()
-
-    msg_parts = []
-    if saved_count:
-        msg_parts.append('{} photo(s) added'.format(saved_count))
-    if rejected:
-        msg_parts.append('Rejected: ' + ', '.join(rejected))
-    flash(' | '.join(msg_parts) if msg_parts else 'No photos saved.',
-          'success' if saved_count else 'error')
-    return redirect(url_for('approvals.unit_latent',
-                            cycle_id=cycle_id, unit_id=unit_id))
-
-
-@approvals_bp.route('/<cycle_id>/unit/<unit_id>/latent/<note_id>/photo/<photo_id>/delete', methods=['POST'])
-@require_team_lead_only
-def delete_note_photo(cycle_id, unit_id, note_id, photo_id):
-    """Delete a single photo (TL desktop, C2+ only).
-
-    Rejects when the parent note is rectified (force re-open first).
-    Removes file from disk + DB row.
-    """
-    tenant_id = session['tenant_id']
-    db = get_db()
-
-    unit = query_db("""
-        SELECT id FROM unit
-        WHERE id = ? AND tenant_id = ?
-    """, [unit_id, tenant_id], one=True)
-    if not unit:
-        abort(404)
-
-    inspection = query_db("""
-        SELECT id, cycle_number FROM inspection
-        WHERE unit_id = ? AND cycle_id = ? AND tenant_id = ?
-    """, [unit_id, cycle_id, tenant_id], one=True)
-    if not inspection:
-        abort(404)
-
-    if inspection['cycle_number'] == 1:
-        flash('Latent defects do not apply at C1.', 'warning')
-        return redirect(url_for('certification.my_reviews'))
-
-    note = query_db("""
-        SELECT id, rectified_at_cycle_number FROM latent_area_note
-        WHERE id = ? AND unit_id = ? AND tenant_id = ?
-    """, [note_id, unit_id, tenant_id], one=True)
-    if not note:
-        abort(404)
-
-    if note['rectified_at_cycle_number'] is not None:
-        flash('Re-open the note before deleting photos.', 'warning')
-        return redirect(url_for('approvals.unit_latent',
-                                cycle_id=cycle_id, unit_id=unit_id))
-
-    photo = query_db("""
-        SELECT id, file_path, original_filename FROM latent_photo
-        WHERE id = ? AND latent_area_note_id = ? AND tenant_id = ?
-    """, [photo_id, note_id, tenant_id], one=True)
-    if not photo:
-        abort(404)
-
-    try:
-        if photo['file_path'] and os.path.exists(photo['file_path']):
-            os.remove(photo['file_path'])
-    except Exception:
-        pass  # best effort; DB row will still go
-
-    db.execute("""
-        DELETE FROM latent_photo
-        WHERE id = ? AND tenant_id = ?
-    """, [photo_id, tenant_id])
-
-    log_audit(db, tenant_id, 'latent_photo', photo_id, 'deleted',
-              old_value='note_id={}; file={}'.format(note_id, photo['original_filename'] or ''),
-              user_id=session['user_id'], user_name=session['user_name'])
-
-    db.commit()
-    flash('Photo deleted.', 'success')
-    return redirect(url_for('approvals.unit_latent',
-                            cycle_id=cycle_id, unit_id=unit_id))
-
-
-@approvals_bp.route('/<cycle_id>/unit/<unit_id>/latent/<note_id>/photo/<photo_id>')
-@require_team_lead_only
-def serve_note_photo(cycle_id, unit_id, note_id, photo_id):
-    """Serve a single photo file.
-
-    Tenant + unit + note scope check before send_from_directory.
-    Permissive (no C1 guard) since this is read-only and matches the page's auth.
-    """
-    tenant_id = session['tenant_id']
-
-    photo = query_db("""
-        SELECT p.id, p.file_path, p.mime_type
-        FROM latent_photo p
-        JOIN latent_area_note n ON p.latent_area_note_id = n.id
-        WHERE p.id = ?
-          AND p.latent_area_note_id = ?
-          AND p.tenant_id = ?
-          AND n.unit_id = ?
-    """, [photo_id, note_id, tenant_id, unit_id], one=True)
-    if not photo:
-        abort(404)
-
-    if not photo['file_path'] or not os.path.exists(photo['file_path']):
-        abort(404)
-
-    directory = os.path.dirname(photo['file_path'])
-    filename = os.path.basename(photo['file_path'])
-    return send_from_directory(directory, filename, mimetype=photo['mime_type'])
 
 
 @approvals_bp.route('/<cycle_id>/edit-defect', methods=['POST'])
