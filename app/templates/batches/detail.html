@@ -23,7 +23,7 @@
     <div>
         <h1 class="text-2xl font-bold text-gray-800">{{ batch.name }}</h1>
         <p class="text-gray-500 mt-1">
-            {{ units | length }} unit{{ 's' if units | length != 1 }} &middot; <span id="total-checkpoints">{{ '{:,}'.format(total_checkpoints) }}</span> checkpoints
+            {{ units | length }} unit{{ 's' if units | length != 1 }}
         </p>
         {% if batch.notes %}
         <div class="text-gray-500">{{ batch.notes|safe }}</div>
@@ -94,7 +94,6 @@
             <tr>
                 <th class="px-4 py-3 text-left font-medium text-gray-600 cursor-pointer select-none" data-sort="unit" onclick="sortTable(this, event)">Unit <span class="sort-arrow text-gray-400"></span></th>
                 <th class="px-4 py-3 text-left font-medium text-gray-600 cursor-pointer select-none" data-sort="block" onclick="sortTable(this, event)">Location <span class="sort-arrow text-gray-400"></span></th>
-                <th class="px-4 py-3 text-left font-medium text-gray-600 cursor-pointer select-none" data-sort="checkpoints" onclick="sortTable(this, event)">Checkpoints <span class="sort-arrow text-gray-400"></span></th>
                 <th class="px-4 py-3 text-left font-medium text-gray-600">Progress</th>
                 <th class="px-4 py-3 text-left font-medium text-gray-600 cursor-pointer select-none" data-sort="duration" onclick="sortTable(this, event)">Duration <span class="sort-arrow text-gray-400"></span></th>
                 <th class="px-4 py-3 text-left font-medium text-gray-600 cursor-pointer select-none" data-sort="status" onclick="sortTable(this, event)">Status <span class="sort-arrow text-gray-400"></span></th>

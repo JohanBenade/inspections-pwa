@@ -5,8 +5,7 @@
     data-round="{{ u.cycle_number }}"
     data-inspector="{{ u.inspector_name or 'zzz' }}"
     data-status="{{ u.bu_status }}"
-    data-duration="{{ u.duration_minutes or 0 }}"
-    data-checkpoints="{{ u.unit_checkpoints }}">
+    data-duration="{{ u.duration_minutes or 0 }}">
 
     <td class="px-4 py-3 font-medium text-gray-800 whitespace-nowrap">{{ u.unit_number }}</td>
 
@@ -19,8 +18,6 @@
         &middot; <span class="text-gray-400 text-xs">C{{ u.cycle_number or 1 }}</span>
         {% endif %}
     </td>
-
-    <td class="px-4 py-3 text-gray-700 whitespace-nowrap tabular-nums">{{ u.unit_checkpoints }}</td>
 
     <td class="px-4 py-3">
         {% set cn = u.cycle_number or 1 %}
@@ -182,5 +179,4 @@
 
 {% if is_partial_refresh %}
 <span id="refreshed-at" hx-swap-oob="true">{{ refreshed_at }}</span>
-<span id="total-checkpoints" hx-swap-oob="true">{{ '{:,}'.format(total_checkpoints) }}</span>
 {% endif %}
