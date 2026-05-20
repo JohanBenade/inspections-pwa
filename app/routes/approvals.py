@@ -20,7 +20,7 @@ from app.auth import require_manager, require_team_lead, require_team_lead_only
 from app.utils import generate_id
 from app.utils.audit import log_audit
 from app.services.db import get_db, query_db
-from app.utils.sanitize import sanitize_note_html
+from app.utils.sanitize import sanitize_note_html, split_note_html_by_li
 
 approvals_bp = Blueprint('approvals', __name__, url_prefix='/approvals')
 
@@ -703,25 +703,31 @@ def add_area_note(cycle_id, unit_id):
 
     created_by_role = session.get('role', 'inspector')
 
-    # Insert
-    note_id = generate_id()
-    db.execute("""
-        INSERT INTO latent_area_note
-        (id, tenant_id, inspection_id, unit_id, cycle_id, cycle_number,
-         area_template_id, area_name_override, note_html,
-         created_by, created_by_role, created_at)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    """, [note_id, tenant_id, inspection['id'], unit_id, cycle_id,
-          inspection['cycle_number'], area_template_id, area_name_override,
-          note_html, session['user_id'], created_by_role, now])
+    # Split multi-bullet list into individual rows (strict pure-list rule)
+    bullet_htmls = split_note_html_by_li(note_html)
 
-    log_audit(db, tenant_id, 'latent_area_note', note_id, 'created',
-              new_value=note_html,
-              user_id=session['user_id'], user_name=session['user_name'])
+    # Insert one row per bullet
+    for bullet_html in bullet_htmls:
+        note_id = generate_id()
+        db.execute("""
+            INSERT INTO latent_area_note
+            (id, tenant_id, inspection_id, unit_id, cycle_id, cycle_number,
+             area_template_id, area_name_override, note_html,
+             created_by, created_by_role, created_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """, [note_id, tenant_id, inspection['id'], unit_id, cycle_id,
+              inspection['cycle_number'], area_template_id, area_name_override,
+              bullet_html, session['user_id'], created_by_role, now])
+
+        log_audit(db, tenant_id, 'latent_area_note', note_id, 'created',
+                  new_value=bullet_html,
+                  user_id=session['user_id'], user_name=session['user_name'])
 
     db.commit()
 
-    flash('Latent defect note added.', 'success')
+    flash_msg = ('Latent defect notes added.' if len(bullet_htmls) > 1
+                 else 'Latent defect note added.')
+    flash(flash_msg, 'success')
     return redirect(url_for('approvals.unit_latent',
                             cycle_id=cycle_id, unit_id=unit_id))
 
@@ -759,7 +765,9 @@ def edit_area_note(cycle_id, unit_id, note_id):
 
     # Locate the note (unit-scoped to allow cross-cycle edit/delete)
     note = query_db("""
-        SELECT id, note_html FROM latent_area_note
+        SELECT id, note_html, inspection_id, cycle_id, cycle_number,
+               area_template_id, area_name_override
+        FROM latent_area_note
         WHERE id = ? AND unit_id = ? AND tenant_id = ?
     """, [note_id, unit_id, tenant_id], one=True)
     if not note:
@@ -777,7 +785,12 @@ def edit_area_note(cycle_id, unit_id, note_id):
     old_html = note['note_html']
     edited_by_role = session.get('role', 'inspector')
 
-    # Update
+    # Split multi-bullet list into individual rows (strict pure-list rule)
+    bullet_htmls = split_note_html_by_li(new_html)
+    first_html = bullet_htmls[0]
+    extra_htmls = bullet_htmls[1:]
+
+    # Update the original row with the first bullet (or unchanged content if no split)
     db.execute("""
         UPDATE latent_area_note
         SET note_html = ?,
@@ -785,14 +798,34 @@ def edit_area_note(cycle_id, unit_id, note_id):
             last_edited_by_role = ?,
             last_edited_at = ?
         WHERE id = ? AND tenant_id = ?
-    """, [new_html, session['user_id'], edited_by_role, now, note_id, tenant_id])
+    """, [first_html, session['user_id'], edited_by_role, now, note_id, tenant_id])
 
     log_audit(db, tenant_id, 'latent_area_note', note_id, 'edited',
-              old_value=old_html, new_value=new_html,
+              old_value=old_html, new_value=first_html,
               user_id=session['user_id'], user_name=session['user_name'])
 
+    # Insert N-1 new rows for additional bullets, inheriting context from the edited row
+    for bullet_html in extra_htmls:
+        new_id = generate_id()
+        db.execute("""
+            INSERT INTO latent_area_note
+            (id, tenant_id, inspection_id, unit_id, cycle_id, cycle_number,
+             area_template_id, area_name_override, note_html,
+             created_by, created_by_role, created_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """, [new_id, tenant_id, note['inspection_id'], unit_id, note['cycle_id'],
+              note['cycle_number'], note['area_template_id'], note['area_name_override'],
+              bullet_html, session['user_id'], edited_by_role, now])
+
+        log_audit(db, tenant_id, 'latent_area_note', new_id, 'created',
+                  new_value=bullet_html,
+                  user_id=session['user_id'], user_name=session['user_name'])
+
     db.commit()
-    flash('Latent defect note updated.', 'success')
+
+    flash_msg = ('Latent defect note updated (additional bullets added as new entries).'
+                 if extra_htmls else 'Latent defect note updated.')
+    flash(flash_msg, 'success')
     return redirect(url_for('approvals.unit_latent',
                             cycle_id=cycle_id, unit_id=unit_id))
 

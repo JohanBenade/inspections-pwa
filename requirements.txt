@@ -8,3 +8,4 @@ bleach
 requests
 playwright==1.44.0
 pillow-heif==0.18.0
+beautifulsoup4
