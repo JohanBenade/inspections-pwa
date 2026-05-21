@@ -2464,6 +2464,23 @@ def desnag_view(inspection_id):
             areas[an]['total'] += ip['total'] or 0
             areas[an]['addressed'] += ip['addressed'] or 0
 
+    # Enforce canonical area_order (area_template.area_order). Without this, areas appear in
+    # whichever order the defect / latent / items loops first encountered them, which can put
+    # a latent-only area at the top even when its area_order is mid-list. C1 uses canonical
+    # order via get_inspection_template(); this aligns C2+ de-snag with the same convention.
+    ordered_area_names = [r['area_name'] for r in query_db(
+        "SELECT area_name FROM area_template WHERE tenant_id = ? ORDER BY area_order",
+        [tenant_id])]
+    sorted_areas = OrderedDict()
+    for n in ordered_area_names:
+        if n in areas:
+            sorted_areas[n] = areas[n]
+    # Catch any area names not in area_template (e.g. 'OTHER' from latents with NULL area_template_id)
+    for n, v in areas.items():
+        if n not in sorted_areas:
+            sorted_areas[n] = v
+    areas = sorted_areas
+
     # Combined totals (defects + latents + newly-visible items). UI uses these for gates and progress.
     defect_count = len(bfwd_open) + len(bfwd_cleared)
     defect_addressed = sum(1 for d in list(bfwd_open) + list(bfwd_cleared) if d['addressed_cycle_number'] == cycle_number)
