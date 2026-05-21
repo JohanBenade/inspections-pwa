@@ -389,7 +389,7 @@ def detail(batch_id):
             d_uid = dr['unit_id']
             d_cn = d_cn_map.get(d_uid, 1)
             if d_uid not in d_map:
-                d_map[d_uid] = {'defect_bfwd': 0, 'defect_cleared': 0, 'defect_new': 0, 'defect_open': 0, 'defect_addressed': 0}
+                d_map[d_uid] = {'defect_bfwd': 0, 'defect_cleared': 0, 'defect_new': 0, 'defect_open': 0, 'defect_addressed': 0, 'defect_bfwd_action': 0}
             d_rcn = dr['raised_cycle_number'] or 1
             d_ccn = dr['cleared_cycle_number']
             if d_rcn < d_cn:
@@ -402,9 +402,12 @@ def detail(batch_id):
                 d_map[d_uid]['defect_open'] += dr['cnt']
             if dr['addressed_cycle_number'] == d_cn:
                 d_map[d_uid]['defect_addressed'] += dr['cnt']
+            # v314: b/fwd defect needing action this cycle (open OR cleared this cycle)
+            if d_rcn < d_cn and (dr['status'] == 'open' or d_ccn == d_cn):
+                d_map[d_uid]['defect_bfwd_action'] += dr['cnt']
 
         for u in units:
-            u.update(d_map.get(u['unit_id'], {'defect_bfwd': 0, 'defect_cleared': 0, 'defect_new': 0, 'defect_open': 0, 'defect_addressed': 0}))
+            u.update(d_map.get(u['unit_id'], {'defect_bfwd': 0, 'defect_cleared': 0, 'defect_new': 0, 'defect_open': 0, 'defect_addressed': 0, 'defect_bfwd_action': 0}))
 
     # Set checkpoints: C1 = items after exclusions, C2+ = b/fwd defects
     for u in units:
@@ -443,15 +446,28 @@ def detail(batch_id):
         ii_ph = ','.join(['?'] * len(inspection_ids))
         ii_rows = query_db(f"""
             SELECT inspection_id,
-                   SUM(CASE WHEN status NOT IN ('pending', 'skipped') THEN 1 ELSE 0 END) AS items_marked
+                   SUM(CASE WHEN status NOT IN ('pending', 'skipped') THEN 1 ELSE 0 END) AS items_marked,
+                   SUM(CASE WHEN status != 'skipped' AND COALESCE(has_prior_defects, 0) = 0
+                              AND (status = 'pending' OR marked_at IS NOT NULL) THEN 1 ELSE 0 END) AS items_action
             FROM inspection_item
             WHERE inspection_id IN ({ii_ph})
             GROUP BY inspection_id
         """, inspection_ids)
-        items_map = {r['inspection_id']: (r['items_marked'] or 0) for r in ii_rows}
+        items_map = {r['inspection_id']: {'items_marked': r['items_marked'] or 0, 'items_action': r['items_action'] or 0} for r in ii_rows}
 
     for u in units:
-        u['items_marked'] = items_map.get(u.get('inspection_id'), 0)
+        m = items_map.get(u.get('inspection_id'), {})
+        u['items_marked'] = m.get('items_marked', 0)
+        u['items_action'] = m.get('items_action', 0)
+
+    # v314: canonical 3-cohort checkpoints for C2+ units
+    # cohort = newly-visible items + open b/fwd latents + b/fwd defects needing action
+    # matches the live-monitor union in _build_live_monitor_data (v310)
+    for u in units:
+        if (u.get('cycle_number') or 1) > 1:
+            u['checkpoints'] = u['items_action'] + u['open_prior_latents'] + u.get('defect_bfwd_action', 0)
+            u['unit_checkpoints'] = u['checkpoints']
+    total_checkpoints = sum(u.get('unit_checkpoints', 0) for u in units)
 
     # Removed units (separate section)
     removed_raw = query_db("""
@@ -578,7 +594,7 @@ def detail_data(batch_id):
             d_uid = dr['unit_id']
             d_cn = d_cn_map.get(d_uid, 1)
             if d_uid not in d_map:
-                d_map[d_uid] = {'defect_bfwd': 0, 'defect_cleared': 0, 'defect_new': 0, 'defect_open': 0, 'defect_addressed': 0}
+                d_map[d_uid] = {'defect_bfwd': 0, 'defect_cleared': 0, 'defect_new': 0, 'defect_open': 0, 'defect_addressed': 0, 'defect_bfwd_action': 0}
             d_rcn = dr['raised_cycle_number'] or 1
             d_ccn = dr['cleared_cycle_number']
             if d_rcn < d_cn:
@@ -591,8 +607,11 @@ def detail_data(batch_id):
                 d_map[d_uid]['defect_open'] += dr['cnt']
             if dr['addressed_cycle_number'] == d_cn:
                 d_map[d_uid]['defect_addressed'] += dr['cnt']
+            # v314: b/fwd defect needing action this cycle (open OR cleared this cycle)
+            if d_rcn < d_cn and (dr['status'] == 'open' or d_ccn == d_cn):
+                d_map[d_uid]['defect_bfwd_action'] += dr['cnt']
         for u in units:
-            u.update(d_map.get(u['unit_id'], {'defect_bfwd': 0, 'defect_cleared': 0, 'defect_new': 0, 'defect_open': 0, 'defect_addressed': 0}))
+            u.update(d_map.get(u['unit_id'], {'defect_bfwd': 0, 'defect_cleared': 0, 'defect_new': 0, 'defect_open': 0, 'defect_addressed': 0, 'defect_bfwd_action': 0}))
 
     for u in units:
         cn = u.get('cycle_number') or 1
@@ -629,14 +648,27 @@ def detail_data(batch_id):
         ii_ph = ','.join(['?'] * len(inspection_ids))
         ii_rows = query_db(f"""
             SELECT inspection_id,
-                   SUM(CASE WHEN status NOT IN ('pending', 'skipped') THEN 1 ELSE 0 END) AS items_marked
+                   SUM(CASE WHEN status NOT IN ('pending', 'skipped') THEN 1 ELSE 0 END) AS items_marked,
+                   SUM(CASE WHEN status != 'skipped' AND COALESCE(has_prior_defects, 0) = 0
+                              AND (status = 'pending' OR marked_at IS NOT NULL) THEN 1 ELSE 0 END) AS items_action
             FROM inspection_item
             WHERE inspection_id IN ({ii_ph})
             GROUP BY inspection_id
         """, inspection_ids)
-        items_map = {r['inspection_id']: (r['items_marked'] or 0) for r in ii_rows}
+        items_map = {r['inspection_id']: {'items_marked': r['items_marked'] or 0, 'items_action': r['items_action'] or 0} for r in ii_rows}
     for u in units:
-        u['items_marked'] = items_map.get(u.get('inspection_id'), 0)
+        m = items_map.get(u.get('inspection_id'), {})
+        u['items_marked'] = m.get('items_marked', 0)
+        u['items_action'] = m.get('items_action', 0)
+
+    # v314: canonical 3-cohort checkpoints for C2+ units
+    # cohort = newly-visible items + open b/fwd latents + b/fwd defects needing action
+    # matches the live-monitor union in _build_live_monitor_data (v310)
+    for u in units:
+        if (u.get('cycle_number') or 1) > 1:
+            u['checkpoints'] = u['items_action'] + u['open_prior_latents'] + u.get('defect_bfwd_action', 0)
+            u['unit_checkpoints'] = u['checkpoints']
+    total_checkpoints = sum(u.get('unit_checkpoints', 0) for u in units)
 
     inspectors_raw = query_db("""
         SELECT id, name FROM inspector
