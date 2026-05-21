@@ -950,7 +950,7 @@ def my_inspections():
         FROM inspection i
         JOIN unit u ON i.unit_id = u.id
         WHERE i.inspector_id = ? AND i.tenant_id = ?
-        AND i.status IN ('not_started', 'in_progress')
+        AND i.status IN ('not_started', 'in_progress', 'paused')
         ORDER BY
             CASE i.status WHEN 'in_progress' THEN 0 ELSE 1 END,
             u.unit_number
