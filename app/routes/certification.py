@@ -931,12 +931,37 @@ def my_inspections():
                i.inspection_date, i.started_at, i.submitted_at,
                u.id AS unit_id, u.unit_number, u.block, u.floor,
                i.cycle_number, i.cycle_id,
-               (SELECT COUNT(*) FROM inspection_item ii
-                WHERE ii.inspection_id = i.id
-                AND ii.status != 'skipped' AND NOT (ii.status = 'ok' AND ii.marked_at IS NULL AND COALESCE(ii.has_prior_defects, 0) = 0)) AS total_items,
-               (SELECT COUNT(*) FROM inspection_item ii
-                WHERE ii.inspection_id = i.id
-                AND ii.status NOT IN ('skipped', 'pending') AND NOT (ii.status = 'ok' AND ii.marked_at IS NULL AND COALESCE(ii.has_prior_defects, 0) = 0)) AS completed_items,
+               ((SELECT COUNT(*) FROM inspection_item ii
+                 WHERE ii.inspection_id = i.id
+                   AND ii.status != 'skipped'
+                   AND COALESCE(ii.has_prior_defects, 0) = 0
+                   AND (ii.status = 'pending' OR ii.marked_at IS NOT NULL))
+                + (SELECT COUNT(*) FROM latent_area_note lan
+                   WHERE lan.unit_id = u.id
+                     AND lan.tenant_id = i.tenant_id
+                     AND lan.cycle_number < i.cycle_number
+                     AND (lan.rectified_at IS NULL OR lan.rectified_at_cycle_number = i.cycle_number))
+                + (SELECT COUNT(*) FROM defect d4
+                   WHERE d4.unit_id = u.id
+                     AND d4.tenant_id = i.tenant_id
+                     AND d4.raised_cycle_number < i.cycle_number
+                     AND (d4.status = 'open' OR d4.cleared_cycle_number = i.cycle_number))) AS total_items,
+               ((SELECT COUNT(*) FROM inspection_item ii
+                 WHERE ii.inspection_id = i.id
+                   AND ii.status NOT IN ('pending', 'skipped')
+                   AND COALESCE(ii.has_prior_defects, 0) = 0
+                   AND ii.marked_at IS NOT NULL)
+                + (SELECT COUNT(*) FROM latent_area_note lan2
+                   WHERE lan2.unit_id = u.id
+                     AND lan2.tenant_id = i.tenant_id
+                     AND lan2.cycle_number < i.cycle_number
+                     AND (lan2.rectified_at_cycle_number = i.cycle_number
+                          OR (lan2.addressed_cycle_number = i.cycle_number AND lan2.rectified_at IS NULL)))
+                + (SELECT COUNT(*) FROM defect d5
+                   WHERE d5.unit_id = u.id
+                     AND d5.tenant_id = i.tenant_id
+                     AND d5.raised_cycle_number < i.cycle_number
+                     AND d5.addressed_cycle_number = i.cycle_number)) AS completed_items,
                (SELECT COUNT(*) FROM inspection_defect idef
                 WHERE idef.inspection_id = i.id) AS defect_count,
                (SELECT COUNT(*) FROM defect d2
