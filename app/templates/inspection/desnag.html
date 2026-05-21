@@ -106,6 +106,17 @@
             {% endfor %}
         </div>
         {% endfor %}
+
+        {% if area_data.item_categories %}
+        <div class="border-t-2 border-amber-200">
+            <div class="px-4 py-2 bg-amber-50">
+                <span class="text-xs font-medium text-amber-700 uppercase tracking-wider">Items to inspect</span>
+            </div>
+            {% with area = area_data.area %}
+            {% include 'inspection/_desnag_items.html' with context %}
+            {% endwith %}
+        </div>
+        {% endif %}
     </div>
     {% endfor %}
 

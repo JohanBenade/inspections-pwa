@@ -1,0 +1,27 @@
+{# _desnag_items.html
+   Renders the "Items to Inspect" section per de-snag area card.
+   Wraps each item identically to area.html so _single_item.html's HTMX targets
+   (#item-<id>) and visibility logic work unchanged.
+
+   Required scope:
+     - inspection (from desnag_view)
+     - area = area_data.area  (provided by parent {% with %})
+     - is_followup = true     (provided by desnag_view render_template kwargs)
+     - area_data.item_categories  (list of {id, name, checklist[]})
+#}
+{% for cat in area_data.item_categories %}
+<div class="border-t border-amber-100 last:border-b-0">
+    <div class="px-4 py-2 bg-amber-50/50">
+        <span class="text-xs font-medium text-amber-600 uppercase tracking-wider">{{ cat.name }}</span>
+    </div>
+    <div class="divide-y">
+        {% for item in cat.checklist %}
+        {% if item.status != 'skipped' and (not item.is_carried_ok|default(false) or item.children_have_defects|default(false)) %}
+        <div id="item-{{ item.id }}"{% if item.parent_item_id %} data-parent-id="{{ item.parent_item_id }}"{% endif %}{% if item.parent_item_id and item.parent_status in [none, "pending"] and not (is_followup and item.has_open_prior|default(false)) %} style="display:none"{% endif %}>
+        {% include 'inspection/_single_item.html' %}
+        </div>
+        {% endif %}
+        {% endfor %}
+    </div>
+</div>
+{% endfor %}

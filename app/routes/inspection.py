@@ -2261,7 +2261,210 @@ def desnag_view(inspection_id):
         if l['addressed_cycle_number'] == cycle_number:
             areas[area]['addressed'] += 1
 
-    # Combined totals (defects + latents). UI uses these for gates and progress.
+    # ===== NEWLY-VISIBLE ITEMS (C2+ items where prior exclusion list changed) =====
+    # Items with status='pending' on a C2+ inspection are items that were excluded
+    # at the previous cycle but are now visible. Render inline using _single_item.html
+    # so inspectors can mark INST/N/I/MS/NTS without leaving de-snag.
+
+    # Categories that contain at least one pending item (so we can show those whole categories)
+    pending_cats = query_db("""
+        SELECT DISTINCT ct.id AS cat_id, ct.category_name, ct.category_order,
+                        at2.id AS area_id, at2.area_name, at2.area_order
+        FROM inspection_item ii
+        JOIN item_template it ON ii.item_template_id = it.id
+        JOIN category_template ct ON it.category_id = ct.id
+        JOIN area_template at2 ON ct.area_id = at2.id
+        WHERE ii.inspection_id = ? AND ii.tenant_id = ?
+          AND ii.status = 'pending'
+        ORDER BY at2.area_order, ct.category_order
+    """, [inspection_id, tenant_id])
+
+    if pending_cats:
+        cat_ids = [c['cat_id'] for c in pending_cats]
+        ph_cats = ','.join('?' * len(cat_ids))
+
+        # Load all items in those categories (parents + children, for tree visibility)
+        items_raw = query_db(f"""
+            SELECT it.id AS template_id, it.item_description, it.parent_item_id, it.item_order,
+                   it.category_id,
+                   ii.id, ii.status, ii.comment, ii.marked_at,
+                   COALESCE(ii.has_prior_defects, 0) AS has_prior_defects,
+                   (SELECT COUNT(*) FROM item_template it_c
+                    JOIN inspection_item ii_c ON it_c.id = ii_c.item_template_id
+                    WHERE it_c.parent_item_id = it.id
+                      AND ii_c.inspection_id = ii.inspection_id
+                      AND ii_c.status != 'skipped') AS child_count
+            FROM item_template it
+            JOIN inspection_item ii ON it.id = ii.item_template_id
+            LEFT JOIN item_template par ON it.parent_item_id = par.id
+            WHERE it.category_id IN ({ph_cats})
+              AND ii.inspection_id = ?
+            ORDER BY it.category_id,
+                     COALESCE(par.item_order, it.item_order),
+                     (par.item_order IS NOT NULL),
+                     it.item_order
+        """, cat_ids + [inspection_id])
+
+        template_ids = list({i['template_id'] for i in items_raw})
+
+        # prior_defects_map — sparse for newly-visible but built for compat with _single_item.html
+        prior_defects_map = {}
+        if template_ids:
+            ph_t = ','.join('?' * len(template_ids))
+            prior_defects_raw = query_db(f"""
+                SELECT d.id AS defect_id, d.item_template_id, d.original_comment,
+                       d.status AS defect_status, d.defect_type,
+                       d.raised_cycle_number AS raised_cycle
+                FROM defect d
+                WHERE d.unit_id = ? AND d.raised_cycle_id != ?
+                  AND d.item_template_id IN ({ph_t})
+                ORDER BY d.raised_cycle_number, d.created_at
+            """, [unit_id, inspection['cycle_id']] + template_ids)
+            for d in (prior_defects_raw or []):
+                prior_defects_map.setdefault(d['item_template_id'], []).append({
+                    'id': d['defect_id'],
+                    'comment': d['original_comment'],
+                    'cycle': d['raised_cycle'],
+                    'status': d['defect_status'],
+                    'defect_type': d['defect_type'],
+                })
+
+        # current_defects_map — defects raised this cycle on these templates
+        current_defects_map = {}
+        if template_ids:
+            ph_t = ','.join('?' * len(template_ids))
+            current_defects_raw = query_db(f"""
+                SELECT d.id AS defect_id, d.item_template_id, d.original_comment
+                FROM defect d
+                WHERE d.unit_id = ? AND d.raised_cycle_id = ? AND d.status = 'open'
+                  AND d.item_template_id IN ({ph_t})
+            """, [unit_id, inspection['cycle_id']] + template_ids)
+            for d in (current_defects_raw or []):
+                current_defects_map.setdefault(d['item_template_id'], []).append({
+                    'id': d['defect_id'],
+                    'comment': d['original_comment'],
+                })
+
+        # inspection_defects_map — chips (in-progress)
+        inspection_defects_map = {}
+        inspection_item_ids = list({i['id'] for i in items_raw})
+        if inspection['status'] == 'in_progress' and inspection_item_ids:
+            ph_i = ','.join('?' * len(inspection_item_ids))
+            idef_raw = query_db(f"""
+                SELECT idf.id, idf.inspection_item_id, idf.description, idf.defect_type
+                FROM inspection_defect idf
+                WHERE idf.inspection_id = ? AND idf.tenant_id = ?
+                  AND idf.inspection_item_id IN ({ph_i})
+                ORDER BY idf.created_at
+            """, [inspection_id, tenant_id] + inspection_item_ids)
+            for idef in (idef_raw or []):
+                inspection_defects_map.setdefault(idef['inspection_item_id'], []).append(dict(idef))
+
+        # Group items by category, then build per-category checklist mirroring inspect_area
+        cat_lookup = {c['cat_id']: c for c in pending_cats}
+        items_by_cat = OrderedDict()
+        for i in items_raw:
+            items_by_cat.setdefault(i['category_id'], []).append(i)
+
+        for cat_id, cat_items in items_by_cat.items():
+            cat = cat_lookup[cat_id]
+
+            # Parent status map (for child rendering)
+            parent_status_map = {}
+            parent_items = {}
+            for i in cat_items:
+                if i['parent_item_id'] is None:
+                    parent_status_map[i['template_id']] = i['status']
+                    parent_items[i['template_id']] = i
+
+            # Which parents have pending children (drives children_have_defects flag)
+            parent_has_pending_child = set()
+            for i in cat_items:
+                if i['status'] == 'pending' and i['parent_item_id']:
+                    parent_has_pending_child.add(i['parent_item_id'])
+
+            checklist = []
+            for i in cat_items:
+                is_parent = i['parent_item_id'] is None
+                is_child = not is_parent
+                prior_list = prior_defects_map.get(i['template_id'], [])
+                has_open_prior = any(d['status'] == 'open' for d in prior_list)
+                current_list = current_defects_map.get(i['template_id'], [])
+                open_priors = [p for p in prior_list if p['status'] == 'open']
+                was_ni = (len(open_priors) > 0 and
+                          all(p.get('defect_type') == 'not_installed' for p in open_priors))
+                parent_status = parent_status_map.get(i['parent_item_id']) if is_child else None
+                checklist.append({
+                    'id': i['id'],
+                    'template_id': i['template_id'],
+                    'item_description': i['item_description'],
+                    'status': i['status'],
+                    'comment': i['comment'],
+                    'parent_item_id': i['parent_item_id'],
+                    'depth': 0 if is_parent else 1,
+                    'child_count': i['child_count'],
+                    'parent_status': parent_status,
+                    'prior_defects': prior_list,
+                    'has_prior_defects': len(prior_list) > 0,
+                    'has_open_prior': has_open_prior,
+                    'was_not_installed': was_ni,
+                    'current_defects': current_list,
+                    'has_current_defects': len(current_list) > 0,
+                    'children_have_defects': (i['template_id'] in parent_has_pending_child) if is_parent else False,
+                    'inspection_defects': inspection_defects_map.get(i['id'], []),
+                    'category_name': cat['category_name'],
+                    'is_sole_parent': len(parent_items) == 1,
+                    'is_carried_ok': i['status'] == 'ok' and i['marked_at'] is None and (i['has_prior_defects'] or 0) == 0,
+                })
+
+            area_name = cat['area_name']
+            if area_name not in areas:
+                areas[area_name] = {'categories': OrderedDict(), 'latents': [], 'total': 0, 'addressed': 0}
+            if 'item_categories' not in areas[area_name]:
+                areas[area_name]['item_categories'] = []
+                areas[area_name]['area'] = {'id': cat['area_id']}
+            areas[area_name]['item_categories'].append({
+                'id': cat_id,
+                'name': cat['category_name'],
+                'checklist': checklist,
+            })
+
+    # Items count for grand totals (cohort = newly-visible at C2+, has_prior_defects=0)
+    items_row = query_db("""
+        SELECT
+          COUNT(*) AS total,
+          SUM(CASE WHEN ii.status != 'pending' AND ii.marked_at IS NOT NULL THEN 1 ELSE 0 END) AS addressed
+        FROM inspection_item ii
+        WHERE ii.inspection_id = ? AND ii.tenant_id = ?
+          AND ii.has_prior_defects = 0
+          AND ii.status != 'skipped'
+          AND (ii.status = 'pending' OR ii.marked_at IS NOT NULL)
+    """, [inspection_id, tenant_id], one=True)
+    items_count = items_row['total'] or 0
+    items_addressed = items_row['addressed'] or 0
+
+    # Per-area items counts (rolled into area_data.total / area_data.addressed)
+    items_per_area = query_db("""
+        SELECT at2.area_name,
+               COUNT(*) AS total,
+               SUM(CASE WHEN ii.status != 'pending' AND ii.marked_at IS NOT NULL THEN 1 ELSE 0 END) AS addressed
+        FROM inspection_item ii
+        JOIN item_template it ON ii.item_template_id = it.id
+        JOIN category_template ct ON it.category_id = ct.id
+        JOIN area_template at2 ON ct.area_id = at2.id
+        WHERE ii.inspection_id = ? AND ii.tenant_id = ?
+          AND ii.has_prior_defects = 0
+          AND ii.status != 'skipped'
+          AND (ii.status = 'pending' OR ii.marked_at IS NOT NULL)
+        GROUP BY at2.area_name
+    """, [inspection_id, tenant_id])
+    for ip in items_per_area:
+        an = ip['area_name']
+        if an in areas:
+            areas[an]['total'] += ip['total'] or 0
+            areas[an]['addressed'] += ip['addressed'] or 0
+
+    # Combined totals (defects + latents + newly-visible items). UI uses these for gates and progress.
     defect_count = len(bfwd_open) + len(bfwd_cleared)
     defect_addressed = sum(1 for d in list(bfwd_open) + list(bfwd_cleared) if d['addressed_cycle_number'] == cycle_number)
     defect_cleared = len(bfwd_cleared)
@@ -2272,8 +2475,8 @@ def desnag_view(inspection_id):
     latent_rectified = sum(1 for l in latents if l['rectified_at_cycle_number'] == cycle_number)
     latent_still_open = sum(1 for l in latents if l['addressed_cycle_number'] == cycle_number and l['rectified_at'] is None)
 
-    total_items = defect_count + latent_count
-    total_addressed = defect_addressed + latent_addressed
+    total_items = defect_count + latent_count + items_count
+    total_addressed = defect_addressed + latent_addressed + items_addressed
     total_cleared = defect_cleared + latent_rectified
     total_still_open = defect_still_open + latent_still_open
 
@@ -2294,6 +2497,7 @@ def desnag_view(inspection_id):
         cycle_number=cycle_number,
         is_readonly=is_readonly,
         can_submit=can_submit,
+        is_followup=True,
         floor_label=floor_label)
 
 
@@ -2532,7 +2736,12 @@ def desnag_submit(inspection_id):
         AND (addressed_cycle_number IS NULL OR addressed_cycle_number != ?)
     """, [inspection['unit_id'], tenant_id, inspection['cycle_number']], one=True)['cnt']
 
-    if unaddressed_defects + unaddressed_latents > 0:
+    unaddressed_items = query_db("""
+        SELECT COUNT(*) as cnt FROM inspection_item
+        WHERE inspection_id = ? AND tenant_id = ? AND status = 'pending'
+    """, [inspection_id, tenant_id], one=True)['cnt']
+
+    if unaddressed_defects + unaddressed_latents + unaddressed_items > 0:
         abort(400)
 
     db = get_db()
@@ -2548,7 +2757,7 @@ def desnag_submit(inspection_id):
 
 
 def _desnag_progress(unit_id, tenant_id, cycle_number):
-    """Calculate overall de-snag progress (defects + latents combined)."""
+    """Calculate overall de-snag progress (defects + latents + newly-visible items)."""
     d_row = query_db("""
         SELECT
             COUNT(*) as total,
@@ -2570,16 +2779,28 @@ def _desnag_progress(unit_id, tenant_id, cycle_number):
         WHERE unit_id = ? AND tenant_id = ?
         AND (rectified_at IS NULL OR rectified_at_cycle_number = ?)
     """, [cycle_number, cycle_number, cycle_number, unit_id, tenant_id, cycle_number], one=True)
+    # Newly-visible items at this cycle (status='pending' or marked this session, no prior defect)
+    i_row = query_db("""
+        SELECT
+            COUNT(*) as total,
+            SUM(CASE WHEN ii.status != 'pending' AND ii.marked_at IS NOT NULL THEN 1 ELSE 0 END) as addressed
+        FROM inspection_item ii
+        JOIN inspection i ON ii.inspection_id = i.id
+        WHERE i.unit_id = ? AND i.tenant_id = ? AND i.cycle_number = ?
+          AND ii.has_prior_defects = 0
+          AND ii.status != 'skipped'
+          AND (ii.status = 'pending' OR ii.marked_at IS NOT NULL)
+    """, [unit_id, tenant_id, cycle_number], one=True)
     return {
-        'total': (d_row['total'] or 0) + (l_row['total'] or 0),
-        'addressed': (d_row['addressed'] or 0) + (l_row['addressed'] or 0),
+        'total': (d_row['total'] or 0) + (l_row['total'] or 0) + (i_row['total'] or 0),
+        'addressed': (d_row['addressed'] or 0) + (l_row['addressed'] or 0) + (i_row['addressed'] or 0),
         'cleared': (d_row['cleared'] or 0) + (l_row['cleared'] or 0),
         'still_open': (d_row['still_open'] or 0) + (l_row['still_open'] or 0),
     }
 
 
 def _desnag_area_progress(unit_id, tenant_id, cycle_number, area_name):
-    """Calculate de-snag progress for a specific area (defects + latents)."""
+    """Calculate de-snag progress for a specific area (defects + latents + items)."""
     d_row = query_db("""
         SELECT
             COUNT(*) as total,
@@ -2603,9 +2824,24 @@ def _desnag_area_progress(unit_id, tenant_id, cycle_number, area_name):
         AND (lan.rectified_at IS NULL OR lan.rectified_at_cycle_number = ?)
         AND COALESCE(lan.area_name_override, at2.area_name) = ?
     """, [cycle_number, unit_id, tenant_id, cycle_number, area_name], one=True)
+    i_row = query_db("""
+        SELECT
+            COUNT(*) as total,
+            SUM(CASE WHEN ii.status != 'pending' AND ii.marked_at IS NOT NULL THEN 1 ELSE 0 END) as addressed
+        FROM inspection_item ii
+        JOIN inspection i ON ii.inspection_id = i.id
+        JOIN item_template it ON ii.item_template_id = it.id
+        JOIN category_template ct ON it.category_id = ct.id
+        JOIN area_template at2 ON ct.area_id = at2.id
+        WHERE i.unit_id = ? AND i.tenant_id = ? AND i.cycle_number = ?
+          AND ii.has_prior_defects = 0
+          AND ii.status != 'skipped'
+          AND (ii.status = 'pending' OR ii.marked_at IS NOT NULL)
+          AND at2.area_name = ?
+    """, [unit_id, tenant_id, cycle_number, area_name], one=True)
     return {
-        'total': (d_row['total'] or 0) + (l_row['total'] or 0),
-        'addressed': (d_row['addressed'] or 0) + (l_row['addressed'] or 0),
+        'total': (d_row['total'] or 0) + (l_row['total'] or 0) + (i_row['total'] or 0),
+        'addressed': (d_row['addressed'] or 0) + (l_row['addressed'] or 0) + (i_row['addressed'] or 0),
     }
 
 
