@@ -94,6 +94,7 @@
 <!-- UNIT CARDS (full width, no feed) -->
 <div class="main-area">
 <div class="unit-panel">
+    {% set done_statuses = ['submitted','reviewed','approved','pending_followup','certified','closed'] %}
     {# === ACTIVE CARDS === #}
     {% set active_count = (units|selectattr('insp_status', 'equalto', 'in_progress')|list + units|selectattr('insp_status', 'equalto', 'paused')|list)|length %}
     {% if active_count %}
@@ -194,13 +195,13 @@
     {% endif %}
 
     {# === COMPLETED CARDS === #}
-    {% set completed_count = units|rejectattr('insp_status', 'equalto', 'in_progress')|rejectattr('insp_status', 'equalto', 'not_started')|list|length %}
+    {% set completed_count = units|selectattr('insp_status', 'in', done_statuses)|list|length %}
     {% if completed_count %}
     <div class="section-header">Completed ({{ completed_count }})</div>
     {% endif %}
     <div class="completed-grid">
     {% for u in units %}
-    {% if u.insp_status in ['submitted','reviewed','approved'] %}
+    {% if u.insp_status in done_statuses %}
     <!-- COMPLETED CARD -->
     <div class="unit-card done severity-{{ u.severity }}">
         <div class="unit-header">
