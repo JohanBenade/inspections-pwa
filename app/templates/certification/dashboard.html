@@ -284,8 +284,8 @@
                                         </td>
                                         <td class="px-4 py-3">
                                             {% if unit.total_items and unit.total_items > 0 %}
-                                            {% set checkable = unit.total_items - (unit.excluded_items or 0) %}
-                                            {% set done = (unit.completed_items or 0) - (unit.excluded_items or 0) %}
+                                            {% set checkable = unit.total_items %}
+                                            {% set done = (unit.completed_items or 0) %}
                                             {% set pct = (done * 100 / checkable) | int if checkable > 0 else 0 %}
                                             <div class="flex items-center gap-2">
                                                 <div class="w-20 bg-gray-200 rounded-full h-2">
@@ -400,8 +400,8 @@
                                         </td>
                                         <td class="px-4 py-3">
                                             {% if unit.total_items and unit.total_items > 0 %}
-                                            {% set checkable = unit.total_items - (unit.excluded_items or 0) %}
-                                            {% set done = (unit.completed_items or 0) - (unit.excluded_items or 0) %}
+                                            {% set checkable = unit.total_items %}
+                                            {% set done = (unit.completed_items or 0) %}
                                             {% set pct = (done * 100 / checkable) | int if checkable > 0 else 0 %}
                                             <div class="flex flex-col gap-1">
                                                 <div class="flex items-center gap-2">
