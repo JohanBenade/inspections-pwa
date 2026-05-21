@@ -1923,7 +1923,9 @@ def reset_confirm(batch_id, bu_id):
     if insp:
         row = query_db("""
             SELECT COUNT(*) AS c FROM inspection_item
-            WHERE inspection_id = ? AND status NOT IN ('pending','skipped')
+            WHERE inspection_id = ?
+              AND status NOT IN ('pending','skipped')
+              AND marked_at IS NOT NULL
         """, [insp['id']], one=True)
         non_pending_items = row['c'] if row else 0
 
@@ -2084,6 +2086,38 @@ def reset_unit(batch_id):
             DELETE FROM defect
             WHERE unit_id = ? AND raised_cycle_id = ? AND tenant_id = ?
         """, [bu['unit_id'], bu['cycle_id'], tenant_id])
+        # Clear "Still Open" addressed marker on b/fwd defects (de-snag rollback)
+        db.execute("""
+            UPDATE defect
+            SET addressed_cycle_number = NULL,
+                updated_at = ?
+            WHERE unit_id = ? AND tenant_id = ?
+              AND raised_cycle_number < ?
+              AND status = 'open'
+              AND addressed_cycle_number = ?
+        """, [now, bu['unit_id'], tenant_id, bu['cycle_number'], bu['cycle_number']])
+        # Undo latents marked Rectified this cycle (de-snag rollback)
+        db.execute("""
+            UPDATE latent_area_note
+            SET rectified_at = NULL,
+                rectified_at_cycle_id = NULL,
+                rectified_at_cycle_number = NULL,
+                rectified_by = NULL,
+                rectified_by_role = NULL,
+                addressed_cycle_number = NULL,
+                last_edited_at = ?
+            WHERE unit_id = ? AND tenant_id = ?
+              AND rectified_at_cycle_number = ?
+        """, [now, bu['unit_id'], tenant_id, bu['cycle_number']])
+        # Clear "Still Open" addressed marker on b/fwd unrectified latents
+        db.execute("""
+            UPDATE latent_area_note
+            SET addressed_cycle_number = NULL,
+                last_edited_at = ?
+            WHERE unit_id = ? AND tenant_id = ?
+              AND rectified_at IS NULL
+              AND addressed_cycle_number = ?
+        """, [now, bu['unit_id'], tenant_id, bu['cycle_number']])
 
     # Handle inspection record
     if delete_inspection and insp:
