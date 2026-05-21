@@ -347,11 +347,22 @@ def detail(batch_id):
             """, el_ids)
             excl_count_map = {r['exclusion_list_id']: r['cnt'] for r in el_rows}
 
+    # Checkpoint constants: total items + ground_only count (excluded on upper floors).
+    # Queried from item_template so the math always tracks real data.
+    go_row = query_db(
+        "SELECT COUNT(*) AS cnt FROM item_template WHERE floor_condition = 'ground_only'",
+        [], one=True)
+    ground_only_count = go_row['cnt'] if go_row else 0
+    total_row = query_db(
+        "SELECT COUNT(*) AS cnt FROM item_template",
+        [], one=True)
+    items_per_unit = total_row['cnt'] if total_row else 509
+
     for u in units:
         el_count = excl_count_map.get(u.get('exclusion_list_id'), 0)
-        ground_only_skips = 3 if (u.get('floor') or 0) > 0 else 0
+        ground_only_skips = ground_only_count if (u.get('floor') or 0) > 0 else 0
         u['excl_count'] = el_count + ground_only_skips
-        u['checkpoints_c1'] = 509 - u['excl_count']
+        u['checkpoints_c1'] = items_per_unit - u['excl_count']
         u['started_iso'] = u.get('started_at')
         u['is_paused'] = (u.get('inspection_status') == 'paused')
         u['paused_at_iso'] = u.get('paused_at') if u['is_paused'] else None
@@ -528,11 +539,22 @@ def detail_data(batch_id):
             """, el_ids)
             excl_count_map = {r['exclusion_list_id']: r['cnt'] for r in el_rows}
 
+    # Checkpoint constants: total items + ground_only count (excluded on upper floors).
+    # Queried from item_template so the math always tracks real data.
+    go_row = query_db(
+        "SELECT COUNT(*) AS cnt FROM item_template WHERE floor_condition = 'ground_only'",
+        [], one=True)
+    ground_only_count = go_row['cnt'] if go_row else 0
+    total_row = query_db(
+        "SELECT COUNT(*) AS cnt FROM item_template",
+        [], one=True)
+    items_per_unit = total_row['cnt'] if total_row else 509
+
     for u in units:
         el_count = excl_count_map.get(u.get('exclusion_list_id'), 0)
-        ground_only_skips = 3 if (u.get('floor') or 0) > 0 else 0
+        ground_only_skips = ground_only_count if (u.get('floor') or 0) > 0 else 0
         u['excl_count'] = el_count + ground_only_skips
-        u['checkpoints_c1'] = 509 - u['excl_count']
+        u['checkpoints_c1'] = items_per_unit - u['excl_count']
         u['started_iso'] = u.get('started_at')
         u['is_paused'] = (u.get('inspection_status') == 'paused')
         u['paused_at_iso'] = u.get('paused_at') if u['is_paused'] else None
@@ -1445,6 +1467,7 @@ def _build_live_monitor_data(batch_id, tenant_id):
             WHERE ii.inspection_id IN ({})
             AND ii.status != 'skipped'
             AND NOT (ii.status = 'ok' AND ii.marked_at IS NULL)
+            AND ii.has_prior_defects = 0
             GROUP BY i.unit_id, at2.area_name
             ORDER BY at2.area_name
         """.format(ph), inspection_ids)
@@ -1504,6 +1527,8 @@ def _build_live_monitor_data(batch_id, tenant_id):
     # --- C2 defect tracking: b/fwd (static), cleared (live), new (live) ---
     bfwd_map = {}
     bfwd_area_map = {}
+    bfwd_action_map = {}        # b/fwd defects needing action this cycle (open + cleared-this-cycle)
+    bfwd_action_area_map = {}
     cleared_map = {}
     cleared_area_map = {}
     new_map = {}
@@ -1515,6 +1540,11 @@ def _build_live_monitor_data(batch_id, tenant_id):
     unit_cycle_num = {u['unit_id']: u.get('cycle_number', 1) for u in c2_units}
     addressed_map = {}
     addressed_area_map = {}
+    # --- B/fwd latents tracking (open + addressed this cycle) ---
+    latent_open_map = {}
+    latent_open_area_map = {}
+    latent_addressed_map = {}
+    latent_addressed_area_map = {}
     if c2_unit_ids:
         # Build unit_id -> cycle_id mapping for per-unit bucketing
         unit_cycle = {u['unit_id']: u['cycle_id'] for u in c2_units}
@@ -1539,6 +1569,10 @@ def _build_live_monitor_data(batch_id, tenant_id):
                 bfwd_map[uid] = bfwd_map.get(uid, 0) + 1
                 key = (uid, area)
                 bfwd_area_map[key] = bfwd_area_map.get(key, 0) + 1
+                # B/fwd needs action this cycle = currently open OR cleared this cycle
+                if r['status'] == 'open' or (r['status'] == 'cleared' and r['cleared_cycle_id'] == cyc):
+                    bfwd_action_map[uid] = bfwd_action_map.get(uid, 0) + 1
+                    bfwd_action_area_map[key] = bfwd_action_area_map.get(key, 0) + 1
                 # Cleared: prior defect cleared THIS cycle
                 if r['status'] == 'cleared' and r['cleared_cycle_id'] == cyc:
                     cleared_map[uid] = cleared_map.get(uid, 0) + 1
@@ -1578,6 +1612,36 @@ def _build_live_monitor_data(batch_id, tenant_id):
             open_now_map[uid] = open_now_map.get(uid, 0) + cnt
             open_now_area_map[(uid, area)] = open_now_area_map.get((uid, area), 0) + cnt
 
+        # --- B/fwd latents query (v308 Step 3 cohort) ---
+        # Open b/fwd latent = raised in earlier cycle AND open at start of current cycle
+        # Addressed this cycle = rectified_at_cycle_number=current
+        #                        OR (addressed_cycle_number=current AND rectified_at IS NULL)
+        latent_raw = query_db("""
+            SELECT lan.unit_id, lan.cycle_number AS raised_cycle_number,
+                   lan.rectified_at, lan.rectified_at_cycle_number,
+                   lan.addressed_cycle_number,
+                   COALESCE(at2.area_name, lan.area_name_override, 'OTHER') AS area_name
+            FROM latent_area_note lan
+            LEFT JOIN area_template at2 ON lan.area_template_id = at2.id
+            WHERE lan.unit_id IN ({}) AND lan.tenant_id = ?
+        """.format(ph_od), c2_unit_ids + [tenant_id])
+        for r in [dict(x) for x in latent_raw]:
+            uid = r['unit_id']
+            area = r['area_name']
+            cyc_n = unit_cycle_num.get(uid)
+            if cyc_n is None or (r['raised_cycle_number'] or 0) >= cyc_n:
+                continue  # not a b/fwd latent for this unit's current cycle
+            # Was it open at start of current cycle?
+            if not (r['rectified_at'] is None or r['rectified_at_cycle_number'] == cyc_n):
+                continue  # already rectified in an earlier cycle, no work needed
+            latent_open_map[uid] = latent_open_map.get(uid, 0) + 1
+            key = (uid, area)
+            latent_open_area_map[key] = latent_open_area_map.get(key, 0) + 1
+            # Addressed this cycle?
+            if r['rectified_at_cycle_number'] == cyc_n or r['addressed_cycle_number'] == cyc_n:
+                latent_addressed_map[uid] = latent_addressed_map.get(uid, 0) + 1
+                latent_addressed_area_map[key] = latent_addressed_area_map.get(key, 0) + 1
+
     # --- Batch started (earliest mark in entire batch) ---
     batch_started = None
     if unit_timing_map:
@@ -1596,39 +1660,49 @@ def _build_live_monitor_data(batch_id, tenant_id):
         u['cleared_defects'] = cleared_map.get(u['unit_id'], 0)
         u['new_defects'] = new_map.get(u['unit_id'], 0)
         u['open_defects'] = open_now_map.get(u['unit_id'], 0)
-        if (u.get('cycle_number') or 1) >= 2:
-            for a in u['areas']:
-                a['bfwd'] = bfwd_area_map.get((u['unit_id'], a['area']), 0)
-                a['cleared'] = cleared_area_map.get((u['unit_id'], a['area']), 0)
-                a['new'] = new_area_map.get((u['unit_id'], a['area']), 0)
-                a['open_now'] = open_now_area_map.get((u['unit_id'], a['area']), 0)
         u['pct'] = round(u['total_marked'] / u['total_items'] * 100) if u['total_items'] else 0
 
-        # C2+ de-snag: override progress from defects (not inspection_items)
+        # C2+ de-snag: union of 3 cohorts (newly-visible items + open b/fwd latents + b/fwd defects needing action this cycle)
         if (u.get('cycle_number') or 1) >= 2:
             uid = u['unit_id']
-            u['total_items'] = bfwd_map.get(uid, 0)
-            u['total_marked'] = addressed_map.get(uid, 0)
-            u['pct'] = round(u['total_marked'] / u['total_items'] * 100) if u['total_items'] else 0
+            items_by_area = {a['area']: a for a in u['areas']}
+            defect_areas_set = {area for (auid, area) in bfwd_action_area_map if auid == uid}
+            latent_areas_set = {area for (auid, area) in latent_open_area_map if auid == uid}
+            all_areas = set(items_by_area.keys()) | defect_areas_set | latent_areas_set
             c2_areas = []
-            for aname in sorted(set(k[1] for k in bfwd_area_map if k[0] == uid)):
-                bf = bfwd_area_map.get((uid, aname), 0)
-                addr = addressed_area_map.get((uid, aname), 0)
+            for aname in sorted(all_areas, key=lambda a: (area_order.get(a, 10), a)):
+                item_a = items_by_area.get(aname, {})
+                items_t = item_a.get('total', 0)
+                items_m = item_a.get('marked', 0)
+                defect_t = bfwd_action_area_map.get((uid, aname), 0)
+                defect_m = addressed_area_map.get((uid, aname), 0)
+                latent_t = latent_open_area_map.get((uid, aname), 0)
+                latent_m = latent_addressed_area_map.get((uid, aname), 0)
+                area_total = items_t + defect_t + latent_t
+                area_marked = items_m + defect_m + latent_m
                 c2_areas.append({
                     'area': aname,
-                    'total': bf,
-                    'marked': addr,
+                    'total': area_total,
+                    'marked': area_marked,
                     'defects': open_now_area_map.get((uid, aname), 0),
-                    'pct': round(addr / bf * 100) if bf else 0,
-                    'duration': None,
-                    'bfwd': bf,
+                    'pct': round(area_marked / area_total * 100) if area_total else 0,
+                    'duration': item_a.get('duration'),
+                    'bfwd': bfwd_area_map.get((uid, aname), 0),
                     'cleared': cleared_area_map.get((uid, aname), 0),
                     'new': new_area_map.get((uid, aname), 0),
                     'open_now': open_now_area_map.get((uid, aname), 0),
+                    'items_total': items_t,
+                    'items_marked': items_m,
+                    'latent_total': latent_t,
+                    'latent_addressed': latent_m,
+                    'defect_action_total': defect_t,
+                    'defect_addressed': defect_m,
                 })
-            c2_areas.sort(key=lambda a: (area_order.get(a['area'], 10), a['area']))
             u['areas'] = c2_areas
+            u['total_items'] = sum(a['total'] for a in c2_areas)
+            u['total_marked'] = sum(a['marked'] for a in c2_areas)
             u['total_defects'] = sum(a['defects'] for a in c2_areas)
+            u['pct'] = round(u['total_marked'] / u['total_items'] * 100) if u['total_items'] else 0
 
         u['floor_label'] = FLOOR_LABELS.get(u['floor'], u['floor'])
 
