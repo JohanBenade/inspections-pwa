@@ -25,8 +25,8 @@
             <span class="text-gray-300">&mdash;</span>
         {% elif u.bu_status in ('in_progress', 'paused') %}
             {% if cn > 1 %}
-                {% set num = u.defect_addressed or 0 %}
-                {% set den = u.defect_bfwd or 0 %}
+                {% set num = u.checkpoint_marked or 0 %}
+                {% set den = u.checkpoints or 0 %}
             {% else %}
                 {% set num = u.items_marked or 0 %}
                 {% set den = u.checkpoints or 0 %}

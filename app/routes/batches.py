@@ -389,7 +389,7 @@ def detail(batch_id):
             d_uid = dr['unit_id']
             d_cn = d_cn_map.get(d_uid, 1)
             if d_uid not in d_map:
-                d_map[d_uid] = {'defect_bfwd': 0, 'defect_cleared': 0, 'defect_new': 0, 'defect_open': 0, 'defect_addressed': 0, 'defect_bfwd_action': 0}
+                d_map[d_uid] = {'defect_bfwd': 0, 'defect_cleared': 0, 'defect_new': 0, 'defect_open': 0, 'defect_addressed': 0, 'defect_bfwd_action': 0, 'defect_bfwd_addressed': 0}
             d_rcn = dr['raised_cycle_number'] or 1
             d_ccn = dr['cleared_cycle_number']
             if d_rcn < d_cn:
@@ -405,36 +405,52 @@ def detail(batch_id):
             # v314: b/fwd defect needing action this cycle (open OR cleared this cycle)
             if d_rcn < d_cn and (dr['status'] == 'open' or d_ccn == d_cn):
                 d_map[d_uid]['defect_bfwd_action'] += dr['cnt']
+            # v314b: b/fwd defect addressed this cycle (any status, addressed_cycle_number matches)
+            if d_rcn < d_cn and dr['addressed_cycle_number'] == d_cn:
+                d_map[d_uid]['defect_bfwd_addressed'] += dr['cnt']
 
         for u in units:
-            u.update(d_map.get(u['unit_id'], {'defect_bfwd': 0, 'defect_cleared': 0, 'defect_new': 0, 'defect_open': 0, 'defect_addressed': 0, 'defect_bfwd_action': 0}))
+            u.update(d_map.get(u['unit_id'], {'defect_bfwd': 0, 'defect_cleared': 0, 'defect_new': 0, 'defect_open': 0, 'defect_addressed': 0, 'defect_bfwd_action': 0, 'defect_bfwd_addressed': 0}))
 
     # Set checkpoints: C1 = items after exclusions, C2+ = b/fwd defects
     for u in units:
         cn = u.get('cycle_number') or 1
         u['checkpoints'] = u['defect_bfwd'] if cn > 1 else u['checkpoints_c1']
 
-    # --- Unit Checkpoints column (baseline - exclusions + open prior latents) ---
-    lan_map = {}
+    # v314b: latent ledger -- open at start of cycle (denominator) + addressed this cycle (numerator).
+    # Single comprehensive query, dual-purpose aggregation in Python.
+    lan_open_map = {}
+    lan_addressed_map = {}
     if units:
         lan_unit_ids = list(set(u['unit_id'] for u in units))
         lan_ph = ','.join(['?'] * len(lan_unit_ids))
         lan_rows = query_db(f"""
-            SELECT unit_id, cycle_number, COUNT(*) AS cnt
+            SELECT unit_id, cycle_number, rectified_at_cycle_number, addressed_cycle_number,
+                   CASE WHEN rectified_at IS NULL THEN 1 ELSE 0 END AS is_not_rectified,
+                   COUNT(*) AS cnt
             FROM latent_area_note
             WHERE tenant_id = ?
               AND unit_id IN ({lan_ph})
-              AND rectified_at_cycle_id IS NULL
-            GROUP BY unit_id, cycle_number
+            GROUP BY unit_id, cycle_number, rectified_at_cycle_number, addressed_cycle_number, is_not_rectified
         """, [tenant_id] + lan_unit_ids)
+        u_cycle_map = {u['unit_id']: (u.get('cycle_number') or 1) for u in units}
         for lr in lan_rows:
-            lan_map.setdefault(lr['unit_id'], {})[lr['cycle_number']] = lr['cnt']
+            uid = lr['unit_id']
+            unit_cycle = u_cycle_map.get(uid, 1)
+            # b/fwd only
+            if (lr['cycle_number'] or 0) >= unit_cycle:
+                continue
+            # open at start of current cycle: not rectified OR rectified this cycle
+            if lr['is_not_rectified'] or lr['rectified_at_cycle_number'] == unit_cycle:
+                lan_open_map[uid] = lan_open_map.get(uid, 0) + lr['cnt']
+            # addressed this cycle: rectified this cycle, OR still-open AND addressed this cycle
+            if (lr['rectified_at_cycle_number'] == unit_cycle or
+                    (lr['addressed_cycle_number'] == unit_cycle and lr['is_not_rectified'])):
+                lan_addressed_map[uid] = lan_addressed_map.get(uid, 0) + lr['cnt']
 
     for u in units:
-        unit_cycle = u.get('cycle_number') or 1
-        u['open_prior_latents'] = sum(
-            cnt for cn, cnt in lan_map.get(u['unit_id'], {}).items() if cn < unit_cycle
-        )
+        u['open_prior_latents'] = lan_open_map.get(u['unit_id'], 0)
+        u['lan_addressed'] = lan_addressed_map.get(u['unit_id'], 0)
         u['unit_checkpoints'] = u['checkpoints'] + u['open_prior_latents']
 
     total_checkpoints = sum(u.get('unit_checkpoints', 0) for u in units)
@@ -448,24 +464,30 @@ def detail(batch_id):
             SELECT inspection_id,
                    SUM(CASE WHEN status NOT IN ('pending', 'skipped') THEN 1 ELSE 0 END) AS items_marked,
                    SUM(CASE WHEN status != 'skipped' AND COALESCE(has_prior_defects, 0) = 0
-                              AND (status = 'pending' OR marked_at IS NOT NULL) THEN 1 ELSE 0 END) AS items_action
+                              AND (status = 'pending' OR marked_at IS NOT NULL) THEN 1 ELSE 0 END) AS items_action,
+                   SUM(CASE WHEN status NOT IN ('pending', 'skipped') AND COALESCE(has_prior_defects, 0) = 0
+                              AND marked_at IS NOT NULL THEN 1 ELSE 0 END) AS items_action_marked
             FROM inspection_item
             WHERE inspection_id IN ({ii_ph})
             GROUP BY inspection_id
         """, inspection_ids)
-        items_map = {r['inspection_id']: {'items_marked': r['items_marked'] or 0, 'items_action': r['items_action'] or 0} for r in ii_rows}
+        items_map = {r['inspection_id']: {'items_marked': r['items_marked'] or 0, 'items_action': r['items_action'] or 0, 'items_action_marked': r['items_action_marked'] or 0} for r in ii_rows}
 
     for u in units:
         m = items_map.get(u.get('inspection_id'), {})
         u['items_marked'] = m.get('items_marked', 0)
         u['items_action'] = m.get('items_action', 0)
+        u['items_action_marked'] = m.get('items_action_marked', 0)
 
     # v314: canonical 3-cohort checkpoints for C2+ units
     # cohort = newly-visible items + open b/fwd latents + b/fwd defects needing action
     # matches the live-monitor union in _build_live_monitor_data (v310)
+    # v314b: also expose checkpoint_marked (canonical numerator) so template
+    # progress fraction is consistent num/den (was defects-only before).
     for u in units:
         if (u.get('cycle_number') or 1) > 1:
             u['checkpoints'] = u['items_action'] + u['open_prior_latents'] + u.get('defect_bfwd_action', 0)
+            u['checkpoint_marked'] = u.get('items_action_marked', 0) + u.get('lan_addressed', 0) + u.get('defect_bfwd_addressed', 0)
             u['unit_checkpoints'] = u['checkpoints']
     total_checkpoints = sum(u.get('unit_checkpoints', 0) for u in units)
 
@@ -594,7 +616,7 @@ def detail_data(batch_id):
             d_uid = dr['unit_id']
             d_cn = d_cn_map.get(d_uid, 1)
             if d_uid not in d_map:
-                d_map[d_uid] = {'defect_bfwd': 0, 'defect_cleared': 0, 'defect_new': 0, 'defect_open': 0, 'defect_addressed': 0, 'defect_bfwd_action': 0}
+                d_map[d_uid] = {'defect_bfwd': 0, 'defect_cleared': 0, 'defect_new': 0, 'defect_open': 0, 'defect_addressed': 0, 'defect_bfwd_action': 0, 'defect_bfwd_addressed': 0}
             d_rcn = dr['raised_cycle_number'] or 1
             d_ccn = dr['cleared_cycle_number']
             if d_rcn < d_cn:
@@ -610,34 +632,50 @@ def detail_data(batch_id):
             # v314: b/fwd defect needing action this cycle (open OR cleared this cycle)
             if d_rcn < d_cn and (dr['status'] == 'open' or d_ccn == d_cn):
                 d_map[d_uid]['defect_bfwd_action'] += dr['cnt']
+            # v314b: b/fwd defect addressed this cycle (any status, addressed_cycle_number matches)
+            if d_rcn < d_cn and dr['addressed_cycle_number'] == d_cn:
+                d_map[d_uid]['defect_bfwd_addressed'] += dr['cnt']
         for u in units:
-            u.update(d_map.get(u['unit_id'], {'defect_bfwd': 0, 'defect_cleared': 0, 'defect_new': 0, 'defect_open': 0, 'defect_addressed': 0, 'defect_bfwd_action': 0}))
+            u.update(d_map.get(u['unit_id'], {'defect_bfwd': 0, 'defect_cleared': 0, 'defect_new': 0, 'defect_open': 0, 'defect_addressed': 0, 'defect_bfwd_action': 0, 'defect_bfwd_addressed': 0}))
 
     for u in units:
         cn = u.get('cycle_number') or 1
         u['checkpoints'] = u['defect_bfwd'] if cn > 1 else u['checkpoints_c1']
 
-    # --- Unit Checkpoints column (baseline - exclusions + open prior latents) ---
-    lan_map = {}
+    # v314b: latent ledger -- open at start of cycle (denominator) + addressed this cycle (numerator).
+    # Single comprehensive query, dual-purpose aggregation in Python.
+    lan_open_map = {}
+    lan_addressed_map = {}
     if units:
         lan_unit_ids = list(set(u['unit_id'] for u in units))
         lan_ph = ','.join(['?'] * len(lan_unit_ids))
         lan_rows = query_db(f"""
-            SELECT unit_id, cycle_number, COUNT(*) AS cnt
+            SELECT unit_id, cycle_number, rectified_at_cycle_number, addressed_cycle_number,
+                   CASE WHEN rectified_at IS NULL THEN 1 ELSE 0 END AS is_not_rectified,
+                   COUNT(*) AS cnt
             FROM latent_area_note
             WHERE tenant_id = ?
               AND unit_id IN ({lan_ph})
-              AND rectified_at_cycle_id IS NULL
-            GROUP BY unit_id, cycle_number
+            GROUP BY unit_id, cycle_number, rectified_at_cycle_number, addressed_cycle_number, is_not_rectified
         """, [tenant_id] + lan_unit_ids)
+        u_cycle_map = {u['unit_id']: (u.get('cycle_number') or 1) for u in units}
         for lr in lan_rows:
-            lan_map.setdefault(lr['unit_id'], {})[lr['cycle_number']] = lr['cnt']
+            uid = lr['unit_id']
+            unit_cycle = u_cycle_map.get(uid, 1)
+            # b/fwd only
+            if (lr['cycle_number'] or 0) >= unit_cycle:
+                continue
+            # open at start of current cycle: not rectified OR rectified this cycle
+            if lr['is_not_rectified'] or lr['rectified_at_cycle_number'] == unit_cycle:
+                lan_open_map[uid] = lan_open_map.get(uid, 0) + lr['cnt']
+            # addressed this cycle: rectified this cycle, OR still-open AND addressed this cycle
+            if (lr['rectified_at_cycle_number'] == unit_cycle or
+                    (lr['addressed_cycle_number'] == unit_cycle and lr['is_not_rectified'])):
+                lan_addressed_map[uid] = lan_addressed_map.get(uid, 0) + lr['cnt']
 
     for u in units:
-        unit_cycle = u.get('cycle_number') or 1
-        u['open_prior_latents'] = sum(
-            cnt for cn, cnt in lan_map.get(u['unit_id'], {}).items() if cn < unit_cycle
-        )
+        u['open_prior_latents'] = lan_open_map.get(u['unit_id'], 0)
+        u['lan_addressed'] = lan_addressed_map.get(u['unit_id'], 0)
         u['unit_checkpoints'] = u['checkpoints'] + u['open_prior_latents']
 
     total_checkpoints = sum(u.get('unit_checkpoints', 0) for u in units)
@@ -650,23 +688,29 @@ def detail_data(batch_id):
             SELECT inspection_id,
                    SUM(CASE WHEN status NOT IN ('pending', 'skipped') THEN 1 ELSE 0 END) AS items_marked,
                    SUM(CASE WHEN status != 'skipped' AND COALESCE(has_prior_defects, 0) = 0
-                              AND (status = 'pending' OR marked_at IS NOT NULL) THEN 1 ELSE 0 END) AS items_action
+                              AND (status = 'pending' OR marked_at IS NOT NULL) THEN 1 ELSE 0 END) AS items_action,
+                   SUM(CASE WHEN status NOT IN ('pending', 'skipped') AND COALESCE(has_prior_defects, 0) = 0
+                              AND marked_at IS NOT NULL THEN 1 ELSE 0 END) AS items_action_marked
             FROM inspection_item
             WHERE inspection_id IN ({ii_ph})
             GROUP BY inspection_id
         """, inspection_ids)
-        items_map = {r['inspection_id']: {'items_marked': r['items_marked'] or 0, 'items_action': r['items_action'] or 0} for r in ii_rows}
+        items_map = {r['inspection_id']: {'items_marked': r['items_marked'] or 0, 'items_action': r['items_action'] or 0, 'items_action_marked': r['items_action_marked'] or 0} for r in ii_rows}
     for u in units:
         m = items_map.get(u.get('inspection_id'), {})
         u['items_marked'] = m.get('items_marked', 0)
         u['items_action'] = m.get('items_action', 0)
+        u['items_action_marked'] = m.get('items_action_marked', 0)
 
     # v314: canonical 3-cohort checkpoints for C2+ units
     # cohort = newly-visible items + open b/fwd latents + b/fwd defects needing action
     # matches the live-monitor union in _build_live_monitor_data (v310)
+    # v314b: also expose checkpoint_marked (canonical numerator) so template
+    # progress fraction is consistent num/den (was defects-only before).
     for u in units:
         if (u.get('cycle_number') or 1) > 1:
             u['checkpoints'] = u['items_action'] + u['open_prior_latents'] + u.get('defect_bfwd_action', 0)
+            u['checkpoint_marked'] = u.get('items_action_marked', 0) + u.get('lan_addressed', 0) + u.get('defect_bfwd_addressed', 0)
             u['unit_checkpoints'] = u['checkpoints']
     total_checkpoints = sum(u.get('unit_checkpoints', 0) for u in units)
 
