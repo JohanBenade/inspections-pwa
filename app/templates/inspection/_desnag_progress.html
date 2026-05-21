@@ -1,13 +1,13 @@
 {# De-snag progress bar.
    Accepts either: progress dict (from HTMX) or flat variables (from main view).
 #}
-{% set p_total = progress.total if progress is defined else total_bfwd %}
+{% set p_total = progress.total if progress is defined else total_items %}
 {% set p_addressed = progress.addressed if progress is defined else total_addressed %}
 {% set p_cleared = progress.cleared if progress is defined else total_cleared %}
 {% set p_still_open = progress.still_open if progress is defined else total_still_open %}
 {% set pct = ((p_addressed / p_total * 100) | round | int) if p_total > 0 else 0 %}
 <div class="flex items-center justify-between text-sm mb-2">
-    <span class="font-medium text-gray-700">{{ p_addressed }} of {{ p_total }} defects addressed</span>
+    <span class="font-medium text-gray-700">{{ p_addressed }} of {{ p_total }} items addressed</span>
     <span class="text-gray-500">{{ pct }}%</span>
 </div>
 <div class="w-full bg-gray-200 rounded-full h-2.5">

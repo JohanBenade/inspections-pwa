@@ -1,0 +1,75 @@
+{# Single latent row for de-snag view.
+   Variables: latent, cycle_number, is_readonly, inspection_id
+   Optional: progress, area_progress, swap_oob (for HTMX OOB swaps)
+#}
+<div class="text-xs text-blue-600 uppercase tracking-wide font-medium">Latent &middot; raised C{{ latent.raised_cycle }}</div>
+<div class="text-sm mt-1 text-gray-700 latent-note">{{ latent.note_html|safe }}</div>
+
+{% if latent.rectified_at and latent.rectified_at_cycle_number == cycle_number %}
+    {# Rectified this cycle #}
+    <div class="mt-2 flex items-center gap-2">
+        <span class="inline-flex items-center px-3 py-1.5 text-xs font-medium rounded-lg bg-green-100 text-green-700">Rectified &#10003;</span>
+        {% if not is_readonly %}
+        <button class="text-xs text-gray-400 hover:text-gray-600 underline"
+                hx-post="{{ url_for('inspection.desnag_latent_undo', inspection_id=inspection_id) }}"
+                hx-vals='{"latent_id": "{{ latent.id }}"}'
+                hx-target="#latent-{{ latent.id }}"
+                hx-swap="innerHTML">Undo</button>
+        {% endif %}
+    </div>
+{% elif latent.addressed_cycle_number == cycle_number and not latent.rectified_at %}
+    {# Marked still-open this cycle #}
+    <div class="mt-2 flex items-center gap-2">
+        <span class="inline-flex items-center px-3 py-1.5 text-xs font-medium rounded-lg bg-red-100 text-red-700">Still Open</span>
+        {% if not is_readonly %}
+        <button class="text-xs text-gray-400 hover:text-gray-600 underline"
+                hx-post="{{ url_for('inspection.desnag_latent_undo', inspection_id=inspection_id) }}"
+                hx-vals='{"latent_id": "{{ latent.id }}"}'
+                hx-target="#latent-{{ latent.id }}"
+                hx-swap="innerHTML">Undo</button>
+        {% endif %}
+    </div>
+{% else %}
+    {# Not yet addressed — show action buttons #}
+    {% if not is_readonly %}
+    <div class="mt-2 flex gap-2">
+        <button class="flex-1 py-2 px-3 text-sm font-medium rounded-lg bg-green-100 text-green-700 hover:bg-green-200 transition-colors"
+                hx-post="{{ url_for('inspection.desnag_latent_address', inspection_id=inspection_id) }}"
+                hx-vals='{"latent_id": "{{ latent.id }}", "action": "rectified"}'
+                hx-target="#latent-{{ latent.id }}"
+                hx-swap="innerHTML">Rectified</button>
+        <button class="flex-1 py-2 px-3 text-sm font-medium rounded-lg bg-red-100 text-red-700 hover:bg-red-200 transition-colors"
+                hx-post="{{ url_for('inspection.desnag_latent_address', inspection_id=inspection_id) }}"
+                hx-vals='{"latent_id": "{{ latent.id }}", "action": "still_open"}'
+                hx-target="#latent-{{ latent.id }}"
+                hx-swap="innerHTML">Still Open</button>
+    </div>
+    {% endif %}
+{% endif %}
+
+{# OOB swaps for progress and area badge #}
+{% if swap_oob is defined and swap_oob %}
+<div id="desnag-progress" hx-swap-oob="innerHTML">
+    {% include 'inspection/_desnag_progress.html' %}
+</div>
+<div id="desnag-submit-wrap" hx-swap-oob="innerHTML">
+    {% if progress is defined and progress.total > 0 and progress.addressed == progress.total %}
+    <form method="POST" action="{{ url_for('inspection.desnag_submit', inspection_id=inspection_id) }}"
+          onsubmit="return confirm('Submit de-snag?\n\n{{ progress.cleared }} cleared, {{ progress.still_open }} still open.\n\nThis cannot be undone.')">
+        <button type="submit" class="w-full py-3 px-4 bg-green-600 text-white font-semibold rounded-lg hover:bg-green-700 transition-colors">
+            Submit De-snag
+        </button>
+    </form>
+    {% elif progress is defined %}
+    <button disabled class="w-full py-3 px-4 bg-gray-300 text-gray-500 font-semibold rounded-lg cursor-not-allowed">
+        Address all items to submit ({{ progress.addressed }} / {{ progress.total }})
+    </button>
+    {% endif %}
+</div>
+{% if area_progress is defined %}
+<span id="badge-{{ latent.area_name|replace(' ', '-')|lower }}" hx-swap-oob="outerHTML"
+      class="text-xs px-2 py-1 rounded-full {% if area_progress.addressed == area_progress.total %}bg-green-100 text-green-700{% else %}bg-gray-200 text-gray-600{% endif %}">
+    {{ area_progress.addressed }} / {{ area_progress.total }}
+</span>
+{% endif %}
+{% endif %}

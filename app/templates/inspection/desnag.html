@@ -63,10 +63,10 @@
     </div>
     {% endif %}
 
-    {% if total_bfwd == 0 %}
+    {% if total_items == 0 %}
     <div class="bg-green-50 border border-green-200 rounded-lg p-6 text-center">
-        <div class="text-green-700 font-semibold text-lg">No open defects</div>
-        <div class="text-green-600 text-sm mt-1">All defects from previous cycles have been cleared.</div>
+        <div class="text-green-700 font-semibold text-lg">Nothing to address</div>
+        <div class="text-green-600 text-sm mt-1">No open defects or latent items from previous cycles.</div>
     </div>
     {% else %}
 
@@ -79,6 +79,19 @@
                 {{ area_data.addressed }} / {{ area_data.total }}
             </span>
         </div>
+
+        {% if area_data.latents %}
+        <div class="border-b">
+            <div class="px-4 py-2 bg-blue-50">
+                <span class="text-xs font-medium text-blue-700 uppercase tracking-wider">Latent items</span>
+            </div>
+            {% for latent in area_data.latents %}
+            <div id="latent-{{ latent.id }}" class="px-4 py-3 border-t border-blue-100 bg-blue-50/30">
+                {% include 'inspection/_desnag_latent.html' with context %}
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
 
         {% for cat_name, defects in area_data.categories.items() %}
         <div class="border-b last:border-b-0">
@@ -129,7 +142,7 @@
         </form>
         {% else %}
         <button disabled class="w-full py-3 px-4 bg-gray-300 text-gray-500 font-semibold rounded-lg cursor-not-allowed">
-            Address all defects to submit ({{ total_addressed }} / {{ total_bfwd }})
+            Address all items to submit ({{ total_addressed }} / {{ total_items }})
         </button>
         {% endif %}
         </div>
