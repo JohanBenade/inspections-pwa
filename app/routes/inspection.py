@@ -116,7 +116,7 @@ def start_inspection(unit_id):
         """, [unit_id, cycle['cycle_number'] - 1, tenant_id], one=True)
     
     templates = query_db(
-        "SELECT id, floor_condition FROM item_template WHERE tenant_id = ?", [tenant_id]
+        "SELECT id, floor_condition FROM item_template WHERE tenant_id = ? AND active = 1", [tenant_id]
     )
     
     # Get unit floor for floor_condition filtering

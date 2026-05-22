@@ -506,7 +506,7 @@ def edit_cycle(cycle_id):
                     cei.reason as exclude_reason
                 FROM item_template it
                 LEFT JOIN cycle_excluded_item cei ON cei.item_template_id = it.id AND cei.cycle_id = ?
-                WHERE it.category_id = ?
+                WHERE it.category_id = ? AND it.active = 1
                 ORDER BY it.item_order
             """, [cycle_id, cat['id']])
             
