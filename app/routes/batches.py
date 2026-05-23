@@ -350,11 +350,11 @@ def detail(batch_id):
     # Checkpoint constants: total items + ground_only count (excluded on upper floors).
     # Queried from item_template so the math always tracks real data.
     go_row = query_db(
-        "SELECT COUNT(*) AS cnt FROM item_template WHERE floor_condition = 'ground_only'",
+        "SELECT COUNT(*) AS cnt FROM item_template WHERE floor_condition = 'ground_only' AND active = 1",
         [], one=True)
     ground_only_count = go_row['cnt'] if go_row else 0
     total_row = query_db(
-        "SELECT COUNT(*) AS cnt FROM item_template",
+        "SELECT COUNT(*) AS cnt FROM item_template WHERE active = 1",
         [], one=True)
     items_per_unit = total_row['cnt'] if total_row else 509
 
@@ -580,11 +580,11 @@ def detail_data(batch_id):
     # Checkpoint constants: total items + ground_only count (excluded on upper floors).
     # Queried from item_template so the math always tracks real data.
     go_row = query_db(
-        "SELECT COUNT(*) AS cnt FROM item_template WHERE floor_condition = 'ground_only'",
+        "SELECT COUNT(*) AS cnt FROM item_template WHERE floor_condition = 'ground_only' AND active = 1",
         [], one=True)
     ground_only_count = go_row['cnt'] if go_row else 0
     total_row = query_db(
-        "SELECT COUNT(*) AS cnt FROM item_template",
+        "SELECT COUNT(*) AS cnt FROM item_template WHERE active = 1",
         [], one=True)
     items_per_unit = total_row['cnt'] if total_row else 509
 
