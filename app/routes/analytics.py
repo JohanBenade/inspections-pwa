@@ -5611,10 +5611,16 @@ def _build_pipeline_report_data(live=False):
     # Headline metrics
     units_inspected = len(unit_max_completed)
     certified_count = sum(1 for u in all_units if u['certified_at'])
+    # v322: HANDOVER-READY = inspected units with zero open defects (loose certification)
+    handover_ready_count = sum(
+        1 for uid in unit_max_completed.keys()
+        if unit_open.get(uid, 0) == 0
+    )
 
     # Cycle efficiency metrics (all None until C2+ data exists)
     metrics = {
         'certified': certified_count,
+        'handover_ready': handover_ready_count,
         'avg_cycles': None,
         'avg_clearance': None,
         'first_time_fix': None,
@@ -6396,6 +6402,7 @@ def _build_pipeline_report_data(live=False):
         'pct_complete': round(units_inspected / total_units * 100) if total_units else 0,
         'open_defects': total_open_defects,
         'certified': metrics['certified'],
+        'handover_ready': metrics['handover_ready'],
         'avg_per_unit': round(total_open_defects / units_inspected, 1) if units_inspected > 0 else 0,
         'median_per_unit': median_defects,
         'defect_rate': defect_rate,
