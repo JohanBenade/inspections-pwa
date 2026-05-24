@@ -2389,6 +2389,13 @@ def desnag_view(inspection_id):
                 tid: any(d['status'] == 'open' for d in prior_defects_map.get(tid, []))
                 for tid in parent_items
             }
+            # v324: per-parent has_prior_defects (any priors, open or cleared).
+            # Mirror of parent_has_open_prior_map but broader — gates child
+            # visibility when parent is suppressed for having ANY priors.
+            parent_has_prior_defects_map = {
+                tid: len(prior_defects_map.get(tid, [])) > 0
+                for tid in parent_items
+            }
 
             checklist = []
             for i in cat_items:
@@ -2419,6 +2426,7 @@ def desnag_view(inspection_id):
                     'has_current_defects': len(current_list) > 0,
                     'children_have_defects': (i['template_id'] in parent_has_pending_child) if is_parent else False,
                     'parent_has_open_prior': parent_has_open_prior_map.get(i['parent_item_id'], False) if is_child else False,
+                    'parent_has_prior_defects': parent_has_prior_defects_map.get(i['parent_item_id'], False) if is_child else False,
                     'inspection_defects': inspection_defects_map.get(i['id'], []),
                     'category_name': cat['category_name'],
                     'is_sole_parent': len(parent_items) == 1,
