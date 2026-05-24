@@ -972,36 +972,6 @@ body {
             All {{ latent_brief_summary.outstanding_count }} {% if latent_cycle_summary.all_zero_days %}identified this fortnight{% else %}up to {{ latent_cycle_summary.oldest_days }} days old{% endif %}{% if latent_cycle_summary.all_same_cycle %} &middot; current de-snag cycle (C{{ latent_cycle_summary.one_cycle }}){% endif %}.
         </div>
         {% endif %}
-        <div style="margin-top: 12px; page-break-before: always; padding-top: 8px;">
-            <div style="font-size: 9px; font-weight: 600; color: #9A9A9A; letter-spacing: 1px; text-transform: uppercase; margin-bottom: 8px;">Outstanding &mdash; by zone</div>
-            <table style="width: 100%; border-collapse: separate; border-spacing: 0;">
-                <tr>
-                    {% for col in latent_outstanding_columns %}
-                    <td style="width: 50%; vertical-align: top; padding: 0 {% if loop.first %}8px 0 0{% else %}0 0 8px{% endif %};">
-                        {% for zone in col.zones %}
-                        <div style="margin-bottom: 14px;">
-                            <div style="font-size: 10px; font-weight: 700; color: #1A1A1A; margin-bottom: 6px; padding-bottom: 4px; border-bottom: 1px solid #DCD7CB;">
-                                {{ zone.zone_label }}
-                                <span style="font-weight: 400; color: #6B6B6B;"> &middot; {{ zone.outstanding_count }} across {{ zone.units_count }} unit{% if zone.units_count != 1 %}s{% endif %}</span>
-                            </div>
-                            {% for unit in zone.units %}
-                            <div style="page-break-inside: avoid; break-inside: avoid; margin-bottom: 8px; padding-left: 6px; border-left: 2px solid #C44D3F;">
-                                <div style="font-size: 10px; font-weight: 700; color: #1A1A1A; margin-bottom: 3px;">Unit {{ unit.unit_number }}</div>
-                                {% for note in unit.notes %}
-                                <div style="display: flex; gap: 6px; margin-bottom: 2px; align-items: baseline;">
-                                    <div style="flex: 0 0 72px; font-size: 8px; font-weight: 600; color: #9A9A9A; letter-spacing: 0.5px; text-transform: uppercase; line-height: 1.4;">{{ note.area_display_name }}</div>
-                                    <div style="flex: 1; font-size: 9.5px; line-height: 1.4; color: #1A1A1A;">{{ note.note_html | safe }}</div>
-                                </div>
-                                {% endfor %}
-                            </div>
-                            {% endfor %}
-                        </div>
-                        {% endfor %}
-                    </td>
-                    {% endfor %}
-                </tr>
-            </table>
-        </div>
         {% endif %}
 
         {% if latent_brief_summary.rectified_this_fortnight_count > 0 %}
