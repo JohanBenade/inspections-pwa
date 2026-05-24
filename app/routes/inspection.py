@@ -2452,7 +2452,6 @@ def desnag_view(inspection_id):
           SUM(CASE WHEN ii.status != 'pending' AND ii.marked_at IS NOT NULL THEN 1 ELSE 0 END) AS addressed
         FROM inspection_item ii
         WHERE ii.inspection_id = ? AND ii.tenant_id = ?
-          AND ii.has_prior_defects = 0
           AND ii.status != 'skipped'
           AND (ii.status = 'pending' OR ii.marked_at IS NOT NULL)
     """, [inspection_id, tenant_id], one=True)
@@ -2469,7 +2468,6 @@ def desnag_view(inspection_id):
         JOIN category_template ct ON it.category_id = ct.id
         JOIN area_template at2 ON ct.area_id = at2.id
         WHERE ii.inspection_id = ? AND ii.tenant_id = ?
-          AND ii.has_prior_defects = 0
           AND ii.status != 'skipped'
           AND (ii.status = 'pending' OR ii.marked_at IS NOT NULL)
         GROUP BY at2.area_name
@@ -2820,7 +2818,6 @@ def _desnag_progress(unit_id, tenant_id, cycle_number):
         FROM inspection_item ii
         JOIN inspection i ON ii.inspection_id = i.id
         WHERE i.unit_id = ? AND i.tenant_id = ? AND i.cycle_number = ?
-          AND ii.has_prior_defects = 0
           AND ii.status != 'skipped'
           AND (ii.status = 'pending' OR ii.marked_at IS NOT NULL)
     """, [unit_id, tenant_id, cycle_number], one=True)
@@ -2867,7 +2864,6 @@ def _desnag_area_progress(unit_id, tenant_id, cycle_number, area_name):
         JOIN category_template ct ON it.category_id = ct.id
         JOIN area_template at2 ON ct.area_id = at2.id
         WHERE i.unit_id = ? AND i.tenant_id = ? AND i.cycle_number = ?
-          AND ii.has_prior_defects = 0
           AND ii.status != 'skipped'
           AND (ii.status = 'pending' OR ii.marked_at IS NOT NULL)
           AND at2.area_name = ?
