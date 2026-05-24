@@ -2507,7 +2507,7 @@ def desnag_view(inspection_id):
     latent_count = len(latents)
     latent_addressed = sum(1 for l in latents if l['addressed_cycle_number'] == cycle_number)
     latent_rectified = sum(1 for l in latents if l['rectified_at_cycle_number'] == cycle_number)
-    latent_still_open = sum(1 for l in latents if l['addressed_cycle_number'] == cycle_number and l['rectified_at'] is None)
+    latent_still_open = sum(1 for l in latents if l['rectified_at'] is None)  # v329: all open latents (actioned + unactioned)
 
     total_items = defect_count + latent_count + items_count
     total_addressed = defect_addressed + latent_addressed + items_addressed
@@ -2808,11 +2808,11 @@ def _desnag_progress(unit_id, tenant_id, cycle_number):
             COUNT(*) as total,
             SUM(CASE WHEN addressed_cycle_number = ? THEN 1 ELSE 0 END) as addressed,
             SUM(CASE WHEN rectified_at_cycle_number = ? THEN 1 ELSE 0 END) as cleared,
-            SUM(CASE WHEN addressed_cycle_number = ? AND rectified_at IS NULL THEN 1 ELSE 0 END) as still_open
+            SUM(CASE WHEN rectified_at IS NULL THEN 1 ELSE 0 END) as still_open
         FROM latent_area_note
         WHERE unit_id = ? AND tenant_id = ?
         AND (rectified_at IS NULL OR rectified_at_cycle_number = ?)
-    """, [cycle_number, cycle_number, cycle_number, unit_id, tenant_id, cycle_number], one=True)
+    """, [cycle_number, cycle_number, unit_id, tenant_id, cycle_number], one=True)
     # Newly-visible items at this cycle (status='pending' or marked this session, no prior defect)
     i_row = query_db("""
         SELECT
