@@ -131,6 +131,19 @@ def create_app():
             
             inspections = [dict(r) for r in inspections]
 
+            # v328: For C2+ inspections, override carried_ok cohort numbers with
+            # desnag-cohort totals (defects + latents + newly-visible items) so
+            # this card matches batch detail, live view, and the desnag screen.
+            # C1 rows keep carried_ok cohort (no desnag flow at C1).
+            from app.routes.inspection import _desnag_progress
+            for insp in inspections:
+                if (insp.get('cycle_number') or 0) > 1:
+                    p = _desnag_progress(insp['unit_id'], tenant_id, insp['cycle_number'])
+                    insp['total_items'] = p['total']
+                    insp['completed_items'] = p['addressed']
+                    insp['defect_count'] = p['still_open']
+                    insp['prior_open_defects'] = 0
+
             return render_template('inspector_home.html', inspections=inspections)
         
         # Manager/admin go to Pipeline Dashboard
