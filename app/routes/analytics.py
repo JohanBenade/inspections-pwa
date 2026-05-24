@@ -5610,12 +5610,15 @@ def _build_pipeline_report_data(live=False):
 
     # Headline metrics
     units_inspected = len(unit_max_completed)
-    certified_count = sum(1 for u in all_units if u['certified_at'])
-    # v322: HANDOVER-READY = inspected units with zero open defects (loose certification)
-    handover_ready_count = sum(
-        1 for uid in unit_max_completed.keys()
-        if unit_open.get(uid, 0) == 0
+    # v330: certified KPI unifies formally certified (unit.certified_at) and
+    # functionally certified (reviewed-or-higher inspections with zero open defects).
+    # Set-union avoids double-counting units that satisfy both criteria.
+    _formal_certified_ids = set(u['id'] for u in all_units if u['certified_at'])
+    _handover_ready_ids = set(
+        uid for uid in unit_max_completed.keys() if unit_open.get(uid, 0) == 0
     )
+    certified_count = len(_formal_certified_ids | _handover_ready_ids)
+    handover_ready_count = len(_handover_ready_ids)
 
     # Cycle efficiency metrics (all None until C2+ data exists)
     metrics = {
