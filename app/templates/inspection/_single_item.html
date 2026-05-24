@@ -20,7 +20,7 @@
 {% set has_prior = item.has_prior_defects|default(false) %}
 {% set has_open_prior = item.has_open_prior|default(false) %}
 {% set was_ni = item.was_not_installed|default(false) %}
-{% set show_prior = is_followup and has_prior %}
+{% set show_prior = is_followup and has_prior and not hide_prior_chips|default(false) %}
 {% set chips = item.inspection_defects %}
 {% set has_chips = chips|length > 0 %}
 {% set currents = item.current_defects|default([]) %}
