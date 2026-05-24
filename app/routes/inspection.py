@@ -2501,7 +2501,7 @@ def desnag_view(inspection_id):
     defect_count = len(bfwd_open) + len(bfwd_cleared)
     defect_addressed = sum(1 for d in list(bfwd_open) + list(bfwd_cleared) if d['addressed_cycle_number'] == cycle_number)
     defect_cleared = len(bfwd_cleared)
-    defect_still_open = sum(1 for d in bfwd_open if d['addressed_cycle_number'] == cycle_number)
+    defect_still_open = len(bfwd_open)  # v326a: all open priors (actioned + unactioned)
 
     latent_count = len(latents)
     latent_addressed = sum(1 for l in latents if l['addressed_cycle_number'] == cycle_number)
@@ -2796,12 +2796,12 @@ def _desnag_progress(unit_id, tenant_id, cycle_number):
             COUNT(*) as total,
             SUM(CASE WHEN addressed_cycle_number = ? THEN 1 ELSE 0 END) as addressed,
             SUM(CASE WHEN status = 'cleared' AND addressed_cycle_number = ? THEN 1 ELSE 0 END) as cleared,
-            SUM(CASE WHEN status = 'open' AND addressed_cycle_number = ? THEN 1 ELSE 0 END) as still_open
+            SUM(CASE WHEN status = 'open' THEN 1 ELSE 0 END) as still_open
         FROM defect
         WHERE unit_id = ? AND tenant_id = ?
         AND raised_cycle_number < ?
         AND (status = 'open' OR (status = 'cleared' AND cleared_cycle_number = ?))
-    """, [cycle_number, cycle_number, cycle_number, unit_id, tenant_id, cycle_number, cycle_number], one=True)
+    """, [cycle_number, cycle_number, unit_id, tenant_id, cycle_number, cycle_number], one=True)
     l_row = query_db("""
         SELECT
             COUNT(*) as total,
