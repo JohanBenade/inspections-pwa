@@ -722,10 +722,68 @@ body {
         {% endif %}
     </div>
 
-    {% if by_trade %}
+    {% if cert_zone_grid and cert_zone_grid.blocks %}
     <div class="section section-tight" style="margin-bottom: 18px; page-break-before: always; break-before: page;">
         <div class="section-header">
             <span class="section-number">06</span>
+            <span class="section-title">Units Certified by Zone</span>
+        </div>
+
+        <div style="display: grid; grid-template-columns: 60px repeat({{ cert_zone_grid.floors|length }}, 1fr); gap: 4px;">
+            <div></div>
+            {% for fl in cert_zone_grid.floors %}
+            <div style="text-align: center; font-size: 8px; font-weight: 600; color: #9A9A9A; letter-spacing: 0.8px; text-transform: uppercase; padding-bottom: 3px;">{{ floor_labels.get(fl, fl) }}</div>
+            {% endfor %}
+
+            {% for block in cert_zone_grid.blocks %}
+            <div style="display: flex; align-items: center; font-size: 9px; font-weight: 600; color: #1A1A1A;">{{ block }}</div>
+            {% for fl in cert_zone_grid.floors %}
+            {% set cz = cert_zone_grid.data.get((block, fl), None) %}
+            {% if cz is none %}
+            <div style="background: #F5F3EE; border: 1px solid #DCD7CB; border-radius: 5px; padding: 7px 5px; text-align: center; min-height: 80px; display: flex; align-items: center; justify-content: center;">
+                <span style="font-size: 8px; color: #BFBDB8;">&mdash;</span>
+            </div>
+            {% elif cz.cert_stage == 'none' %}
+            <div style="background: #ECEAE5; border: 1px solid #DCD7CB; border-radius: 5px; padding: 7px 5px; text-align: center; min-height: 80px; display: flex; flex-direction: column; align-items: center; justify-content: center;">
+                <div style="font-size: 9px; font-weight: 600; color: #9A9A9A;">{{ cz.total_units }} units</div>
+                <div style="margin-top: 4px; font-size: 8px; color: #9A9A9A;">awaiting</div>
+            </div>
+            {% elif cz.cert_stage == 'partial' %}
+            <div style="background: #FAEEDA; border: 1px solid #DCD7CB; border-radius: 5px; padding: 7px 5px; text-align: center; min-height: 80px;">
+                <div style="font-size: 9px; font-weight: 600; color: #9A9A9A;">{{ cz.total_units }} units</div>
+                <div style="margin-top: 4px; font-size: 14px; font-weight: 600; color: #1A1A1A;">{{ cz.certified_count }} / {{ cz.total_units }}</div>
+                <div style="margin-top: 4px; height: 4px; background: #DCD7CB; border-radius: 2px; overflow: hidden;">
+                    <div style="width: {{ cz.certified_pct }}%; height: 100%; background: #5F8838;"></div>
+                </div>
+                <div style="margin-top: 5px; font-size: 8px; color: #1A1A1A; line-height: 1.3;">{{ cz.certified_units_display }}</div>
+            </div>
+            {% elif cz.cert_stage == 'all' %}
+            <div style="background: #E9EED7; border: 1px solid #DCD7CB; border-radius: 5px; padding: 7px 5px; text-align: center; min-height: 80px;">
+                <div style="font-size: 9px; font-weight: 600; color: #9A9A9A;">{{ cz.total_units }} units</div>
+                <div style="margin-top: 4px; font-size: 14px; font-weight: 600; color: #5F8838;">{{ cz.certified_count }} / {{ cz.total_units }}</div>
+                <div style="margin-top: 4px; height: 4px; background: #DCD7CB; border-radius: 2px; overflow: hidden;">
+                    <div style="width: 100%; height: 100%; background: #5F8838;"></div>
+                </div>
+                <div style="margin-top: 5px; font-size: 8px; color: #5F8838; line-height: 1.3; font-weight: 600;">{{ cz.certified_units_display }}</div>
+            </div>
+            {% endif %}
+            {% endfor %}
+            {% endfor %}
+        </div>
+
+        <!-- Legend -->
+        <div style="margin-top: 5px; display: flex; flex-wrap: wrap; gap: 12px; font-size: 9px; color: #6B6B6B;">
+            <span><span style="display: inline-block; width: 10px; height: 10px; border-radius: 2px; background: #ECEAE5; border: 1px solid #DCD7CB; margin-right: 4px; vertical-align: middle;"></span>Awaiting certification</span>
+            <span><span style="display: inline-block; width: 10px; height: 10px; border-radius: 2px; background: #FAEEDA; border: 1px solid #DCD7CB; margin-right: 4px; vertical-align: middle;"></span>Partial (in progress)</span>
+            <span><span style="display: inline-block; width: 10px; height: 10px; border-radius: 2px; background: #E9EED7; border: 1px solid #DCD7CB; margin-right: 4px; vertical-align: middle;"></span>All certified</span>
+        </div>
+    </div>
+    {% endif %}
+
+    {% if by_trade %}
+    <div class="section section-tight" style="margin-bottom: 18px; page-break-before: always; break-before: page;">
+        <div class="section-header">
+            <span class="section-number">07</span>
             <span class="section-title">Defects by Trade</span>
         </div>
         <table style="width: 100%; border-collapse: collapse; font-size: 10px; table-layout: fixed; margin-top: 8px; font-feature-settings: 'lnum' 1, 'tnum' 1;">
@@ -767,7 +825,7 @@ body {
     <div class="section section-tight" style="margin-bottom: 18px;">
         <div class="section-header" style="display: flex; justify-content: space-between; align-items: baseline;">
             <div>
-                <span class="section-number">07</span>
+                <span class="section-number">08</span>
                 <span class="section-title">Worst Units</span>
             </div>
             {% if stuck_headline %}
@@ -815,7 +873,7 @@ body {
     <div class="section" style="margin-bottom: 18px; page-break-before: always; break-before: page;">
         <div class="section-header" style="display: flex; justify-content: space-between; align-items: baseline;">
             <div>
-                <span class="section-number">08</span>
+                <span class="section-number">09</span>
                 <span class="section-title">Latent Defects</span>
             </div>
             {% if latent_brief_summary.outstanding_count > 0 or latent_brief_summary.rectified_this_fortnight_count > 0 %}
