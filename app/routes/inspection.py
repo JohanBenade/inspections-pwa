@@ -2276,6 +2276,7 @@ def desnag_view(inspection_id):
         JOIN area_template at2 ON ct.area_id = at2.id
         WHERE ii.inspection_id = ? AND ii.tenant_id = ?
           AND ii.status = 'pending'
+          AND COALESCE(ii.has_prior_defects, 0) = 0
         ORDER BY at2.area_order, ct.category_order
     """, [inspection_id, tenant_id])
 
@@ -2454,6 +2455,7 @@ def desnag_view(inspection_id):
         WHERE ii.inspection_id = ? AND ii.tenant_id = ?
           AND ii.status != 'skipped'
           AND (ii.status = 'pending' OR ii.marked_at IS NOT NULL)
+          AND COALESCE(ii.has_prior_defects, 0) = 0
     """, [inspection_id, tenant_id], one=True)
     items_count = items_row['total'] or 0
     items_addressed = items_row['addressed'] or 0
@@ -2470,6 +2472,7 @@ def desnag_view(inspection_id):
         WHERE ii.inspection_id = ? AND ii.tenant_id = ?
           AND ii.status != 'skipped'
           AND (ii.status = 'pending' OR ii.marked_at IS NOT NULL)
+          AND COALESCE(ii.has_prior_defects, 0) = 0
         GROUP BY at2.area_name
     """, [inspection_id, tenant_id])
     for ip in items_per_area:
@@ -2820,6 +2823,7 @@ def _desnag_progress(unit_id, tenant_id, cycle_number):
         WHERE i.unit_id = ? AND i.tenant_id = ? AND i.cycle_number = ?
           AND ii.status != 'skipped'
           AND (ii.status = 'pending' OR ii.marked_at IS NOT NULL)
+          AND COALESCE(ii.has_prior_defects, 0) = 0
     """, [unit_id, tenant_id, cycle_number], one=True)
     return {
         'total': (d_row['total'] or 0) + (l_row['total'] or 0) + (i_row['total'] or 0),
@@ -2866,6 +2870,7 @@ def _desnag_area_progress(unit_id, tenant_id, cycle_number, area_name):
         WHERE i.unit_id = ? AND i.tenant_id = ? AND i.cycle_number = ?
           AND ii.status != 'skipped'
           AND (ii.status = 'pending' OR ii.marked_at IS NOT NULL)
+          AND COALESCE(ii.has_prior_defects, 0) = 0
           AND at2.area_name = ?
     """, [unit_id, tenant_id, cycle_number, area_name], one=True)
     return {
