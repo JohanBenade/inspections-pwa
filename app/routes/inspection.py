@@ -2773,6 +2773,7 @@ def desnag_submit(inspection_id):
     unaddressed_items = query_db("""
         SELECT COUNT(*) as cnt FROM inspection_item
         WHERE inspection_id = ? AND tenant_id = ? AND status = 'pending'
+        AND COALESCE(has_prior_defects, 0) = 0
     """, [inspection_id, tenant_id], one=True)['cnt']
 
     if unaddressed_defects + unaddressed_latents + unaddressed_items > 0:
