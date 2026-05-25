@@ -7170,6 +7170,208 @@ def site_meeting_brief_pdf():
     return resp
 
 
+def _build_top_50_data():
+    """Build context for the C1 Defects Brief (Top 50 most-frequent defect items).
+
+    Cohort = 4-Bed units in PH3 with a C1 inspection at status 'pending_followup'.
+    Mirrors the SQL used in the original v5 Raubex brief dump.
+    """
+    from collections import defaultdict, OrderedDict
+    tenant_id = session.get('tenant_id', 'MONOGRAPH')
+    phase_id = 'phase-003'
+
+    # Cohort count: 4-Bed units in PH3 with a C1 inspection at pending_followup
+    cohort_row = query_db("""
+        SELECT COUNT(*) AS n FROM unit u
+        WHERE u.tenant_id = ? AND u.phase_id = ? AND u.unit_type = '4-Bed'
+        AND EXISTS (
+            SELECT 1 FROM inspection i
+            WHERE i.unit_id = u.id AND i.tenant_id = ?
+            AND i.cycle_number = 1 AND i.status = 'pending_followup'
+        )
+    """, [tenant_id, phase_id, tenant_id], one=True)
+    cohort_units = cohort_row['n'] if cohort_row else 0
+
+    # Total 4-Bed units in PH3 (denominator for "X of N")
+    total_row = query_db("""
+        SELECT COUNT(*) AS n FROM unit u
+        WHERE u.tenant_id = ? AND u.phase_id = ? AND u.unit_type = '4-Bed'
+    """, [tenant_id, phase_id], one=True)
+    total_4bed_units = total_row['n'] if total_row else 0
+
+    # Total C1 defects across cohort
+    total_defects_row = query_db("""
+        SELECT COUNT(*) AS n FROM defect d
+        WHERE d.tenant_id = ? AND d.raised_cycle_number = 1
+        AND d.unit_id IN (
+            SELECT u.id FROM unit u
+            WHERE u.tenant_id = ? AND u.phase_id = ? AND u.unit_type = '4-Bed'
+            AND EXISTS (
+                SELECT 1 FROM inspection i
+                WHERE i.unit_id = u.id AND i.tenant_id = ?
+                AND i.cycle_number = 1 AND i.status = 'pending_followup'
+            )
+        )
+    """, [tenant_id, tenant_id, phase_id, tenant_id], one=True)
+    total_defects = total_defects_row['n'] if total_defects_row else 0
+
+    avg_per_unit = round(total_defects / cohort_units) if cohort_units > 0 else 0
+
+    # Top 50 by item_template, grouped by item_description + category + area
+    top_rows = query_db("""
+        SELECT it.id AS tpl_id,
+               it.item_description AS item,
+               ct.category_name AS trade,
+               a.area_name AS area,
+               COUNT(d.id) AS cnt,
+               COUNT(DISTINCT d.unit_id) AS units
+        FROM defect d
+        JOIN item_template it ON it.id = d.item_template_id
+        JOIN category_template ct ON ct.id = it.category_id
+        JOIN area_template a ON a.id = ct.area_id
+        WHERE d.tenant_id = ? AND d.raised_cycle_number = 1
+        AND d.unit_id IN (
+            SELECT u.id FROM unit u
+            WHERE u.tenant_id = ? AND u.phase_id = ? AND u.unit_type = '4-Bed'
+            AND EXISTS (
+                SELECT 1 FROM inspection i
+                WHERE i.unit_id = u.id AND i.tenant_id = ?
+                AND i.cycle_number = 1 AND i.status = 'pending_followup'
+            )
+        )
+        GROUP BY it.id, it.item_description, ct.category_name, a.area_name
+        ORDER BY cnt DESC LIMIT 50
+    """, [tenant_id, tenant_id, phase_id, tenant_id])
+
+    # Top 3 comments per template (only for the templates returned in top_rows)
+    top50 = []
+    if top_rows:
+        tpl_ids = [r['tpl_id'] for r in top_rows]
+        ph = ','.join('?' * len(tpl_ids))
+        cmt_rows = query_db(
+            "SELECT d.item_template_id AS tid, "
+            "COALESCE(NULLIF(TRIM(d.original_comment), ''), '(blank)') AS cmt, "
+            "COUNT(*) AS cnt "
+            "FROM defect d "
+            "WHERE d.tenant_id = ? AND d.raised_cycle_number = 1 "
+            "AND d.item_template_id IN (" + ph + ") "
+            "AND d.unit_id IN ("
+            "  SELECT u.id FROM unit u "
+            "  WHERE u.tenant_id = ? AND u.phase_id = ? AND u.unit_type = '4-Bed' "
+            "  AND EXISTS ("
+            "    SELECT 1 FROM inspection i "
+            "    WHERE i.unit_id = u.id AND i.tenant_id = ? "
+            "    AND i.cycle_number = 1 AND i.status = 'pending_followup'"
+            "  )"
+            ") "
+            "GROUP BY d.item_template_id, cmt "
+            "ORDER BY d.item_template_id, cnt DESC",
+            [tenant_id] + tpl_ids + [tenant_id, phase_id, tenant_id]
+        )
+
+        cmt_by_tid = defaultdict(list)
+        for r in cmt_rows:
+            if len(cmt_by_tid[r['tid']]) < 3:
+                cmt_by_tid[r['tid']].append({'text': r['cmt'], 'cnt': r['cnt']})
+
+        for i, r in enumerate(top_rows):
+            top50.append({
+                'rank': i + 1,
+                'item': r['item'],
+                'area': r['area'],
+                'trade': r['trade'],
+                'count': r['cnt'],
+                'units': r['units'],
+                'comments': cmt_by_tid.get(r['tpl_id'], []),
+            })
+
+    # By-area aggregation (derived from top50, ordered by total logs DESC)
+    by_area_map = OrderedDict()
+    for row in top50:
+        area = row['area']
+        if area not in by_area_map:
+            by_area_map[area] = {'name': area, 'total_logs': 0, 'item_count': 0, 'items': []}
+        by_area_map[area]['total_logs'] += row['count']
+        by_area_map[area]['item_count'] += 1
+        by_area_map[area]['items'].append(row)
+    by_area = sorted(by_area_map.values(), key=lambda x: -x['total_logs'])
+
+    # By-trade aggregation (derived from top50, ordered by total logs DESC)
+    by_trade_map = OrderedDict()
+    for row in top50:
+        trade = row['trade']
+        if trade not in by_trade_map:
+            by_trade_map[trade] = {'name': trade, 'total_logs': 0, 'item_count': 0, 'items': []}
+        by_trade_map[trade]['total_logs'] += row['count']
+        by_trade_map[trade]['item_count'] += 1
+        by_trade_map[trade]['items'].append(row)
+    by_trade = sorted(by_trade_map.values(), key=lambda x: -x['total_logs'])
+
+    return {
+        'cohort_units': cohort_units,
+        'total_4bed_units': total_4bed_units,
+        'total_defects': total_defects,
+        'avg_per_unit': avg_per_unit,
+        'top50': top50,
+        'by_area': by_area,
+        'by_trade': by_trade,
+    }
+
+
+@analytics_bp.route('/top-50')
+@require_manager
+def top_50_view():
+    """C1 Defects Brief (Top 50 most-frequent defects) - HTML preview."""
+    import datetime, base64, os as _os
+    from flask import current_app
+    data = _build_top_50_data()
+    data['is_pdf'] = False
+    data['report_date'] = datetime.datetime.now().strftime('%d %B %Y')
+    data['report_date_short'] = datetime.datetime.now().strftime('%d %b %Y').upper()
+    logo_path = _os.path.join(current_app.static_folder, 'monograph_logo.jpg')
+    if _os.path.exists(logo_path):
+        with open(logo_path, 'rb') as f:
+            data['logo_b64'] = base64.b64encode(f.read()).decode()
+    else:
+        data['logo_b64'] = ''
+    return render_template('analytics/top_50.html', **data)
+
+
+@analytics_bp.route('/top-50/pdf')
+@require_manager
+def top_50_pdf():
+    """C1 Defects Brief (Top 50 most-frequent defects) - PDF download."""
+    from app.services.pdf_playwright import html_to_pdf
+    import datetime, base64, os as _os
+    from flask import current_app
+    data = _build_top_50_data()
+    data['is_pdf'] = True
+    data['report_date'] = datetime.datetime.now().strftime('%d %B %Y')
+    data['report_date_short'] = datetime.datetime.now().strftime('%d %b %Y').upper()
+    logo_path = _os.path.join(current_app.static_folder, 'monograph_logo.jpg')
+    if _os.path.exists(logo_path):
+        with open(logo_path, 'rb') as f:
+            data['logo_b64'] = base64.b64encode(f.read()).decode()
+    else:
+        data['logo_b64'] = ''
+    html_str = render_template('analytics/top_50.html', **data)
+    footer = (
+        '<div style="width: 100%; font-size: 8px; '
+        'font-family: \'DM Sans\', Helvetica, Arial, sans-serif; '
+        'padding: 0 16mm; display: flex; justify-content: space-between; color: #9A9A9A;">'
+        '<span>Confidential &mdash; Monograph Architects</span>'
+        '<span>Power Park Student Housing &ndash; Phase 3</span>'
+        '<span>Page <span class="pageNumber"></span> of <span class="totalPages"></span></span>'
+        '</div>'
+    )
+    pdf_bytes = html_to_pdf(html_str, footer_template=footer)
+    resp = make_response(pdf_bytes)
+    resp.headers['Content-Type'] = 'application/pdf'
+    today_iso = datetime.datetime.now().strftime('%Y-%m-%d')
+    resp.headers['Content-Disposition'] = 'attachment; filename=C1_Defects_Brief_{}.pdf'.format(today_iso)
+    return resp
+
+
 @analytics_bp.route('/pipeline/dashboard')
 @require_team_lead
 def pipeline_dashboard():
