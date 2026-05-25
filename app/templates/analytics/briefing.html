@@ -393,6 +393,9 @@ body {
             <a href="{{ url_for('analytics.site_meeting_brief_view') }}">Brief</a>
             <a href="{{ url_for('analytics.outstanding_items_view') }}">Outstanding</a>
         {% endif %}
+        {% if current_user.role in ['manager', 'admin'] %}
+            <a href="{{ url_for('analytics.top_50_view') }}">Top 50</a>
+        {% endif %}
         {% if current_user.role == 'team_lead' %}
             <a href="{{ url_for('certification.my_reviews') }}">Team Lead Reviews</a>
             <a href="{{ url_for('certification.my_inspections') }}">My Inspections</a>
