@@ -2009,6 +2009,7 @@ def _get_reset_target_inspectors(tenant_id):
         FROM inspector
         WHERE tenant_id = ?
           AND role IN ('inspector', 'team_lead', 'admin')
+          AND active = 1
         ORDER BY
             CASE role
                 WHEN 'team_lead' THEN 1
@@ -2154,6 +2155,7 @@ def reset_unit(batch_id):
             SELECT id, name, role FROM inspector
             WHERE id = ? AND tenant_id = ?
               AND role IN ('inspector', 'team_lead', 'admin')
+              AND active = 1
         """, [new_inspector_id, tenant_id], one=True)
         if not insp_row:
             return 'Invalid inspector.', 400
