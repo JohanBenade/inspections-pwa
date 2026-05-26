@@ -6695,7 +6695,7 @@ def _build_brief_latent(tenant_id, snap_str, prev_cutoff_str):
             n['area_display_name'] = area_display
             try:
                 created_dt = datetime.datetime.strptime(
-                    n['created_at'][:19], '%Y-%m-%d %H:%M:%S'
+                    n['created_at'][:19].replace('T', ' '), '%Y-%m-%d %H:%M:%S'
                 )
                 n['age_days'] = (snap_dt - created_dt).days
             except Exception:
