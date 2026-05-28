@@ -929,10 +929,19 @@ def update_item(inspection_id, item_id):
     )
     if not item:
         abort(404)
-    
-    # Lock: no edits after sign-off
+
+    # Lock: no edits after sign-off, except missed-items remediation in pending_followup.
+    # Items with no prior defects (excluded in C1 via exclusion list / floor_condition)
+    # can be marked freely so inspectors can clean up the residual gap from the
+    # pre-21-May display bug. Inspection.status does not change.
     if inspection['status'] in ('pending_followup', 'approved', 'certified'):
-        abort(403)
+        is_missed_item_remediation = (
+            inspection['status'] == 'pending_followup'
+            and item['status'] in ('pending', 'ok', 'not_to_standard', 'not_installed')
+            and not (item['has_prior_defects'] or 0)
+        )
+        if not is_missed_item_remediation:
+            abort(403)
 
     # Auto-resume if inspection is paused
     if inspection['status'] == 'paused':
@@ -1118,11 +1127,20 @@ def add_defect(inspection_id, item_id):
     #         return response
     #     return '', 204
 
-    # Lock: no edits after sign-off
+    # Lock: no edits after sign-off, except missed-items remediation in pending_followup.
+    # Items with no prior defects (excluded in C1) can have defects raised here, even
+    # after submit. is_submitted is extended below so the defect writes directly to
+    # the defect table (not the scratchpad, which has already been flushed).
     if inspection['status'] in ('pending_followup', 'approved', 'certified'):
-        abort(403)
+        is_missed_item_remediation = (
+            inspection['status'] == 'pending_followup'
+            and item['status'] in ('pending', 'ok', 'not_to_standard', 'not_installed')
+            and not (item['has_prior_defects'] or 0)
+        )
+        if not is_missed_item_remediation:
+            abort(403)
 
-    is_submitted = inspection['status'] in ('submitted', 'reviewed', 'approved')
+    is_submitted = inspection['status'] in ('submitted', 'reviewed', 'approved', 'pending_followup')
 
     if is_submitted:
         # Write directly to defect table (submitted inspections have no inspection_defect rows)
