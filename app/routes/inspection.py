@@ -2293,7 +2293,7 @@ def desnag_view(inspection_id):
         JOIN category_template ct ON it.category_id = ct.id
         JOIN area_template at2 ON ct.area_id = at2.id
         WHERE ii.inspection_id = ? AND ii.tenant_id = ?
-          AND ii.status = 'pending'
+          AND (ii.status = 'pending' OR ii.marked_at IS NOT NULL)
           AND COALESCE(ii.has_prior_defects, 0) = 0
         ORDER BY at2.area_order, ct.category_order
     """, [inspection_id, tenant_id])
