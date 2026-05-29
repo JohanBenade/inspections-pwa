@@ -2367,7 +2367,7 @@ def desnag_view(inspection_id):
         # inspection_defects_map — chips (in-progress)
         inspection_defects_map = {}
         inspection_item_ids = list({i['id'] for i in items_raw})
-        if inspection['status'] == 'in_progress' and inspection_item_ids:
+        if inspection['status'] in ('in_progress', 'paused') and inspection_item_ids:
             ph_i = ','.join('?' * len(inspection_item_ids))
             idef_raw = query_db(f"""
                 SELECT idf.id, idf.inspection_item_id, idf.description, idf.defect_type
@@ -2518,7 +2518,7 @@ def desnag_view(inspection_id):
 
     # Combined totals (defects + latents + newly-visible items). UI uses these for gates and progress.
     defect_count = len(bfwd_open) + len(bfwd_cleared)
-    defect_addressed = sum(1 for d in list(bfwd_open) + list(bfwd_cleared) if d['addressed_cycle_number'] == cycle_number)
+    defect_addressed = sum(1 for d in bfwd_cleared if d['addressed_cycle_number'] == cycle_number)
     defect_cleared = len(bfwd_cleared)
     defect_still_open = len(bfwd_open)  # v326a: all open priors (actioned + unactioned)
 
