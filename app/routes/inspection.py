@@ -2367,7 +2367,7 @@ def desnag_view(inspection_id):
         # inspection_defects_map — chips (in-progress)
         inspection_defects_map = {}
         inspection_item_ids = list({i['id'] for i in items_raw})
-        if inspection['status'] in ('in_progress', 'paused') and inspection_item_ids:
+        if inspection['status'] in ('in_progress', 'paused', 'submitted', 'reviewed', 'approved', 'pending_followup', 'certified') and inspection_item_ids:
             ph_i = ','.join('?' * len(inspection_item_ids))
             idef_raw = query_db(f"""
                 SELECT idf.id, idf.inspection_item_id, idf.description, idf.defect_type
