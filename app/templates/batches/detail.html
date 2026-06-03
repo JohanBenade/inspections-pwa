@@ -64,6 +64,7 @@
 </div>
 
 {% if units %}
+<div id="transfer-confirm-slot"></div>
 <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4 mb-4">
     <form method="POST" action="{{ url_for('batches.apply_exclusion_list_all', batch_id=batch.id) }}"
           class="flex items-center gap-3 flex-wrap"
@@ -121,8 +122,6 @@
     <p class="text-gray-400">No units in this batch.</p>
 </div>
 {% endif %}
-
-<div id="transfer-confirm-slot"></div>
 
 {% if removed_units %}
 <div class="mt-6 bg-gray-50 rounded-lg border border-gray-200 p-4">
