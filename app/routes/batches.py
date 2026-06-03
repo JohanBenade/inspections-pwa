@@ -522,12 +522,23 @@ def detail(batch_id):
     excl_lists = [dict(r) for r in excl_lists]
 
     refreshed_at = datetime.now().strftime('%H:%M:%S')
+
+    # Transfer-pending cohort count (units eligible to move to another batch).
+    # Cohort = active rows whose status is not yet submitted/reviewed/signed.
+    _tc_row = query_db(
+        "SELECT COUNT(*) AS cnt FROM batch_unit "
+        "WHERE batch_id = ? AND tenant_id = ? AND removed_at IS NULL "
+        "AND status IN ('pending', 'assigned', 'inspecting', 'paused')",
+        [batch_id, tenant_id], one=True)
+    transfer_cohort_count = _tc_row['cnt'] if _tc_row else 0
+
     return render_template('batches/detail.html',
                            batch=batch, units=units, inspectors=inspectors,
                            floor_labels=FLOOR_LABELS, cycle_ids=cycle_ids,
                            excl_lists=excl_lists,
                            removed_units=removed_units,
                            refreshed_at=refreshed_at,
+                           transfer_cohort_count=transfer_cohort_count,
                            total_checkpoints=total_checkpoints)
 
 
@@ -1166,6 +1177,129 @@ def assign_inspector(batch_id):
     resp.headers['HX-Refresh'] = 'true'
     return resp
 
+
+
+@batches_bp.route('/<batch_id>/transfer-confirm')
+@require_team_lead
+def transfer_confirm(batch_id):
+    """HTMX partial: inline confirmation strip for transferring all
+    not-yet-submitted units to another (open) batch."""
+    tenant_id = session['tenant_id']
+
+    batch = query_db(
+        "SELECT id, name FROM inspection_batch WHERE id = ? AND tenant_id = ?",
+        [batch_id, tenant_id], one=True)
+    if not batch:
+        abort(404)
+    batch = dict(batch)
+
+    cohort_count = query_db(
+        "SELECT COUNT(*) AS cnt FROM batch_unit "
+        "WHERE batch_id = ? AND tenant_id = ? AND removed_at IS NULL "
+        "AND status IN ('pending', 'assigned', 'inspecting', 'paused')",
+        [batch_id, tenant_id], one=True)['cnt']
+
+    # Valid targets: open batches other than this one.
+    targets_raw = query_db(
+        "SELECT id, name FROM inspection_batch "
+        "WHERE tenant_id = ? AND status = 'open' AND id != ? "
+        "ORDER BY created_at DESC",
+        [tenant_id, batch_id])
+    targets = [dict(r) for r in targets_raw]
+
+    return render_template('batches/_transfer_confirm.html',
+                           batch=batch, cohort_count=cohort_count,
+                           targets=targets)
+
+
+@batches_bp.route('/<batch_id>/transfer-pending', methods=['POST'])
+@require_team_lead
+def transfer_pending(batch_id):
+    """Move every not-yet-submitted unit (pending/assigned/inspecting/paused)
+    from this batch to a chosen open target batch, in one action.
+    Mechanism: soft-remove the source row (audit trail) + insert a fresh
+    target row copying unit_id, cycle_id, inspector_id, status,
+    exclusion_list_id. cycle_id is preserved (batch != cycle), so inspection
+    rows and cycle_unit_assignment follow automatically - NOT touched here."""
+    tenant_id = session['tenant_id']
+    db = get_db()
+    now = datetime.now(timezone.utc).isoformat()
+
+    target_batch_id = request.form.get('target_batch_id', '').strip()
+    if not target_batch_id:
+        flash('No target batch selected.', 'error')
+        return redirect(url_for('batches.detail', batch_id=batch_id))
+
+    if target_batch_id == batch_id:
+        flash('Source and target batch cannot be the same.', 'error')
+        return redirect(url_for('batches.detail', batch_id=batch_id))
+
+    # Validate target is a real, open batch in this tenant.
+    target = query_db(
+        "SELECT id, name, status FROM inspection_batch "
+        "WHERE id = ? AND tenant_id = ?",
+        [target_batch_id, tenant_id], one=True)
+    if not target:
+        abort(404)
+    target = dict(target)
+    if target['status'] != 'open':
+        flash('Target batch is not open.', 'error')
+        return redirect(url_for('batches.detail', batch_id=batch_id))
+
+    reason = 'Transferred to {}'.format(target['name'])
+
+    # Cohort: active, not-yet-submitted rows on the source.
+    cohort = query_db(
+        "SELECT id, unit_id, cycle_id, inspector_id, status, exclusion_list_id "
+        "FROM batch_unit "
+        "WHERE batch_id = ? AND tenant_id = ? AND removed_at IS NULL "
+        "AND status IN ('pending', 'assigned', 'inspecting', 'paused')",
+        [batch_id, tenant_id])
+    cohort = [dict(r) for r in cohort]
+
+    if not cohort:
+        flash('No transferable units in this batch.', 'error')
+        return redirect(url_for('batches.detail', batch_id=batch_id))
+
+    moved = 0
+    for bu in cohort:
+        # STEP 1 - soft-remove source row (preserve inspection/items/CUA).
+        db.execute(
+            "UPDATE batch_unit "
+            "SET status = 'removed', removed_at = ?, removed_by = ?, removed_reason = ? "
+            "WHERE id = ?",
+            [now, session['user_id'], reason, bu['id']])
+        # STEP 2 - insert fresh target row, copying carry-over fields.
+        db.execute(
+            "INSERT INTO batch_unit "
+            "(id, tenant_id, batch_id, unit_id, cycle_id, inspector_id, status, "
+            " created_at, exclusion_list_id) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            [generate_id(), tenant_id, target_batch_id, bu['unit_id'],
+             bu['cycle_id'], bu['inspector_id'], bu['status'], now,
+             bu['exclusion_list_id']])
+        moved += 1
+
+    # POST-VERIFY inside the transaction (before commit).
+    src_active = query_db(
+        "SELECT COUNT(*) AS cnt FROM batch_unit "
+        "WHERE batch_id = ? AND tenant_id = ? AND removed_at IS NULL "
+        "AND status IN ('pending', 'assigned', 'inspecting', 'paused')",
+        [batch_id, tenant_id], one=True)['cnt']
+    assert src_active == 0, \
+        'Transfer verify failed: source still has {} active cohort rows'.format(src_active)
+
+    log_audit(db, tenant_id, 'batch', batch_id, 'units_transferred',
+              new_value=target['name'],
+              user_id=session['user_id'], user_name=session['user_name'],
+              metadata='{{"target_batch_id": "{}", "moved": {}}}'.format(
+                  target_batch_id, moved))
+
+    db.commit()
+
+    flash('Transferred {} unit{} to {}.'.format(
+        moved, '' if moved == 1 else 's', target['name']), 'success')
+    return redirect(url_for('batches.detail', batch_id=batch_id))
 
 
 @batches_bp.route('/<batch_id>/remove-confirm/<bu_id>')

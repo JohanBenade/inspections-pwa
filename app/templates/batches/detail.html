@@ -34,6 +34,15 @@
         <a href="{{ url_for('batches.edit_batch', batch_id=batch.id) }}" class="px-3 py-1.5 text-xs font-semibold rounded bg-blue-50 text-blue-600 border border-blue-200 hover:bg-blue-100">Edit</a>
         <a href="{{ url_for('batches.live_monitor', batch_id=batch.id) }}" class="px-3 py-1.5 text-xs font-semibold rounded bg-gray-800 text-amber-400 hover:bg-gray-700">Live Monitor</a>
         <a href="{{ url_for('approvals.defects_tracker', batch_id=batch.id) }}" class="px-3 py-1.5 text-xs font-semibold rounded bg-gray-800 text-emerald-400 hover:bg-gray-700">Defects Tracker</a>
+        {%- if transfer_cohort_count and transfer_cohort_count > 0 %}
+        <button type="button"
+                class="px-3 py-1.5 text-xs font-semibold rounded bg-amber-50 text-amber-700 border border-amber-200 hover:bg-amber-100"
+                hx-get="{{ url_for('batches.transfer_confirm', batch_id=batch.id) }}"
+                hx-target="#transfer-confirm-slot"
+                hx-swap="innerHTML">
+            Transfer Pending ({{ transfer_cohort_count }})
+        </button>
+        {%- endif %}
         {%- if s == 'open' %}
         <span class="px-2.5 py-1 text-xs font-semibold rounded-full bg-gray-100 text-gray-600">Open</span>
         {%- elif s == 'in_progress' %}
@@ -112,6 +121,8 @@
     <p class="text-gray-400">No units in this batch.</p>
 </div>
 {% endif %}
+
+<div id="transfer-confirm-slot"></div>
 
 {% if removed_units %}
 <div class="mt-6 bg-gray-50 rounded-lg border border-gray-200 p-4">

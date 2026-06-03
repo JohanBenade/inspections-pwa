@@ -1,0 +1,49 @@
+<div class="mt-4 bg-amber-50 border border-amber-200 rounded-lg p-4">
+    <form method="POST" action="{{ url_for('batches.transfer_pending', batch_id=batch.id) }}">
+
+        <div class="mb-3 pb-3 border-b border-amber-200">
+            <h3 class="text-base font-semibold text-amber-900 mb-1">
+                Transfer {{ cohort_count }} unit{{ 's' if cohort_count != 1 else '' }} to another batch?
+            </h3>
+            <p class="text-sm text-gray-600">
+                All not-yet-submitted units (pending, assigned, inspecting, paused) move in one action.
+                Submitted, reviewed and signed units stay in this batch. Captured work, inspections
+                and cycle assignments move with each unit.
+            </p>
+        </div>
+
+        {% if not targets %}
+        <div class="mb-3 p-3 bg-blue-50 border border-blue-200 rounded text-sm text-blue-800">
+            <strong>No open target batch available.</strong>
+            Create the destination batch first (it must be status <em>Open</em>), then try again.
+        </div>
+        {% else %}
+        <div class="mb-4">
+            <label class="block text-xs font-semibold uppercase tracking-wide text-gray-500 mb-2">
+                Move to batch
+            </label>
+            <select name="target_batch_id" required
+                    class="text-sm border border-gray-300 rounded px-3 py-2 w-full md:w-96">
+                <option value="">-- Select target batch --</option>
+                {% for t in targets %}
+                <option value="{{ t.id }}">{{ t.name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        {% endif %}
+
+        <div class="flex items-center gap-3">
+            {% if targets %}
+            <button type="submit"
+                    class="px-4 py-2 rounded text-white text-sm font-semibold bg-amber-600 hover:bg-amber-700">
+                Transfer {{ cohort_count }} unit{{ 's' if cohort_count != 1 else '' }}
+            </button>
+            {% endif %}
+            <button type="button"
+                    class="px-3 py-2 text-sm text-gray-600 hover:text-gray-900 border border-gray-300 rounded"
+                    onclick="document.getElementById('transfer-confirm-slot').innerHTML='';">
+                Cancel
+            </button>
+        </div>
+    </form>
+</div>
