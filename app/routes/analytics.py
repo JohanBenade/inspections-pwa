@@ -39,7 +39,13 @@ BATCH_LABEL_SQL = ("(ic.block || ' ' || CASE ic.floor "
 # ============================================================
 
 ITEMS_PER_UNIT = 509
-PROJECT_TOTAL_UNITS = 191
+def get_project_total_units(tenant_id):
+    """Live count of real 4-bed units (excludes TEST units). Single source of truth."""
+    row = query_db(
+        "SELECT COUNT(DISTINCT u.id) AS n FROM unit_real u "
+        "WHERE u.tenant_id = ? AND u.unit_number NOT LIKE 'TEST%'",
+        [tenant_id], one=True)
+    return row['n'] if row else 0
 CARD_COLOURS = ['#C8963E', '#3D6B8E', '#4A7C59', '#C44D3F', '#7B6B8D', '#5A8A7A', '#B07D4B']
 
 
@@ -199,11 +205,11 @@ def dashboard():
     units_inspected = inspected_raw['inspected'] if inspected_raw else 0
     items_inspected = ITEMS_PER_UNIT * units_inspected
     project['units_inspected'] = units_inspected
-    project['pct_complete'] = round(units_inspected / PROJECT_TOTAL_UNITS * 100) if PROJECT_TOTAL_UNITS > 0 else 0
+    project['pct_complete'] = round(units_inspected / get_project_total_units(tenant_id) * 100) if get_project_total_units(tenant_id) > 0 else 0
     project['avg_defects_inspected'] = round(total_defects_project / units_inspected, 1) if units_inspected > 0 else 0
     project['defect_rate_inspected'] = round(total_defects_project / items_inspected * 100, 1) if items_inspected > 0 else 0
     project['items_inspected'] = items_inspected
-    project['project_total'] = PROJECT_TOTAL_UNITS
+    project['project_total'] = get_project_total_units(tenant_id)
 
     # 7c. Completion forecast
     from datetime import date, timedelta
@@ -226,7 +232,7 @@ def dashboard():
         done = forecast_raw['done']
         elapsed = (last - first).days or 1
         rate = done / elapsed
-        remaining = PROJECT_TOTAL_UNITS - done
+        remaining = get_project_total_units(tenant_id) - done
         days_left = round(remaining / rate) if rate > 0 else None
         est_date = last + timedelta(days=days_left) if days_left else None
         forecast = {
@@ -3144,8 +3150,8 @@ def _build_unified_report_data():
     project = {
         'total_units': total_units_project,
         'units_inspected': units_inspected,
-        'project_total': PROJECT_TOTAL_UNITS,
-        'pct_complete': round(units_inspected / PROJECT_TOTAL_UNITS * 100) if PROJECT_TOTAL_UNITS > 0 else 0,
+        'project_total': get_project_total_units(tenant_id),
+        'pct_complete': round(units_inspected / get_project_total_units(tenant_id) * 100) if get_project_total_units(tenant_id) > 0 else 0,
         'open_defects': total_defects_project,
         'avg_defects': round(total_defects_project / units_inspected, 1) if units_inspected > 0 else 0,
         'defect_rate': round(total_defects_project / items_inspected_total * 100, 1) if items_inspected_total > 0 else 0,
@@ -3492,7 +3498,7 @@ def _build_unified_report_data():
         _done = _fc_raw['done']
         _elapsed = (_last - _first).days or 1
         _rate = _done / _elapsed
-        _remaining = PROJECT_TOTAL_UNITS - _done
+        _remaining = get_project_total_units(tenant_id) - _done
         _days_left = round(_remaining / _rate) if _rate > 0 else None
         _est = _last + timedelta(days=_days_left) if _days_left else None
         forecast = {
