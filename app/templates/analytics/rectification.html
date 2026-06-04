@@ -75,12 +75,12 @@
             <div style="background: #FAFAF8; border-radius: 6px; padding: 0.75rem; text-align: center; border-left: 3px solid #B4B2A9;">
                 <div class="kpi-label" style="margin-top: 0; color: #B4B2A9;">Not started</div>
                 <div class="kpi-value" style="font-size: 1.5rem; color: #1A1A1A;">{{ pp_not_started }}</div>
-                <div class="kpi-sub">of 191 ({{ (pp_not_started / 191 * 100)|round|int }}%)</div>
+                <div class="kpi-sub">of {{ project_total }} ({{ (pp_not_started / project_total * 100)|round|int }}%)</div>
             </div>
             <div style="background: #FAFAF8; border-radius: 6px; padding: 0.75rem; text-align: center; border-left: 3px solid #3D6B8E;">
                 <div class="kpi-label" style="margin-top: 0; color: #3D6B8E;">Awaiting rectification</div>
                 <div class="kpi-value" style="font-size: 1.5rem; color: #3D6B8E;">{{ pp_awaiting }}</div>
-                <div class="kpi-sub">of {{ 191 - pp_not_started }} inspected</div>
+                <div class="kpi-sub">of {{ project_total - pp_not_started }} inspected</div>
             </div>
             <div style="background: #FAFAF8; border-radius: 6px; padding: 0.75rem; text-align: center; border-left: 3px solid #C8963E;">
                 <div class="kpi-label" style="margin-top: 0; color: #C8963E;">In rectification</div>
@@ -98,7 +98,7 @@
             <div style="background: #FAFAF8; border-radius: 6px; padding: 0.75rem; text-align: center; border-left: 3px solid #4A7C59;">
                 <div class="kpi-label" style="margin-top: 0; color: #4A7C59;">Certified</div>
                 <div class="kpi-value" style="font-size: 1.5rem; color: #4A7C59;">{{ pp_certified }}</div>
-                <div class="kpi-sub">of 191 ({{ (pp_certified / 191 * 100)|round|int }}%)</div>
+                <div class="kpi-sub">of {{ project_total }} ({{ (pp_certified / project_total * 100)|round|int }}%)</div>
             </div>
         </div>
 
@@ -198,7 +198,7 @@
                             },
                             footer: function(items) {
                                 var total = items.reduce(function(s, i) { return s + i.raw; }, 0);
-                                return 'Total: ' + total + ' / 191';
+                                return 'Total: ' + total + ' / {{ project_total }}';
                             }
                         }
                     }
@@ -218,7 +218,7 @@
                     y: {
                         stacked: true,
                         beginAtZero: true,
-                        max: 191,
+                        max: {{ project_total }},
                         grid: { color: 'rgba(200,200,200,0.15)' },
                         border: { display: false },
                         ticks: {

@@ -2069,6 +2069,7 @@ def _build_rectification_data():
     }
 
     return dict(has_data=True,
+                project_total=get_project_total_units(tenant_id),
                 kpis=kpis,
                 zones=zones,
                 zone_grid=zone_grid,
@@ -6489,6 +6490,7 @@ def _build_pipeline_report_data(live=False):
     stuck_units.sort(key=lambda x: -x['open'])
 
     return {
+        'project_total': get_project_total_units(tenant_id),
         'units_inspected': units_inspected,
         'metrics': metrics,
         'movements': movements,
