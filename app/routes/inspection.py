@@ -165,8 +165,17 @@ def start_inspection(unit_id):
     for t in templates:
         template_id = t['id']
         
-        # Scenario 6: Current exclusion wins over everything
-        if template_id in current_exclusions:
+        # Scenario 6: Current exclusion wins over everything -- EXCEPT a
+        # follow-up-cycle item that was pending (never inspected) in the prior
+        # cycle. Those leaked into cycle_excluded_item via propagation; honoring
+        # the skip here would short-circuit the carry-forward-as-pending rule
+        # below and silently hide a never-inspected item. (v353 Option 1)
+        _prev_for_skip = prev_item_map.get(template_id)
+        if template_id in current_exclusions and not (
+            cycle['cycle_number'] > 1
+            and _prev_for_skip
+            and _prev_for_skip['status'] == 'pending'
+        ):
             status = 'skipped'
             comment = None
         # Floor-based auto-exclusion (e.g. burglar bars ground_only)
