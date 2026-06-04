@@ -124,7 +124,7 @@ def start_inspection(unit_id):
     unit_floor_val = unit_floor['floor'] if unit_floor else 0
     
     # Get current exclusions from exclusion_list (batch_unit is source of truth)
-    current_exclusions = set()
+    current_exclusions = {}  # {template_id: reason} (v354)
     insp_row = query_db(
         "SELECT exclusion_list_id FROM inspection WHERE id = ?", [inspection_id], one=True)
     excl_list_id = insp_row['exclusion_list_id'] if insp_row else None
@@ -140,17 +140,19 @@ def start_inspection(unit_id):
             db.execute("UPDATE inspection SET exclusion_list_id = ? WHERE id = ?",
                        [excl_list_id, inspection_id])
     if excl_list_id:
+        # exclusion-list path: a real curated list -- reason is N/A, set None
         excluded_rows = query_db("""
-            SELECT item_template_id FROM exclusion_list_item
+            SELECT item_template_id, NULL AS reason FROM exclusion_list_item
             WHERE exclusion_list_id = ?
         """, [excl_list_id])
     else:
         excluded_rows = query_db("""
-            SELECT item_template_id FROM cycle_excluded_item
+            SELECT item_template_id, reason FROM cycle_excluded_item
             WHERE cycle_id = ? AND tenant_id = ?
         """, [cycle_id, tenant_id])
     if excluded_rows:
-        current_exclusions = set(r['item_template_id'] for r in excluded_rows)
+        # {template_id: reason}; membership checks below work on dict keys (v354)
+        current_exclusions = {r['item_template_id']: r['reason'] for r in excluded_rows}
     
     # If followup cycle, carry forward statuses from previous inspection
     prev_item_map = {}
@@ -171,11 +173,23 @@ def start_inspection(unit_id):
         # the skip here would short-circuit the carry-forward-as-pending rule
         # below and silently hide a never-inspected item. (v353 Option 1)
         _prev_for_skip = prev_item_map.get(template_id)
+        # v354: also fall through (do NOT skip) when this is a follow-up
+        # cycle, the item was 'skipped' in the prior cycle, AND its
+        # cycle_excluded_item.reason is NULL (a propagated junk-exclusion,
+        # not a real one). Gated to the cycle_excluded_item path
+        # (excl_list_id IS NULL) so curated exclusion-list skips are kept.
+        _null_reason_born_skip = (
+            not excl_list_id
+            and cycle['cycle_number'] > 1
+            and _prev_for_skip
+            and _prev_for_skip['status'] == 'skipped'
+            and current_exclusions.get(template_id) is None
+        )
         if template_id in current_exclusions and not (
             cycle['cycle_number'] > 1
             and _prev_for_skip
             and _prev_for_skip['status'] == 'pending'
-        ):
+        ) and not _null_reason_born_skip:
             status = 'skipped'
             comment = None
         # Floor-based auto-exclusion (e.g. burglar bars ground_only)
