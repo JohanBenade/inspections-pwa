@@ -1866,7 +1866,7 @@ def _build_live_monitor_data(batch_id, tenant_id):
         u['total_marked'] = sum(a['marked'] for a in u['areas'])
         u['total_items'] = sum(a['total'] for a in u['areas'])
         u['total_defects'] = sum(a['defects'] for a in u['areas'])
-        u['bfwd_defects'] = bfwd_map.get(u['unit_id'], 0)
+        u['bfwd_defects'] = bfwd_action_map.get(u['unit_id'], 0)
         u['cleared_defects'] = cleared_map.get(u['unit_id'], 0)
         u['new_defects'] = new_map.get(u['unit_id'], 0)
         u['open_defects'] = open_now_map.get(u['unit_id'], 0)
@@ -1897,7 +1897,7 @@ def _build_live_monitor_data(batch_id, tenant_id):
                     'defects': open_now_area_map.get((uid, aname), 0),
                     'pct': round(area_marked / area_total * 100) if area_total else 0,
                     'duration': item_a.get('duration'),
-                    'bfwd': bfwd_area_map.get((uid, aname), 0),
+                    'bfwd': bfwd_action_area_map.get((uid, aname), 0),
                     'cleared': cleared_area_map.get((uid, aname), 0),
                     'new': new_area_map.get((uid, aname), 0),
                     'open_now': open_now_area_map.get((uid, aname), 0),
