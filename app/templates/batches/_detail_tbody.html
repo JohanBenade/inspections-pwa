@@ -46,7 +46,7 @@
         {% elif u.bu_status in ('submitted', 'reviewed', 'pending_followup', 'approved') %}
             {% if cn > 1 %}
             <span class="text-xs whitespace-nowrap">
-                <span class="font-medium {% if u.defect_bfwd and u.defect_cleared >= u.defect_bfwd %}text-green-600{% endif %}">{{ u.defect_cleared }}</span> of {{ u.defect_bfwd }} B/fwd cleared
+                <span class="font-medium {% if u.defect_bfwd_action and u.defect_cleared >= u.defect_bfwd_action %}text-green-600{% endif %}">{{ u.defect_cleared }}</span> of {{ u.defect_bfwd_action }} B/fwd cleared
                 {% if u.defect_open %} &middot; <span class="text-red-600 font-medium">{{ u.defect_open }} open</span>{% endif %}
             </span>
             {% else %}
