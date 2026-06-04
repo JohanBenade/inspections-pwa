@@ -18,7 +18,7 @@ Run DRY first. Review. Only then flip DRY=False.
 import sqlite3
 
 DB = "/var/data/inspections.db"
-DRY = True                      # <<< flip to False for the live run
+DRY = False                      # <<< flip to False for the live run
 
 EXPECT_ITEMS = 2071
 EXPECT_UNITS = 62
