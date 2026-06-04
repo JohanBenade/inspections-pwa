@@ -20,7 +20,7 @@ RUN ON: RENDER
 """
 import sqlite3, datetime
 
-DRY = True   # <<< flip to False ONLY after Johan reviews the DRY output
+DRY = False   # <<< flip to False ONLY after Johan reviews the DRY output
 
 DB = "/var/data/inspections.db"
 BATCH = "5bc63a1e"
