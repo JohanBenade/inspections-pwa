@@ -176,8 +176,9 @@ def start_inspection(unit_id):
         elif cycle['cycle_number'] > 1 and prev_item_map:
             prev = prev_item_map.get(template_id)
             if not prev or prev['status'] == 'pending':
-                # No previous data or import bug (never marked) - treat as ok
-                status = 'ok'
+                # No previous data or never inspected - carry as pending so
+                # the item stays visible and gets inspected this cycle
+                status = 'pending'
                 comment = None
             elif prev['status'] == 'ok':
                 # Scenario 1: Passed in previous cycle, no action needed
