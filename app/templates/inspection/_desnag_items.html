@@ -16,7 +16,6 @@
     </div>
     <div class="divide-y">
         {% for item in cat.checklist %}
-        <!-- GATE id={{ item.id|default('NOITEM') }} status={{ item.status|default('NOSTATUS') }} cc={{ item.child_count|default('NOCC') }} carried={{ item.is_carried_ok|default('NOVAR') }} chdef={{ item.children_have_defects|default('NOVAR') }} openprior={{ item.has_open_prior|default('NOVAR') }} hpd={{ item.has_prior_defects|default('NOVAR') }} -->
         {# Parent header: parent renders in defects section above; show its name here so children below have context #}
         {% if item.has_open_prior|default(false) and item.children_have_defects|default(false) %}
         <div class="px-4 py-3 bg-amber-50 border-l-4 border-amber-300">
