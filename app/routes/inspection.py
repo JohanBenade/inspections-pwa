@@ -2851,6 +2851,8 @@ def desnag_submit(inspection_id):
         SELECT COUNT(*) as cnt FROM inspection_item
         WHERE inspection_id = ? AND tenant_id = ? AND status = 'pending'
         AND COALESCE(has_prior_defects, 0) = 0
+        AND NOT EXISTS (SELECT 1 FROM item_template ch
+                        WHERE ch.parent_item_id = inspection_item.item_template_id)
     """, [inspection_id, tenant_id], one=True)['cnt']
 
     if unaddressed_defects + unaddressed_latents + unaddressed_items > 0:
@@ -2951,6 +2953,8 @@ def _desnag_area_progress(unit_id, tenant_id, cycle_number, area_name):
           AND ii.status != 'skipped'
           AND (ii.status = 'pending' OR ii.marked_at IS NOT NULL)
           AND COALESCE(ii.has_prior_defects, 0) = 0
+          AND NOT EXISTS (SELECT 1 FROM item_template ch
+                          WHERE ch.parent_item_id = it.id)
           AND at2.area_name = ?
     """, [unit_id, tenant_id, cycle_number, area_name], one=True)
     return {
