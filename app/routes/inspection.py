@@ -2902,6 +2902,8 @@ def _desnag_progress(unit_id, tenant_id, cycle_number):
           AND ii.status != 'skipped'
           AND (ii.status = 'pending' OR ii.marked_at IS NOT NULL)
           AND COALESCE(ii.has_prior_defects, 0) = 0
+          AND NOT EXISTS (SELECT 1 FROM item_template ch
+                          WHERE ch.parent_item_id = ii.item_template_id)
     """, [unit_id, tenant_id, cycle_number], one=True)
     return {
         'total': (d_row['total'] or 0) + (l_row['total'] or 0) + (i_row['total'] or 0),
