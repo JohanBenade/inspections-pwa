@@ -17,12 +17,12 @@
     <div class="divide-y">
         {% for item in cat.checklist %}
         {# Parent header: parent renders in defects section above; show its name here so children below have context #}
-        {% if (item.parent_item_id is none) and item.is_context_parent|default(false) %}
+        {% if item.has_open_prior|default(false) and item.children_have_defects|default(false) %}
         <div class="px-4 py-3 bg-amber-50 border-l-4 border-amber-300">
             <span class="text-sm font-semibold text-gray-800">{{ item.item_description }}</span>
         </div>
         {% endif %}
-        {% if item.status == 'pending' or item.has_open_prior|default(false) or ((item.parent_item_id is none) and item.is_context_parent|default(false)) %}
+        {% if item.status != 'skipped' and (not item.is_carried_ok|default(false) or item.children_have_defects|default(false)) and not item.has_open_prior|default(false) and not (item.status == 'pending' and item.has_open_prior|default(false)) %}
         <div id="item-{{ item.id }}"{% if item.parent_item_id %} data-parent-id="{{ item.parent_item_id }}"{% endif %}{% if item.parent_item_id and item.parent_status in [none, "pending"] and not is_followup %} style="display:none"{% endif %}>
         {% set hide_prior_chips = true %}
         {% include 'inspection/_single_item.html' %}

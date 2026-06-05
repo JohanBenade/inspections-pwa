@@ -2426,18 +2426,6 @@ def desnag_view(inspection_id):
                 if i['status'] == 'pending' and i['parent_item_id']:
                     parent_has_pending_child.add(i['parent_item_id'])
 
-            # Context-parent detection: a parent must render as a header when it
-            # has a child that still needs action -- pending OR open-prior -- so the
-            # child is not orphaned. (Verified: open-prior children were the miss.)
-            parent_has_open_prior_child = set()
-            for i in cat_items:
-                if i['parent_item_id'] and any(
-                    d['status'] == 'open'
-                    for d in prior_defects_map.get(i['template_id'], [])
-                ):
-                    parent_has_open_prior_child.add(i['parent_item_id'])
-            parent_is_context = parent_has_pending_child | parent_has_open_prior_child
-
             # v323: per-parent has_open_prior so newly-visible children whose
             # parent is suppressed from the items section still render unhidden.
             parent_has_open_prior_map = {
@@ -2480,7 +2468,6 @@ def desnag_view(inspection_id):
                     'current_defects': current_list,
                     'has_current_defects': len(current_list) > 0,
                     'children_have_defects': (i['template_id'] in parent_has_pending_child) if is_parent else False,
-                    'is_context_parent': (i['template_id'] in parent_is_context) if is_parent else False,
                     'parent_has_open_prior': parent_has_open_prior_map.get(i['parent_item_id'], False) if is_child else False,
                     'parent_has_prior_defects': parent_has_prior_defects_map.get(i['parent_item_id'], False) if is_child else False,
                     'inspection_defects': inspection_defects_map.get(i['id'], []),
