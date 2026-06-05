@@ -1040,7 +1040,7 @@ def update_item(inspection_id, item_id):
         # Auto-clear prior NI defects when NI item marked as Installed
         clear_ni = request.form.get('clear_ni_defects')
         if clear_ni and status == 'ok':
-            if inspection.get('cycle_id') and inspection.get('cycle_number'):
+            if inspection['cycle_id'] and inspection['cycle_number']:
                 db.execute("""
                     UPDATE defect SET status = 'cleared', cleared_cycle_id = ?,
                            cleared_cycle_number = ?,
