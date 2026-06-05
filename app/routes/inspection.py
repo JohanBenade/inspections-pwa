@@ -2564,30 +2564,6 @@ def desnag_view(inspection_id):
 
     floor_label = FLOOR_LABELS.get(inspection['floor'], f"Floor {inspection['floor']}")
 
-    # ===== TEMP DBG_U132 — remove via git revert =====
-    try:
-        with open('/tmp/u132dump.txt', 'a') as _f:
-            _f.write("==== REQUEST inspection_id=%s cycle=%s HX=%s ====\n" % (
-                inspection_id, cycle_number, request.headers.get('HX-Request')))
-            for _an, _av in areas.items():
-                _ics = _av.get('item_categories', None)
-                if _ics is None:
-                    _f.write("  AREA %s : NO item_categories key\n" % _an)
-                    continue
-                _f.write("  AREA %s : %d item_categories\n" % (_an, len(_ics)))
-                for _ic in _ics:
-                    _f.write("    CAT %s : checklist len=%d : statuses=%s\n" % (
-                        _ic.get('name'), len(_ic.get('checklist', [])),
-                        [ (_r.get('status'), _r.get('parent_item_id') is None, _r.get('child_count'))
-                          for _r in _ic.get('checklist', []) ]))
-    except Exception as _e:
-        try:
-            with open('/tmp/u132dump.txt', 'a') as _f:
-                _f.write("  DUMP_ERROR %r\n" % _e)
-        except Exception:
-            pass
-    # ===== END TEMP DBG_U132 =====
-
     return render_template('inspection/desnag.html',
         inspection=inspection,
         inspection_id=inspection_id,
