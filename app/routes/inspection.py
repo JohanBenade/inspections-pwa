@@ -2488,27 +2488,6 @@ def desnag_view(inspection_id):
                 'checklist': checklist,
             })
 
-    # ===== TEMP DBG U132 (remove via dbg_u132_revert.py) =====
-    try:
-        import sys as _sys
-        _la = areas.get('LOUNGE', {})
-        print('DBG_U132 inspection_id=', inspection_id, 'is_followup=', is_followup, file=_sys.stderr, flush=True)
-        for _ic in _la.get('item_categories', []):
-            print('DBG_U132 CAT', _ic.get('name'), 'rows=', len(_ic.get('checklist', [])), file=_sys.stderr, flush=True)
-            for _it in _ic.get('checklist', []):
-                print('DBG_U132 ITEM', repr(_it.get('item_description')),
-                      'status=', _it.get('status'),
-                      'hpd=', _it.get('has_prior_defects'),
-                      'hop=', _it.get('has_open_prior'),
-                      'cok=', _it.get('is_carried_ok'),
-                      'chd=', _it.get('children_have_defects'),
-                      'parent=', _it.get('parent_item_id'),
-                      'pstatus=', _it.get('parent_status'),
-                      file=_sys.stderr, flush=True)
-    except Exception as _e:
-        print('DBG_U132 ERR', _e, file=_sys.stderr, flush=True)
-    # ===== END TEMP DBG U132 =====
-
     # Items count for grand totals (cohort = newly-visible at C2+, has_prior_defects=0)
     items_row = query_db("""
         SELECT
