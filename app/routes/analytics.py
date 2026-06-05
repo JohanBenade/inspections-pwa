@@ -7201,9 +7201,11 @@ def _build_top_50_data():
     cohort_units = cohort_row['n'] if cohort_row else 0
 
     # Total 4-Bed units in PH3 (denominator for "X of N")
+    # v355: exclude TEST units (e.g. TEST999) so denominator matches cohort table.
     total_row = query_db("""
         SELECT COUNT(*) AS n FROM unit u
         WHERE u.tenant_id = ? AND u.phase_id = ? AND u.unit_type = '4-Bed'
+        AND u.unit_number NOT LIKE 'TEST%'
     """, [tenant_id, phase_id], one=True)
     total_4bed_units = total_row['n'] if total_row else 0
 
