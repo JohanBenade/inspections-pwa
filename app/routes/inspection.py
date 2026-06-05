@@ -2492,7 +2492,7 @@ def desnag_view(inspection_id):
     try:
         import sys as _sys
         _la = areas.get('LOUNGE', {})
-        print('DBG_U132 inspection_id=', inspection_id, 'is_followup=', is_followup, file=_sys.stderr, flush=True)
+        print('DBG_U132 inspection_id=', inspection_id, file=_sys.stderr, flush=True)
         for _ic in _la.get('item_categories', []):
             print('DBG_U132 CAT', _ic.get('name'), 'rows=', len(_ic.get('checklist', [])), file=_sys.stderr, flush=True)
             for _it in _ic.get('checklist', []):
