@@ -469,6 +469,7 @@ def detail(batch_id):
                               AND marked_at IS NOT NULL THEN 1 ELSE 0 END) AS items_action_marked
             FROM inspection_item
             WHERE inspection_id IN ({ii_ph})
+              AND NOT EXISTS (SELECT 1 FROM item_template ch WHERE ch.parent_item_id = inspection_item.item_template_id)
             GROUP BY inspection_id
         """, inspection_ids)
         items_map = {r['inspection_id']: {'items_marked': r['items_marked'] or 0, 'items_action': r['items_action'] or 0, 'items_action_marked': r['items_action_marked'] or 0} for r in ii_rows}
@@ -704,6 +705,7 @@ def detail_data(batch_id):
                               AND marked_at IS NOT NULL THEN 1 ELSE 0 END) AS items_action_marked
             FROM inspection_item
             WHERE inspection_id IN ({ii_ph})
+              AND NOT EXISTS (SELECT 1 FROM item_template ch WHERE ch.parent_item_id = inspection_item.item_template_id)
             GROUP BY inspection_id
         """, inspection_ids)
         items_map = {r['inspection_id']: {'items_marked': r['items_marked'] or 0, 'items_action': r['items_action'] or 0, 'items_action_marked': r['items_action_marked'] or 0} for r in ii_rows}
