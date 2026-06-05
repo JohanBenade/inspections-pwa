@@ -50,6 +50,7 @@
 
 {% if not is_skipped %}
 <div class="px-3 pr-5 py-2.5 {% if is_child %}pl-8{% endif %} {% if parent_ni %}opacity-40{% endif %}">
+<!-- DBG_SI132 id={{ item.id }} desc="{{ item.item_description }}" status={{ item.status }} is_parent={{ is_parent }} is_child={{ is_child }} has_children={{ has_children }} depth={{ item.depth }} parent_item_id={{ item.parent_item_id }} child_count={{ item.child_count }} is_followup={{ is_followup }} is_carried_ok={{ item.is_carried_ok|default(false) }} -->
     <span class="item-meta" data-status="{{ item.status }}" data-defects="{{ (chips|length) + (currents|length) + (item.prior_defects|default([])|selectattr('status','equalto','open')|list|length) }}" style="display:none"></span>
 
     {# ---- ITEM NAME ---- #}
