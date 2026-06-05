@@ -2494,10 +2494,12 @@ def desnag_view(inspection_id):
           COUNT(*) AS total,
           SUM(CASE WHEN ii.status != 'pending' AND ii.marked_at IS NOT NULL THEN 1 ELSE 0 END) AS addressed
         FROM inspection_item ii
+        JOIN item_template it ON ii.item_template_id = it.id
         WHERE ii.inspection_id = ? AND ii.tenant_id = ?
           AND ii.status != 'skipped'
           AND (ii.status = 'pending' OR ii.marked_at IS NOT NULL)
           AND COALESCE(ii.has_prior_defects, 0) = 0
+          AND NOT EXISTS (SELECT 1 FROM item_template ch WHERE ch.parent_item_id = it.id)
     """, [inspection_id, tenant_id], one=True)
     items_count = items_row['total'] or 0
     items_addressed = items_row['addressed'] or 0
@@ -2515,6 +2517,7 @@ def desnag_view(inspection_id):
           AND ii.status != 'skipped'
           AND (ii.status = 'pending' OR ii.marked_at IS NOT NULL)
           AND COALESCE(ii.has_prior_defects, 0) = 0
+          AND NOT EXISTS (SELECT 1 FROM item_template ch WHERE ch.parent_item_id = it.id)
         GROUP BY at2.area_name
     """, [inspection_id, tenant_id])
     for ip in items_per_area:
