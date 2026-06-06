@@ -154,7 +154,8 @@ def dashboard():
                   WHERE ii.inspection_id = i.id
                     AND ii.status != 'skipped'
                     AND COALESCE(ii.has_prior_defects, 0) = 0
-                    AND (ii.status = 'pending' OR ii.marked_at IS NOT NULL))
+                    AND (ii.status = 'pending' OR ii.marked_at IS NOT NULL)
+                    AND NOT EXISTS (SELECT 1 FROM item_template ch WHERE ch.parent_item_id = ii.item_template_id))
                 + (SELECT COUNT(*) FROM latent_area_note lan
                    WHERE lan.unit_id = u.id
                      AND lan.tenant_id = i.tenant_id
@@ -169,7 +170,8 @@ def dashboard():
                   WHERE ii.inspection_id = i.id
                     AND ii.status NOT IN ('pending', 'skipped')
                     AND COALESCE(ii.has_prior_defects, 0) = 0
-                    AND ii.marked_at IS NOT NULL)
+                    AND ii.marked_at IS NOT NULL
+                    AND NOT EXISTS (SELECT 1 FROM item_template ch WHERE ch.parent_item_id = ii.item_template_id))
                 + (SELECT COUNT(*) FROM latent_area_note lan2
                    WHERE lan2.unit_id = u.id
                      AND lan2.tenant_id = i.tenant_id
@@ -218,7 +220,8 @@ def dashboard():
                   WHERE ii.inspection_id = latest.inspection_id
                     AND ii.status != 'skipped'
                     AND COALESCE(ii.has_prior_defects, 0) = 0
-                    AND (ii.status = 'pending' OR ii.marked_at IS NOT NULL))
+                    AND (ii.status = 'pending' OR ii.marked_at IS NOT NULL)
+                    AND NOT EXISTS (SELECT 1 FROM item_template ch WHERE ch.parent_item_id = ii.item_template_id))
                 + (SELECT COUNT(*) FROM latent_area_note lan
                    WHERE lan.unit_id = u.id
                      AND lan.tenant_id = u.tenant_id
@@ -233,7 +236,8 @@ def dashboard():
                   WHERE ii.inspection_id = latest.inspection_id
                     AND ii.status NOT IN ('pending', 'skipped')
                     AND COALESCE(ii.has_prior_defects, 0) = 0
-                    AND ii.marked_at IS NOT NULL)
+                    AND ii.marked_at IS NOT NULL
+                    AND NOT EXISTS (SELECT 1 FROM item_template ch WHERE ch.parent_item_id = ii.item_template_id))
                 + (SELECT COUNT(*) FROM latent_area_note lan2
                    WHERE lan2.unit_id = u.id
                      AND lan2.tenant_id = u.tenant_id
