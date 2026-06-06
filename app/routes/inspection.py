@@ -1345,9 +1345,17 @@ def reopen_prior_defect(inspection_id, defect_id):
 
     now = datetime.now(timezone.utc).isoformat()
 
+    # GUARD: only reopen a clearance made in the CURRENT cycle. A clearance
+    # from an earlier cycle (e.g. a C2 rectification opened during C3) is a
+    # legally-recorded result and must NOT be destroyed by a reopen. If the item
+    # genuinely failed again this cycle, that is a NEW defect via the NTS path.
+    if defect['status'] == 'cleared' and defect['cleared_cycle_number'] is not None \
+            and defect['cleared_cycle_number'] != inspection['cycle_number']:
+        abort(409, 'Cannot reopen a defect cleared in a prior cycle; raise a new defect instead.')
+
     # Reopen the defect
     db.execute("""
-        UPDATE defect SET status = 'open', cleared_cycle_id = NULL, cleared_cycle_number = NULL, cleared_at = NULL, updated_at = ?
+        UPDATE defect SET status = 'open', cleared_cycle_id = NULL, cleared_cycle_number = NULL, cleared_at = NULL, clearance_note = NULL, updated_at = ?
         WHERE id = ?
     """, [now, defect_id])
 
@@ -1675,7 +1683,7 @@ def submit_inspection(inspection_id):
             desc_raw = idef['description']
             if idx == 0 and existing:
                 if existing['status'] == 'cleared':
-                    db.execute("UPDATE defect SET status = 'open', cleared_cycle_id = NULL, cleared_cycle_number = NULL, cleared_at = NULL, updated_at = CURRENT_TIMESTAMP WHERE id = ?", [existing['id']])
+                    db.execute("UPDATE defect SET status = 'open', cleared_cycle_id = NULL, cleared_cycle_number = NULL, cleared_at = NULL, clearance_note = NULL, updated_at = CURRENT_TIMESTAMP WHERE id = ?", [existing['id']])
                 history_id = generate_id()
                 db.execute("INSERT INTO defect_history (id, tenant_id, defect_id, cycle_id, comment, status) VALUES (?, ?, ?, ?, ?, 'open')", [history_id, tenant_id, existing['id'], inspection['cycle_id'], desc_raw or 'Not rectified'])
             else:
@@ -2698,7 +2706,7 @@ def desnag_undo(inspection_id):
                     db, inspection_id, _ii['id'], _d['item_template_id'],
                     inspection['unit_id'], inspection['cycle_id'], tenant_id, now)
     elif defect['status'] == 'open' and defect['addressed_cycle_number'] == cycle_number:
-        db.execute("""UPDATE defect SET addressed_cycle_number=NULL, updated_at=?
+        db.execute("""UPDATE defect SET addressed_cycle_number=NULL, clearance_note=NULL, updated_at=?
             WHERE id=? AND tenant_id=?""", [now, defect_id, tenant_id])
     db.commit()
 
