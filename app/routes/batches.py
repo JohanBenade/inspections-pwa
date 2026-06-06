@@ -403,7 +403,11 @@ def detail(batch_id):
             if dr['addressed_cycle_number'] == d_cn:
                 d_map[d_uid]['defect_addressed'] += dr['cnt']
             # v314: b/fwd defect needing action this cycle (open OR cleared this cycle)
-            if d_rcn < d_cn and (dr['status'] == 'open' or d_ccn == d_cn):
+            # v371: only priors actionable THIS cycle -- exclude priors already
+            # addressed in an earlier cycle (acn < d_cn). acn IS NULL = never
+            # actioned (count); acn == d_cn = actioned now (count).
+            if (d_rcn < d_cn and (dr['status'] == 'open' or d_ccn == d_cn)
+                    and (dr['addressed_cycle_number'] is None or dr['addressed_cycle_number'] == d_cn)):
                 d_map[d_uid]['defect_bfwd_action'] += dr['cnt']
             # v314b: b/fwd defect addressed this cycle (any status, addressed_cycle_number matches)
             if d_rcn < d_cn and dr['addressed_cycle_number'] == d_cn:
@@ -642,7 +646,11 @@ def detail_data(batch_id):
             if dr['addressed_cycle_number'] == d_cn:
                 d_map[d_uid]['defect_addressed'] += dr['cnt']
             # v314: b/fwd defect needing action this cycle (open OR cleared this cycle)
-            if d_rcn < d_cn and (dr['status'] == 'open' or d_ccn == d_cn):
+            # v371: only priors actionable THIS cycle -- exclude priors already
+            # addressed in an earlier cycle (acn < d_cn). acn IS NULL = never
+            # actioned (count); acn == d_cn = actioned now (count).
+            if (d_rcn < d_cn and (dr['status'] == 'open' or d_ccn == d_cn)
+                    and (dr['addressed_cycle_number'] is None or dr['addressed_cycle_number'] == d_cn)):
                 d_map[d_uid]['defect_bfwd_action'] += dr['cnt']
             # v314b: b/fwd defect addressed this cycle (any status, addressed_cycle_number matches)
             if d_rcn < d_cn and dr['addressed_cycle_number'] == d_cn:

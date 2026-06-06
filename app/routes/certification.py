@@ -165,7 +165,9 @@ def dashboard():
                    WHERE d4.unit_id = u.id
                      AND d4.tenant_id = i.tenant_id
                      AND d4.raised_cycle_number < i.cycle_number
-                     AND (d4.status = 'open' OR d4.cleared_cycle_number = i.cycle_number))) AS total_items,
+                     AND (d4.status = 'open' OR d4.cleared_cycle_number = i.cycle_number)
+                     -- v371: only priors actionable THIS cycle (hide acn < current)
+                     AND (d4.addressed_cycle_number IS NULL OR d4.addressed_cycle_number = i.cycle_number))) AS total_items,
                 ((SELECT COUNT(*) FROM inspection_item ii
                   WHERE ii.inspection_id = i.id
                     AND ii.status NOT IN ('pending', 'skipped')
@@ -1000,7 +1002,9 @@ def my_inspections():
                    WHERE d4.unit_id = u.id
                      AND d4.tenant_id = i.tenant_id
                      AND d4.raised_cycle_number < i.cycle_number
-                     AND (d4.status = 'open' OR d4.cleared_cycle_number = i.cycle_number))) AS total_items,
+                     AND (d4.status = 'open' OR d4.cleared_cycle_number = i.cycle_number)
+                     -- v371: only priors actionable THIS cycle (hide acn < current)
+                     AND (d4.addressed_cycle_number IS NULL OR d4.addressed_cycle_number = i.cycle_number))) AS total_items,
                ((SELECT COUNT(*) FROM inspection_item ii
                  WHERE ii.inspection_id = i.id
                    AND ii.status NOT IN ('pending', 'skipped')

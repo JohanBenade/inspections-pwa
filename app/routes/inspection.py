@@ -2230,8 +2230,13 @@ def desnag_view(inspection_id):
         WHERE d.unit_id = ? AND d.tenant_id = ?
           AND d.status = 'open'
           AND d.raised_cycle_number < ?
+          -- v371: show only priors actionable THIS cycle. A prior already
+          -- addressed in an earlier cycle (acn < current) is finished business
+          -- and must not appear. acn IS NULL = never actioned (show);
+          -- acn = cycle_number = being actioned now (show).
+          AND (d.addressed_cycle_number IS NULL OR d.addressed_cycle_number = ?)
         ORDER BY at2.area_order, ct.category_order, it.item_order
-    """, [unit_id, tenant_id, cycle_number])
+    """, [unit_id, tenant_id, cycle_number, cycle_number])
 
     # Defects cleared THIS cycle (show as green)
     bfwd_cleared = query_db("""
