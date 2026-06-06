@@ -2546,9 +2546,9 @@ def desnag_view(inspection_id):
     # Combined totals (defects + latents + newly-visible items). UI uses these for gates and progress.
     defect_count = len(bfwd_open) + len(bfwd_cleared)
     defect_addressed = (
-        sum(1 for d in bfwd_cleared if d['addressed_cycle_number'] == cycle_number)
-        + sum(1 for d in bfwd_open if d['addressed_cycle_number'] == cycle_number)
-    )  # v343: actioned-but-still-open priors count as addressed (Johan ruling)
+        sum(1 for d in bfwd_cleared if d['addressed_cycle_number'] is not None)
+        + sum(1 for d in bfwd_open if d['addressed_cycle_number'] is not None)
+    )  # v370: a prior addressed in ANY cycle counts as addressed (Johan ruling: auto-carry)
     defect_cleared = len(bfwd_cleared)
     defect_still_open = len(bfwd_open)  # v326a: all open priors (actioned + unactioned)
 
