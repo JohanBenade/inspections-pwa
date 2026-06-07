@@ -178,8 +178,8 @@ body {
                 <div class="kpi-tile-meta">defects at first inspection</div>
             </div>
             <div class="kpi-tile" style="border-bottom: 4px solid #4A7C59;">
-                <div class="kpi-tile-label">Worst Defect</div>
-                <div class="kpi-tile-value">{% if project_top10 %}{{ project_top10[0].rate }}%{% else %}&mdash;{% endif %}</div>
+                <div class="kpi-tile-label">Most Widespread Defect</div>
+                <div class="kpi-tile-value">{% if project_top10 %}{{ project_top10[0].rate }}%<span class="kpi-tile-suffix"> of units</span>{% else %}&mdash;{% endif %}</div>
                 <div class="kpi-tile-meta">{% if project_top10 %}{{ project_top10[0].item }}{% else %}no data{% endif %}</div>
             </div>
         </div>
