@@ -905,7 +905,13 @@ def my_reviews():
                (SELECT COUNT(*) FROM latent_area_note lan
                 WHERE lan.unit_id = u.id
                 AND lan.tenant_id = i.tenant_id
-                AND lan.rectified_at_cycle_number IS NOT NULL) AS latent_rectified_count
+                AND lan.rectified_at_cycle_number IS NOT NULL) AS latent_rectified_count,
+               (SELECT COUNT(*) FROM inspection_item ii
+                WHERE ii.inspection_id = i.id
+                AND ii.status IN ('not_to_standard', 'not_installed')
+                AND COALESCE(ii.has_prior_defects, 0) = 0
+                AND NOT EXISTS (SELECT 1 FROM item_template ch
+                                WHERE ch.parent_item_id = ii.item_template_id)) AS new_defect_count
         FROM inspection i
         JOIN unit u ON i.unit_id = u.id
         LEFT JOIN batch_unit bu ON bu.unit_id = u.id AND bu.cycle_id = i.cycle_id AND bu.status != 'removed'
@@ -941,6 +947,7 @@ def my_reviews():
                 'zones': OrderedDict(),
                 'total_units': 0,
                 'total_defects': 0,
+                'total_new_defects': 0,
             }
 
         zone_key = (r['block'], r['floor'], r['cycle_id'])
@@ -957,13 +964,16 @@ def my_reviews():
                 'cycle_id': r['cycle_id'],
                 'units': [],
                 'total_defects': 0,
+                'total_new_defects': 0,
                 'reviewed_count': reviewed_counts.get(r['cycle_id'], 0),
             }
 
         batches[bid]['zones'][zone_key]['units'].append(r)
         batches[bid]['zones'][zone_key]['total_defects'] += r['defect_count']
+        batches[bid]['zones'][zone_key]['total_new_defects'] += r['new_defect_count']
         batches[bid]['total_units'] += 1
         batches[bid]['total_defects'] += r['defect_count']
+        batches[bid]['total_new_defects'] += r['new_defect_count']
 
     # Convert zones dict to list
     for bid in batches:
