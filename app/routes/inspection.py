@@ -2474,6 +2474,8 @@ def desnag_view(inspection_id):
                     'depth': 0 if is_parent else 1,
                     'child_count': i['child_count'],
                     'parent_status': parent_status,
+                    'parent_item_description': (parent_items[i['parent_item_id']]['item_description'] if is_child and i['parent_item_id'] in parent_items else None),
+                    'parent_header_shown': ((parent_has_open_prior_map.get(i['parent_item_id'], False) and i['parent_item_id'] in parent_has_pending_child) if is_child else False),
                     'prior_defects': prior_list,
                     'has_prior_defects': len(prior_list) > 0,
                     'has_open_prior': has_open_prior,
