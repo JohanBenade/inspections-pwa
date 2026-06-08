@@ -1236,6 +1236,11 @@ def remove_defect(inspection_id, item_id, defect_id):
         )
 
     db.execute("DELETE FROM inspection_defect WHERE id = ? AND inspection_item_id = ? AND tenant_id = ?", [defect_id, item_id, tenant_id])
+    # v397: self-heal -- if that was the last chip on an NTS item, reset to OK.
+    # Prevents stranding an item as not_to_standard with no description.
+    remaining = query_db("SELECT COUNT(*) AS cnt FROM inspection_defect WHERE inspection_item_id = ? AND tenant_id = ?", [item_id, tenant_id], one=True)["cnt"]
+    if remaining == 0:
+        db.execute("UPDATE inspection_item SET status = 'ok', marked_at = NULL WHERE id = ? AND status = 'not_to_standard'", [item_id])
     db.commit()
     if area_id:
         html = _render_single_item(inspection_id, item_id, tenant_id, area_id, force_expanded=True)
@@ -2870,7 +2875,15 @@ def desnag_submit(inspection_id):
                         WHERE ch.parent_item_id = inspection_item.item_template_id)
     """, [inspection_id, tenant_id], one=True)['cnt']
 
-    if unaddressed_defects + unaddressed_latents + unaddressed_items > 0:
+    # v397: enforce NTS -> must have a description. An NTS inspection_item with
+    # zero chips is a broken record; block submission until resolved.
+    nts_no_desc = query_db("""
+        SELECT COUNT(*) as cnt FROM inspection_item ii
+        WHERE ii.inspection_id = ? AND ii.tenant_id = ? AND ii.status = 'not_to_standard'
+        AND NOT EXISTS (SELECT 1 FROM inspection_defect idf WHERE idf.inspection_item_id = ii.id)
+    """, [inspection_id, tenant_id], one=True)['cnt']
+
+    if unaddressed_defects + unaddressed_latents + unaddressed_items + nts_no_desc > 0:
         abort(400)
 
     db = get_db()
