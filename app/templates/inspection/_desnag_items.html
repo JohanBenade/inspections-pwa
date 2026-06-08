@@ -24,7 +24,7 @@
         </div>
         {% endif %}
         {# v395: child-driven parent header -- ensures children never render flat without their parent name above them #}
-        {% if item.parent_item_description and not item.parent_header_shown|default(false) and item.parent_item_description != _ph.last %}
+        {% if item.parent_item_description and not item.parent_header_shown|default(false) and item.status != 'skipped' and not item.is_carried_ok|default(false) and not item.has_open_prior|default(false) and item.parent_item_description != _ph.last %}
         <div class="px-4 pt-3 pb-1">
             <span class="text-sm font-semibold text-gray-800">{{ item.parent_item_description }}</span>
         </div>
