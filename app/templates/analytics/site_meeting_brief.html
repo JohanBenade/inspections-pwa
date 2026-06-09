@@ -612,7 +612,7 @@ body {
                 <div style="font-size: 9px; font-weight: 600; color: #9A9A9A;">{{ cz.total_units }} units</div>
                 <div style="margin-top: 4px; font-size: 8px; color: #9A9A9A;">awaiting</div>
                 {% if cz.open_cnt and cz.open_cnt > 0 %}
-                <div style="margin-top: 4px; font-size: 8px; font-weight: 600; color: #9A8A85;">{{ '{:,}'.format(cz.open_cnt) }} open</div>
+                <div style="margin-top: 4px; font-size: 8px; font-weight: 600; color: #9A8A85;">{{ '{:,}'.format(cz.open_cnt) }} open defects</div>
                 {% endif %}
             </div>
             {% elif cz.cert_stage == 'partial' %}
