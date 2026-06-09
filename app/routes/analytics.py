@@ -7103,8 +7103,35 @@ def _build_brief_prev_desnag(tenant_id, cutoff_str):
         total_cleared += cleared
 
     unit_count = len(rows)
-    unit_rate = round(fully_cleared_count / unit_count * 100, 1) if unit_count > 0 else 0
+    # cohort defect-clear rate (drives Defect Fix Rate 'prev' caption - unchanged)
     overall_rate = round(total_cleared / total_bfwd * 100, 1) if total_bfwd > 0 else 0
+
+    # A1-b-i: prev PROJECT-certification rate, mirroring Section 01's
+    # functional definition (zero open rows over completed units) at cutoff.
+    prev_completed = query_db("""
+        SELECT i.unit_id, MAX(i.cycle_number) as max_cycle
+        FROM inspection i
+        JOIN unit_real u ON i.unit_id = u.id
+        WHERE i.tenant_id = ? AND i.review_submitted_at <= ?
+        AND i.status IN ('reviewed', 'approved', 'pending_followup')
+        GROUP BY i.unit_id
+    """, [tenant_id, cutoff_str])
+    prev_completed_ids = set(r['unit_id'] for r in prev_completed)
+    prev_units_inspected = len(prev_completed_ids)
+
+    prev_open = query_db("""
+        SELECT d.unit_id, COUNT(*) as cnt
+        FROM defect d
+        JOIN unit_real u ON d.unit_id = u.id
+        WHERE d.tenant_id = ? AND d.created_at <= ?
+        AND (d.status = 'open' OR (d.status = 'cleared' AND d.cleared_at > ?))
+        AND d.raised_cycle_id NOT LIKE 'test-%%'
+        AND EXISTS (SELECT 1 FROM inspection i2 WHERE i2.unit_id = d.unit_id AND i2.cycle_id = d.raised_cycle_id AND i2.status IN ('reviewed','approved','certified','pending_followup') AND i2.review_submitted_at <= ?)
+        GROUP BY d.unit_id
+    """, [tenant_id, cutoff_str, cutoff_str, cutoff_str])
+    prev_unit_open = {r['unit_id']: r['cnt'] for r in prev_open}
+    prev_handover_ready = sum(1 for uid in prev_completed_ids if prev_unit_open.get(uid, 0) == 0)
+    unit_rate = round(prev_handover_ready / prev_units_inspected * 100, 1) if prev_units_inspected > 0 else 0
 
     return {
         'prev_unit_clearance_rate': unit_rate,

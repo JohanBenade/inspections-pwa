@@ -504,10 +504,11 @@ body {
             De-snag cohort: <span style="font-weight: 600; color: #1A1A1A;">{{ desnag.count }}</span> of <span style="font-weight: 600; color: #1A1A1A;">{{ kpi.units_inspected }}</span> inspected units &middot; <span style="font-weight: 600; color: #1A1A1A;">{{ kpi.units_inspected - desnag.count }}</span> still at first inspection
         </div>
 
+        {% set proj_cert_rate = (kpi.handover_ready / kpi.units_inspected * 100)|round(1) if kpi.units_inspected > 0 else 0 %}
         <div class="rate-cards">
             <div class="rate-card">
                 <div class="label">Unit Certification</div>
-                <div class="value" style="color: {% if desnag.unit_clearance_rate >= 90 %}#4A7C59{% elif desnag.unit_clearance_rate >= 70 %}#C8963E{% else %}#C44D3F{% endif %};">{{ desnag.unit_clearance_rate }}%</div>
+                <div class="value" style="color: {% if proj_cert_rate >= 90 %}#4A7C59{% elif proj_cert_rate >= 70 %}#C8963E{% else %}#C44D3F{% endif %};">{{ proj_cert_rate }}%</div>
                 {% if prev_unit_clearance_rate is not none %}
                 <div class="prev">prev fortnight: {{ prev_unit_clearance_rate }}%</div>
                 {% endif %}
@@ -521,16 +522,16 @@ body {
             </div>
         </div>
 
-        {% set u_open = desnag.count - desnag.fully_cleared %}
-        {% set u_green_pct = (desnag.fully_cleared / desnag.count * 100)|round(1) if desnag.count > 0 else 0 %}
+        {% set u_open = kpi.units_inspected - kpi.handover_ready %}
+        {% set u_green_pct = (kpi.handover_ready / kpi.units_inspected * 100)|round(1) if kpi.units_inspected > 0 else 0 %}
         {% set d_bar_total = desnag.total_cleared + desnag.total_still_open %}
         {% set d_green_pct = (desnag.total_cleared / d_bar_total * 100)|round(1) if d_bar_total > 0 else 0 %}
 
         <div class="bar-row">
             <span class="bar-label">Units</span>
             <div class="bar-track">
-                {% if desnag.fully_cleared > 0 %}
-                <div class="bar-green" style="width: {{ u_green_pct }}%;">{{ desnag.fully_cleared }} certified</div>
+                {% if kpi.handover_ready > 0 %}
+                <div class="bar-green" style="width: {{ u_green_pct }}%;">{{ kpi.handover_ready }} certified</div>
                 {% endif %}
                 {% if u_open > 0 %}
                 <div class="bar-red" style="width: {{ 100 - u_green_pct }}%;"></div>
