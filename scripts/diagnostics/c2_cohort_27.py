@@ -171,7 +171,8 @@ def run_unit(unit_number):
     if not insp: return None
     try: floor = int(u['floor']) if u['floor'] is not None else 0
     except (ValueError, TypeError): floor = 0
-    return project(u['id'], insp['cycle_id'], insp['exclusion_list_id'], floor, insp['cycle_number'])
+    excl = insp['exclusion_list_id'] or '69ce0e91'  # intended-list fallback (link-copy gap)
+    return project(u['id'], insp['cycle_id'], excl, floor, insp['cycle_number'])
 
 print("=== ANCHOR VALIDATION ===")
 a146 = run_unit('146'); a046 = run_unit('046')
@@ -220,7 +221,8 @@ for uid in c2_ready:
         print(f"  !! {u['unit_number']}: no C2 inspection"); continue
     try: floor = int(u['floor']) if u['floor'] is not None else 0
     except (ValueError, TypeError): floor = 0
-    d, l, items = project(uid, insp['cycle_id'], insp['exclusion_list_id'], floor, insp['cycle_number'])
+    excl = insp['exclusion_list_id'] or '69ce0e91'  # intended-list fallback (link-copy gap)
+    d, l, items = project(uid, insp['cycle_id'], excl, floor, insp['cycle_number'])
     link = 'NULL' if not insp['exclusion_list_id'] else 'LIST'
     rows.append(dict(unit=u['unit_number'], block=u['block'] or '', floor=floor,
                      link=link, defects=d, latents=l, items=items, total=d + l + items))
