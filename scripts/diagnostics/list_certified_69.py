@@ -37,13 +37,14 @@ openr = c.execute("""
   GROUP BY d.unit_id""", [TID, snap, snap, snap]).fetchall()
 unit_open = {r['unit_id']: r['cnt'] for r in openr}
 
+cyc = {r['unit_id']: r['m'] for r in completed}
 ready = [uid for uid in inspected if unit_open.get(uid, 0) == 0]
 rows = []
 for uid in ready:
-    u = c.execute("SELECT block, floor, unit_number FROM unit WHERE id=?", [uid]).fetchone()
-    if u: rows.append((u['block'], u['floor'], u['unit_number']))
+    u = c.execute("SELECT block, floor, unit_number, certified_at FROM unit WHERE id=?", [uid]).fetchone()
+    if u: rows.append((u['block'], u['floor'], u['unit_number'], cyc.get(uid), u['certified_at']))
 rows.sort(key=lambda x: (str(x[0]), str(x[1]), str(x[2])))
 print('handover_ready count =', len(rows))
-print('BLOCK | FLOOR | UNIT')
-for b, f, n in rows:
-    print(f'{b} | {f} | {n}')
+print('BLOCK | FLOOR | UNIT | CYCLE | CERTIFIED_AT')
+for b, f, n, cy, ca in rows:
+    print(f'{b} | {f} | {n} | C{cy} | {ca if ca else "-"}')
