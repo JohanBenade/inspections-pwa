@@ -6090,11 +6090,15 @@ def _build_pipeline_report_data(live=False):
         parts.append('{:03d}'.format(start) if start == prev else '{:03d}-{:03d}'.format(start, prev))
         return ', '.join(parts)
 
-    for _cell in cert_zone_map.values():
+    for _key, _cell in cert_zone_map.items():
         _n = _cell['total_units']
         _x = _cell['certified_count']
         _cell['certified_pct'] = round(100 * _x / _n, 1) if _n > 0 else 0
         _cell['certified_units_display'] = _collapse_unit_ranges(_cell['certified_unit_numbers'])
+        # Section 04 enrichment #1: open-defect load (reuse zone_map, no new query)
+        _zm = zone_map.get(_key)
+        _cell['open_cnt'] = _zm['cnt'] if _zm else 0
+        _cell['clearance_pct_load'] = _zm['clearance_pct'] if _zm else 0
         if _x == 0:
             _cell['cert_stage'] = 'none'
         elif _x == _n:

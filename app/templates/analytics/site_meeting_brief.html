@@ -611,6 +611,9 @@ body {
             <div style="background: #ECEAE5; border: 1px solid #DCD7CB; border-radius: 5px; padding: 7px 5px; text-align: center; min-height: 80px; display: flex; flex-direction: column; align-items: center; justify-content: center;">
                 <div style="font-size: 9px; font-weight: 600; color: #9A9A9A;">{{ cz.total_units }} units</div>
                 <div style="margin-top: 4px; font-size: 8px; color: #9A9A9A;">awaiting</div>
+                {% if cz.open_cnt and cz.open_cnt > 0 %}
+                <div style="margin-top: 4px; font-size: 8px; font-weight: 600; color: #9A8A85;">{{ '{:,}'.format(cz.open_cnt) }} open</div>
+                {% endif %}
             </div>
             {% elif cz.cert_stage == 'partial' %}
             <div style="background: #FAEEDA; border: 1px solid #DCD7CB; border-radius: 5px; padding: 7px 5px; text-align: center; min-height: 80px;">
@@ -620,6 +623,9 @@ body {
                     <div style="width: {{ cz.certified_pct }}%; height: 100%; background: #5F8838;"></div>
                 </div>
                 <div style="margin-top: 5px; font-size: 8px; color: #1A1A1A; line-height: 1.3;">{{ cz.certified_units_display }}</div>
+                {% if cz.open_cnt and cz.open_cnt > 0 %}
+                <div style="margin-top: 4px; font-size: 8px; font-weight: 600; color: #9A8A85;">{{ '{:,}'.format(cz.open_cnt) }} open &middot; {{ cz.clearance_pct_load }}% cleared</div>
+                {% endif %}
             </div>
             {% elif cz.cert_stage == 'all' %}
             <div style="background: #E9EED7; border: 1px solid #DCD7CB; border-radius: 5px; padding: 7px 5px; text-align: center; min-height: 80px;">
@@ -629,6 +635,9 @@ body {
                     <div style="width: 100%; height: 100%; background: #5F8838;"></div>
                 </div>
                 <div style="margin-top: 5px; font-size: 8px; color: #5F8838; line-height: 1.3; font-weight: 600;">{{ cz.certified_units_display }}</div>
+                {% if cz.open_cnt and cz.open_cnt > 0 %}
+                <div style="margin-top: 4px; font-size: 8px; font-weight: 600; color: #9A8A85;">{{ '{:,}'.format(cz.open_cnt) }} open</div>
+                {% endif %}
             </div>
             {% endif %}
             {% endfor %}
