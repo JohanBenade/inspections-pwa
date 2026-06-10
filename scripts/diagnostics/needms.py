@@ -12,31 +12,37 @@ units=c.execute("SELECT unit_number un,id,block,floor FROM unit WHERE tenant_id=
 
 res=[]
 for u in units:
-    # highest cycle_number inspection for this unit
+    fl=u['floor']
     insp=c.execute("SELECT id,cycle_number,status FROM inspection WHERE unit_id=? ORDER BY cycle_number DESC, started_at DESC LIMIT 1",[u['id']]).fetchone()
+    # in-floor active template filter
+    fc = "('all','ground_only')" if fl==0 else "('all')"
+    # ok on active in-floor templates only (bounded)
+    okq="""SELECT COUNT(DISTINCT it.id) FROM inspection_item ii
+      JOIN item_template it ON it.id=ii.item_template_id
+      WHERE ii.inspection_id=? AND ii.status='ok' AND it.active=1
+      AND it.floor_condition IN %s"""%fc
+    ok=c.execute(okq,(insp['id'],)).fetchone()[0]
+    # status breakdown across active in-floor templates (for reconciliation)
     sb=defaultdict(int)
-    for r in c.execute("SELECT status,COUNT(*) n FROM inspection_item WHERE inspection_id=? GROUP BY status",[insp['id']]):
-        sb[r['status']]=r['n']
-    dn=denom(u['floor'])
-    ok=sb.get('ok',0)
-    need=dn-ok
-    res.append(dict(un=u['un'],block=u['block'],floor=u['floor'],cyc=insp['cycle_number'],
-        st=insp['status'],dn=dn,ok=ok,need=need,
-        pend=sb.get('pending',0),nts=sb.get('not_to_standard',0),
+    bq="""SELECT ii.status,COUNT(DISTINCT it.id) n FROM inspection_item ii
+      JOIN item_template it ON it.id=ii.item_template_id
+      WHERE ii.inspection_id=? AND it.active=1 AND it.floor_condition IN %s
+      GROUP BY ii.status"""%fc
+    for r in c.execute(bq,(insp['id'],)): sb[r['status']]=r['n']
+    dn=denom(fl); need=dn-ok
+    res.append(dict(un=u['un'],block=u['block'],floor=fl,cyc=insp['cycle_number'],st=insp['status'],
+        dn=dn,ok=ok,need=need,pend=sb.get('pending',0),nts=sb.get('not_to_standard',0),
         ninst=sb.get('not_installed',0),skip=sb.get('skipped',0)))
 
 res.sort(key=lambda x:(x['block'],x['floor'],x['un']))
-print('UNIT BLK FL C St    denom  ok  need | pend nts ninst skip')
-zt=defaultdict(lambda:[0,0]); gt=[0,0]
-cz=None
+print('UNIT BLK FL C St   denom  ok need | pend nts ninst skip')
+zt=defaultdict(lambda:[0,0]); gt=[0,0]; cz=None
 for r in res:
     z=(r['block'],r['floor'])
-    if cz and z!=cz:
-        print('  -- zone %s F%s subtotal: need=%d (units=%d)'%(cz[0],cz[1],zt[cz][0],zt[cz][1]))
-    cz=z
-    zt[z][0]+=r['need']; zt[z][1]+=1; gt[0]+=r['need']; gt[1]+=1
-    print('%-4s %-7s %d C%d %-4s %4d %4d %4d | %3d %3d %3d %3d'%(
-        r['un'],r['block'],r['floor'],r['cyc'],r['st'][:4],r['dn'],r['ok'],r['need'],
-        r['pend'],r['nts'],r['ninst'],r['skip']))
-print('  -- zone %s F%s subtotal: need=%d (units=%d)'%(cz[0],cz[1],zt[cz][0],zt[cz][1]))
-print('=== GRAND: need_MS total=%d across %d units ==='%(gt[0],gt[1]))
+    if cz and z!=cz: print('  -- %s F%s subtotal: need=%d (units=%d)'%(cz[0],cz[1],zt[cz][0],zt[cz][1]))
+    cz=z; zt[z][0]+=r['need']; zt[z][1]+=1; gt[0]+=r['need']; gt[1]+=1
+    print('%-4s %-7s %d C%d %-4s %4d %4d %4d | %3d %3d %3d %3d'%(r['un'],r['block'],r['floor'],r['cyc'],r['st'][:4],r['dn'],r['ok'],r['need'],r['pend'],r['nts'],r['ninst'],r['skip']))
+print('  -- %s F%s subtotal: need=%d (units=%d)'%(cz[0],cz[1],zt[cz][0],zt[cz][1]))
+print('=== GRAND: need_MS=%d across %d units ==='%(gt[0],gt[1]))
+truly=[r['un'] for r in res if r['need']==0]
+print('TRULY CERTIFIED (need=0):',truly or 'none')
