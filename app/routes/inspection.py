@@ -146,10 +146,11 @@ def start_inspection(unit_id):
             WHERE exclusion_list_id = ?
         """, [excl_list_id])
     else:
-        excluded_rows = query_db("""
-            SELECT item_template_id, reason FROM cycle_excluded_item
-            WHERE cycle_id = ? AND tenant_id = ?
-        """, [cycle_id, tenant_id])
+        # v417: NO exclusion list (and none recoverable from batch_unit) means
+        # ZERO exclusions -- structural guarantee "no list => no skips". We do
+        # NOT fall back to cycle_excluded_item: those rows were polluted by a
+        # 2026-05-19 cleanup script and are not a legitimate exclusion source.
+        excluded_rows = []
     if excluded_rows:
         # {template_id: reason}; membership checks below work on dict keys (v354)
         current_exclusions = {r['item_template_id']: r['reason'] for r in excluded_rows}
