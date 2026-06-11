@@ -5,7 +5,10 @@
 <div class="mb-6">
     <div style="display:flex;align-items:center;justify-content:space-between;">
         <h1 class="text-2xl font-bold text-gray-900">Approvals</h1>
-
+        <button onclick="pushPdfsByUnit(this)"
+                class="px-3 py-1.5 bg-yellow-500 text-white text-xs font-semibold rounded-lg hover:bg-yellow-600 transition-colors whitespace-nowrap">
+            Push PDFs by Unit
+        </button>
     </div>
     <p class="text-sm text-gray-500 mt-1">Review defect descriptions, sign off zones, push PDFs to Raubex.</p>
 </div>
@@ -201,6 +204,40 @@ function batchPushPdfs(btn, batchId, batchName) {
             console.error('Push PDFs error:', err); 
             alert('Push failed: ' + err.message);
             btn.disabled = false; btn.textContent = 'Push PDFs'; 
+        });
+}
+function pushPdfsByUnit(btn) {
+    var input = prompt('Enter unit numbers (comma or space separated). Latest PDF per unit will be generated:');
+    if (input === null) return;
+    var nums = input.split(/[,\s]+/).filter(function(x){ return x.length; });
+    if (!nums.length) { alert('No unit numbers entered.'); return; }
+    btn.disabled = true;
+    btn.textContent = 'Preparing...';
+    fetch('/approvals/push-pdfs-by-unit', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({unit_numbers: nums})
+    })
+        .then(function(r) {
+            if (!r.ok) return r.json().then(function(j){ throw new Error(j.error || 'Failed'); });
+            return r.blob();
+        })
+        .then(function(blob) {
+            var url = URL.createObjectURL(blob);
+            var a = document.createElement('a');
+            a.href = url;
+            a.download = 'Defect_Reports_by_unit.zip';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            btn.disabled = false;
+            btn.textContent = 'Push PDFs by Unit';
+        })
+        .catch(function(err) {
+            console.error('Push by Unit error:', err);
+            alert('Push failed: ' + err.message);
+            btn.disabled = false; btn.textContent = 'Push PDFs by Unit';
         });
 }
 </script>

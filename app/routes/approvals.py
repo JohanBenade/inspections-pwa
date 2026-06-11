@@ -1445,6 +1445,76 @@ def batch_push_pdfs(batch_id):
     )
 
 
+@approvals_bp.route('/push-pdfs-by-unit', methods=['POST'])
+@require_manager
+def push_pdfs_by_unit():
+    """Generate latest-cycle de-snag PDFs for a caller-supplied list of unit numbers, batch-agnostic."""
+    from flask import jsonify
+    from app.services.pdf_generator import generate_defects_pdf, generate_pdf_filename
+    tenant_id = session['tenant_id']
+    payload = request.get_json(silent=True) or {}
+    raw = payload.get('unit_numbers') or []
+    unit_numbers = [str(x).strip() for x in raw if str(x).strip()]
+    if not unit_numbers:
+        return jsonify({'ok': False, 'error': 'No unit numbers provided'}), 400
+    db = get_db()
+    now = datetime.now(timezone.utc).isoformat()
+    placeholders = ','.join('?' for _ in unit_numbers)
+    # Latest inspection per unit = highest cycle_number, tiebreak latest created_at.
+    units = [dict(r) for r in query_db("""
+        SELECT u.id, u.unit_number, u.block, u.floor,
+               i.id AS inspection_id, i.cycle_id, i.inspection_date,
+               ic.cycle_number
+        FROM unit u
+        JOIN inspection i ON i.unit_id = u.id AND i.tenant_id = u.tenant_id
+        JOIN inspection_cycle ic ON ic.id = i.cycle_id AND ic.tenant_id = i.tenant_id
+        WHERE u.tenant_id = ?
+        AND u.unit_number IN (""" + placeholders + """)
+        AND i.id = (
+            SELECT i2.id FROM inspection i2
+            JOIN inspection_cycle ic2 ON ic2.id = i2.cycle_id AND ic2.tenant_id = i2.tenant_id
+            WHERE i2.unit_id = u.id AND i2.tenant_id = u.tenant_id
+            ORDER BY ic2.cycle_number DESC, i2.created_at DESC
+            LIMIT 1
+        )
+        ORDER BY u.block, u.floor, u.unit_number
+    """, [tenant_id] + unit_numbers) or []]
+    if not units:
+        return jsonify({'ok': False, 'error': 'No matching units with inspections found'}), 400
+    zip_buffer = io.BytesIO()
+    success_count = 0
+    fail_count = 0
+    with zipfile.ZipFile(zip_buffer, 'w', zipfile.ZIP_STORED) as zf:
+        for unit in units:
+            try:
+                pdf_bytes = generate_defects_pdf(tenant_id, unit['id'], unit['cycle_id'])
+                if not pdf_bytes:
+                    fail_count += 1
+                    continue
+                filename = generate_pdf_filename(
+                    dict(unit), dict(unit),
+                    inspection_date=unit.get('inspection_date'))
+                zf.writestr(filename, pdf_bytes)
+                success_count += 1
+            except Exception:
+                import traceback
+                print('PDF ERROR unit {}: {}'.format(unit.get('unit_number'), traceback.format_exc()))
+                fail_count += 1
+    if success_count == 0:
+        return jsonify({'ok': False, 'error': 'PDF generation failed'}), 500
+    log_audit(db, tenant_id, 'unit', 'multi', 'pdfs_by_unit_downloaded',
+              new_value='{}/{} PDFs'.format(success_count, success_count + fail_count),
+              user_id=session['user_id'], user_name=session['user_name'])
+    db.commit()
+    zip_buffer.seek(0)
+    return send_file(
+        zip_buffer,
+        mimetype='application/zip',
+        as_attachment=True,
+        download_name='Defect_Reports_by_unit.zip'
+    )
+
+
 @approvals_bp.route('/cleanup/')
 @require_team_lead
 def cleanup():
