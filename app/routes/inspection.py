@@ -1043,11 +1043,11 @@ def update_item(inspection_id, item_id):
             if inspection['cycle_id'] and inspection['cycle_number']:
                 db.execute("""
                     UPDATE defect SET status = 'cleared', cleared_cycle_id = ?,
-                           cleared_cycle_number = ?,
+                           cleared_cycle_number = ?, addressed_cycle_number = ?,
                            cleared_at = ?, clearance_note = 'rectified', updated_at = ?
                     WHERE unit_id = ? AND item_template_id = ? AND status = 'open'
                     AND defect_type = 'not_installed' AND raised_cycle_id != ?
-                """, [inspection['cycle_id'], inspection['cycle_number'], now, now, inspection['unit_id'],
+                """, [inspection['cycle_id'], inspection['cycle_number'], inspection['cycle_number'], now, now, inspection['unit_id'],
                       item['item_template_id'], inspection['cycle_id']])
         
         # Clear children inspection defects when parent cascades to not_installed
@@ -1288,9 +1288,9 @@ def clear_prior_defect(inspection_id, defect_id):
 
     # Clear the defect
     db.execute("""
-        UPDATE defect SET status = 'cleared', cleared_cycle_id = ?, cleared_cycle_number = ?, cleared_at = ?, updated_at = ?
+        UPDATE defect SET status = 'cleared', cleared_cycle_id = ?, cleared_cycle_number = ?, addressed_cycle_number = ?, cleared_at = ?, updated_at = ?
         WHERE id = ?
-    """, [inspection['cycle_id'], inspection['cycle_number'], now, now, defect_id])
+    """, [inspection['cycle_id'], inspection['cycle_number'], inspection['cycle_number'], now, now, defect_id])
 
     # Find the inspection_item for this defect's template
     insp_item = query_db("""
@@ -1707,7 +1707,7 @@ def submit_inspection(inspection_id):
     for item in ok_items:
         open_defects = query_db("SELECT * FROM defect WHERE unit_id = ? AND item_template_id = ? AND status = 'open'", [inspection['unit_id'], item['item_template_id']])
         for defect in (open_defects or []):
-            db.execute("UPDATE defect SET status = 'cleared', cleared_cycle_id = ?, cleared_cycle_number = ?, cleared_at = CURRENT_TIMESTAMP WHERE id = ?", [inspection['cycle_id'], inspection['cycle_number'], defect['id']])
+            db.execute("UPDATE defect SET status = 'cleared', cleared_cycle_id = ?, cleared_cycle_number = ?, addressed_cycle_number = ?, cleared_at = CURRENT_TIMESTAMP WHERE id = ?", [inspection['cycle_id'], inspection['cycle_number'], inspection['cycle_number'], defect['id']])
             history_id = generate_id()
             db.execute("INSERT INTO defect_history (id, tenant_id, defect_id, cycle_id, comment, status) VALUES (?, ?, ?, ?, ?, 'cleared')", [history_id, tenant_id, defect['id'], inspection['cycle_id'], 'Rectified'])
     db.execute("DELETE FROM inspection_defect WHERE inspection_id = ? AND tenant_id = ?", [inspection_id, tenant_id])
