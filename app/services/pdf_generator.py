@@ -163,8 +163,13 @@ def get_defects_data(tenant_id, unit_id, cycle_id=None):
             LEFT JOIN item_template parent ON it.parent_item_id = parent.id
             JOIN inspection insp ON ii.inspection_id = insp.id
             JOIN unit u ON insp.unit_id = u.id
-            WHERE ii.inspection_id = ? AND ii.status = 'skipped'
+            WHERE ii.inspection_id = ? AND ii.status IN ('skipped','pending','not_to_standard','not_installed')
               AND (COALESCE(u.floor, 0) = 0 OR it.floor_condition != 'ground_only')
+              AND NOT EXISTS (
+                  SELECT 1 FROM defect d
+                  WHERE d.unit_id = u.id AND d.status = 'open'
+                    AND d.item_template_id = ii.item_template_id
+              )
             ORDER BY at2.area_order, ct.category_order, it.item_order
         """, [inspection['id']])
         excluded_count = len(excluded_raw)

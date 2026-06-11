@@ -670,8 +670,8 @@
 
     {% if excluded_items_by_area %}
     <div style="margin-top: 30px; page-break-before: auto;">
-        <div class="defects-header-title"><span>Addendum: Excluded Items ({{ summary.excluded }})</span></div>
-        <p style="font-size: 8pt; font-style: italic; color: #666; margin: 4px 0 12px 0;">The following items were excluded from this inspection cycle and have not been assessed.</p>
+        <div class="defects-header-title"><span>Items Still To Be Inspected ({{ summary.excluded }})</span></div>
+        <p style="font-size: 8pt; font-style: italic; color: #666; margin: 4px 0 12px 0;">The following items have not yet been cleared and remain to be inspected.</p>
         {% for area in excluded_items_by_area %}
         <div style="margin-bottom: 10px;">
             <div class="area-title"><span>{{ area.name }}</span></div>
