@@ -493,7 +493,7 @@
             <span class="summary-value">{{ summary.open_defects }}</span>
         </div>
         {% if excluded_items_by_area %}
-        <div style="border-top: 1px dashed #ccc; margin-top: 8px; padding-top: 6px; font-size: 9pt; color: #666;">Excluded from inspection: {{ summary.excluded }} items not yet assessed</div>
+        <div style="border-top: 1px dashed #ccc; margin-top: 8px; padding-top: 6px; font-size: 9pt; color: #666;">Items still to be inspected: {{ summary.excluded }}</div>
         {% endif %}
     </div>
     {% elif cycle_number > 1 %}
@@ -524,7 +524,7 @@
                 <span class="summary-value" style="color: {% if summary.open_defects > 0 %}#cc0000{% else %}#228B22{% endif %};">{{ summary.open_defects }}</span>
             </div>
             {% if excluded_items_by_area %}
-            <div style="border-top: 1px dashed #ccc; margin-top: 8px; padding-top: 6px; font-size: 9pt; color: #666;">Excluded from inspection: {{ summary.excluded }} items not yet assessed</div>
+            <div style="border-top: 1px dashed #ccc; margin-top: 8px; padding-top: 6px; font-size: 9pt; color: #666;">Items still to be inspected: {{ summary.excluded }}</div>
             {% endif %}
             {% if latent_summary and latent_summary.total > 0 %}
             <div style="border-top: 1px dashed #ccc; margin-top: 8px; padding-top: 6px; font-size: 9pt; color: #666;">Latent defects to date: {{ latent_summary.total }} ({{ latent_summary.outstanding }} outstanding, {{ latent_summary.rectified }} rectified)</div>
@@ -550,6 +550,24 @@
     <div class="standards">
         <div class="standards-title"><span>General Notes:</span></div>
         <div class="rich-text">{{ general_notes_html | safe }}</div>
+    </div>
+    {% endif %}
+    
+    {% if excluded_items_by_area %}
+    <div class="standards" style="margin-top: 12px;">
+        <div class="standards-title"><span>Items still to be inspected ({{ summary.excluded }})</span></div>
+        <p style="font-size: 8pt; font-style: italic; color: #666; margin: 4px 0 12px 0;">The following items have not yet been cleared and remain to be inspected.</p>
+        {% for area in excluded_items_by_area %}
+        <div style="margin-bottom: 10px;">
+            <div class="area-title"><span>{{ area.name }}</span></div>
+            {% for cat in area.categories %}
+            <div class="category-row">- {{ cat.name }} ({{ cat.excl_items|length }})</div>
+            {% for item_desc in cat.excl_items %}
+            <div class="defect-item" style="color: #666;">&#8226; {{ item_desc }}</div>
+            {% endfor %}
+            {% endfor %}
+        </div>
+        {% endfor %}
     </div>
     {% endif %}
     
@@ -668,23 +686,7 @@
     </div>
     {% endif %}
 
-    {% if excluded_items_by_area %}
-    <div style="margin-top: 30px; page-break-before: auto;">
-        <div class="defects-header-title"><span>Items Still To Be Inspected ({{ summary.excluded }})</span></div>
-        <p style="font-size: 8pt; font-style: italic; color: #666; margin: 4px 0 12px 0;">The following items have not yet been cleared and remain to be inspected.</p>
-        {% for area in excluded_items_by_area %}
-        <div style="margin-bottom: 10px;">
-            <div class="area-title"><span>{{ area.name }}</span></div>
-            {% for cat in area.categories %}
-            <div class="category-row">- {{ cat.name }} ({{ cat.excl_items|length }})</div>
-            {% for item_desc in cat.excl_items %}
-            <div class="defect-item" style="color: #666;">&#8226; {{ item_desc }}</div>
-            {% endfor %}
-            {% endfor %}
-        </div>
-        {% endfor %}
-    </div>
-    {% endif %}
+
 
 {% if not is_pdf|default(true) %}</div>{% endif %}
 </body>
