@@ -493,7 +493,7 @@
             <span class="summary-value">{{ summary.open_defects }}</span>
         </div>
         {% if excluded_items_by_area %}
-        <div style="border-top: 1px dashed #ccc; margin-top: 8px; padding-top: 6px; font-size: 9pt; color: #666;">Items still to be inspected: {{ summary.excluded }}</div>
+        <div style="border-top: 1px dashed #ccc; margin-top: 8px; padding-top: 6px;"><span style="font-weight: bold;">Items still to inspect:</span> {{ summary.excluded }}</div>
         {% endif %}
     </div>
     {% elif cycle_number > 1 %}
@@ -524,7 +524,7 @@
                 <span class="summary-value" style="color: {% if summary.open_defects > 0 %}#cc0000{% else %}#228B22{% endif %};">{{ summary.open_defects }}</span>
             </div>
             {% if excluded_items_by_area %}
-            <div style="border-top: 1px dashed #ccc; margin-top: 8px; padding-top: 6px; font-size: 9pt; color: #666;">Items still to be inspected: {{ summary.excluded }}</div>
+            <div style="border-top: 1px dashed #ccc; margin-top: 8px; padding-top: 6px;"><span style="font-weight: bold;">Items still to inspect:</span> {{ summary.excluded }}</div>
             {% endif %}
             {% if latent_summary and latent_summary.total > 0 %}
             <div style="border-top: 1px dashed #ccc; margin-top: 8px; padding-top: 6px; font-size: 9pt; color: #666;">Latent defects to date: {{ latent_summary.total }} ({{ latent_summary.outstanding }} outstanding, {{ latent_summary.rectified }} rectified)</div>
@@ -648,8 +648,8 @@
             {% if is_certified %}
             <p>All defects have been rectified and this unit is hereby certified as complete.</p>
             {% elif excluded_items_by_area and summary.open_defects == 0 %}
-            <p>All inspected defects have been rectified. {{ summary.excluded }} items were excluded from this inspection cycle and remain to be assessed before certification.</p>
-            <p>We await an invitation for a follow up inspection to assess the excluded items.</p>
+            <p>All defects raised in previous cycles have been rectified (0 open). {{ summary.excluded }} items remain to be inspected before this unit can be certified.</p>
+            <p>We await an invitation for a follow-up inspection to assess the outstanding items.</p>
             {% else %}
             <p>We trust you find the above in order and will rectify any defect within the afforded contract period.</p>
             <p>We await an invitation for a follow up inspection if required.</p>
