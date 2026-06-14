@@ -8,3 +8,7 @@ node_modules/
 /playwright/.auth/
 *.pyc
 __pycache__/
+
+# Generated test fixtures (built at CI time)
+tests/fixtures/test_clean.db
+tests/fixtures/test_dirty.db

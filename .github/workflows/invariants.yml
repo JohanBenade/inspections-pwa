@@ -1,0 +1,28 @@
+name: DB Invariants
+
+# Runs the three invariant rules against synthetic fixtures on every PR into main
+# and on direct pushes to main. A failure (exit 1) blocks the merge once branch
+# protection requires this check. This gate is pre-merge and uses fixtures only;
+# the live post-deploy check (scripts/diagnostics/check_invariants_live.py) is run
+# separately on Render against the real DB.
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+jobs:
+  invariants:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Run invariant CI gate
+        run: python3 tests/test_invariants.py
