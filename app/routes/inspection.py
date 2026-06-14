@@ -2515,11 +2515,14 @@ def desnag_view(inspection_id):
           COUNT(*) AS total,
           SUM(CASE WHEN ii.status != 'pending' AND ii.marked_at IS NOT NULL THEN 1 ELSE 0 END) AS addressed
         FROM inspection_item ii
-        JOIN item_template it ON ii.item_template_id = it.id
+        JOIN item_template it ON ii.item_template_id = it.id AND it.active = 1
+        JOIN inspection insp ON ii.inspection_id = insp.id
+        JOIN unit u ON insp.unit_id = u.id
         WHERE ii.inspection_id = ? AND ii.tenant_id = ?
           AND ii.status != 'skipped'
           AND (ii.status = 'pending' OR ii.marked_at IS NOT NULL)
           AND COALESCE(ii.has_prior_defects, 0) = 0
+          AND (COALESCE(u.floor, 0) = 0 OR it.floor_condition != 'ground_only')
           AND NOT EXISTS (SELECT 1 FROM item_template ch WHERE ch.parent_item_id = it.id)
     """, [inspection_id, tenant_id], one=True)
     items_count = items_row['total'] or 0
@@ -2531,13 +2534,16 @@ def desnag_view(inspection_id):
                COUNT(*) AS total,
                SUM(CASE WHEN ii.status != 'pending' AND ii.marked_at IS NOT NULL THEN 1 ELSE 0 END) AS addressed
         FROM inspection_item ii
-        JOIN item_template it ON ii.item_template_id = it.id
+        JOIN item_template it ON ii.item_template_id = it.id AND it.active = 1
         JOIN category_template ct ON it.category_id = ct.id
         JOIN area_template at2 ON ct.area_id = at2.id
+        JOIN inspection insp ON ii.inspection_id = insp.id
+        JOIN unit u ON insp.unit_id = u.id
         WHERE ii.inspection_id = ? AND ii.tenant_id = ?
           AND ii.status != 'skipped'
           AND (ii.status = 'pending' OR ii.marked_at IS NOT NULL)
           AND COALESCE(ii.has_prior_defects, 0) = 0
+          AND (COALESCE(u.floor, 0) = 0 OR it.floor_condition != 'ground_only')
           AND NOT EXISTS (SELECT 1 FROM item_template ch WHERE ch.parent_item_id = it.id)
         GROUP BY at2.area_name
     """, [inspection_id, tenant_id])
