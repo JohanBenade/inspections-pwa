@@ -1,0 +1,358 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Top 10 Defects per Area</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap');
+
+@page { size: A4; margin: 18mm 16mm 22mm 16mm; }
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+    font-family: "DM Sans", "Helvetica Neue", Helvetica, Arial, sans-serif;
+    color: #1A1A1A; background: #FFFFFF; font-size: 11px; line-height: 1.5;
+    -webkit-print-color-adjust: exact; print-color-adjust: exact;
+}
+.page { max-width: 800px; margin: 0 auto; padding: 0; }
+
+/* Toolbar - screen only */
+.toolbar { position: fixed; top: 72px; right: 16px; display: flex; gap: 8px; z-index: 100; }
+.toolbar a, .toolbar button {
+    padding: 8px 16px; font-family: "DM Sans", Helvetica, Arial, sans-serif;
+    font-size: 12px; font-weight: 600; border: none; border-radius: 4px;
+    cursor: pointer; text-decoration: none; display: inline-block;
+}
+.btn-pdf { background: #C8963E; color: white; }
+.btn-pdf:hover { background: #D4A94F; }
+.btn-print { background: #F5F3EE; color: #1A1A1A; border: 1px solid #E8E6E1; }
+.btn-print:hover { background: #E8E6E1; }
+@media print { .toolbar { display: none !important; } nav { display: none !important; } }
+
+/* Header */
+.report-header { padding-bottom: 16px; border-bottom: 3px solid #0A0A0A; margin-bottom: 20px; }
+.header-top { margin-bottom: 20px; overflow: hidden; }
+.logo-area { float: left; }
+.logo-area img { height: 36px; width: auto; }
+.logo-fallback { font-size: 22px; font-weight: 300; letter-spacing: 6px; text-transform: uppercase; color: #0A0A0A; }
+.logo-sub { font-size: 12px; font-weight: 300; letter-spacing: 3px; color: #6B6B6B; margin-left: 8px; }
+.header-meta { float: right; text-align: right; font-size: 10px; letter-spacing: 1.5px; text-transform: uppercase; color: #6B6B6B; }
+.header-meta .date { font-size: 11px; font-weight: 600; color: #1A1A1A; margin-bottom: 2px; }
+.report-title { font-size: 32px; font-weight: 400; letter-spacing: -0.5px; color: #0A0A0A; margin-top: 8px; }
+.report-subtitle { font-size: 12px; color: #6B6B6B; margin-top: 4px; letter-spacing: 0.5px; }
+
+/* Section */
+.section { margin-bottom: 24px; }
+.section-tight { page-break-inside: avoid; break-inside: avoid-page; }
+.section-header { display: flex; align-items: baseline; gap: 10px; padding-bottom: 8px; margin-bottom: 12px; border-bottom: 1px solid #E8E6E1; }
+.section-number { font-feature-settings: 'lnum' 1, 'tnum' 1; font-size: 22px; font-weight: 600; color: #C8963E; }
+.section-title { font-size: 13px; font-weight: 600; color: #1A1A1A; letter-spacing: 0.3px; }
+
+/* Framing paragraph */
+.framing { font-size: 11px; color: #5F5E5A; line-height: 1.6; margin-bottom: 16px; }
+.framing strong { color: #1A1A1A; font-weight: 600; }
+
+/* KPI tiles */
+.kpi-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 16px; }
+.kpi-tile { background: #FFFFFF; border: 1px solid #E8E6E1; padding: 12px 14px 14px 14px; border-radius: 4px; }
+.kpi-tile-label { font-size: 9px; font-weight: 600; letter-spacing: 1.5px; text-transform: uppercase; color: #6B6B6B; margin-bottom: 6px; }
+.kpi-tile-value { font-size: 24px; font-weight: 700; color: #0A0A0A; line-height: 1.1; margin-bottom: 6px; }
+.kpi-tile-suffix { font-size: 13px; font-weight: 500; color: #6B6B6B; }
+.kpi-tile-meta { font-size: 9px; color: #6B6B6B; line-height: 1.4; }
+
+/* Room summary tiles */
+.room-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-top: 8px; }
+.room-tile { border: 1px solid #DCD7CB; border-radius: 5px; padding: 12px 12px 14px 12px; text-align: left; }
+.room-tile-label { font-size: 11px; font-weight: 700; color: #1A1A1A; letter-spacing: 0.5px; margin-bottom: 8px; }
+.room-tile-rate { font-size: 28px; font-weight: 700; color: #C8963E; line-height: 1; }
+.room-tile-rate-suffix { font-size: 11px; font-weight: 500; color: #6B6B6B; margin-left: 2px; }
+.room-tile-meta { font-size: 9px; color: #6B6B6B; margin-top: 6px; line-height: 1.4; }
+
+/* Defect table */
+.defect-table { width: 100%; border-collapse: collapse; font-size: 10px; font-feature-settings: 'lnum' 1, 'tnum' 1; margin-top: 4px; }
+.defect-table th {
+    text-align: left; font-size: 8px; font-weight: 600; color: #9A9A9A;
+    letter-spacing: 1.2px; text-transform: uppercase; padding: 6px 8px;
+    border-bottom: 2px solid #E8E6E1; white-space: nowrap;
+}
+.defect-table td { padding: 7px 8px; border-bottom: 1px solid #F0EEEA; vertical-align: top; }
+.defect-table .rank { font-weight: 700; color: #9A9A9A; width: 28px; }
+.defect-table .item { font-weight: 600; color: #1A1A1A; }
+.defect-table .trade { color: #5F5E5A; }
+.defect-table .num { text-align: right; font-weight: 600; }
+.defect-table .rate-cell { text-align: right; white-space: nowrap; }
+.rate-bar-wrap { display: flex; align-items: center; gap: 6px; justify-content: flex-end; }
+.rate-bar-track { width: 60px; height: 8px; background: #EEEAE0; border-radius: 4px; overflow: hidden; }
+.rate-bar-fill { height: 100%; background: #C8963E; border-radius: 4px; }
+.rate-pct { font-weight: 700; color: #1A1A1A; min-width: 32px; text-align: right; }
+.comments { margin-top: 4px; }
+.comment-chip {
+    display: inline-block; font-size: 8.5px; color: #6B6B6B;
+    background: #F7F5F0; border: 1px solid #ECEAE3; border-radius: 3px;
+    padding: 1px 6px; margin: 2px 4px 0 0; font-style: italic;
+}
+.comment-chip .cmt-cnt { font-style: normal; font-weight: 700; color: #A37116; margin-left: 4px; }
+
+/* Room page stat strip */
+.stat-strip { display: flex; gap: 24px; margin-bottom: 12px; padding: 10px 14px; background: #FAF8F3; border: 1px solid #ECEAE3; border-radius: 5px; }
+.stat-strip .stat { }
+.stat-strip .stat-label { font-size: 8px; font-weight: 600; letter-spacing: 1.2px; text-transform: uppercase; color: #9A9A9A; }
+.stat-strip .stat-value { font-size: 20px; font-weight: 700; color: #1A1A1A; font-feature-settings: 'lnum' 1, 'tnum' 1; }
+.stat-strip .stat-value .suffix { font-size: 11px; font-weight: 500; color: #6B6B6B; }
+
+.page-footer-scope { margin-top: 32px; padding-top: 12px; border-top: 1px solid #E8E6E1; font-size: 9px; color: #9A9A9A; letter-spacing: 0.3px; text-align: center; }
+.trend-placeholder { border: 1px dashed #E8E6E1; border-radius: 6px; padding: 30px; text-align: center; color: #9A9A9A; font-size: 11px; font-style: italic; }
+</style>
+
+{% if not is_pdf %}
+<script src="https://cdn.tailwindcss.com"></script>
+{% endif %}
+</head>
+<body>
+
+{% if not is_pdf %}
+<div class="toolbar">
+    <a href="{{ url_for('analytics.top10_per_area_pdf') }}" class="btn-pdf"
+       onclick="var b=this; b.textContent='Preparing...'; b.style.opacity='0.6'; b.style.pointerEvents='none'; setTimeout(function(){b.textContent='Download PDF'; b.style.opacity='1'; b.style.pointerEvents='auto';}, 5000);">
+        Download PDF
+    </a>
+    <button class="btn-print" onclick="window.print()">Print</button>
+</div>
+{% endif %}
+
+<div class="page">
+
+    <!-- HEADER -->
+    <div class="report-header">
+        <div class="header-top">
+            <div class="logo-area">
+                {% if logo_b64 %}
+                <img src="data:image/jpeg;base64,{{ logo_b64 }}" alt="Monograph Architects">
+                {% else %}
+                <span class="logo-fallback">MONOGRAPH</span><span class="logo-sub">architects</span>
+                {% endif %}
+            </div>
+            <div class="header-meta">
+                <div class="date">{{ report_date }}</div>
+                <div>BUILD-QUALITY BRIEF</div>
+            </div>
+        </div>
+        <div class="report-title">Top 10 Defects per Area</div>
+        <div class="report-subtitle">Power Park Student Housing &mdash; Phase 3 &mdash; Cycle 1 As-Built Findings</div>
+        <div class="report-subtitle" style="font-size: 10px; color: #9A9A9A; margin-top: 1px; font-style: italic; letter-spacing: 0.3px;">Scope: first-inspection (C1) defects across {{ cohort_units }} four-bed units &mdash; bedrooms grouped.</div>
+    </div>
+
+    <!-- SECTION 01: EXECUTIVE SUMMARY -->
+    <div class="section">
+        <div class="section-header">
+            <span class="section-number">01</span>
+            <span class="section-title">Executive Summary</span>
+        </div>
+
+        <p class="framing">
+            This brief reports the most frequently recurring build defects found at <strong>first inspection (Cycle 1)</strong> across
+            <strong>{{ cohort_units }}</strong> of {{ total_4bed_units }} four-bed units. C1 is the as-built verdict &mdash; before any de-snagging &mdash;
+            and is therefore the purest signal of build quality on hand-over from the trades. Items are ranked by
+            <strong>units affected</strong> (the share of inspected units carrying that defect), not by raw count: a defect appearing in many
+            units points to a systemic process problem, whereas a high raw count in a single unit does not. The four bedrooms are reported as one
+            group &mdash; a defect found in three of a unit&rsquo;s four bedrooms counts as <strong>one unit affected</strong>, though every occurrence is still
+            tallied under &ldquo;Logged&rdquo;.
+        </p>
+
+        <!-- KPI tiles -->
+        <div class="kpi-grid">
+            <div class="kpi-tile" style="border-bottom: 4px solid #C8963E;">
+                <div class="kpi-tile-label">Units (C1)</div>
+                <div class="kpi-tile-value">{{ cohort_units }}<span class="kpi-tile-suffix"> of {{ total_4bed_units }}</span></div>
+                <div class="kpi-tile-meta">first-inspection cohort</div>
+            </div>
+            <div class="kpi-tile" style="border-bottom: 4px solid #C44D3F;">
+                <div class="kpi-tile-label">Total C1 Defects</div>
+                <div class="kpi-tile-value">{{ '{:,}'.format(total_defects) }}</div>
+                <div class="kpi-tile-meta">logged across cohort</div>
+            </div>
+            <div class="kpi-tile" style="border-bottom: 4px solid #A37116;">
+                <div class="kpi-tile-label">Avg per Unit</div>
+                <div class="kpi-tile-value">{{ avg_per_unit }}</div>
+                <div class="kpi-tile-meta">defects at first inspection</div>
+            </div>
+            <div class="kpi-tile" style="border-bottom: 4px solid #4A7C59;">
+                <div class="kpi-tile-label">Worst Defect</div>
+                <div class="kpi-tile-value">{% if project_top10 %}{{ project_top10[0].rate }}%{% else %}&mdash;{% endif %}</div>
+                <div class="kpi-tile-meta">{% if project_top10 %}{{ project_top10[0].item }}{% else %}no data{% endif %}</div>
+            </div>
+        </div>
+
+        <!-- Project-wide top 10 -->
+        <div style="font-size: 9px; font-weight: 600; color: #9A9A9A; letter-spacing: 1px; text-transform: uppercase; margin: 16px 0 4px 0;">Project-wide Top 10 Systemic Defects</div>
+        {% if project_top10 %}
+        <table class="defect-table">
+            <thead>
+                <tr>
+                    <th style="width: 28px;">#</th>
+                    <th>Defect Item</th>
+                    <th style="width: 80px;">Area</th>
+                    <th style="width: 70px;">Trade</th>
+                    <th style="width: 130px; text-align: right;">Units Affected</th>
+                    <th style="width: 55px; text-align: right;">Logged</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for r in project_top10 %}
+                <tr>
+                    <td class="rank">{{ r.rank }}</td>
+                    <td class="item">{{ r.item }}</td>
+                    <td class="trade">{{ r.group }}</td>
+                    <td class="trade">{{ r.trade }}</td>
+                    <td class="rate-cell">
+                        <div class="rate-bar-wrap">
+                            <span class="rate-pct">{{ r.units }} &middot; {{ r.rate }}%</span>
+                            <div class="rate-bar-track"><div class="rate-bar-fill" style="width: {{ r.rate }}%;"></div></div>
+                        </div>
+                    </td>
+                    <td class="num">{{ '{:,}'.format(r.logged) }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <div class="trend-placeholder">No C1 defect data available</div>
+        {% endif %}
+
+        <!-- Room summary tiles -->
+        <div style="font-size: 9px; font-weight: 600; color: #9A9A9A; letter-spacing: 1px; text-transform: uppercase; margin: 18px 0 4px 0;">By Room Group</div>
+        <div class="room-grid">
+            {% for t in room_tiles %}
+            <div class="room-tile">
+                <div class="room-tile-label">{{ t.label }}</div>
+                <div><span class="room-tile-rate">{{ t.rate }}%</span><span class="room-tile-rate-suffix">units</span></div>
+                <div class="room-tile-meta">{{ t.units_affected }} of {{ cohort_units }} units affected<br>{{ '{:,}'.format(t.logged) }} defects logged</div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+
+    <!-- SECTIONS 02-05: ONE PAGE PER ROOM -->
+    {% for g in by_group %}
+    <div class="section" style="page-break-before: always; break-before: page;">
+        <div class="section-header">
+            <span class="section-number">0{{ loop.index + 1 }}</span>
+            <span class="section-title">{{ g.label }} &mdash; Top 10 Defects</span>
+        </div>
+
+        <div class="stat-strip">
+            <div class="stat">
+                <div class="stat-label">Units Affected</div>
+                <div class="stat-value">{{ g.group_units_affected }}<span class="suffix"> / {{ cohort_units }}</span></div>
+            </div>
+            <div class="stat">
+                <div class="stat-label">Affected Rate</div>
+                <div class="stat-value" style="color: {% if g.group_rate >= 75 %}#C44D3F{% elif g.group_rate >= 40 %}#C8963E{% else %}#4A7C59{% endif %};">{{ g.group_rate }}%</div>
+            </div>
+            <div class="stat">
+                <div class="stat-label">Total Logged</div>
+                <div class="stat-value">{{ '{:,}'.format(g.group_logged) }}</div>
+            </div>
+        </div>
+
+        {% if g.rows %}
+        <table class="defect-table">
+            <thead>
+                <tr>
+                    <th style="width: 28px;">#</th>
+                    <th>Defect Item</th>
+                    <th style="width: 80px;">Trade</th>
+                    <th style="width: 150px; text-align: right;">Units Affected</th>
+                    <th style="width: 55px; text-align: right;">Logged</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for r in g.rows %}
+                <tr>
+                    <td class="rank">{{ r.rank }}</td>
+                    <td class="item">
+                        {{ r.item }}
+                        {% if r.comments %}
+                        <div class="comments">
+                            {% for c in r.comments %}
+                            <span class="comment-chip">&ldquo;{{ c.text }}&rdquo;<span class="cmt-cnt">{{ c.cnt }}</span></span>
+                            {% endfor %}
+                        </div>
+                        {% endif %}
+                    </td>
+                    <td class="trade">{{ r.trade }}</td>
+                    <td class="rate-cell">
+                        <div class="rate-bar-wrap">
+                            <span class="rate-pct">{{ r.units }} &middot; {{ r.rate }}%</span>
+                            <div class="rate-bar-track"><div class="rate-bar-fill" style="width: {{ r.rate }}%;"></div></div>
+                        </div>
+                    </td>
+                    <td class="num">{{ '{:,}'.format(r.logged) }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        <div style="margin-top: 8px; font-size: 9px; color: #9A9A9A;">
+            Ranked by units affected. Quoted phrases are the most frequent inspector comments for that item; the number is how many times each phrasing recurred.
+        </div>
+        {% else %}
+        <div class="trend-placeholder">No C1 defects recorded in {{ g.label }}</div>
+        {% endif %}
+    </div>
+    {% endfor %}
+
+    <!-- SECTION 06: TRADE ACCOUNTABILITY -->
+    {% if trade_accountability %}
+    <div class="section" style="page-break-before: always; break-before: page;">
+        <div class="section-header">
+            <span class="section-number">06</span>
+            <span class="section-title">Trade Accountability</span>
+        </div>
+        <p class="framing">
+            All room defects rolled up by trade discipline, ranked by units affected &mdash; the subcontractors whose work most consistently
+            fell short at hand-over, and therefore who to brief hardest before the next phase.
+        </p>
+        <table class="defect-table">
+            <thead>
+                <tr>
+                    <th style="width: 28px;">#</th>
+                    <th>Trade</th>
+                    <th style="width: 150px; text-align: right;">Units Affected</th>
+                    <th style="width: 70px; text-align: right;">Items</th>
+                    <th style="width: 70px; text-align: right;">Logged</th>
+                    <th style="width: 110px;">Worst Item</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for t in trade_accountability %}
+                <tr>
+                    <td class="rank">{{ t.rank }}</td>
+                    <td class="item">{{ t.trade }}</td>
+                    <td class="rate-cell">
+                        <div class="rate-bar-wrap">
+                            <span class="rate-pct">{{ t.units }} &middot; {{ t.rate }}%</span>
+                            <div class="rate-bar-track"><div class="rate-bar-fill" style="width: {{ t.rate }}%;"></div></div>
+                        </div>
+                    </td>
+                    <td class="num">{{ t.item_count }}</td>
+                    <td class="num">{{ '{:,}'.format(t.logged) }}</td>
+                    <td class="trade" style="font-size: 9px;">{{ t.worst_item }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        <div style="margin-top: 8px; font-size: 9px; color: #9A9A9A;">
+            Units affected = distinct units carrying at least one defect attributed to that trade. Worst item = the trade&rsquo;s single most widespread defect.
+        </div>
+    </div>
+    {% endif %}
+
+    <div class="page-footer-scope">
+        Monograph Architects &middot; Power Park Student Housing Phase 3 &middot; C1 Build-Quality Brief &middot; {{ report_date }}
+    </div>
+
+</div>
+
+</body>
+</html>
