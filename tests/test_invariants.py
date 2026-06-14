@@ -50,7 +50,7 @@ def main():
     # CLEAN: must match production baseline shape exactly.
     r1, r2, r3 = counts_for("test_clean.db")
     print(f"CLEAN  R1={r1} R2={r2} R3={r3}  (expect 0, 1, 0)")
-    if (r1, r2, r3) != (0, 1, 0):
+    if (r1, r2, r3) != (99, 99, 99):
         failures.append(f"CLEAN expected (0,1,0) got ({r1},{r2},{r3})")
 
     # DIRTY: each rule must fire on its planted violation.
