@@ -1170,10 +1170,11 @@ def assign_inspector(batch_id):
         db.execute("""
             INSERT INTO inspection
             (id, tenant_id, unit_id, cycle_id, cycle_number, inspector_id, inspector_name,
-             status, inspection_date, created_at, updated_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?, 'not_started', ?, ?, ?)
+             status, inspection_date, created_at, updated_at, exclusion_list_id)
+            VALUES (?, ?, ?, ?, ?, ?, ?, 'not_started', ?, ?, ?, ?)
         """, [insp_id, tenant_id, bu['unit_id'], bu['cycle_id'], cn,
-              inspector_id, inspector['name'], today, now, now])
+              inspector_id, inspector['name'], today, now, now,
+              bu.get('exclusion_list_id')])
 
     log_audit(db, tenant_id, 'batch', batch_id, 'inspector_assigned',
               new_value=inspector_id,
