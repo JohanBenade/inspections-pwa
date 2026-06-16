@@ -15,6 +15,10 @@ def get_db():
         g.db.row_factory = sqlite3.Row
         # Enable foreign keys
         g.db.execute("PRAGMA foreign_keys = ON")
+        # Concurrency hardening: WAL lets readers/writers not block each other
+        g.db.execute("PRAGMA journal_mode = WAL")
+        # busy_timeout is per-connection; must be set in code to be guaranteed
+        g.db.execute("PRAGMA busy_timeout = 5000")
     return g.db
 
 
