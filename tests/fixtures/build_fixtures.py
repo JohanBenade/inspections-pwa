@@ -178,6 +178,15 @@ def build_dirty(path):
     insert(cur, "exclusion_list_item", id="eli-A-trap", tenant_id=T,
            exclusion_list_id="elist-A", item_template_id="tpl-trap")
 
+    # R4 violation: a unit whose inspection.cycle_number sequence has a GAP.
+    # cycles 1 and 3 exist, 2 is missing -> the AF-016 condition. Distinct units
+    # with a hole are counted; this unit is unit-C, sequence {1,3}.
+    insert(cur, "unit", id="unit-C", tenant_id=T, unit_number="102")
+    insert(cur, "inspection", id="insp-C1", tenant_id=T, unit_id="unit-C",
+           cycle_id="cyc-C1", exclusion_list_id=None, cycle_number=1)
+    insert(cur, "inspection", id="insp-C3", tenant_id=T, unit_id="unit-C",
+           cycle_id="cyc-C3", exclusion_list_id=None, cycle_number=3)
+
     c.commit()
     c.close()
 
