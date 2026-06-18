@@ -111,9 +111,10 @@ def start_inspection(unit_id):
         # Get the previous cycle's inspection to carry forward items
         prev_inspection = query_db("""
             SELECT i.id FROM inspection i
-            WHERE i.unit_id = ? AND i.cycle_number = ?
+            WHERE i.unit_id = ? AND i.cycle_number < ?
             AND i.tenant_id = ?
-        """, [unit_id, cycle['cycle_number'] - 1, tenant_id], one=True)
+            ORDER BY i.cycle_number DESC LIMIT 1
+        """, [unit_id, cycle['cycle_number'], tenant_id], one=True)
     
     templates = query_db(
         "SELECT id, floor_condition FROM item_template WHERE tenant_id = ? AND active = 1", [tenant_id]
