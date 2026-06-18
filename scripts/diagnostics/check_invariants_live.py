@@ -28,7 +28,8 @@ DB_PATH = "/var/data/inspections.db"
 # R1: residual CEI pollution after the v421/v426 repairs. Proven 0.
 # R2: distinct inactive item_templates in use. Ghost 1161cc67 is the 1 known-inert.
 # R3: NULL-link inspections with a non-ground_only, not-in-list skipped item. Proven 0.
-BASELINES = {"R1": 0, "R2": 1, "R3": 0}
+# R4: units whose inspection.cycle_number sequence has a gap (AF-016 guard). Proven 0.
+BASELINES = {"R1": 0, "R2": 1, "R3": 0, "R4": 0}
 
 
 def main():

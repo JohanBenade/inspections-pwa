@@ -13,7 +13,7 @@ test. This module holds ONLY the rule logic, so adding R4 later touches one file
 
 # Production baselines (used by the live runner). The CI test asserts its own
 # fixture-specific expected counts and does NOT use these.
-LIVE_BASELINES = {"R1": 0, "R2": 1, "R3": 0}
+LIVE_BASELINES = {"R1": 0, "R2": 1, "R3": 0, "R4": 0}
 
 
 def rule_R1_cei_pollution(cur):
@@ -103,8 +103,43 @@ def rule_R3_linkcopy_gap(cur):
     return len(rows), offenders
 
 
+def rule_R4_cycle_number_gap(cur):
+    """AF-016 regression guard. A unit's inspection.cycle_number values must form a
+    contiguous run (min..max with no hole). A gap is exactly the condition under
+    which the old 'cycle_number - 1' carry-forward lookup diverges from the
+    'most-recent prior' fix: the predecessor row is missing, every item silently
+    carries as pending, and the item layer disagrees with the defect layer (which
+    keys on raised_cycle_id identity). Zero gaps => the two definitions agree.
+    Counts distinct units whose cycle_number sequence has at least one hole.
+    NULL cycle_number is also a violation (cannot be ordered)."""
+    cur.execute(
+        """
+        SELECT u.unit_number,
+               COUNT(DISTINCT insp.cycle_number) AS distinct_cycles,
+               MIN(insp.cycle_number) AS lo,
+               MAX(insp.cycle_number) AS hi,
+               SUM(CASE WHEN insp.cycle_number IS NULL THEN 1 ELSE 0 END) AS nulls
+        FROM inspection insp
+        JOIN unit u ON insp.unit_id = u.id
+        GROUP BY insp.unit_id, u.unit_number
+        HAVING nulls > 0
+            OR distinct_cycles <> (hi - lo + 1)
+        ORDER BY u.unit_number
+        """
+    )
+    rows = cur.fetchall()
+    offenders = []
+    for un, dc, lo, hi, nulls in rows:
+        if nulls and nulls > 0:
+            offenders.append(f"{un}(NULL cycle_number)")
+        else:
+            offenders.append(f"{un}(cycles {lo}..{hi}, only {dc} present)")
+    return len(rows), offenders
+
+
 RULES = [
     ("R1", "CEI skip pollution residual", rule_R1_cei_pollution),
     ("R2", "Inactive templates in use", rule_R2_inactive_templates_in_use),
     ("R3", "Link-copy gap (non-list non-ground skips)", rule_R3_linkcopy_gap),
+    ("R4", "Cycle-number sequence gap (AF-016 regression guard)", rule_R4_cycle_number_gap),
 ]
