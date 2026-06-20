@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
 """
-test_invariants.py - CI gate for the three DB invariant rules.
+test_invariants.py - CI gate for the DB invariant rules.
 
 Builds the synthetic fixtures (via tests/fixtures/build_fixtures.py), runs the SAME
 rule definitions the live runner uses (scripts/diagnostics/invariant_rules.py), and
 asserts:
-  - CLEAN fixture: R1=0, R2=1, R3=0   (mirrors production baseline shape)
-  - DIRTY fixture: R1>=1, R2>=2, R3>=1 (each planted violation is caught)
+  - CLEAN fixture: R1=0, R2=1, R3=0, R4=0, R5=0   (mirrors production baseline shape)
+  - DIRTY fixture: R1>=1, R2>=2, R3>=1, R4>=1, R5>=1 (each planted violation is caught)
 
 Exits 0 if all assertions hold, 1 otherwise. The non-zero exit is what fails the
 GitHub Actions build and blocks the merge. Stdlib only - no pytest dependency.
@@ -23,7 +23,13 @@ FIXTURE_DIR = os.path.join(REPO_ROOT, "tests", "fixtures")
 RULES_DIR = os.path.join(REPO_ROOT, "scripts", "diagnostics")
 
 sys.path.insert(0, RULES_DIR)
-from invariant_rules import rule_R1_cei_pollution, rule_R2_inactive_templates_in_use, rule_R3_linkcopy_gap, rule_R4_cycle_number_gap
+from invariant_rules import (
+    rule_R1_cei_pollution,
+    rule_R2_inactive_templates_in_use,
+    rule_R3_linkcopy_gap,
+    rule_R4_cycle_number_gap,
+    rule_R5_clearance_atomicity,
+)
 
 
 def build_fixtures():
@@ -40,8 +46,9 @@ def counts_for(db_name):
     r2 = rule_R2_inactive_templates_in_use(cur)[0]
     r3 = rule_R3_linkcopy_gap(cur)[0]
     r4 = rule_R4_cycle_number_gap(cur)[0]
+    r5 = rule_R5_clearance_atomicity(cur)[0]
     c.close()
-    return r1, r2, r3, r4
+    return r1, r2, r3, r4, r5
 
 
 def main():
@@ -49,14 +56,14 @@ def main():
     failures = []
 
     # CLEAN: must match production baseline shape exactly.
-    r1, r2, r3, r4 = counts_for("test_clean.db")
-    print(f"CLEAN  R1={r1} R2={r2} R3={r3} R4={r4}  (expect 0, 1, 0, 0)")
-    if (r1, r2, r3, r4) != (0, 1, 0, 0):
-        failures.append(f"CLEAN expected (0,1,0,0) got ({r1},{r2},{r3},{r4})")
+    r1, r2, r3, r4, r5 = counts_for("test_clean.db")
+    print(f"CLEAN  R1={r1} R2={r2} R3={r3} R4={r4} R5={r5}  (expect 0, 1, 0, 0, 0)")
+    if (r1, r2, r3, r4, r5) != (0, 1, 0, 0, 0):
+        failures.append(f"CLEAN expected (0,1,0,0,0) got ({r1},{r2},{r3},{r4},{r5})")
 
     # DIRTY: each rule must fire on its planted violation.
-    r1, r2, r3, r4 = counts_for("test_dirty.db")
-    print(f"DIRTY  R1={r1} R2={r2} R3={r3} R4={r4}  (expect >=1, >=2, >=1, >=1)")
+    r1, r2, r3, r4, r5 = counts_for("test_dirty.db")
+    print(f"DIRTY  R1={r1} R2={r2} R3={r3} R4={r4} R5={r5}  (expect >=1, >=2, >=1, >=1, >=1)")
     if not (r1 >= 1):
         failures.append(f"DIRTY R1 expected >=1 got {r1}")
     if not (r2 >= 2):
@@ -65,6 +72,8 @@ def main():
         failures.append(f"DIRTY R3 expected >=1 got {r3}")
     if not (r4 >= 1):
         failures.append(f"DIRTY R4 expected >=1 got {r4}")
+    if not (r5 >= 1):
+        failures.append(f"DIRTY R5 expected >=1 got {r5}")
 
     if failures:
         print("=== INVARIANT CI GATE: FAIL ===")
