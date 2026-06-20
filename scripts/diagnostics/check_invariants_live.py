@@ -6,7 +6,7 @@ Run ON RENDER (CI cannot reach /var/data). Read-only: SELECT/COUNT only, no writ
 Exits 0 if all rules PASS their baseline, 1 if any rule FAILs. Suitable as a
 post-deploy gate run from the Render console.
 
-The three rule queries now live in scripts/diagnostics/invariant_rules.py so that
+The rule queries now live in scripts/diagnostics/invariant_rules.py so that
 this live runner AND the CI gate (tests/test_invariants.py) share ONE definition.
 This file owns the live DB path and the production baselines; it does not redefine
 rule logic.
@@ -29,7 +29,9 @@ DB_PATH = "/var/data/inspections.db"
 # R2: distinct inactive item_templates in use. Ghost 1161cc67 is the 1 known-inert.
 # R3: NULL-link inspections with a non-ground_only, not-in-list skipped item. Proven 0.
 # R4: units whose inspection.cycle_number sequence has a gap (AF-016 guard). Proven 0.
-BASELINES = {"R1": 0, "R2": 1, "R3": 0, "R4": 0}
+# R5: defects whose clearance quartet is half-written (cleared w/ NULL anchor, or
+#     open w/ clearance field set) - the SR-019/AF-018 strip-bug class. Proven 0.
+BASELINES = {"R1": 0, "R2": 1, "R3": 0, "R4": 0, "R5": 0}
 
 
 def main():

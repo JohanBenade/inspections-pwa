@@ -3,13 +3,13 @@
 build_fixtures.py - generate synthetic test databases for the invariant CI gate.
 
 Produces two SQLite files next to this script:
-  test_clean.db  - mirrors production baseline shape. Expected: R1=0, R2=1, R3=0.
-  test_dirty.db  - one planted violation per rule. Expected: R1>=1, R2>=2, R3>=1.
+  test_clean.db  - mirrors production baseline shape. Expected: R1=0, R2=1, R3=0, R4=0, R5=0.
+  test_dirty.db  - one planted violation per rule. Expected: R1>=1, R2>=2, R3>=1, R4>=1, R5>=1.
 
 NO production data. Every row is synthetic and declared explicitly below so the
 fixture is auditable in a git diff (we commit this generator, not opaque .db blobs).
 
-Only the 7 tables the invariant rules read are created, with only the columns the
+Only the 8 tables the invariant rules read are created, with only the columns the
 rules use plus the NOT-NULL columns needed for inserts to succeed. Schema shapes
 match the live CREATE TABLE statements (confirmed by PRAGMA dump).
 
@@ -70,6 +70,17 @@ CREATE TABLE exclusion_list_item (
     exclusion_list_id TEXT NOT NULL,
     item_template_id TEXT NOT NULL
 );
+CREATE TABLE defect (
+    id TEXT PRIMARY KEY,
+    tenant_id TEXT NOT NULL,
+    unit_id TEXT NOT NULL,
+    status TEXT NOT NULL,
+    cleared_cycle_id TEXT,
+    cleared_cycle_number INTEGER,
+    cleared_at TEXT,
+    clearance_note TEXT,
+    addressed_cycle_number INTEGER
+);
 """
 
 T = "tenant-test"  # single synthetic tenant for all rows
@@ -127,6 +138,20 @@ def build_common(cur):
     # exclusion_list_item: tpl-inlist IS in elist-B -> the skip on insp-B is explained
     insert(cur, "exclusion_list_item", id="eli-B", tenant_id=T,
            exclusion_list_id="elist-B", item_template_id="tpl-inlist")
+
+    # --- CLEAN/LEGIT defects (must NOT trip R5) ---
+    # a properly-cleared defect: status='cleared' + full anchor (note may be NULL,
+    # which is legitimate and must NOT be flagged).
+    insert(cur, "defect", id="def-cleared-ok", tenant_id=T, unit_id="unit-A",
+           status="cleared", cleared_cycle_id="cyc-A", cleared_cycle_number=2,
+           cleared_at="2026-04-24 16:13:19", clearance_note=None,
+           addressed_cycle_number=2)
+    # a properly-open defect: status='open' + all clearance fields NULL, but with an
+    # addressed_cycle_number SET (legit de-snag working marker on an open defect -
+    # must NOT be flagged: addressed_cycle_number is NOT part of the atomic quartet).
+    insert(cur, "defect", id="def-open-ok", tenant_id=T, unit_id="unit-A",
+           status="open", cleared_cycle_id=None, cleared_cycle_number=None,
+           cleared_at=None, clearance_note=None, addressed_cycle_number=3)
 
 
 def build_clean(path):
@@ -186,6 +211,12 @@ def build_dirty(path):
            cycle_id="cyc-C1", exclusion_list_id=None, cycle_number=1)
     insert(cur, "inspection", id="insp-C3", tenant_id=T, unit_id="unit-C",
            cycle_id="cyc-C3", exclusion_list_id=None, cycle_number=3)
+
+    # R5 violation: a defect marked status='cleared' but with a NULL anchor field
+    # (cleared_at NULL) -> a half-written clearance, the SR-019 strip-bug fingerprint.
+    insert(cur, "defect", id="def-r5", tenant_id=T, unit_id="unit-A",
+           status="cleared", cleared_cycle_id="cyc-A", cleared_cycle_number=2,
+           cleared_at=None, clearance_note="rectified", addressed_cycle_number=2)
 
     c.commit()
     c.close()
