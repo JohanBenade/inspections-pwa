@@ -210,9 +210,12 @@ def start_inspection(unit_id):
                 status = 'ok'
                 comment = None
             elif prev['status'] in ('not_to_standard', 'not_installed'):
-                # Scenario 2/3: Had defects or was missing - must re-inspect
+                # Scenario 2/3: Had defects or was missing - must re-inspect.
+                # AF-017: carry the prior NTS description forward so the inspector
+                # sees what failed last cycle. Guard to NTS only -- a row flipped
+                # NTS->NI can retain a stale comment, which must NOT leak forward.
                 status = 'pending'
-                comment = None
+                comment = prev['comment'] if prev['status'] == 'not_to_standard' else None
             elif prev['status'] == 'skipped':
                 # Scenario 5: Was excluded, now unexcluded - must inspect fresh
                 status = 'pending'
@@ -221,14 +224,11 @@ def start_inspection(unit_id):
                 status = 'pending'
                 comment = None
         else:
-            # C1 or no previous inspection data - start fresh
-            prev = prev_item_map.get(template_id)
-            if prev:
-                status = prev['status']
-                comment = prev['comment'] if status in ('not_to_standard', 'not_installed') else None
-            else:
-                status = 'pending'
-                comment = None
+            # C1 or no previous inspection data - start fresh.
+            # (prev_item_map is empty here, so there is never a prior to carry;
+            #  the live carry-forward is handled in the cycle_number > 1 branch above.)
+            status = 'pending'
+            comment = None
         
         db.execute("""
             INSERT INTO inspection_item
