@@ -1,7 +1,9 @@
 #!/usr/bin/env bash
-# api_deploy_add.sh -- add/update ONE file on an EXISTING branch (no branch
+# api_deploy_add.sh v2 -- add/update ONE file on an EXISTING branch (no branch
 # create, no PR create). Companion to api_deploy.sh for multi-file PRs:
 # run api_deploy.sh once (creates branch + PR), then this for each extra file.
+# v2: contents lookup HTTP code checked explicitly; sha parsed from JSON via
+# python3 (top-level .sha only), not grep.
 # USAGE: bash api_deploy_add.sh <repo> <local_file> <repo_path> <branch> "<msg>"
 set -euo pipefail
 TOKEN_FILE="${HOME}/.gh_deploy_token"
@@ -17,9 +19,22 @@ echo "== api_deploy_add == $REPO_PATH -> $BRANCH"
 # 1. branch must exist
 B_CODE="$(curl -s -o /dev/null -w "%{http_code}" -H "$AUTH" "${API}/git/refs/heads/${BRANCH}")"
 [ "$B_CODE" = "200" ] || { echo "ERROR: branch '$BRANCH' not found (HTTP $B_CODE)."; exit 1; }
-# 2. blob SHA on THAT branch (update mode) or blank (create mode)
-FILE_SHA="$(curl -s -H "$AUTH" "${API}/contents/${REPO_PATH}?ref=${BRANCH}" | grep '"sha"' | head -1 | cut -d'"' -f4 || true)"
-if [ -n "$FILE_SHA" ]; then echo "[1/2] existing blob on branch: $FILE_SHA (update)"; else echo "[1/2] new file (create)"; fi
+# 2. blob SHA on THAT branch: 200 = update mode, 404 = create mode, else = hard error
+C_BODY="$(mktemp)"
+C_CODE="$(curl -s -o "$C_BODY" -w "%{http_code}" -H "$AUTH" "${API}/contents/${REPO_PATH}?ref=${BRANCH}")"
+if [ "$C_CODE" = "200" ]; then
+  FILE_SHA="$(python3 -c 'import json,sys
+d = json.load(open(sys.argv[1]))
+print(d["sha"] if isinstance(d, dict) and "sha" in d else "")' "$C_BODY")"
+  [ -n "$FILE_SHA" ] || { echo "ERROR: HTTP 200 but no top-level sha (path is a directory?)"; cat "$C_BODY"; rm -f "$C_BODY"; exit 1; }
+  echo "[1/2] existing blob on branch: $FILE_SHA (update)"
+elif [ "$C_CODE" = "404" ]; then
+  FILE_SHA=""
+  echo "[1/2] new file (create)"
+else
+  echo "ERROR: contents lookup failed (HTTP $C_CODE):"; cat "$C_BODY"; rm -f "$C_BODY"; exit 1
+fi
+rm -f "$C_BODY"
 # 3. commit
 CONTENT_B64="$(base64 < "$LOCAL_FILE" | tr -d '\n')"
 PAYLOAD_FILE="$(mktemp)"
